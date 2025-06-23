@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -23,7 +23,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  // Convert all to numbers
   const bs   = parseFloat(basic_salary) || 0;
   const h    = parseFloat(hra)          || 0;
   const d_a  = parseFloat(da)           || 0;
@@ -36,12 +35,22 @@ export default async function handler(req, res) {
   const net_pay = bs + h + d_a + all - (gen_ded + pf_ded + pt_ded + es_ded);
 
   try {
-    const [result] = await db.execute(
-      `INSERT INTO payroll 
-        (empid, month, year, basic_salary, hra, da, allowances, pf, ptax, esic, deductions, net_pay) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [empid, month, year, bs, h, d_a, all, pf_ded, pt_ded, es_ded, gen_ded, net_pay]
-    );
+    await prisma.payroll.create({
+      data: {
+        empid,
+        month,
+        year,
+        basic_salary: bs,
+        hra: h,
+        da: d_a,
+        allowances: all,
+        pf: pf_ded,
+        ptax: pt_ded,
+        esic: es_ded,
+        deductions: gen_ded,
+        net_pay
+      }
+    });
 
     res.status(200).json({ message: 'Payroll added successfully' });
   } catch (error) {

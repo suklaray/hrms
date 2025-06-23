@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -6,11 +6,19 @@ export default async function handler(req, res) {
   const { empid } = req.body;
 
   try {
-    // 1. Update the status of the user to "Logged In" in the users table.
-    await db.query("UPDATE users SET status = 'Logged In' WHERE empid = ?", [empid]);
-
-    // 2. Insert the check-in record in the attendance table.
-    await db.query("INSERT INTO attendance (empid, check_in) VALUES (?, NOW())", [empid]);
+    // Use Prisma transaction to ensure both actions succeed together
+    await prisma.$transaction([
+      prisma.users.update({
+        where: { empid },
+        data: { status: "Logged In" },
+      }),
+      prisma.attendance.create({
+        data: {
+          empid,
+          check_in: new Date(), // this is equivalent to NOW()
+        },
+      }),
+    ]);
 
     res.status(200).json({ message: "Check-in successful" });
   } catch (err) {

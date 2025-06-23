@@ -17,25 +17,41 @@ export default function LeaveRequest() {
   const [leaveStatusList, setLeaveStatusList] = useState([]);
 
   useEffect(() => {
-
-    axios.get('/api/leave/types')
+    // Fetch leave types
+    axios
+      .get('/api/leave/types')
       .then((response) => setLeaveTypes(response.data))
       .catch((error) => console.error('Error fetching leave types:', error));
 
     // Fetch employee info from localStorage
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      setForm((prev) => ({
-        ...prev,
-        empid: user.empid,
-        name: user.name,
-      }));
 
-      // Fetch employee leave status
-      axios.get(`/api/leave/status?empid=${user.empid}`)
-        .then((res) => setLeaveStatusList(res.data))
-        .catch((err) => console.error('Failed to fetch leave status:', err));
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+
+        if (user && user.empid && user.name) {
+          setForm((prev) => ({
+            ...prev,
+            empid: user.empid,
+            name: user.name,
+          }));
+
+          // Fetch leave status
+          axios
+            .get(`/api/leave/status?empid=${user.empid}`)
+            .then((res) => setLeaveStatusList(res.data))
+            .catch((err) =>
+              console.error('Failed to fetch leave status:', err)
+            );
+        } else {
+          console.warn('User object is missing empid or name:', user);
+        }
+      } catch (e) {
+        console.error('Failed to parse user from localStorage:', e);
+      }
+    } else {
+      console.warn('No user found in localStorage.');
     }
   }, []);
 
@@ -87,9 +103,11 @@ export default function LeaveRequest() {
         <div className="w-2/3">
           <form
             onSubmit={handleSubmit}
-            className="space-y-6 bg-white p-10 rounded-lg shadow-lg "
+            className="space-y-6 bg-white p-10 rounded-lg shadow-lg"
           >
-          <h1 className=" w-full text-3xl font-extrabold mb-8 text-center text-indigo-800">Apply for Leave</h1>
+            <h1 className="text-3xl font-extrabold mb-8 text-center text-indigo-800">
+              Apply for Leave
+            </h1>
 
             <div className="flex flex-col gap-4">
               <input
@@ -113,11 +131,11 @@ export default function LeaveRequest() {
                 className="w-full p-3 border-2 border-indigo-300 rounded-lg"
               >
                 <option value="">Select Leave Type</option>
-                <option value="Sick Leave">Sick Leave</option>
-                <option value="Casual Leave">Casual Leave</option>
-                <option value="Earned Leave">Earned Leave</option>
-                <option value="Maternity Leave">Maternity Leave</option>
-                <option value="Unpaid Leave">Unpaid Leave</option>
+                {leaveTypes.map((type) => (
+                  <option key={type.id} value={type.type_name}>
+                    {type.type_name}
+                  </option>
+                ))}
               </select>
 
               <div className="flex gap-4">
@@ -166,44 +184,49 @@ export default function LeaveRequest() {
         </div>
 
         {/* Leave Status Panel */}
-<div className="w-1/3 bg-white p-6 rounded-2xl shadow-xl overflow-y-auto max-h-[600px] border border-indigo-100">
-<h1 className=" w-full text-3xl font-extrabold mb-8 text-center text-indigo-800">Your Leave Requests</h1>
+        <div className="w-1/3 bg-white p-6 rounded-2xl shadow-xl overflow-y-auto max-h-[600px] border border-indigo-100">
+          <h1 className="text-3xl font-extrabold mb-8 text-center text-indigo-800">
+            Your Leave Requests
+          </h1>
 
-  {leaveStatusList.length > 0 ? (
-    <div className="space-y-4">
-      {leaveStatusList.map((leave, index) => (
-        <div
-          key={index}
-          className="border border-gray-200 rounded-xl p-5 bg-indigo-50 shadow-sm transition hover:shadow-md"
-        >
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-semibold text-indigo-700">{leave.leave_type}</h3>
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                leave.status === 'Approved'
-                  ? 'bg-green-100 text-green-700'
-                  : leave.status === 'Rejected'
-                  ? 'bg-red-100 text-red-700'
-                  : 'bg-yellow-100 text-yellow-700'
-              }`}
-            >
-              {leave.status}
-            </span>
-          </div>
-          <p className="text-sm text-gray-700">
-            <strong>From:</strong> {leave.from_date}
-          </p>
-          <p className="text-sm text-gray-700">
-            <strong>To:</strong> {leave.to_date}
-          </p>
+          {leaveStatusList.length > 0 ? (
+            <div className="space-y-4">
+              {leaveStatusList.map((leave, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-200 rounded-xl p-5 bg-indigo-50 shadow-sm transition hover:shadow-md"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-semibold text-indigo-700">
+                      {leave.leave_type}
+                    </h3>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        leave.status === 'Approved'
+                          ? 'bg-green-100 text-green-700'
+                          : leave.status === 'Rejected'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-yellow-100 text-yellow-700'
+                      }`}
+                    >
+                      {leave.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700">
+                    <strong>From:</strong> {leave.from_date}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    <strong>To:</strong> {leave.to_date}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500">
+              No leave requests found.
+            </p>
+          )}
         </div>
-      ))}
-    </div>
-  ) : (
-    <p className="text-center text-gray-500">No leave requests found.</p>
-  )}
-</div>
-
       </div>
     </div>
   );

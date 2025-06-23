@@ -1,4 +1,5 @@
-import db from '@/lib/db';
+import prisma from "@/lib/prisma";
+
 
 export default async function handler(req, res) {
   const { empid } = req.query;
@@ -12,17 +13,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [rows] = await db.execute(
-      `SELECT empid, name, email, contact_number, role, position 
-       FROM users WHERE empid = ?`,
-      [empid]
-    );
+    const employee = await prisma.users.findUnique({
+      where: { empid },
+      select: {
+        empid: true,
+        name: true,
+        email: true,
+        contact_number: true,
+        role: true,
+        position: true,
+      },
+    });
 
-    if (rows.length === 0) {
+    if (!employee) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    res.status(200).json(rows[0]);
+    res.status(200).json(employee);
   } catch (error) {
     console.error('Error fetching employee details:', error);
     res.status(500).json({ message: 'Database error' });

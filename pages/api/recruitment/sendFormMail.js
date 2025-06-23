@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import db from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== "PUT") return res.status(405).json({ error: "Method not allowed" });
@@ -7,15 +7,12 @@ export default async function handler(req, res) {
   const { candidateId } = req.body;
 
   try {
-    const [rows] = await db.query("SELECT email, name, form_link FROM candidates WHERE candidate_id = ?", [candidateId]);
+    const candidate = await prisma.candidate.findUnique({
+      where: { candidate_id: candidateId },
+    });
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Candidate not found" });
-    }
+    if (!candidate) return res.status(404).json({ error: "Candidate not found" });
 
-    const candidate = rows[0];
-
-    // Setup of mail transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
@@ -31,22 +28,24 @@ export default async function handler(req, res) {
       html: `
         <p>Dear ${candidate.name},</p>
         <p>Please complete your document submission by filling out the form linked below:</p>
-        <a href="${candidate.form_link}" target="_blank" style="color: blue;">Submit Documents</a>
+        <a href="${candidate.form_link}" target="_blank">Submit Documents</a>
         <p>Best regards,<br/>HR Team</p>
       `,
     };
 
     await transporter.sendMail(mailOptions);
 
-    // Updated column name to match DB schema
-    await db.query("UPDATE candidates SET form_status = ? WHERE candidate_id = ?", [
-      "Form Mail Sent",
-      candidateId,
-    ]);
+    await prisma.candidate.update({
+      where: { candidate_id: candidateId },
+      data: { form_status: "Form Mail Sent" },
+    });
 
     res.status(200).json({ message: "Form submission email sent successfully." });
+
   } catch (error) {
     console.error("Error sending form mail:", error);
     res.status(500).json({ error: "Internal Server Error" });
+  } finally {
+    await prisma.$disconnect();
   }
 }

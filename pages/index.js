@@ -11,7 +11,13 @@ export default function Home() {
                 {/* Left Side - Image */}
                 
                 <div className="w-1/1 flex items-center justify-center bg-amber-10">
-                    <Image src="/img3.jpg" alt="" className=""/>
+                    <Image 
+                        src="/img3.jpg"
+                        width={600}
+                        height={400}
+                        alt="image" 
+                        className=""
+                    />
                 </div>
 
                 {/* Right Side - Welcome Text & Buttons */}

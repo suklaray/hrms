@@ -42,4 +42,6 @@ next-env.d.ts
 
 #more files
 .env.local
-public/uploads
+/public/uploads
+/lib/generated/prisma
+/uploads

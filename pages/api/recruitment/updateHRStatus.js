@@ -1,4 +1,6 @@
-import db from "@/lib/db";
+// pages/api/recruitment/updateHRStatus.js
+
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method === "PUT") {
@@ -8,24 +10,33 @@ export default async function handler(req, res) {
       let formLink = null;
 
       if (hrStatus === "Selected") {
-        const [existing] = await db.query("SELECT form_link FROM candidates WHERE candidate_id = ?", [candidateId]);
+        const existing = await prisma.candidates.findUnique({
+          where: { candidate_id: candidateId },
+          select: { form_link: true },
+        });
 
-        if (existing.length > 0 && !existing[0].form_link) {
+        if (existing && !existing.form_link) {
           const baseUrl = `${req.headers.origin || "http://localhost:3000"}`;
           formLink = `${baseUrl}/Recruitment/form/${candidateId}`;
         }
       }
 
-
-      const updateQuery = formLink
-        ? "UPDATE candidates SET status = ?, form_link = ? WHERE candidate_id = ?"
-        : "UPDATE candidates SET status = ? WHERE candidate_id = ?";
-
-      const params = formLink
-        ? [hrStatus, formLink, candidateId]
-        : [hrStatus, candidateId];
-
-      await db.query(updateQuery, params);
+      if (formLink) {
+        await prisma.candidates.update({
+          where: { candidate_id: candidateId },
+          data: {
+            status: hrStatus,
+            form_link: formLink,
+          },
+        });
+      } else {
+        await prisma.candidates.update({
+          where: { candidate_id: candidateId },
+          data: {
+            status: hrStatus,
+          },
+        });
+      }
 
       res.status(200).json({ message: "HR Status updated successfully" });
     } catch (error) {

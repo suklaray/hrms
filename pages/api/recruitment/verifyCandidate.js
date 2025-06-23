@@ -1,18 +1,18 @@
 // pages/api/recruitment/verifyCandidate.js
 
-import db from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method === 'PUT') {
     const { candidateId, verificationStatus } = req.body;
 
     try {
-      const [result] = await db.execute(
-        'UPDATE candidates SET verification = ? WHERE candidate_id = ?',
-        [verificationStatus, candidateId]
-      );
+      const result = await prisma.candidates.updateMany({
+        where: { candidate_id: candidateId },
+        data: { verification: verificationStatus },
+      });
 
-      if (result.affectedRows === 0) {
+      if (result.count === 0) {
         return res.status(404).json({ message: 'Candidate not found' });
       }
 

@@ -1,11 +1,20 @@
 // pages/api/leave/status.js
-import db from '../../../lib/db';
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   const { empid } = req.query;
 
   try {
-    const [rows] = await db.execute('SELECT leave_type, from_date, to_date, status FROM leave_requests WHERE empid = ?', [empid]);
+    const rows = await prisma.leave_requests.findMany({
+      where: { empid: empid },
+      select: {
+        leave_type: true,
+        from_date: true,
+        to_date: true,
+        status: true,
+      },
+    });
+
     res.status(200).json(rows);
   } catch (err) {
     console.error(err);

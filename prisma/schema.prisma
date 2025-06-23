@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model addresses {
+  id            Int       @id @default(autoincrement())
+  employee_id   Int
+  address_line1 String
+  address_line2 String?
+  city          String
+  state         String
+  country       String
+  pincode       String
+  employees     employees @relation(fields: [employee_id], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([employee_id])
+}
+
+model attendance {
+  id                Int                           @id @default(autoincrement())
+  empid             String
+  check_in          DateTime?
+  check_out         DateTime?
+  total_hours       Decimal?
+  date              DateTime?                    @default(now())
+  created_at        DateTime?                    @default(now())
+  attendance_status attendance_attendance_status? @default(Absent)
+}
+
+model audit_logs {
+  id                                           Int        @id @default(autoincrement())
+  empid                                        Int?
+  performed_by                                 Int?
+  action                                       String?
+  timestamp                                    DateTime?  @default(now())
+  employees_audit_logs_empidToemployees        employees? @relation("audit_logs_empidToemployees", fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  employees_audit_logs_performed_byToemployees employees? @relation("audit_logs_performed_byToemployees", fields: [performed_by], references: [empid], onUpdate: Restrict)
+
+  @@index([empid])
+  @@index([performed_by])
+}
+
+model bank_details {
+  id                  Int       @id @default(autoincrement())
+  employee_id         Int
+  account_holder_name String
+  bank_name           String
+  branch_name         String?
+  account_number      String
+  ifsc_code           String
+  checkbook_document  String?
+  employees           employees @relation(fields: [employee_id], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([employee_id])
+}
+
+model candidates {
+  id                    Int                @id @default(autoincrement())
+  candidate_id          String?            @unique
+  name                  String
+  email                 String
+  contact_number        String?
+  interview_date        DateTime?
+  resume                String?
+  form_link             String?
+  status                candidates_status? @default(Pending)
+  created_at            DateTime?          @default(now())
+  form_token            String?
+  interview_mail_status String?            @default("Not Sent")
+  form_status           String?            @default("Mail Not Sent")
+  verification          Boolean?           @default(false)
+}
+
+model compliance_documents {
+  id          Int        @id @default(autoincrement())
+  empid       Int?
+  doc_type    String?
+  file_path   String?
+  uploaded_at DateTime?  @default(now())
+  expires_on  DateTime?
+  employees   employees? @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([empid])
+}
+
+model compliance_status {
+  empid          Int                               @id
+  overall_status compliance_status_overall_status?
+  last_updated   DateTime?                         @default(now())
+  employees      employees                         @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+}
+
+model employees {
+  empid                                         Int                      @id @default(autoincrement())
+  candidate_id                                  String?
+  name                                          String?
+  email                                         String?
+  contact_no                                    String?
+  password                                      String?
+  gender                                        String?
+  dob                                           DateTime?
+  aadhar_card                                   String?
+  pan_card                                      String?
+  education_certificates                        String?
+  resume                                        String?
+  experience_certificate                        String?
+  profile_photo                                 String?
+  created_at                                    DateTime?                @default(now())
+  experience_years                              Int?                     @default(0)
+  experience_months                             Int?                     @default(0)
+  employee_type                                 employees_employee_type? @default(Full_time)
+  aadhar_number                                 String?
+  pan_number                                    String?
+  addresses                                     addresses[]
+  audit_logs_audit_logs_empidToemployees        audit_logs[]             @relation("audit_logs_empidToemployees")
+  audit_logs_audit_logs_performed_byToemployees audit_logs[]             @relation("audit_logs_performed_byToemployees")
+  bank_details                                  bank_details[]
+  compliance_documents                          compliance_documents[]
+  compliance_status                             compliance_status?
+  users                                         users?                   @relation(fields: [email], references: [email], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([email])
+}
+
+
+model main_employee {
+  empid                  String    @id @db.VarChar(20)
+  candidate_id           Int?
+  email                  String    @db.VarChar(100)
+  password               String    @db.VarChar(255)
+  role                   String?   @default("employee") @db.VarChar(20)
+  name                   String?   @db.VarChar(100)
+  contact                String?   @db.VarChar(15)
+  position               String?   @db.VarChar(100)
+  doj                    DateTime? @db.Date
+  gender                 String?   @db.VarChar(10)
+  dob                    DateTime? @db.Date
+  address                String?   @db.Text
+  employee_type          String?   @db.VarChar(50)
+  experience             String?   @db.VarChar(50)
+  profile_photo          String?   @db.VarChar(255)
+  aadhar_card            String?   @db.VarChar(255)
+  pan_card               String?   @db.VarChar(255)
+  education_certificates String?   @db.Text
+  resume                 String?   @db.VarChar(255)
+  experience_certificate String?   @db.VarChar(255)
+  bank_details           String?   @db.Text
+  status                 String?   @default("active") @db.VarChar(20)
+  created_at             DateTime? @default(now()) @db.Timestamp(0)
+}
+
+
+model leave_types {
+  id             Int                   @id @default(autoincrement())
+  type_name      leave_types_type_name
+  max_days       Int
+  paid           Boolean?              @default(true)
+  leave_balances leave_balances[]
+}
+
+model leave_balances {
+  id          Int         @id @default(autoincrement())
+  empid       String
+  type_id     Int
+  total       Int
+  used        Int?        @default(0)
+  remaining   Int?
+  users       users       @relation(fields: [empid], references: [empid], onUpdate: Restrict)
+  leave_types leave_types @relation(fields: [type_id], references: [id], onUpdate: Restrict)
+
+  @@index([empid])
+  @@index([type_id])
+}
+
+model leave_requests {
+  id         Int                    @id @default(autoincrement())
+  empid      String
+  from_date  DateTime
+  to_date    DateTime
+  reason     String?
+  status     leave_requests_status? @default(Pending)
+  applied_at DateTime?              @default(now())
+  attachment String?
+  leave_type String
+  name       String
+  users      users                  @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+
+  @@index([empid])
+}
+
+model users {
+  id              Int              @id @default(autoincrement())
+  empid           String           @unique
+  name            String
+  email           String           @unique
+  contact_number  String?
+  password        String
+  position        String?
+  date_of_joining DateTime?
+  status          String?          @default("Active")
+  experience      Int?
+  profile_photo   String?
+  role            users_role       @default(employee)
+  created_at      DateTime?        @default(now())
+  verified        users_verified?  @default(not_verified)
+  employees       employees[]
+  leave_balances  leave_balances[]
+  leave_requests  leave_requests[]
+  payroll         payroll[]
+}
+
+model payroll {
+  id           Int       @id @default(autoincrement())
+  empid        String?
+  month        String?
+  year         Int?
+  basic_salary Decimal?
+  hra          Decimal?
+  bonus        Decimal?  @default(0.00)
+  da           Decimal?
+  allowances   Decimal?
+  deductions   Decimal?
+  net_pay      Decimal?
+  generated_on DateTime? @default(now())
+  payslip_pdf  String?
+  pf           Decimal?  @default(0.00)
+  ptax         Decimal?  @default(0.00)
+  esic         Decimal?  @default(0.00)
+  users        users?    @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([empid])
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model employees_backup {
+  empid                  Int       @id
+  candidate_id           String?   @db.VarChar(50)
+  name                   String?   @db.VarChar(100)
+  email                  String?   @db.VarChar(100)
+  contact_no             String?   @db.VarChar(15)
+  password               String?   @db.VarChar(100)
+  address                String?   @db.Text
+  gender                 String?   @db.VarChar(10)
+  dob                    DateTime? @db.Date
+  aadhar_card            String?   @db.Text
+  pan_card               String?   @db.Text
+  education_certificates String?   @db.Text
+  resume                 String?   @db.Text
+  experience_certificate String?   @db.Text
+  bank_details           String?   @db.Text
+  profile_photo          String?   @db.Text
+  created_at             DateTime? @default(now()) @db.Timestamp(0)
+
+  @@ignore
+}
+
+
+enum compliance_status_overall_status {
+  Compliant
+  Expiring_Soon @map("Expiring Soon")
+  Non_compliant @map("Non-compliant")
+}
+
+enum leave_types_type_name {
+  Sick_Leave      @map("Sick Leave")
+  Casual_Leave    @map("Casual Leave")
+  Earned_Leave    @map("Earned Leave")
+  Maternity_Leave @map("Maternity Leave")
+  Unpaid_Leave    @map("Unpaid Leave")
+}
+
+enum leave_requests_status {
+  Pending
+  Approved
+  Rejected
+}
+
+enum attendance_attendance_status {
+  Present
+  Absent
+}
+
+enum candidates_status {
+  Pending
+  Mail_Sent          @map("Mail Sent")
+  Document_Submitted @map("Document Submitted")
+  Selected
+  Rejected
+  Waiting
+}
+
+enum users_role {
+  hr
+  employee
+  admin
+  ceo
+}
+
+enum users_verified {
+  verified
+  not_verified @map("not verified")
+}
+
+enum employees_employee_type {
+  Full_time  @map("Full-time")
+  Intern
+  Contractor
+}

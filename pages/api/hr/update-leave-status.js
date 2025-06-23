@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import prisma from '@/lib/prisma';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,7 +12,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    await db.execute('UPDATE leave_requests SET status = ? WHERE id = ?', [status, id]);
+    await prisma.leave_requests.update({
+      where: { id: parseInt(id) },
+      data: { status },
+    });
+
     res.status(200).json({ success: true, message: 'Status updated' });
   } catch (error) {
     console.error('Error updating leave status:', error);

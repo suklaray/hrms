@@ -1,7 +1,7 @@
 import { IncomingForm } from 'formidable';
 import fs from 'fs';
 import path from 'path';
-import db from '@/lib/db';
+import prisma from '@/lib/prisma';
 
 export const config = {
   api: {
@@ -15,26 +15,29 @@ export default async function handler(req, res) {
   const form = new IncomingForm();
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
 
-  // Creating the upload directory if it doesn't exist
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
   form.uploadDir = uploadDir;
   form.keepExtensions = true;
 
-  // Parse the form data
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ message: 'Form parsing error' });
 
-    // Extract data from fields and files
     const { empid, name, leave_type, from_date, to_date, reason } = fields;
     const attachment = files.attachment ? `/uploads/${path.basename(files.attachment.filepath)}` : null;
 
     try {
-      // Insert data into the leave_requests table
-      await db.query(
-        'INSERT INTO leave_requests (empid, name, leave_type, from_date, to_date, reason, attachment) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [empid, name, leave_type, from_date, to_date, reason, attachment]
-      );
+      await prisma.leave_requests.create({
+        data: {
+          empid: empid,
+          name: name,
+          leave_type: leave_type,
+          from_date: new Date(from_date),
+          to_date: new Date(to_date),
+          reason: reason,
+          attachment: attachment,
+        },
+      });
       res.status(200).json({ message: 'Leave request submitted successfully' });
     } catch (err) {
       console.error(err);

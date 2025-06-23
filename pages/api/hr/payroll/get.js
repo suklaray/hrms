@@ -1,4 +1,4 @@
-import db from '@/lib/db';
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -12,12 +12,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [rows] = await db.execute(
-      `SELECT * FROM payroll WHERE empid = ? ORDER BY year DESC, month DESC`,
-      [empid]
-    );
+    const payrolls = await prisma.payroll.findMany({
+      where: { empid },
+      orderBy: [{ year: 'desc' }, { month: 'desc' }],
+    });
 
-    res.status(200).json(rows);
+    res.status(200).json(payrolls);
   } catch (error) {
     console.error('Error fetching employee payroll:', error);
     res.status(500).json({ message: 'Database error' });

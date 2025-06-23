@@ -1,5 +1,5 @@
 // pages/api/recruitment/getEmployeeById.js
-import db from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
@@ -10,16 +10,20 @@ export default async function handler(req, res) {
     }
 
     try {
-      const [rows] = await db.query(
-        "SELECT * FROM employees WHERE candidate_id = ? ORDER BY created_at DESC LIMIT 1",
-        [id]
-      );
+      const employee = await prisma.employees.findFirst({
+        where: {
+          candidate_id: id,
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+      });
 
-      if (rows.length === 0) {
+      if (!employee) {
         return res.status(404).json({ error: "Candidate not found" });
       }
 
-      return res.status(200).json(rows[0]);
+      return res.status(200).json(employee);
     } catch (error) {
       console.error("Error fetching candidate:", error);
       return res.status(500).json({ error: "Server error" });

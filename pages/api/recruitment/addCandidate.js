@@ -1,7 +1,7 @@
 import formidable from "formidable";
 import fs from "fs";
 import path from "path";
-import db from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export const config = {
   api: {
@@ -35,45 +35,46 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Check if the email already exists in the database
-      const [existingEmail] = await db.query(
-        `SELECT * FROM candidates WHERE email = ?`,
-        [email[0]]
-      );
+      const existingEmail = await prisma.candidates.findMany({
+        where: { email: email[0] }
+      });
 
       if (existingEmail.length > 0) {
         return res.status(400).json({ error: "Email already exists" });
       }
 
-      // Save the file
       const filename = path.basename(file[0].filepath);
       const filePath = `/uploads/cv/${filename}`;
 
-      // Generate new candidate_id: YYYYMMDD000001
       const today = new Date();
       const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
       const datePrefix = `${year}${month}${day}`;
 
-      // Query to get count of existing candidates today
-      const [rows] = await db.query(
-        `SELECT COUNT(*) AS count FROM candidates WHERE candidate_id LIKE ?`,
-        [`${datePrefix}%`]
-      );
+      const count = await prisma.candidates.count({
+        where: {
+          candidate_id: {
+            startsWith: datePrefix
+          }
+        }
+      });
 
-      const serial = rows[0].count + 1;
-      const serialStr = String(serial).padStart(6, '0');
+      const serialStr = String(count + 1).padStart(6, "0");
       const candidateId = `${datePrefix}${serialStr}`;
 
-      const formLink = null; // Placeholder, updated later
-
-      // Insert the candidate record into the database
-      await db.query(
-        `INSERT INTO candidates (candidate_id, name, email, contact_number, interview_date, resume, form_link, status) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [candidateId, name[0], email[0], contact_number[0], interviewDate[0], filePath, formLink, "Pending"]
-      );
+      await prisma.candidates.create({
+        data: {
+          candidate_id: candidateId,
+          name: name[0],
+          email: email[0],
+          contact_number: contact_number[0],
+          interview_date: new Date(interviewDate[0]),
+          resume: filePath,
+          form_link: null,
+          status: "Pending"
+        }
+      });
 
       res.status(200).json({ message: "Candidate added successfully", candidateId });
     } catch (err) {

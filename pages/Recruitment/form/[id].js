@@ -5,7 +5,7 @@ import axios from "axios";
 export default function CandidateForm() {
   const router = useRouter();
   const { id } = router.query;
-
+  const [isLoading, setIsLoading] = useState(false); 
   const [candidate, setCandidate] = useState(null);
   const [formData, setFormData] = useState({
     address_line_1: "",
@@ -62,6 +62,53 @@ export default function CandidateForm() {
       }));
     }
   };
+
+  const handleDocumentUpload = async (e, type) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const formDataUpload = new FormData();
+  formDataUpload.append("document", file);
+
+  // Show loader only for Aadhar or PAN
+  if (type === "aadhar" || type === "pan") {
+    setIsLoading(true);
+  }
+
+  try {
+    const res = await fetch("/api/textract", {
+      method: "POST",
+      body: formDataUpload,
+    });
+
+    const data = await res.json();
+
+    if (data?.extractedText) {
+      let number = "";
+
+      if (type === "aadhar") {
+        const match = data.extractedText.match(/\b\d{4}\s\d{4}\s\d{4}\b/);
+        if (match) number = match[0].replace(/\s/g, "");
+      } else if (type === "pan") {
+        const match = data.extractedText.match(/\b[A-Z]{5}[0-9]{4}[A-Z]\b/);
+        if (match) number = match[0];
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        [`${type}_number`]: number,
+      }));
+    }
+  } catch (err) {
+    console.error("Textract error:", err);
+  } finally {
+    if (type === "aadhar" || type === "pan") {
+      setIsLoading(false);
+    }
+  }
+};
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -226,6 +273,12 @@ export default function CandidateForm() {
             </div>
           </div>
 
+            {isLoading && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-10 backdrop-brightness-75">
+                <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent"></div>
+              </div>
+            )}
+
           {/* PAN and Aadhar Cards */}
           <h3 className="text-2xl font-semibold text-gray-700 mt-6 mb-4 text-center">Documents</h3>
           <div className="grid grid-row-2 grid-cols-2 gap-4">
@@ -234,7 +287,8 @@ export default function CandidateForm() {
               <input
                 type="file"
                 name="aadhar_card"
-                onChange={handleChange}
+                accept="image/*,application/pdf"
+                onChange={(e) => handleDocumentUpload(e, "aadhar")}
                 required
                 className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
               />
@@ -242,7 +296,8 @@ export default function CandidateForm() {
               <input
                 type="file"
                 name="pan_card"
-                onChange={handleChange}
+                accept="image/*,application/pdf"
+                onChange={(e) => handleDocumentUpload(e, "pan")}
                 required
                 className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
               />
@@ -254,7 +309,7 @@ export default function CandidateForm() {
                 type="text"
                 name="aadhar_number"
                 placeholder="Aadhar Card Number"
-                value={formData.aadhar_number}
+                value={formData.aadhar_number || ""}
                 onChange={handleChange}
                 required
                 className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
@@ -264,7 +319,7 @@ export default function CandidateForm() {
                 type="text"
                 name="pan_number"
                 placeholder="PAN Card Number"
-                value={formData.pan_number}
+                value={formData.pan_number || ""}
                 onChange={handleChange}
                 required
                 className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"

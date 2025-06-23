@@ -8,7 +8,7 @@ export default function Sidebar({ handleLogout }) {
   const [payrollOpen, setPayrollOpen] = useState(false); 
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [performanceOpen, setPerformanceOpen] = useState(false);
-
+  
 
   const toggleAttendanceMenu = () => {
     setAttendanceOpen(!attendanceOpen);
@@ -31,9 +31,9 @@ export default function Sidebar({ handleLogout }) {
     { name: "Add Employee", path: "/registerEmployee" },
     { name: "View Employees Details", path: "/employeeList" },
     { name: "Recruitment Management", path: "/Recruitment/recruitment" },
-    { name: "Reporting and Analytics", path: "/ViewDetails" },
-    { name: "Compliance management", path: "/compliance" },
-    { name: "Performance Management", path: "/compliance" },
+    //{ name: "Reporting and Analytics", path: "/ViewDetails" },
+    //{ name: "Compliance management", path: "/compliance" },
+    //{ name: "Performance Management", path: "/compliance" },
   ];
 
   const attendanceSubItems = [

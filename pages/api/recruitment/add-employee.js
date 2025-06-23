@@ -1,5 +1,6 @@
-import db from '@/lib/db';
+import prisma from "@/lib/prisma";
 import bcrypt from 'bcryptjs';
+
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -12,21 +13,21 @@ export default async function handler(req, res) {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await db.query(
-      `INSERT INTO users (empid, name, email, password, position, date_of_joining, status, experience, profile_photo, role, verified)
-       VALUES (?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, 'verified')`,
-      [
+    await prisma.users.create({
+      data: {
         empid,
         name,
         email,
-        hashedPassword,
+        password: hashedPassword,
         position,
-        date_of_joining,
-        experience || null,
-        profile_photo || null,
+        date_of_joining: new Date(date_of_joining),
+        status: 'Active',
+        experience: experience || null,
+        profile_photo: profile_photo || null,
         role,
-      ]
-    );
+        verified: 'verified'
+      }
+    });
 
     res.status(200).json({ message: 'Employee created successfully' });
   } catch (err) {

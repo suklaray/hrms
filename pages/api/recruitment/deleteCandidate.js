@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== "DELETE") {
@@ -12,10 +12,9 @@ export default async function handler(req, res) {
   }
 
   try {
-    const result = await db.query(
-      "DELETE FROM candidates WHERE candidate_id = ?",
-      [candidate_id]
-    );
+    await prisma.candidates.delete({
+      where: { candidate_id: candidate_id }
+    });
 
     return res.status(200).json({ message: "Candidate deleted successfully" });
   } catch (error) {

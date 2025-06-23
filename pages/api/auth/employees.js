@@ -1,4 +1,4 @@
-import pool from "@/lib/db"; 
+import prisma from "@/lib/prisma"; // 👉 make sure this file exports a PrismaClient instance
 
 export default async function handler(req, res) {
     if (req.method !== "GET") {
@@ -6,10 +6,13 @@ export default async function handler(req, res) {
     }
 
     try {
-        const [rows] = await pool.query("SELECT * FROM users WHERE role = 'employee'");
-        res.status(200).json(rows);
+        const employees = await prisma.users.findMany({
+            where: { role: "employee" }
+        });
+
+        res.status(200).json(employees);
     } catch (error) {
-        console.error("DB Error:", error);
+        console.error("Prisma DB Error:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 }

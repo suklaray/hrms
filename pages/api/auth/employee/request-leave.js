@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -10,13 +10,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [user] = await db.query("SELECT empid FROM users WHERE email = ?", [email]);
-    if (!user || user.length === 0) return res.status(404).json({ error: "User not found" });
+    const user = await prisma.users.findUnique({
+      where: { email },
+      select: { empid: true },
+    });
 
-    await db.query(
-      "INSERT INTO leave_requests (empid, start_date, end_date, reason) VALUES (?, ?, ?, ?)",
-      [user[0].empid, startDate, endDate, reason]
-    );
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    await prisma.leave_requests.create({
+      data: {
+        empid: user.empid,
+        start_date: new Date(startDate),
+        end_date: new Date(endDate),
+        reason,
+      },
+    });
 
     res.status(200).json({ message: "Leave request submitted" });
   } catch (err) {

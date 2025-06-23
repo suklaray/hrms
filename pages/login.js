@@ -44,7 +44,13 @@ export default function Login() {
             <div className="flex flex-grow">
                 {/* Left Side - Image */}
                 <div className="w-1/1 flex items-center justify-center bg-amber-10">
-                    <Image src="/img3.jpg" alt="logo" className="w-mx" />
+                    <Image 
+                        src="/img3.jpg" 
+                        width={600}
+                        height={400}
+                        alt="image" 
+                        style={{ width: '100%', height: 'auto' }}
+                    />
                 </div>
 
                 {/* Right Side - Login */}
