@@ -111,7 +111,7 @@ export default function Signup() {
         <div className="min-h-screen flex flex-col">
             <div className="flex flex-grow">
                 <div className="w-full relative h-screen">
-                    <Image src="/homePage.avif" alt="Homepage Background" fill className="z-0" />
+                    <Image src="/homepage.svg" alt="Homepage Background" fill className="z-0" />
                 </div>
                 <div className="w-1/2 flex flex-col items-center justify-center bg-gray-50 text-center p-10">
                     <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">

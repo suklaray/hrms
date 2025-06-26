@@ -12,7 +12,7 @@ export default function Home() {
                 
                 <div className="relative w-full h-screen">
                 <Image 
-                    src="/homePage.avif"
+                    src="/homepage.svg"
                     alt="Homepage Background"
                     fill
                     className="z-0"

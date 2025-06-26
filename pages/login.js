@@ -46,7 +46,7 @@ export default function Login() {
                 {/* Left Side - Image */}
                 <div className="w-1/1 flex items-center justify-center bg-amber-10">
                     <Image 
-                        src="/img3.jpg" 
+                        src="/homepage.svg" 
                         width={600}
                         height={400}
                         alt="image" 
