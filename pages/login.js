@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { FiMail, FiLock } from "react-icons/fi";
 import Image from 'next/image';
 import jwt from "jsonwebtoken";
+import Link from "next/link";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -58,8 +59,8 @@ export default function Login() {
                     <div className="bg-white p-10 rounded-lg shadow-xl w-full max-w-md">
                         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
-                        <h1 className="text-center text-indigo-600 text-3xl font-medium mb-6">
-                            ADMIN LOGIN
+                        <h1 className="pb-8 text-center text-indigo-600 text-3xl font-medium mb-6">
+                            SIGN IN
                         </h1>
 
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -89,12 +90,27 @@ export default function Login() {
                                 />
                             </div>
 
+                            <div className="pt-8">
                             <button
                                 type="submit"
-                                className="w-full bg-indigo-500 text-white py-2 rounded-md hover:bg-indigo-600"
-                            >
-                                Login
-                            </button>
+                                className="  w-full text-white py-2 rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 transition duration-300"
+                                >
+                                Sign In
+                                </button>
+                                </div>
+                            <div className="pt-3 w-full text-center">
+                                                <Link
+                                                    href="/signup"
+                                                    className="inline-flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-all duration-200">
+                                                    <span>Don&rsquo;t have an account? <span className="text-indigo-600">SignUp</span></span>
+                                                </Link>
+                                                <Link
+                                                    href="/employee/login"
+                                                    className="inline-flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-all duration-200"
+                                                >
+                                                    <span>Are You an Employee?<span className="text-indigo-600">Let&rsquo;s LogIn</span></span>
+                                                </Link>
+                            </div>
                         </form>
                     </div>
                 </div>

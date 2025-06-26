@@ -1,24 +1,28 @@
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import cookie from "cookie"; 
+import cookie from "cookie";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method Not Allowed" });
   }
 
-  const { name, email, password, role } = req.body;
+  const { name, email, password } = req.body;
 
-  if (!name || !email || !password || !role) {
+  //const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+
+  const emailRegex = /^[a-z0-9._%+-]+@gmail\.com$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: "Invalid email format." });
+  }
+
+  if (!name || !email || !password) {
     return res.status(400).json({ message: "All fields are required." });
   }
 
   try {
-    const existingUser = await prisma.users.findUnique({
-      where: { email },
-    });
-
+    const existingUser = await prisma.users.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists." });
     }
@@ -26,46 +30,36 @@ export default async function handler(req, res) {
     const empid = `${name.toLowerCase().replace(/\s/g, "")}_${Math.floor(1000 + Math.random() * 9000)}`;
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const tokenPayload = { empid, name, email };
+    let token;
+
+    try {
+      token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "7d" });
+    } catch (err) {
+      return res.status(500).json({ message: "Token generation failed." });
+    }
+
     const newUser = await prisma.users.create({
-      data: {
-        empid,
-        name,
-        email,
-        password: hashedPassword,
-        role,
-      },
+      data: { empid, name, email, password: hashedPassword },
     });
 
-    const token = jwt.sign(
-      {
-        empid: newUser.empid,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    try {
+      res.setHeader("Set-Cookie", cookie.serialize("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      }));
+    } catch (err) {
+      await prisma.users.delete({ where: { email } });
+      return res.status(500).json({ message: "Failed to set cookie." });
+    }
 
-    res.setHeader("Set-Cookie", cookie.serialize("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    }));
+    return res.status(201).json({ message: "Signup successful!", user: { empid, name, email } });
 
-    res.status(201).json({
-      message: "User registered successfully!",
-      user: {
-        empid: newUser.empid,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    });
   } catch (error) {
     console.error("Signup Error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
