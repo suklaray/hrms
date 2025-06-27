@@ -44,8 +44,8 @@ const Header = () => {
     <div className="bg-gradient-to-r from-indigo-700 to-purple-600 w-full shadow-lg z-50">
       <header className="px-10 py-5 text-white flex flex-col md:flex-row items-center justify-between">
         <div className="flex items-center space-x-3">
-          <FaUserTie size={40} />
-          <h1 className="text-2xl font-bold tracking-wider">HRMS PORTAL</h1>
+          <Link href="/"><FaUserTie size={40} />
+          <h1 className="text-2xl font-bold tracking-wider">HRMS PORTAL</h1></Link>
         </div>
 
         <nav className="flex space-x-8 mt-4 md:mt-0 text-lg font-medium">
@@ -65,7 +65,7 @@ const Header = () => {
           {user ? (
             <div className="flex items-center space-x-4 text-yellow-200 font-semibold">
               <FaUserCircle size={24} />
-              <span>{user.name}</span>
+              <Link href="/dashboard"><span>{user.name}</span></Link>
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-2 px-2 py-1 rounded hover:text-red-300 transition-all duration-200"
