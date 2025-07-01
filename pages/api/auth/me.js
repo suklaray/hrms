@@ -1,17 +1,23 @@
-// pages/api/auth/me.js
 import jwt from "jsonwebtoken";
+import cookie from "cookie";
 
 export default function handler(req, res) {
-  const token = req.cookies.token;
+  let token = null;
+
+  // Safely parse cookies
+  if (req.headers.cookie) {
+    const parsed = cookie.parse(req.headers.cookie);
+    token = parsed.token;
+  }
 
   if (!token) {
-    return res.status(401).json({ error: "No token" });
+    return res.status(401).json({ user: null });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    res.status(200).json({ user: decoded });
+    return res.status(200).json({ user: decoded });
   } catch (err) {
-    res.status(401).json({ error: "Invalid token" });
+    return res.status(401).json({ user: null });
   }
 }

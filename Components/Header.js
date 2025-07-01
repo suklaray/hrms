@@ -18,13 +18,15 @@ const Header = () => {
     const fetchUser = async () => {
       try {
         const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
+        if (res.status === 401) {
+        setUser(null);
+      } else if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      } else {
+        setUser(null);
+      }
+     } catch (err) {
         console.error("Failed to fetch user", err);
         setUser(null);
       }
@@ -35,9 +37,10 @@ const Header = () => {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout");
-    document.cookie = "token=; Max-Age=0; path=/";
+    //document.cookie = "token=; Max-Age=0; path=/";
     setUser(null);
     router.push("/");
+    router.reload();
   };
 
   return (
