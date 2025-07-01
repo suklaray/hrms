@@ -37,7 +37,7 @@ const Header = () => {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout");
-    //document.cookie = "token=; Max-Age=0; path=/";
+    document.cookie = "token=; Max-Age=0; path=/";
     setUser(null);
     router.push("/");
     router.reload();
