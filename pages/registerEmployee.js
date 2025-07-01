@@ -14,38 +14,41 @@ export default function RegisterEmployee() {
     const [message, setMessage] = useState("");
 
     const handleRegister = async (e) => {
-        e.preventDefault();
-        const res = await fetch("/api/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name,
-                email,
-                position,
-                date_of_joining: dateOfJoining,
-                status,
-                experience,
-                password,
-                role: "employee",
-            }),
-        });
+    e.preventDefault();
+    setMessage("");
 
-        const data = await res.json();
-        if (!res.ok) {
-            setMessage(data.error || "Failed to register employee.");
-            return;
-        }
+    const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+        name,
+        email,
+        position,
+        date_of_joining: dateOfJoining,
+        status,
+        experience,
+        password,
+        }),
+    });
 
-        setMessage(data.message);
-        // Clear form
-        setName("");
-        setEmail("");
-        setPosition("");
-        setDateOfJoining("");
-        setStatus("");
-        setExperience("");
-        setPassword("");
+    const data = await res.json();
+
+    if (!res.ok) {
+        setMessage(data.message || "Failed to register employee.");
+        return;
+    }
+
+    setMessage(`${data.message}`);
+    // Clear form
+    setName("");
+    setEmail("");
+    setPosition("");
+    setDateOfJoining("");
+    setStatus("");
+    setExperience("");
+    setPassword("");
     };
+
 
     const handleLogout = () => {
         localStorage.removeItem("user");
@@ -147,10 +150,11 @@ export default function RegisterEmployee() {
                     </form>
 
                     {message && (
-                        <p className="mt-4 text-center text-sm text-red-500">
-                            {message}
-                        </p>
+                    <p className={`mt-4 text-center text-sm ${message.startsWith("✅") ? "text-green-600" : "text-red-500"}`}>
+                        {message}
+                    </p>
                     )}
+
                 </div>
             </div>
         </div>

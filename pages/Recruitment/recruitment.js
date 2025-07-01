@@ -13,6 +13,7 @@ export default function Candidates() {
   const [joiningDate, setJoiningDate] = useState("");
   const [role, setRole] = useState("");
 
+
   const fetchCandidates = async () => {
     try {
       const res = await axios.get("/api/recruitment/getCandidates");
@@ -142,7 +143,8 @@ export default function Candidates() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {candidates.map((candidate, index) => (
+                {/*{candidates.map((candidate, index) => (*/}
+                {(candidates || []).map((candidate, index) => (
                   <tr
                     key={candidate.candidate_id}
                     className={`transition-all duration-300 hover:bg-indigo-300 ${index % 2 === 0 ? "bg-white" : "bg-indigo-50"}`}
@@ -244,6 +246,13 @@ export default function Candidates() {
 
                   </tr>
                 ))}
+                {(candidates || []).length === 0 && (
+                  <tr>
+                    <td colSpan="12" className="text-center text-gray-500 py-4">
+                      No candidates found.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

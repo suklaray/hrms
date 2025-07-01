@@ -2,45 +2,53 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { rateLimiter } from "@/lib/rateLimiter";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method Not Allowed" });
   }
 
-  const allow = rateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 })(req, res);
-  if (!allow) return;
-
   const { email, password } = req.body;
 
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
   try {
+    // Fetch user
     const user = await prisma.users.findUnique({ where: { email } });
+    console.log("Fetched user:", user);
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid email" });
+      console.log("No user found with this email");
+      return res.status(401).json({ message: "Invalid email or not authorized" });
     }
 
-    // ✅ Check role
-    if (user.role !== "admin" && user.role !== "hr") {
-      return res.status(403).json({ message: "Access denied: Only Admins and HRs can log in here" });
+    if (user.role !== "employee") {
+      console.log(`User role mismatch: expected 'employee', got '${user.role}'`);
+      return res.status(401).json({ message: "Not authorized: role mismatch" });
     }
 
+    // Validate password
     const isValid = await bcrypt.compare(password, user.password);
+    console.log("Password valid:", isValid);
+
     if (!isValid) {
       return res.status(401).json({ message: "Invalid password" });
     }
 
+    // Create JWT
     const payload = {
       id: user.id,
       empid: user.empid,
       name: user.name,
-      role: user.role,
       email: user.email,
+      role: user.role,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
+    // Set cookie
     res.setHeader("Set-Cookie", cookie.serialize("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -50,8 +58,8 @@ export default async function handler(req, res) {
     }));
 
     res.status(200).json({ message: "Login successful" });
-  } catch (error) {
-    console.error("Login Error:", error);
-    res.status(500).json({ message: "Error logging in", error: error.message });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 }

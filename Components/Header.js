@@ -37,7 +37,7 @@ const Header = () => {
     await fetch("/api/auth/logout");
     document.cookie = "token=; Max-Age=0; path=/";
     setUser(null);
-    router.push("/login");
+    router.push("/");
   };
 
   return (
@@ -63,29 +63,32 @@ const Header = () => {
           </Link>
 
           {user ? (
-            <div className="flex items-center space-x-4 text-yellow-200 font-semibold">
-              <FaUserCircle size={24} />
-              <Link href="/dashboard"><span>{user.name}</span></Link>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 px-2 py-1 rounded hover:text-red-300 transition-all duration-200"
-              >
-                <FiLogOut size={20} />
-                <span>Logout</span>
-              </button>
-            </div>
-          ) : (
-            <>
-              <Link href="/signup" className="flex items-center space-x-2 hover:text-yellow-300">
-                <HiOutlineUserAdd />
-                <span>SIGNUP</span>
-              </Link>
-              <Link href="/login" className="flex items-center space-x-2 hover:text-yellow-300">
-                <HiOutlineUserAdd />
-                <span>LOGIN</span>
-              </Link>
-            </>
-          )}
+              <div className="flex items-center space-x-4 text-yellow-200 font-semibold">
+                <FaUserCircle size={24} />
+                <Link href={user.role === "employee" ? "/employee/dashboard" : "/dashboard"}>
+                  <span>{user.name}</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center space-x-2 px-2 py-1 rounded hover:text-red-300 transition-all duration-200"
+                >
+                  <FiLogOut size={20} />
+                  <span>Logout</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link href="/login" className="flex items-center space-x-2 hover:text-yellow-300">
+                  <HiOutlineUserAdd />
+                  <span>ADMIN SIGN IN</span>
+                </Link>
+                <Link href="/employee/login" className="flex items-center space-x-2 hover:text-yellow-300">
+                  <HiOutlineUserAdd />
+                  <span>EMPLOYEE SIGNIN</span>
+                </Link>
+              </>
+            )}
+
         </nav>
       </header>
     </div>

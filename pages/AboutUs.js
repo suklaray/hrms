@@ -1,7 +1,7 @@
 export default function AboutUs() {
   return (
     <div className="min-h-screen flex flex-col">
-      <main className="flex-1 bg-gradient-to-r from-purple-300 to-indigo-300 p-10 text-white">
+      <main className="flex-1 items-center justify-center bg-gradient-to-br from-purple-200 to-indigo-300 p-6 text-white">
         <h1 className="text-4xl font-bold mb-4 text-center  text-indigo-700">About Us</h1>
         <p className="text-lg leading-relaxed max-w-full text-center text-indigo-700">
               

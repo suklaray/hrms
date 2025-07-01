@@ -175,7 +175,15 @@ export default function Sidebar({ handleLogout }) {
             </ul>
           )}
         </li>
-
+          {/*<li>
+          <button
+            onClick={handleFeedback}
+            className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition"
+          >
+            Feedback
+          </button>
+        </li>*/}
+        
         {/* Logout */}
         <li>
           <button

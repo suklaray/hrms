@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { FiMail, FiLock } from "react-icons/fi";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import Image from 'next/image';
 import jwt from "jsonwebtoken";
 import Link from "next/link";
@@ -9,6 +10,7 @@ export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
 
     const handleLogin = async (e) => {
@@ -78,17 +80,29 @@ export default function Login() {
                             </div>
 
                             {/* Password */}
-                            <div className="flex items-center border-b-2 border-indigo-500 py-2">
+                            <div className="flex items-center border-b-2 border-indigo-500 py-2 relative">
                                 <FiLock className="text-gray-500 mr-3" />
                                 <input
                                     className="w-full bg-transparent text-purple-950 focus:outline-none text-center"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter your password"
                                     required
                                 />
-                            </div>
+                                <span
+                                    className="absolute right-0 cursor-pointer pr-2 text-gray-500"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                >
+                                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                </span>
+                                </div>
+                                <div className="w-full text-right mt-0">
+                                <Link href="/forgot-password" className="text-sm text-blue-500 hover:underline">
+                                    Forgot Password?
+                                </Link>
+                                </div>
+
 
                             <div className="pt-8">
                             <button
@@ -98,7 +112,7 @@ export default function Login() {
                                 Sign In
                                 </button>
                                 </div>
-                            <div className="pt-3 w-full text-center">
+                            {/*<div className="pt-3 w-full text-center">
                                                 <Link
                                                     href="/signup"
                                                     className="inline-flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-all duration-200">
@@ -110,7 +124,7 @@ export default function Login() {
                                                 >
                                                     <span>Are You an Employee?<span className="text-indigo-600">Let&rsquo;s LogIn</span></span>
                                                 </Link>
-                            </div>
+                            </div>*/}
                         </form>
                     </div>
                 </div>

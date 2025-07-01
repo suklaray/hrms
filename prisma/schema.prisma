@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../lib/generated/prisma"
 }
 
 datasource db {
@@ -209,6 +208,11 @@ model users {
   role            users_role       @default(employee)
   created_at      DateTime?        @default(now())
   verified        users_verified?  @default(not_verified)
+
+  resetToken String?
+  resetTokenExpiry DateTime?
+
+
   employees       employees[]
   leave_balances  leave_balances[]
   leave_requests  leave_requests[]
