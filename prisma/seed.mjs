@@ -1,32 +1,56 @@
-//import prisma from '../lib/prisma';
-//import bcrypt from 'bcryptjs';
-//import { PrismaClient } from '@prisma/client';
-//const prisma = new PrismaClient();
-
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import dotenv from 'dotenv';
-dotenv.config();
+import crypto from 'crypto';
+
 const prisma = new PrismaClient();
 
-async function main() {
-  const superAdminEmail = process.env.SUPERADMIN_EMAIL;
-  const superAdminPassword = process.env.SUPERADMIN_PASSWORD;
+function generateRandomPassword() {
+  return crypto.randomBytes(6).toString('base64url').slice(0, 8);
+}
 
-  if (!superAdminEmail || !superAdminPassword) {
-    throw new Error(" SUPERADMIN_EMAIL or SUPERADMIN_PASSWORD missing in .env.local");
+function nextSuffix(usedSuffixes) {
+  const letters = 'abcdefghijklmnopqrstuvwxyz';
+
+  for (const letter of letters) {
+    if (!usedSuffixes.has(letter)) {
+      return letter;
+    }
   }
 
-  // Check if Super Admin already exists
-  const existing = await prisma.users.findUnique({
-    where: { email: superAdminEmail }
+  // All single letters are used, find z1, z2, z3...
+  let zCount = 1;
+  while (usedSuffixes.has(`z${zCount}`)) {
+    zCount++;
+  }
+  return `z${zCount}`;
+}
+
+async function main() {
+  const now = new Date();
+  const datePart = now.toISOString().split('T')[0].replace(/-/g, '');
+
+  const existingAdmins = await prisma.users.findMany({
+    where: {
+      email: {
+        startsWith: `superadmin_${datePart}`,
+      },
+    },
+    select: {
+      email: true,
+    },
   });
 
-  if (existing) {
-    console.log("Super Admin already exists.");
-    return;
+  const usedSuffixes = new Set();
+  for (const admin of existingAdmins) {
+    const match = admin.email.match(`^superadmin_${datePart}([a-z][0-9]*)?@example\\.com$`);
+    if (match && match[1]) {
+      usedSuffixes.add(match[1]);
+    }
   }
 
+  const suffix = nextSuffix(usedSuffixes);
+  const superAdminEmail = `superadmin_${datePart}${suffix}@example.com`;
+  const superAdminPassword = generateRandomPassword();
   const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 
   await prisma.users.create({
@@ -35,11 +59,13 @@ async function main() {
       email: superAdminEmail,
       password: hashedPassword,
       role: 'superadmin',
-      empid: `SUPER${Math.floor(1000 + Math.random() * 9000)}`
-    }
+      empid: `SUPER${Math.floor(1000 + Math.random() * 9000)}`,
+    },
   });
 
-  console.log(`Super Admin seeded: ${superAdminEmail}`);
+  console.log(`Super Admin created`);
+  console.log(`Email: ${superAdminEmail}`);
+  console.log(`Password: ${superAdminPassword}`);
 }
 
 main()
