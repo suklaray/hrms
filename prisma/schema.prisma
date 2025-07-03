@@ -304,6 +304,7 @@ enum users_role {
   employee
   admin
   ceo
+  superadmin
 }
 
 enum users_verified {

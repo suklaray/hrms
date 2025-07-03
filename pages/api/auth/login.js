@@ -21,8 +21,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: "Invalid email" });
     }
 
-    // ✅ Check role
-    if (user.role !== "admin" && user.role !== "hr") {
+    // Checking role
+    if (user.role !== "admin" && user.role !== "hr" && user.role !== "superadmin") {
       return res.status(403).json({ message: "Access denied: Only Admins and HRs can log in here" });
     }
 
