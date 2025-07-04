@@ -26,13 +26,14 @@ function nextSuffix(usedSuffixes) {
 }
 
 async function main() {
+  const prefix = process.env.SUPERADMIN_PREFIX || 'superadmin_';
   const now = new Date();
   const datePart = now.toISOString().split('T')[0].replace(/-/g, '');
 
   const existingAdmins = await prisma.users.findMany({
     where: {
       email: {
-        startsWith: `superadmin_${datePart}`,
+        startsWith: prefix + datePart,
       },
     },
     select: {
@@ -42,15 +43,15 @@ async function main() {
 
   const usedSuffixes = new Set();
   for (const admin of existingAdmins) {
-    const match = admin.email.match(`^superadmin_${datePart}([a-z][0-9]*)?@example\\.com$`);
+    const match = admin.email.match(process.env.SUPERADMIN_EMAIL_REGEX);
     if (match && match[1]) {
       usedSuffixes.add(match[1]);
     }
   }
 
   const suffix = nextSuffix(usedSuffixes);
-  const superAdminEmail = `superadmin_${datePart}${suffix}@example.com`;
-  const superAdminPassword = generateRandomPassword();
+  const superAdminEmail = `${prefix}${datePart}${suffix}@example.com`;
+  const superAdminPassword = process.env.SUPERADMIN_PASSWORD || generateRandomPassword();
   const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 
   await prisma.users.create({
