@@ -144,11 +144,11 @@ export default function CandidateForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-indigo-100 via-purple-100 to-pink-100 py-10 px-4">
       <div className="w-full max-w-3xl bg-white shadow-2xl rounded-3xl p-10 transition-all duration-500">
-        <h2 className="text-4xl font-bold text-center text-indigo-700 mb-10">Candidate Submission Form</h2>
+        <h2 className="text-4xl font-bold text-center text-indigo-700 mb-10">Documents Submission Form</h2>
 
         <form onSubmit={handleSubmit} className="grid gap-8" encType="multipart/form-data">
           {/* Candidate ID */}
-          <div className="grid grid-cols-1 gap-4">
+          {/*<div className="grid grid-cols-1 gap-4">
             <label className="block font-medium text-gray-700 text-center">Candidate ID</label>
             <input
               type="text"
@@ -156,7 +156,7 @@ export default function CandidateForm() {
               readOnly
               className="w-full px-5 py-3 border border-gray-300 rounded-xl bg-gray-100 text-gray-600 shadow-sm text-center"
             />
-          </div>
+          </div>*/}
 
           {/* Candidate Name */}
           <div className="grid grid-cols-1 gap-4">
@@ -469,6 +469,12 @@ export default function CandidateForm() {
               />
             </div>
           </div>
+            <div className="flex items-center space-x-2">
+              <input type="checkbox" id="confirm" required className="w-5 h-5" />
+              <label htmlFor="confirm" className="text-gray-700 text-sm">
+                I have reviewed all the details provided above, and I confirm that they are accurate and final.
+              </label>
+            </div>
 
           <button type="submit" className="w-full px-5 py-3 bg-indigo-600 text-white rounded-xl mt-6 shadow-md hover:bg-indigo-700">
             Submit Form

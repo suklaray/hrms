@@ -15,6 +15,7 @@ const AddEmployee = () => {
     date_of_joining: '',
     experience: '',
     profile_photo: '',
+    role: '',
   });
 
   const [empid, setEmpid] = useState('');
@@ -23,8 +24,8 @@ const AddEmployee = () => {
   useEffect(() => {
     if (id) {
       axios.get(`/api/candidate/${id}`).then((res) => {
-        const { name, email } = res.data;
-        setForm((prev) => ({ ...prev, name, email }));
+        const { name, email, profile_photo } = res.data;
+        setForm((prev) => ({ ...prev, name, email, profile_photo: profile_photo || '' }));
         setEmpid(generateEmpid(name));
         setPassword(generatePassword(8));
       });
@@ -41,7 +42,22 @@ const AddEmployee = () => {
   };
 
   const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+
+    if (name === 'experience') {
+      const num = value === '' ? '' : parseInt(value, 10);
+      if (num === '' || (num >= 0 && num <= 99)) {
+        setForm((prev) => ({
+          ...prev,
+          [name]: num
+        }));
+      }
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -50,7 +66,6 @@ const AddEmployee = () => {
       ...form,
       empid,
       password,
-      role: 'employee',
     };
 
     try {
@@ -91,6 +106,26 @@ const AddEmployee = () => {
                 <input className="w-full border border-indigo-300 p-2 rounded bg-gray-100" value={form.email} readOnly />
               </div>
   
+              <div>
+                <label className="flex items-center text-sm font-medium mb-1 text-indigo-700">
+                  <FaBriefcase className="mr-2 text-indigo-500" />
+                  Role
+                </label>
+                <select
+                  name="role"
+                  value={form.role}
+                  onChange={handleChange}
+                  required
+                  className="w-full border border-indigo-300 p-2 rounded"
+                >
+                  <option value="" disabled>Select Role</option>
+                  <option value="hr">HR</option>
+                  <option value="employee">Employee</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+
               {/* Position */}
               <div>
                 <label className="flex items-center text-sm font-medium mb-1 text-indigo-700">
@@ -120,7 +155,7 @@ const AddEmployee = () => {
                   required
                 />
               </div>
-  
+              
               {/* Experience */}
               <div>
                 <label className="flex items-center text-sm font-medium mb-1 text-indigo-700">
@@ -133,9 +168,12 @@ const AddEmployee = () => {
                   name="experience"
                   placeholder="e.g. 2"
                   onChange={handleChange}
+                  value={form.experience} 
+                  min="0"
+                  max="99"
                 />
               </div>
-  
+
               {/* Profile Photo URL */}
               <div>
                 <label className="flex items-center text-sm font-medium mb-1 text-indigo-700">
@@ -143,14 +181,15 @@ const AddEmployee = () => {
                   Profile Photo URL
                 </label>
                 <input
-                  className="w-full border border-indigo-300 p-2 rounded"
-                  type="text"
-                  name="profile_photo"
-                  placeholder="Paste image URL (optional)"
-                  onChange={handleChange}
-                />
+                    className="w-full border border-indigo-300 p-2 rounded"
+                    type="text"
+                    name="profile_photo"
+                    placeholder="Paste image URL (optional)"
+                    value={form.profile_photo}
+                    onChange={handleChange}
+                    readOnly
+                  />
               </div>
-  
               {/* Employee ID */}
               <div>
                 <label className="flex items-center text-sm font-medium mb-1 text-indigo-700">

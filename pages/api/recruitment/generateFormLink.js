@@ -17,7 +17,14 @@ export default async function handler(req, res) {
     const hash = crypto.createHash("sha256").update(candidateId).digest("hex");
 
     // Define the base URL and build the form link using the hash
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    //const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    //const formLink = `${baseUrl}/Recruitment/form/${hash}`;
+
+    const protocol = req.headers["x-forwarded-proto"] || "http";
+    const host = req.headers.host;
+    const baseUrl = `${protocol}://${host}`;
+
+     // Form link
     const formLink = `${baseUrl}/Recruitment/form/${hash}`;
 
     // Update the candidate record with the generated form link

@@ -28,7 +28,7 @@ export default function Sidebar({ handleLogout }) {
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard" },
-    { name: "Add Employee", path: "/registerEmployee" },
+    { name: "Register New Employee", path: "/registerEmployee" },
     { name: "View Employees Details", path: "/employeeList" },
     { name: "Recruitment Management", path: "/Recruitment/recruitment" },
     //{ name: "Reporting and Analytics", path: "/ViewDetails" },

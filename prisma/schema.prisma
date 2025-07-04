@@ -99,7 +99,7 @@ model employees {
   empid                                         Int                      @id @default(autoincrement())
   candidate_id                                  String?
   name                                          String?
-  email                                         String?
+  email                                         String?     @unique
   contact_no                                    String?
   password                                      String?
   gender                                        String?

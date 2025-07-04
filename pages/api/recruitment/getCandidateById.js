@@ -1,5 +1,5 @@
-// /pages/api/recruitment/getCandidateById.js
-import db from "@/lib/db"; 
+import prisma from "@/lib/prisma";
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method Not Allowed" });
@@ -12,13 +12,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [result] = await db.query("SELECT * FROM candidates WHERE candidate_id = ?", [id]);
+    const candidate = await prisma.candidates.findFirst({
+      where: {
+        candidate_id: id,
+      },
+    });
 
-    if (result.length === 0) {
+    if (!candidate) {
       return res.status(404).json({ error: "Candidate not found" });
     }
 
-    res.status(200).json(result[0]);
+    res.status(200).json(candidate);
   } catch (error) {
     console.error("Error fetching candidate:", error);
     res.status(500).json({ error: "Internal server error" });
