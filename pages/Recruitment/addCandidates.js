@@ -14,8 +14,7 @@ export default function AddCandidate() {
     cv: null,
   });
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(""); // To handle error messages
-
+  const [errorMessage, setErrorMessage] = useState(""); 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "cv") {
@@ -28,7 +27,7 @@ export default function AddCandidate() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMessage(""); // Reset error message on form submission
+    setErrorMessage("");
 
     const data = new FormData();
     data.append("name", formData.name);
@@ -38,22 +37,16 @@ export default function AddCandidate() {
     data.append("cv", formData.cv);
 
     try {
-      // Send the form data to the backend
       await axios.post("/api/recruitment/addCandidate", data);
 
-      // If successful, show a success message and redirect
       alert("Candidate added successfully!");
       router.push("/Recruitment/recruitment");
     } catch (error) {
-      // Check if the error is related to the email already existing
       if (error.response && error.response.data.error === "Email already exists") {
         setErrorMessage("The email address is already registered. Please use a different one.");
       } else if (error.response) {
-        // If there is another error, show a generic error message
         setErrorMessage("Failed to add candidate. Please try again.");
       }
-
-      // Optional: Only log the error to the console if it's not a 400 error (email already exists)
       if (!(error.response && error.response.status === 400)) {
         console.error("Error submitting form:", error);
       }

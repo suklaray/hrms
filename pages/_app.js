@@ -7,7 +7,7 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
 
   // Define paths where header/footer should be hidden
-  const noLayoutPaths = ["/Recruitment/form"];
+  const noLayoutPaths = ["/Recruitment/form", "/Recruitment/docs_submitted"];
 
   // Check if current path starts with any no-layout path
   const hideLayout = noLayoutPaths.some((path) => router.pathname.startsWith(path));

@@ -26,7 +26,7 @@ export default function EmployeeListPage() {
     };
 
     const handleView = (id) => {
-        router.push(`/employee/${id}`);
+        router.push(`/employee/view/${id}`);
     };
 
     const handleEdit = (id) => {
@@ -38,7 +38,7 @@ export default function EmployeeListPage() {
         if (!confirm) return;
 
         try {
-            const res = await fetch(`/api/auth/employees/${id}`, {
+            const res = await fetch(`/api/auth/employee/${id}`, {
                 method: "DELETE",
             });
             if (res.ok) {
@@ -61,34 +61,42 @@ export default function EmployeeListPage() {
               <h2 className="text-3xl font-bold mb-6 text-indigo-700 text-center">Employee Directory</h2>
       
               <table className="min-w-full divide-y divide-indigo-200 rounded-lg overflow-hidden">
-                <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+                <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white uppercase">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium">ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Emp ID</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Email</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Position</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Exp</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Role</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium">Joining Date</th>
-                    <th className="px-4 py-3 text-center text-sm font-medium">Actions</th>
+                    {/*<th className="px-4 py-3 text-sm font-medium text-center">ID</th>*/}
+                    <th className="px-4 py-3 text-sm font-medium text-center">Employee ID</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">Name</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">Email id</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">Position</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">Experience</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">Role</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">Joining Date</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">Status</th>
+                    <th className="px-4 py-3 text-sm font-medium text-center">View/Delete</th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-gray-200">
                   {employees.map((emp, index) => (
                     <tr
                       key={emp.id}
                       className={`hover:bg-indigo-300 ${index % 2 === 0 ? "bg-indigo-50" : "bg-white"}`}
                     >
-                      <td className="px-4 py-2">{emp.id}</td>
-                      <td className="px-4 py-2">{emp.empid}</td>
-                      <td className="px-4 py-2 font-medium text-gray-800">{emp.name}</td>
-                      <td className="px-4 py-2">{emp.email}</td>
-                      <td className="px-4 py-2">{emp.position}</td>
-                      <td className="px-4 py-2">
+                      {/*<td className="px-4 py-2">{emp.id}</td>*/}
+                      <td className="px-4 py-2 text-center">{emp.empid}</td>
+                      <td className="px-4 py-2 font-medium text-gray-800 text-center">{emp.name}</td>
+                      <td className="px-4 py-2 text-center">{emp.email}</td>
+                      <td className="px-4 py-2 text-center uppercase">{emp.position}</td>
+                      <td className="px-4 py-2 text-center">{emp.experience} YRS</td>
+                      <td className="px-4 py-2 text-center uppercase">{emp.role}</td>
+                      <td className="px-4 py-2 text-center ">
+                        {emp.date_of_joining         
+                          ? new Date(emp.date_of_joining).toLocaleDateString()
+                          : "N/A"}
+                      </td>
+                      <td className="px-4 py-2 text-center uppercase">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                          className={`px-2 py-1 rounded-full text-xs font-semibold text-center ${
                             emp.status === "Active"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
@@ -97,10 +105,7 @@ export default function EmployeeListPage() {
                           {emp.status}
                         </span>
                       </td>
-                      <td className="px-4 py-2">{emp.experience} yr</td>
-                      <td className="px-4 py-2">{emp.role}</td>
-                      <td className="px-4 py-2">{emp.date_of_joining}</td>
-                      <td className="px-4 py-2 text-center space-x-2">
+                      <td className="px-4 py-2 text-center space-x-2 ">
                         <button
                           onClick={() => handleView(emp.id)}
                           className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-1 rounded-full"
@@ -108,13 +113,13 @@ export default function EmployeeListPage() {
                         >
                           <FaEye />
                         </button>
-                        <button
+                        {/*<button
                           onClick={() => handleEdit(emp.id)}
                           className="bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-1 rounded-full"
                           title="Edit"
                         >
                           <FaEdit />
-                        </button>
+                        </button>*/}
                         <button
                           onClick={() => handleDelete(emp.id)}
                           className="bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded-full"

@@ -12,7 +12,7 @@ export default function CandidateDetails() {
   const [error, setError] = useState(null);
 
   const router = useRouter();
-  const { candidate_id } = router.query; // to get the candidate_id from the URL
+  const { candidate_id } = router.query; 
 
   useEffect(() => {
   const fetchCandidateDetails = async () => {

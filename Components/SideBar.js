@@ -8,7 +8,6 @@ export default function Sidebar({ handleLogout }) {
   const [payrollOpen, setPayrollOpen] = useState(false); 
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [performanceOpen, setPerformanceOpen] = useState(false);
-  
 
   const toggleAttendanceMenu = () => {
     setAttendanceOpen(!attendanceOpen);
@@ -31,9 +30,6 @@ export default function Sidebar({ handleLogout }) {
     { name: "Register New Employee", path: "/registerEmployee" },
     { name: "View Employees Details", path: "/employeeList" },
     { name: "Recruitment Management", path: "/Recruitment/recruitment" },
-    //{ name: "Reporting and Analytics", path: "/ViewDetails" },
-    //{ name: "Compliance management", path: "/compliance" },
-    //{ name: "Performance Management", path: "/compliance" },
   ];
 
   const attendanceSubItems = [
@@ -69,7 +65,7 @@ export default function Sidebar({ handleLogout }) {
           <li key={item.name}>
             <button
               onClick={() => router.push(item.path)}
-              className="w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition"
+              className="w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
             >
               {item.name}
             </button>
@@ -80,7 +76,7 @@ export default function Sidebar({ handleLogout }) {
         <li>
           <button
             onClick={toggleAttendanceMenu}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition"
+            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Attendance & Leave Management</span>
             {attendanceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -91,7 +87,7 @@ export default function Sidebar({ handleLogout }) {
                 <li key={subItem.name}>
                   <button
                     onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition"
+                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
                   >
                     {subItem.name}
                   </button>
@@ -105,7 +101,7 @@ export default function Sidebar({ handleLogout }) {
         <li>
           <button
             onClick={togglePayrollMenu}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition"
+            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Payroll Management</span>
             {payrollOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -116,7 +112,7 @@ export default function Sidebar({ handleLogout }) {
                 <li key={subItem.name}>
                   <button
                     onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition"
+                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
                   >
                     {subItem.name}
                   </button>
@@ -130,7 +126,7 @@ export default function Sidebar({ handleLogout }) {
         <li>
           <button
             onClick={toggleComplianceMenu}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition"
+            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Compliance Management</span>
             {complianceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -141,7 +137,7 @@ export default function Sidebar({ handleLogout }) {
                 <li key={subItem.name}>
                   <button
                     onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition"
+                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
                   >
                     {subItem.name}
                   </button>
@@ -155,7 +151,7 @@ export default function Sidebar({ handleLogout }) {
         <li>
           <button
             onClick={togglePerformanceMenu}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition"
+            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Performance Management</span>
             {performanceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -166,7 +162,7 @@ export default function Sidebar({ handleLogout }) {
                 <li key={subItem.name}>
                   <button
                     onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition"
+                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
                   >
                     {subItem.name}
                   </button>
@@ -175,20 +171,12 @@ export default function Sidebar({ handleLogout }) {
             </ul>
           )}
         </li>
-          {/*<li>
-          <button
-            onClick={handleFeedback}
-            className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition"
-          >
-            Feedback
-          </button>
-        </li>*/}
-        
+
         {/* Logout */}
         <li>
           <button
             onClick={handleLogout}
-            className="w-full text-left px-4 py-3 bg-red-600 hover:bg-red-700 transition rounded-lg mt-6"
+            className="w-full text-left px-4 py-3 bg-red-600 hover:bg-red-700 transition rounded-lg mt-6 cursor-pointer"
           >
             Logout
           </button>

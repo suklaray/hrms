@@ -30,6 +30,8 @@ export default function CandidateForm() {
     ifsc_code: "",
     bank_details: null,
     contact_no: "",
+    dob: "",
+    gender: "",
   });
 
   useEffect(() => {
@@ -192,6 +194,39 @@ export default function CandidateForm() {
               className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
             />
           </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+          {/* Date of Birth */}
+          <div className="grid grid-cols-1 gap-4">
+            <label className="block font-medium text-gray-700 text-center">Date of Birth</label>
+            <input
+              type="date"
+              name="dob"
+              value={formData.dob}
+              onChange={handleChange}
+              required
+              className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
+            />
+          </div>
+
+          {/* Gender */}
+          <div className="grid grid-cols-1 gap-4">
+            <label className="block font-medium text-gray-700 text-center">Gender</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              required
+              className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
+            >
+              <option value="" disabled>Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
 
           {/* Address Section */}
           <h3 className="text-2xl font-semibold text-gray-700 mt-6 mb-4 text-center">Address</h3>
