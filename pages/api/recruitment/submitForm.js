@@ -90,7 +90,7 @@ export default async function handler(req, res) {
         pan_number: body.pan_number,
       }
     });
-
+    
     // Create bank_details
     await prisma.bank_details.create({
       data: {

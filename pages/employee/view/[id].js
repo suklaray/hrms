@@ -1,3 +1,4 @@
+
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import SideBar from "@/Components/SideBar";
@@ -14,7 +15,7 @@ export default function ViewEmployee() {
     if (id) {
       axios.get(`/api/auth/employee/view/${id}`)
         .then((res) => {
-          setData(res.data.user);
+          setData(res.data);
           setLoading(false);
         })
         .catch((err) => {
@@ -23,15 +24,6 @@ export default function ViewEmployee() {
         });
     }
   }, [id]);
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout");
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
 
   if (loading) {
     return (
@@ -49,16 +41,16 @@ export default function ViewEmployee() {
     );
   }
 
-  const { name, email, empid, employees, candidates, bank_details, addresses, password } = data;
+  const { user, employee: employees, addresses, bankDetails } = data || {};
+  const { name, email, empid, password } = user || {};
 
-return (
+  return (
     <div className="flex">
       <SideBar />
       <div className="flex-1 min-h-screen bg-gradient-to-r from-indigo-100 via-purple-100 to-pink-100 py-10 px-4">
         <div className="w-full mx-auto p-10 bg-white shadow-2xl rounded-3xl space-y-6">
-        <h1 className="text-3xl pb-6  font-bold text-center text-indigo-700">Employee Details</h1>
+          <h1 className="text-3xl pb-6 font-bold text-center text-indigo-700">Employee Details</h1>
 
-          {/* Profile Photo */}
           <div className="flex justify-center pb-5">
             {employees?.profile_photo ? (
               <img
@@ -73,7 +65,6 @@ return (
             )}
           </div>
 
-          {/* Personal Details */}
           <section>
             <h2 className="text-2xl font-bold text-indigo-600 mb-4">Personal Details</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -86,24 +77,22 @@ return (
             </div>
           </section>
 
-          {/* Address */}
           <section>
             <h2 className="text-2xl font-bold text-indigo-600 mb-4">Address</h2>
-            {addresses ? (
+            {addresses?.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Detail label="Line 1" value={addresses.address_line1} />
-                <Detail label="Line 2" value={addresses.address_line2} />
-                <Detail label="City" value={addresses.city} />
-                <Detail label="State" value={addresses.state} />
-                <Detail label="Pincode" value={addresses.pincode} />
-                <Detail label="Country" value={addresses.country} />
+                <Detail label="Line 1" value={addresses[0]?.address_line1 || "N/A"} />
+                <Detail label="Line 2" value={addresses[0]?.address_line2 || "N/A"} />
+                <Detail label="City" value={addresses[0]?.city || "N/A"} />
+                <Detail label="State" value={addresses[0]?.state || "N/A"} />
+                <Detail label="Pincode" value={addresses[0]?.pincode || "N/A"} />
+                <Detail label="Country" value={addresses[0]?.country || "N/A"} />
               </div>
             ) : (
               <p className="text-gray-500">No address available</p>
             )}
           </section>
 
-          {/* Documents */}
           <section>
             <h2 className="text-2xl font-bold text-indigo-600 mb-4">Documents</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -116,7 +105,6 @@ return (
             </div>
           </section>
 
-          {/* Qualification */}
           <section>
             <h2 className="text-2xl font-bold text-indigo-600 mb-4">Qualification</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -125,24 +113,22 @@ return (
             </div>
           </section>
 
-          {/* Bank Details */}
           <section>
             <h2 className="text-2xl font-bold text-indigo-600 mb-4">Bank Details</h2>
-            {bank_details ? (
+            {bankDetails?.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <Detail label="Account Holder" value={bank_details.account_holder_name} />
-                <Detail label="Bank Name" value={bank_details.bank_name} />
-                <Detail label="Branch Name" value={bank_details.branch_name} />
-                <Detail label="Account Number" value={bank_details.account_number} />
-                <Detail label="IFSC Code" value={bank_details.ifsc_code} />
-                <FileDetail label="Checkbook Document" file={bank_details.checkbook_document} />
+                <Detail label="Account Holder" value={bankDetails[0]?.account_holder_name || "N/A"} />
+                <Detail label="Bank Name" value={bankDetails[0]?.bank_name || "N/A"} />
+                <Detail label="Branch Name" value={bankDetails[0]?.branch_name || "N/A"} />
+                <Detail label="Account Number" value={bankDetails[0]?.account_number || "N/A"} />
+                <Detail label="IFSC Code" value={bankDetails[0]?.ifsc_code || "N/A"} />
+                <FileDetail label="Checkbook Document" file={bankDetails[0]?.checkbook_document} />
               </div>
             ) : (
               <p className="text-gray-500">No bank details available</p>
             )}
           </section>
 
-          {/* Credentials */}
           <section>
             <h2 className="text-2xl font-bold text-indigo-600 mb-4">System Credentials</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -150,12 +136,12 @@ return (
               <Detail label="Password" value={password || "N/A"} />
             </div>
           </section>
-
         </div>
       </div>
     </div>
   );
-  // Helper component for key-value display
+}
+
 function Detail({ label, value }) {
   return (
     <div>
@@ -165,7 +151,6 @@ function Detail({ label, value }) {
   );
 }
 
-// Helper component for file links
 function FileDetail({ label, file }) {
   return (
     <div>
@@ -179,5 +164,4 @@ function FileDetail({ label, file }) {
       )}
     </div>
   );
-}
 }
