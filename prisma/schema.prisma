@@ -113,7 +113,6 @@ model employees {
   created_at                                    DateTime?                @default(now())
   experience_years                              Int?                     @default(0)
   experience_months                             Int?                     @default(0)
-  employee_type                                 employees_employee_type? @default(Full_time)
   aadhar_number                                 String?
   pan_number                                    String?
   addresses                                     addresses[]
@@ -208,7 +207,7 @@ model users {
   role            users_role       @default(employee)
   created_at      DateTime?        @default(now())
   verified        users_verified?  @default(not_verified)
-
+  employee_type   employees_employee_type? @default(Full_time)
   resetToken String?
   resetTokenExpiry DateTime?
 
