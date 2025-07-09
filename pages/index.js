@@ -12,8 +12,9 @@ export default function Home() {
                 
                 <div className="relative w-full h-screen">
                 <Image 
-                    src="/homepage.svg"
+                    src="/images/homepage.svg"
                     alt="Homepage Background"
+                    priority
                     fill
                     className="z-0"
                 />

@@ -30,7 +30,6 @@ export default function Sidebar({ handleLogout }) {
     { name: "Register New Employee", path: "/registerEmployee" },
     { name: "View Employees Details", path: "/employeeList" },
     { name: "Recruitment Management", path: "/Recruitment/recruitment" },
-    { name: "Customer Connect", path: "/Contact" },
   ];
 
   const attendanceSubItems = [

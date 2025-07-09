@@ -75,7 +75,7 @@ export default function ResetPassword() {
       <div className="flex flex-grow">
         <div className="w-1/1 flex items-center justify-center bg-amber-10">
           <Image
-            src="/homepage.svg"
+            src="/images/homepage.svg"
             width={600}
             height={400}
             alt="image"

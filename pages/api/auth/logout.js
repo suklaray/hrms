@@ -1,4 +1,3 @@
-// pages/api/auth/logout.js
 import cookie from "cookie";
 
 export default function handler(req, res) {

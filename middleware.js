@@ -1,0 +1,30 @@
+// middleware.js
+import { NextResponse } from 'next/server';
+
+export function middleware(request) {
+  const { pathname } = request.nextUrl;
+
+  if (
+    pathname.startsWith('/_next') ||        
+    pathname.startsWith('/favicon.ico') ||
+    pathname.startsWith('/images') ||       
+    pathname.startsWith('/public') ||       
+    pathname.startsWith('/api')             
+  ) {
+    return NextResponse.next();
+  }
+
+  const token = request.cookies.get('token')?.value;
+
+  const publicRoutes = ['/', '/login', '/AboutUs', '/Contact', 'employee/login'];
+
+  const isPublic = publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+
+  if (!isPublic && !token) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
+  return NextResponse.next();
+}

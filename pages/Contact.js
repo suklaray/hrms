@@ -62,7 +62,7 @@ export default function ContactPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-300 to-indigo-300 p-6 text-white">
       <div className="bg-gray-100 bg-opacity-10 backdrop-blur-md p-8 rounded-3xl shadow-2xl max-w-6xl w-full flex flex-col md:flex-row gap-8">
         <div className="p-8 flex justify-center items-center md:w-1/2">
-          <Image src="/employee.svg" alt="Contact Illustration" width={400} height={400} className="rounded-lg" />
+          <Image src="/images/employee.svg" alt="Contact Illustration" width={400} height={400} className="rounded-lg" />
         </div>
 
         <form className="md:w-1/2 space-y-5" ref={formRef} onSubmit={handleSubmit}>
