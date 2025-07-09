@@ -30,6 +30,7 @@ export default function Sidebar({ handleLogout }) {
     { name: "Register New Employee", path: "/registerEmployee" },
     { name: "View Employees Details", path: "/employeeList" },
     { name: "Recruitment Management", path: "/Recruitment/recruitment" },
+    { name: "Customer Connect", path: "/Contact" },
   ];
 
   const attendanceSubItems = [
@@ -172,6 +173,14 @@ export default function Sidebar({ handleLogout }) {
           )}
         </li>
 
+          <li>
+            <button
+              onClick={() => router.push("/customer-connect")}
+              className="w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            >
+              Customer Connect
+            </button>
+          </li>
         {/* Logout */}
         <li>
           <button

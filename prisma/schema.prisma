@@ -26,9 +26,8 @@ model attendance {
   empid             String
   check_in          DateTime?
   check_out         DateTime?
-  total_hours       Decimal?
-  date              DateTime?                    @default(now())
-  created_at        DateTime?                    @default(now())
+   date              DateTime?                     @default(now())
+  created_at        DateTime?                     @default(now())
   attendance_status attendance_attendance_status? @default(Absent)
 }
 
@@ -68,11 +67,11 @@ model candidates {
   interview_date        DateTime?
   resume                String?
   form_link             String?
-  status                candidates_status? @default(Pending)
   created_at            DateTime?          @default(now())
   form_token            String?
   interview_mail_status String?            @default("Not Sent")
   form_status           String?            @default("Mail Not Sent")
+  status                candidates_status? @default(Pending)
   verification          Boolean?           @default(false)
 }
 
@@ -90,16 +89,16 @@ model compliance_documents {
 
 model compliance_status {
   empid          Int                               @id
-  overall_status compliance_status_overall_status?
   last_updated   DateTime?                         @default(now())
+  overall_status compliance_status_overall_status?
   employees      employees                         @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
 }
 
 model employees {
-  empid                                         Int                      @id @default(autoincrement())
+  empid                                         Int                    @id @default(autoincrement())
   candidate_id                                  String?
   name                                          String?
-  email                                         String?     @unique
+  email                                         String?                @unique(map: "employees_email_unique")
   contact_no                                    String?
   password                                      String?
   gender                                        String?
@@ -110,22 +109,20 @@ model employees {
   resume                                        String?
   experience_certificate                        String?
   profile_photo                                 String?
-  created_at                                    DateTime?                @default(now())
-  experience_years                              Int?                     @default(0)
-  experience_months                             Int?                     @default(0)
+  created_at                                    DateTime?              @default(now())
+  experience_years                              Int?                   @default(0)
+  experience_months                             Int?                   @default(0)
   aadhar_number                                 String?
   pan_number                                    String?
   addresses                                     addresses[]
-  audit_logs_audit_logs_empidToemployees        audit_logs[]             @relation("audit_logs_empidToemployees")
-  audit_logs_audit_logs_performed_byToemployees audit_logs[]             @relation("audit_logs_performed_byToemployees")
+  audit_logs_audit_logs_empidToemployees        audit_logs[]           @relation("audit_logs_empidToemployees")
+  audit_logs_audit_logs_performed_byToemployees audit_logs[]           @relation("audit_logs_performed_byToemployees")
   bank_details                                  bank_details[]
   compliance_documents                          compliance_documents[]
   compliance_status                             compliance_status?
-  users                                         users?                   @relation(fields: [email], references: [email], onDelete: Cascade, onUpdate: Restrict)
 
   @@index([email])
 }
-
 
 model main_employee {
   empid                  String    @id @db.VarChar(20)
@@ -139,25 +136,24 @@ model main_employee {
   doj                    DateTime? @db.Date
   gender                 String?   @db.VarChar(10)
   dob                    DateTime? @db.Date
-  address                String?   @db.Text
+  address                String?
   employee_type          String?   @db.VarChar(50)
   experience             String?   @db.VarChar(50)
   profile_photo          String?   @db.VarChar(255)
   aadhar_card            String?   @db.VarChar(255)
   pan_card               String?   @db.VarChar(255)
-  education_certificates String?   @db.Text
+  education_certificates String?
   resume                 String?   @db.VarChar(255)
   experience_certificate String?   @db.VarChar(255)
-  bank_details           String?   @db.Text
+  bank_details           String?
   status                 String?   @default("active") @db.VarChar(20)
   created_at             DateTime? @default(now()) @db.Timestamp(0)
 }
 
-
 model leave_types {
   id             Int                   @id @default(autoincrement())
-  type_name      leave_types_type_name
   max_days       Int
+  type_name      leave_types_type_name
   paid           Boolean?              @default(true)
   leave_balances leave_balances[]
 }
@@ -182,40 +178,37 @@ model leave_requests {
   from_date  DateTime
   to_date    DateTime
   reason     String?
-  status     leave_requests_status? @default(Pending)
   applied_at DateTime?              @default(now())
   attachment String?
   leave_type String
   name       String
+  status     leave_requests_status? @default(Pending)
   users      users                  @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
 
   @@index([empid])
 }
 
 model users {
-  id              Int              @id @default(autoincrement())
-  empid           String           @unique
-  name            String
-  email           String           @unique
-  contact_number  String?
-  password        String
-  position        String?
-  date_of_joining DateTime?
-  status          String?          @default("Active")
-  experience      Int?
-  profile_photo   String?
-  role            users_role       @default(employee)
-  created_at      DateTime?        @default(now())
-  verified        users_verified?  @default(not_verified)
-  employee_type   employees_employee_type? @default(Full_time)
-  resetToken String?
-  resetTokenExpiry DateTime?
-
-
-  employees       employees[]
-  leave_balances  leave_balances[]
-  leave_requests  leave_requests[]
-  payroll         payroll[]
+  id               Int                      @id @default(autoincrement())
+  empid            String                   @unique
+  name             String
+  email            String                   @unique
+  contact_number   String?
+  password         String
+  position         String?
+  date_of_joining  DateTime?
+  status           String?                  @default("Active")
+  experience       Int?
+  profile_photo    String?
+  created_at       DateTime?                @default(now())
+  role             users_role               @default(employee)
+  verified         users_verified?          @default(not_verified)
+  resetToken       String?
+  resetTokenExpiry DateTime?                @db.Timestamp(6)
+  employee_type    employees_employee_type? @default(Full_time)
+  leave_balances   leave_balances[]
+  leave_requests   leave_requests[]
+  payroll          payroll[]
 }
 
 model payroll {
@@ -248,13 +241,30 @@ model employees_backup {
   email                  String?   @db.VarChar(100)
   contact_no             String?   @db.VarChar(15)
   password               String?   @db.VarChar(100)
-  address                String?   @db.Text
+  address                String?
   gender                 String?   @db.VarChar(10)
   dob                    DateTime? @db.Date
-  aadhar_card            String?   @db.Text
-  pan_card               String?   @db.Text
-  education_certificates String?   @db.Text
-  resume                 String?   @db.Text
+  aadhar_card            String?
+  pan_card               String?
+  education_certificates String?
+  resume                 String?
+  experience_certificate String?
+  bank_details           String?
+  profile_photo          String?
+  created_at             DateTime? @default(now()) @db.Timestamp(0)
+
+  @@ignore
+}
+
+model contact_submissions {
+  id         Int       @id @default(autoincrement())
+  name       String
+  email      String
+  subject    String
+  message    String
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+}
+esume                 String?   @db.Text
   experience_certificate String?   @db.Text
   bank_details           String?   @db.Text
   profile_photo          String?   @db.Text
