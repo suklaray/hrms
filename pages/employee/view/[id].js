@@ -10,20 +10,46 @@ export default function ViewEmployee() {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState("");
 
-  useEffect(() => {
-    if (id) {
-      axios.get(`/api/auth/employee/view/${id}`)
-        .then((res) => {
-          setData(res.data);
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("Error fetching employee details:", err);
-          setLoading(false);
-        });
+useEffect(() => {
+  const fetchEverything = async () => {
+    try {
+      // ✅ Fetch currently logged-in user
+      const roleRes = await fetch("/api/auth/me", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // ✅ required for cookie-based JWT
+      });
+
+      if (roleRes.ok) {
+        const userData = await roleRes.json();
+
+        // ✅ Handle both possible response structures
+        const user = userData?.user || userData;
+        setRole(user.role); // <-- this is what you're using
+      } else {
+        console.error("User not authenticated");
+      }
+
+      // ✅ Fetch employee details only if ID is present
+      if (id) {
+        const empRes = await axios.get(`/api/auth/employee/view/${id}`);
+        setData(empRes.data);
+      }
+    } catch (err) {
+      console.error("Error fetching data:", err);
+    } finally {
+      setLoading(false); // ✅ Always stop loading
     }
-  }, [id]);
+  };
+
+  fetchEverything();
+}, [id]);
+
+
 
   if (loading) {
     return (
@@ -42,7 +68,62 @@ export default function ViewEmployee() {
   }
 
   const { user, employee: employees, addresses, bankDetails } = data || {};
-  const { name, email, empid, password } = user || {};
+  const { name, email, empid, password, employee_type } = user || {};
+
+  const handleRoleChange = async (newRole) => {
+    try {
+      const res = await axios.patch(`/api/auth/employee/update-role/${user.id}`,
+        { role: newRole },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        }
+      );
+
+      if (res.status === 200) {
+        setData((prev) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            role: newRole,
+          },
+        }));
+              alert("Employee role updated successfully.");
+      }
+    } catch (err) {
+      console.error("Failed to update role:", err);
+    }
+  };
+  const handleEmployeeTypeChange = async (newType) => {
+    try {
+      const res = await axios.patch(`/api/auth/employee/update-type/${user.id}`,
+      { employee_type: newType },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      }
+    );
+
+    if (res.status === 200) {
+      setData((prev) => ({
+        ...prev,
+        user: {
+          ...prev.user,
+          employee_type: newType,
+        },
+      }));
+      alert("Employment type updated successfully.");
+    }
+  } catch (err) {
+    console.error("Failed to update employee type:", err);
+  }
+};
+
+
 
   return (
     <div className="flex">
@@ -74,7 +155,46 @@ export default function ViewEmployee() {
               <Detail label="Contact No" value={employees?.contact_no || "N/A"} />
               <Detail label="DOB" value={employees?.dob ? new Date(employees.dob).toLocaleDateString() : "N/A"} />
               <Detail label="Gender" value={employees?.gender || "N/A"} />
+              <div>
+                <p className="text-gray-600">Employment Type</p>
+                <p className="font-semibold mt-1 capitalize">{user?.employee_type || "N/A"}</p>
+
+                {["admin", "superadmin"].includes(role) ? (
+                  <select
+                    value={user?.employee_type || ""}
+                    onChange={(e) => handleEmployeeTypeChange(e.target.value)}
+                    className="mt-1 p-1 border border-indigo-300 rounded text-sm"
+                  >
+                    <option value="" disabled>Change Employement Type</option>
+                    <option value="Intern">Intern</option>
+                    <option value="Full_time">Full-time</option>
+                    <option value="Contractor">Contractor</option>
+                  </select>
+                ) : (
+                  <p className="font-semibold mt-1">{user?.employee_type || "N/A"}</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-gray-600">User Role</p>
+                <p className="font-semibold mt-1 capitalize">{user?.role || "N/A"}</p>
+                {["admin", "superadmin"].includes(role) ? (
+                  <select
+                    value={user?.role || ""}
+                    onChange={(e) => handleRoleChange(e.target.value)}
+                    className="mt-1 p-1 border border-indigo-300 rounded text-sm"
+                  >
+                    <option value="" disabled>Change User Role</option>
+                    <option value="employee">Employee</option>
+                    <option value="hr">HR</option>
+                    <option value="admin">Admin</option>
+                    <option value="superadmin">Superadmin</option>
+                  </select>
+                ) : null}
+              </div>
+
             </div>
+
           </section>
 
           <section>
