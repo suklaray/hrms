@@ -103,17 +103,22 @@ export default function Candidates() {
   const handleVerification = async (candidate) => {
     try {
       const updatedVerificationStatus = !candidate.verification;
-  
+
       await axios.put("/api/recruitment/verifyCandidate", {
         candidateId: candidate.id,
-        verificationStatus: updatedVerificationStatus, 
+        verificationStatus: updatedVerificationStatus,
       });
-  
-      fetchCandidates(); 
+
+      setCandidates((prev) =>
+        prev.map((c) =>
+          c.id === candidate.id ? { ...c, verification: updatedVerificationStatus } : c
+        )
+      );
     } catch (error) {
       console.error("Error updating verification status:", error);
     }
   };
+
 
   return (
     <div className="flex h-screen bg-gray-50 bg-gradient-to-r from-gray-100 via-indigo-100 to-pink-100">
@@ -201,19 +206,20 @@ export default function Candidates() {
                     </td>
 
                     {/* Verification Button */}
-                    <td className="px-6 py-4">
-                          <button
-                            className={`px-4 py-1 text-xs font-semibold rounded-full transition ${candidate.verification ? "bg-green-100 text-green-700 cursor-default" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}`}
-                            onClick={() => {
-                              if (!candidate.verification) {
-                                handleVerification(candidate); // Trigger the verification update
-                              }
-                            }}
-                            disabled={candidate.verification} // Disable the button if already verified
-                          >
-                            {candidate.verification ? "Verified" : "Not Verified"}
-                          </button>
-                        </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          className={`px-4 py-1 text-xs font-semibold rounded-full transition ${
+                            candidate.verification
+                              ? "bg-green-100 text-green-700"
+                              : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                          }`}
+                          onClick={() => handleVerification(candidate)}
+                        >
+                          {candidate.verification ? "Verified" : "Not Verified"}
+                        </button>
+                      </td>
+
+
                     <td className="px-6 py-4 flex gap-3 items-center">
                       <Link href={`/Recruitment/${candidate.candidate_id}`}>
                         <button className="text-indigo-600 hover:bg-indigo-100 p-2 rounded-full transition" title="View">
