@@ -8,6 +8,7 @@ export default function Sidebar({ handleLogout }) {
   const [payrollOpen, setPayrollOpen] = useState(false); 
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [performanceOpen, setPerformanceOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const toggleAttendanceMenu = () => {
     setAttendanceOpen(!attendanceOpen);
@@ -24,6 +25,10 @@ export default function Sidebar({ handleLogout }) {
   const togglePerformanceMenu = () => {
     setPerformanceOpen(!performanceOpen)
   }
+
+  const toggleSettingsMenu = () => {
+  setSettingsOpen(!settingsOpen);
+};
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard" },
@@ -180,6 +185,31 @@ export default function Sidebar({ handleLogout }) {
               Customer Connect
             </button>
           </li>
+
+        {/* Settings Dropdown */}
+        <li>
+          <button
+            onClick={toggleSettingsMenu}
+            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+          >
+            <span>Settings</span>
+            {settingsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
+          {settingsOpen && (
+            <ul className="pl-6 pt-2 space-y-2">
+              <li>
+                <button
+                  onClick={() => router.push("/settings/profile")}
+                  className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
+                >
+                  Profile
+                </button>
+              </li>
+            </ul>
+          )}
+        </li>
+
+
         {/* Logout */}
         <li>
           <button

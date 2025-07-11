@@ -46,10 +46,14 @@ const Header = () => {
   return (
     <div className="bg-gradient-to-r from-indigo-700 to-purple-600 w-full shadow-lg z-50">
       <header className="px-10 py-5 text-white flex flex-col md:flex-row items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <Link href="/"><FaUserTie size={40} />
-          <h1 className="text-2xl font-bold tracking-wider">HRMS PORTAL</h1></Link>
-        </div>
+      <div className="flex flex-col items-center">
+  <Link href="/" className="flex flex-col items-center">
+    <FaUserTie size={40} />
+    <span className="text-lg font-bold tracking-wider text-center">HRMS</span>
+  </Link>
+</div>
+
+
 
         <nav className="flex space-x-8 mt-4 md:mt-0 text-lg font-medium">
           <Link href="/" className="flex items-center space-x-2 hover:text-yellow-300">
