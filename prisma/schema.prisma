@@ -26,7 +26,8 @@ model attendance {
   empid             String
   check_in          DateTime?
   check_out         DateTime?
-   date              DateTime?                     @default(now())
+  total_hours       Decimal?
+  date              DateTime?                     @default(now())
   created_at        DateTime?                     @default(now())
   attendance_status attendance_attendance_status? @default(Absent)
 }
@@ -252,8 +253,6 @@ model employees_backup {
   bank_details           String?
   profile_photo          String?
   created_at             DateTime? @default(now()) @db.Timestamp(0)
-
-  @@ignore
 }
 
 model contact_submissions {
@@ -264,15 +263,6 @@ model contact_submissions {
   message    String
   created_at DateTime? @default(now()) @db.Timestamp(6)
 }
-esume                 String?   @db.Text
-  experience_certificate String?   @db.Text
-  bank_details           String?   @db.Text
-  profile_photo          String?   @db.Text
-  created_at             DateTime? @default(now()) @db.Timestamp(0)
-
-  @@ignore
-}
-
 
 enum compliance_status_overall_status {
   Compliant
