@@ -46,6 +46,7 @@ export default async function handler(req, res) {
       };
 
       textract.analyzeDocument(params, (error, data) => {
+        
         // Delete the uploaded file after processing
         fs.unlink(filePath, (unlinkErr) => {
           if (unlinkErr) console.error("File deletion error:", unlinkErr);
