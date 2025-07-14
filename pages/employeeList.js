@@ -77,23 +77,21 @@ export default function EmployeeListPage() {
       <div className="flex-1 p-6">
         {/* Total Count Summary */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-  {roles.map(({ label }) => (
-    <button
-      key={label}
-      onClick={() => setFilter(label)}
-      className="rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 p-[2px] shadow-md transition-all hover:scale-105"
-    >
-      <div className="bg-gradient-to-tl from-indigo-100 to-white rounded-xl h-24 flex flex-col justify-center items-center shadow-inner">
-        <span className="text-2xl font-semibold text-indigo-700 uppercase">
-          {label}
-        </span>
-        <span className="text-2xl font-bold text-indigo-700">
-          {label === "All" ? employees.length : countByRole(label)}
-        </span>
-      </div>
-    </button>
-  ))}
-</div>
+            {roles.map(({ label }) => (
+              <button
+                key={label}
+                onClick={() => setFilter(label)}
+                className="rounded-xl bg-gray-400 p-0.5 transition-all hover:scale-105"
+              >
+                <div className="bg-gradient-to-l from-gray-100 to-white rounded-xl h-17 flex flex-col justify-center items-center shadow-inner">
+                  <span className="text-xl font-semibold text-gray-500 uppercase">
+                    {label}
+                  </span>
+                  <span className="text-md font-bold text-gray-500">({label === "All" ? employees.length : countByRole(label)})</span>
+                </div>
+              </button>
+            ))}
+          </div>
 
 
 
@@ -101,7 +99,7 @@ export default function EmployeeListPage() {
         <div className="bg-white shadow-xl rounded-2xl p-6 overflow-x-auto">
           <h2 className="text-3xl font-bold mb-6 text-indigo-700 text-center">Employee Directory</h2>
           <table className="min-w-full divide-y divide-indigo-300 rounded-lg overflow-hidden">
-            <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white uppercase">
+            <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white uppercase">
               <tr>
                 <th className="px-4 py-3 text-sm font-medium text-left">Emp ID</th>
                 <th className="px-4 py-3 text-sm font-medium text-left">Name</th>

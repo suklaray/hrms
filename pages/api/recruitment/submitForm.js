@@ -90,8 +90,18 @@ export default async function handler(req, res) {
         pan_number: body.pan_number,
       }
     });
-    
-    // Create bank_details
+
+    //return whether candidates submitted the form or not
+    await prisma.candidates.update({
+      where: {
+        candidate_id: body.candidate_id,
+      },
+      data: {
+        form_submitted: true,
+      },
+    });
+
+    // bank_details
     await prisma.bank_details.create({
       data: {
         employee_id: employee.empid,
@@ -104,7 +114,7 @@ export default async function handler(req, res) {
       }
     });
 
-    // Create address
+    // Address
     await prisma.addresses.create({
       data: {
         employee_id: employee.empid,

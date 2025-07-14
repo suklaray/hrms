@@ -138,16 +138,16 @@ export default function Candidates() {
         ) : (
           <div className="overflow-x-auto shadow-2xl rounded-3xl bg-white border border-indigo-800 ">
             <table className="min-w-full divide-y divide-indigo-200 text-sm text-gray-800">
-              <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white uppercase text-xs font-bold sticky top-0 z-10">
+              <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white uppercase text-xs font-bold sticky top-0 z-10 text-center">
                 <tr>
-                  {["ID", "Name", "Email", "Contact No.", "Interview Date", "Send Interview Mail", "HR Decision", "Form Link", "Send Form Mail", "Verification", "Actions", "employment"].map((head) => (
-                    <th key={head} className="px-6 py-4 text-left tracking-wider">
+                  {["ID", "Name", "Email", "Contact No.", "Interview Date", "HR Decision", "Form Link", "Form Submission status", "Verification", "Actions", "employment"].map((head) => (
+                    <th key={head} className="px-6 py-4 text-center tracking-wider">
                       {head}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-gray-100 bg-white text-center">
                 {/*{candidates.map((candidate, index) => (*/}
                 {(candidates || []).map((candidate, index) => (
                   <tr
@@ -160,7 +160,7 @@ export default function Candidates() {
                     <td className="px-6 py-4 font-medium">{candidate.name}</td>
                     <td className="px-6 py-4 text-gray-600">{candidate.email}</td>
                     <td className="px-6 py-4 text-gray-600">{candidate.contact_number}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       <input
                         type="date"
                         value={candidate.interview_date ? candidate.interview_date.split("T")[0] : ""}
@@ -168,6 +168,7 @@ export default function Candidates() {
                         className="border border-gray-300 rounded-lg px-3 py-1 text-sm shadow-inner focus:ring-2 focus:ring-indigo-300 focus:outline-none"
                       />
                     </td>
+                    {/* 
                     <td className="px-6 py-4">
                       <button
                         className={`text-xs font-bold px-4 py-1 rounded-full shadow transition duration-200 ${candidate.interview_mail_status === "Interview Mail Sent" ? "bg-green-100 text-green-700 ring-1 ring-green-300" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}`}
@@ -176,7 +177,8 @@ export default function Candidates() {
                         {candidate.interview_mail_status === "Interview Mail Sent" ? "Mail Sent" : "Send Mail"}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    */}
+                    <td className="px-6 py-4 text-center">
                       <select
                         value={candidate.status || "Waiting"}
                         onChange={(e) => handleStatusChange(candidate.candidate_id, e.target.value)}
@@ -187,15 +189,16 @@ export default function Candidates() {
                         <option value="Rejected">Rejected</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       {candidate.form_link ? (
                         <a href={candidate.form_link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-sm font-medium">
-                          View Form
+                          Form Link
                         </a>
                       ) : (
                         <span className="text-gray-400 text-sm italic">No form</span>
                       )}
                     </td>
+                    {/* 
                     <td className="px-6 py-4">
                       <button
                         className={`text-xs font-bold px-4 py-1 rounded-full transition duration-200 ${candidate.form_mail_status === "Form Mail Sent" ? "bg-green-100 text-green-700 ring-1 ring-green-300" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}`}
@@ -203,7 +206,16 @@ export default function Candidates() {
                       >
                         {candidate.form_mail_status === "Form Mail Sent" ? "Form Sent" : "Send Form"}
                       </button>
-                    </td>
+                    </td> */}
+
+                    {/* Form Submission Status */}
+                    <td className="px-6 py-4 text-sm font-semibold text-center">
+                        {candidate.form_submitted ? (
+                          <span className="text-green-700 bg-green-100 px-3 py-1 rounded-full">Submitted</span>
+                        ) : (
+                          <span className="text-red-400 bg-red-50 px-3 py-1 rounded-full text-center">Not Submitted</span>
+                        )}
+                      </td>
 
                     {/* Verification Button */}
                       <td className="px-6 py-4 text-center">
@@ -222,17 +234,17 @@ export default function Candidates() {
 
                     <td className="px-6 py-4 flex gap-3 items-center">
                       <Link href={`/Recruitment/${candidate.candidate_id}`}>
-                        <button className="text-indigo-600 hover:bg-indigo-100 p-2 rounded-full transition" title="View">
-                          <FaEye size={16} />
+                        <button className="text-green-600 hover:bg-indigo-100 p-2 rounded-full transition" title="View">
+                          <FaEye size={20} />
                         </button>
                       </Link>
-                      <button
+                      {/*<button
                         className="text-yellow-600 hover:bg-yellow-100 p-2 rounded-full transition"
                         onClick={() => console.log("Edit clicked")}
                         title="Edit"
                       >
                         <FaEdit size={16} />
-                      </button>
+                      </button>*/}
                       <button
                         className="text-red-600 hover:bg-red-100 p-2 rounded-full transition"
                         onClick={() => handleDelete(candidate.candidate_id)}
