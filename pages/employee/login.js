@@ -42,13 +42,13 @@ export default function EmployeeLogin() {
       <div className="flex flex-grow">
         {/* Left side image */}
         <div className="w-1/1 flex items-center justify-center bg-amber-10">
-          <Image
-            src="/homepage.svg"
+          <img 
+            src="/images/homepage.svg" 
             width={600}
             height={400}
-            alt="image"
-            style={{ width: "100%", height: "auto" }}
-          />
+            alt="image" 
+            style={{ width: '100%', height: 'auto' }}
+            />
         </div>
 
         {/* Right side form */}
