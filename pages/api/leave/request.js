@@ -2,6 +2,7 @@ import { IncomingForm } from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/prisma';
+import { verifyEmployeeToken } from '@/lib/auth';
 
 export const config = {
   api: {
@@ -10,7 +11,12 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const user = await verifyEmployeeToken(req);
+  if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
   const form = new IncomingForm();
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
@@ -21,26 +27,39 @@ export default async function handler(req, res) {
   form.keepExtensions = true;
 
   form.parse(req, async (err, fields, files) => {
-    if (err) return res.status(500).json({ message: 'Form parsing error' });
+    if (err) {
+      console.error("Form parsing error:", err);
+      return res.status(500).json({ message: 'Form parsing error' });
+    }
 
-    const { empid, name, leave_type, from_date, to_date, reason } = fields;
-    const attachment = files.attachment ? `/uploads/${path.basename(files.attachment.filepath)}` : null;
+    const leave_type = Array.isArray(fields.leave_type) ? fields.leave_type[0] : fields.leave_type;
+    const reason = Array.isArray(fields.reason) ? fields.reason[0] : fields.reason;
+    const from_date = new Date(Array.isArray(fields.from_date) ? fields.from_date[0] : fields.from_date);
+    const to_date = new Date(Array.isArray(fields.to_date) ? fields.to_date[0] : fields.to_date);
+
+
+    let attachment = null;
+    if (files.attachment && files.attachment.filepath) {
+      const fileName = path.basename(files.attachment.filepath);
+      attachment = `/uploads/${fileName}`;
+    }
 
     try {
       await prisma.leave_requests.create({
         data: {
-          empid: empid,
-          name: name,
-          leave_type: leave_type,
+          empid: user.empid,
+          name: user.name,
+          leave_type,
           from_date: new Date(from_date),
           to_date: new Date(to_date),
-          reason: reason,
-          attachment: attachment,
+          reason,
+          attachment,
         },
       });
+
       res.status(200).json({ message: 'Leave request submitted successfully' });
     } catch (err) {
-      console.error(err);
+      console.error("Database error:", err);
       res.status(500).json({ message: 'Database error' });
     }
   });

@@ -8,24 +8,26 @@ export default function EmployeeDashboard() {
   const [isWorking, setIsWorking] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    async function fetchUser() {
-      try {
-        const res = await fetch("/api/auth/employee/me", {
-          credentials: "include",
-        });
-        if (!res.ok) {
-          return router.replace("/employee/login");
-        }
-        const data = await res.json();
-        setUser(data.user);
-      } catch (err) {
-        console.error("Error fetching user:", err);
-        router.replace("/employee/login");
+useEffect(() => {
+  async function fetchUser() {
+    try {
+      const res = await fetch("/api/auth/employee/me", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        return router.replace("/employee/login");
       }
+      const data = await res.json();
+      setUser(data.user);
+      setIsWorking(data.user.isWorking); 
+    } catch (err) {
+      console.error("Error fetching user:", err);
+      router.replace("/employee/login");
     }
-    fetchUser();
-  }, [router]);
+  }
+  fetchUser();
+}, [router]);
+
 
   const handleLogout = async () => {
     try {
@@ -73,12 +75,12 @@ export default function EmployeeDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gradient-to-r from-indigo-100 to-sky-100">
       <Sidebar user={user} handleLogout={handleLogout} />
       <div className="flex-1 p-6 overflow-auto relative">
         <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-xl mx-auto mt-20">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
-            Welcome, {user.name} 👋
+            Welcome, {user.name}
           </h2>
           <div className="flex justify-center mb-6">
             <Image
