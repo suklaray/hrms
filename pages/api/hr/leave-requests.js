@@ -1,5 +1,5 @@
 // /pages/api/hr/leave-requests.js
-import pool from "@/lib/db";
+import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -7,8 +7,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    const [rows] = await pool.query("SELECT * FROM leave_requests");
-    res.status(200).json({ success: true, data: rows });
+    const leaveRequests = await prisma.leave_requests.findMany({
+      orderBy: {
+        applied_at: 'desc', 
+      },
+    });
+
+    res.status(200).json({ success: true, data: leaveRequests });
   } catch (error) {
     console.error("Error fetching leave requests:", error);
     res.status(500).json({ success: false, error: "Server error" });
