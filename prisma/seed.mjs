@@ -42,15 +42,18 @@ async function main() {
   });
 
   const usedSuffixes = new Set();
+  // Default regex to extract suffix from email: superadmin_YYYYMMDD(suffix)@example.com
+  const emailRegex = process.env.SUPERADMIN_EMAIL_REGEX || /^superadmin_\d+([a-z0-9]+)@example\.com$/;
+  
   for (const admin of existingAdmins) {
-    const match = admin.email.match(process.env.SUPERADMIN_EMAIL_REGEX);
+    const match = admin.email.match(emailRegex);
     if (match && match[1]) {
       usedSuffixes.add(match[1]);
     }
   }
 
-  const suffix = nextSuffix(usedSuffixes);
-  const superAdminEmail = `${prefix}${datePart}${suffix}@example.com`;
+  // Use provided SUPERADMIN_EMAIL if available, otherwise generate one
+  const superAdminEmail = process.env.SUPERADMIN_EMAIL || `${prefix}${datePart}${nextSuffix(usedSuffixes)}@example.com`;
   const superAdminPassword = process.env.SUPERADMIN_PASSWORD || generateRandomPassword();
   const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 
