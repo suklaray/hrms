@@ -7,9 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "vercel-build": "prisma generate && prisma migrate deploy && node prisma/seed.mjs && next build",
-    "seed": "node prisma/seed.mjs"
-
+    "vercel-build": "prisma generate && prisma migrate deploy && next build",
+    "seed": "node prisma/seed.mjs",
+    "vercel-seed": "dotenv -e .env.production -- npx prisma db seed"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
