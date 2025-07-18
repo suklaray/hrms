@@ -4,47 +4,52 @@ import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
+// Generate secure random password (8 characters)
 function generateRandomPassword() {
   return crypto.randomBytes(6).toString('base64url').slice(0, 8);
 }
 
+// Generate empid like: SUPERADMIN4567
+function generateEmpId(name) {
+  const cleanName = name.replace(/\s+/g, '').toUpperCase().slice(0, 5);
+  const randomDigits = Math.floor(1000 + Math.random() * 9000);
+  return `SUPER${cleanName}${randomDigits}`;
+}
+
+// Get next available unique suffix (a, b, ..., z1, z2, ...)
 function nextSuffix(usedSuffixes) {
   const letters = 'abcdefghijklmnopqrstuvwxyz';
-
   for (const letter of letters) {
-    if (!usedSuffixes.has(letter)) {
-      return letter;
-    }
+    if (!usedSuffixes.has(letter)) return letter;
   }
 
-  // All single letters are used, find z1, z2, z3...
   let zCount = 1;
-  while (usedSuffixes.has(`z${zCount}`)) {
-    zCount++;
-  }
+  while (usedSuffixes.has(`z${zCount}`)) zCount++;
   return `z${zCount}`;
 }
 
 async function main() {
+  const name = 'Super Admin';
   const prefix = process.env.SUPERADMIN_PREFIX || 'superadmin_';
+  const domain = process.env.SUPERADMIN_DOMAIN || 'example.com';
+
   const now = new Date();
   const datePart = now.toISOString().split('T')[0].replace(/-/g, '');
 
+  // Fetch existing superadmins for today's date prefix
   const existingAdmins = await prisma.users.findMany({
     where: {
       email: {
-        startsWith: prefix + datePart,
+        startsWith: `${prefix}${datePart}`,
       },
     },
-    select: {
-      email: true,
-    },
+    select: { email: true },
   });
 
+  // Extract used suffixes from existing emails
   const usedSuffixes = new Set();
-  // Default regex to extract suffix from email: superadmin_YYYYMMDD(suffix)@example.com
-  const emailRegex = process.env.SUPERADMIN_EMAIL_REGEX || /^superadmin_\d+([a-z0-9]+)@example\.com$/;
-  
+  const emailRegex = new RegExp(`^${prefix}${datePart}([a-z0-9]+)@${domain.replace('.', '\\.')}$`);
+
   for (const admin of existingAdmins) {
     const match = admin.email.match(emailRegex);
     if (match && match[1]) {
@@ -52,29 +57,32 @@ async function main() {
     }
   }
 
-  // Use provided SUPERADMIN_EMAIL if available, otherwise generate one
-  const superAdminEmail = process.env.SUPERADMIN_EMAIL || `${prefix}${datePart}${nextSuffix(usedSuffixes)}@example.com`;
-  const superAdminPassword = process.env.SUPERADMIN_PASSWORD || generateRandomPassword();
-  const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
+  const suffix = nextSuffix(usedSuffixes);
+  const email = `${prefix}${datePart}${suffix}@${domain}`;
+  const password = generateRandomPassword();
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const empid = generateEmpId(name);
 
+  // Create new superadmin
   await prisma.users.create({
     data: {
-      name: 'Super Admin',
-      email: superAdminEmail,
+      name,
+      email,
       password: hashedPassword,
       role: 'superadmin',
-      empid: `SUPER${Math.floor(1000 + Math.random() * 9000)}`,
+      empid,
     },
   });
 
-  console.log(`Super Admin created`);
-  console.log(`Email: ${superAdminEmail}`);
-  console.log(`Password: ${superAdminPassword}`);
+  console.log('Super Admin Created');
+  console.log('Email:', email);
+  console.log('Password:', password);
+  console.log('EmpID:', empid);
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('Error creating Super Admin:', e);
     process.exit(1);
   })
   .finally(async () => {
