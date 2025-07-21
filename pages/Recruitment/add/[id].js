@@ -219,9 +219,9 @@ const AddEmployee = () => {
               />
             </div>
 
-            {/* Submit Button */}
+            {/* Submit Button */}{/* Submit Button */}
             <button
-              type="submit"
+              type="submit"    
               className="mt-4 bg-indigo-600 text-white py-2 px-6 rounded hover:bg-indigo-700 transition"
               disabled={emailExists}
             >

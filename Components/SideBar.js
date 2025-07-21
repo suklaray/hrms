@@ -1,34 +1,13 @@
-import { useRouter } from "next/router";
+import Link from "next/link";
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 export default function Sidebar({ handleLogout }) {
-  const router = useRouter();
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [payrollOpen, setPayrollOpen] = useState(false); 
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [performanceOpen, setPerformanceOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const toggleAttendanceMenu = () => {
-    setAttendanceOpen(!attendanceOpen);
-  };
-
-  const togglePayrollMenu = () => {
-    setPayrollOpen(!payrollOpen);
-  };
-
-  const toggleComplianceMenu = () => {
-    setComplianceOpen(!complianceOpen)
-  }
-
-  const togglePerformanceMenu = () => {
-    setPerformanceOpen(!performanceOpen)
-  }
-
-  const toggleSettingsMenu = () => {
-  setSettingsOpen(!settingsOpen);
-};
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard" },
@@ -68,19 +47,18 @@ export default function Sidebar({ handleLogout }) {
       <ul className="space-y-4">
         {navItems.map((item) => (
           <li key={item.name}>
-            <button
-              onClick={() => router.push(item.path)}
-              className="w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
-            >
-              {item.name}
-            </button>
+            <Link href={item.path}>
+              <span className="block w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer">
+                {item.name}
+              </span>
+            </Link>
           </li>
         ))}
 
         {/* Attendance Dropdown */}
         <li>
           <button
-            onClick={toggleAttendanceMenu}
+            onClick={() => setAttendanceOpen(!attendanceOpen)}
             className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Attendance & Leave Management</span>
@@ -90,12 +68,11 @@ export default function Sidebar({ handleLogout }) {
             <ul className="pl-6 pt-2 space-y-2">
               {attendanceSubItems.map((subItem) => (
                 <li key={subItem.name}>
-                  <button
-                    onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
-                  >
-                    {subItem.name}
-                  </button>
+                  <Link href={subItem.path}>
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      {subItem.name}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -105,7 +82,7 @@ export default function Sidebar({ handleLogout }) {
         {/* Payroll Dropdown */}
         <li>
           <button
-            onClick={togglePayrollMenu}
+            onClick={() => setPayrollOpen(!payrollOpen)}
             className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Payroll Management</span>
@@ -115,12 +92,11 @@ export default function Sidebar({ handleLogout }) {
             <ul className="pl-6 pt-2 space-y-2">
               {payrollSubItems.map((subItem) => (
                 <li key={subItem.name}>
-                  <button
-                    onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
-                  >
-                    {subItem.name}
-                  </button>
+                  <Link href={subItem.path}>
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      {subItem.name}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -130,7 +106,7 @@ export default function Sidebar({ handleLogout }) {
         {/* Compliance Management */}
         <li>
           <button
-            onClick={toggleComplianceMenu}
+            onClick={() => setComplianceOpen(!complianceOpen)}
             className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Compliance Management</span>
@@ -140,12 +116,11 @@ export default function Sidebar({ handleLogout }) {
             <ul className="pl-6 pt-2 space-y-2">
               {complianceSubItems.map((subItem) => (
                 <li key={subItem.name}>
-                  <button
-                    onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
-                  >
-                    {subItem.name}
-                  </button>
+                  <Link href={subItem.path}>
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      {subItem.name}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -155,7 +130,7 @@ export default function Sidebar({ handleLogout }) {
         {/* Performance Management */}
         <li>
           <button
-            onClick={togglePerformanceMenu}
+            onClick={() => setPerformanceOpen(!performanceOpen)}
             className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Performance Management</span>
@@ -165,31 +140,30 @@ export default function Sidebar({ handleLogout }) {
             <ul className="pl-6 pt-2 space-y-2">
               {performanceSubItems.map((subItem) => (
                 <li key={subItem.name}>
-                  <button
-                    onClick={() => router.push(subItem.path)}
-                    className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
-                  >
-                    {subItem.name}
-                  </button>
+                  <Link href={subItem.path}>
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      {subItem.name}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
         </li>
 
-          <li>
-            <button
-              onClick={() => router.push("/customer-connect")}
-              className="w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
-            >
+        {/* Customer Connect */}
+        <li>
+          <Link href="/customer-connect">
+            <span className="block w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer">
               Customer Connect
-            </button>
-          </li>
+            </span>
+          </Link>
+        </li>
 
         {/* Settings Dropdown */}
         <li>
           <button
-            onClick={toggleSettingsMenu}
+            onClick={() => setSettingsOpen(!settingsOpen)}
             className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
           >
             <span>Settings</span>
@@ -198,17 +172,15 @@ export default function Sidebar({ handleLogout }) {
           {settingsOpen && (
             <ul className="pl-6 pt-2 space-y-2">
               <li>
-                <button
-                  onClick={() => router.push("/settings/profile")}
-                  className="w-full text-left text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
-                >
-                  Profile
-                </button>
+                <Link href="/settings/profile">
+                  <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    Profile
+                  </span>
+                </Link>
               </li>
             </ul>
           )}
         </li>
-
 
         {/* Logout */}
         <li>
