@@ -25,6 +25,7 @@ export default function LeaveRequest() {
         ...prev,
         empid: user.empid,
         name: user.name,
+        email: user.email,
       }));
 
       axios
@@ -96,12 +97,12 @@ export default function LeaveRequest() {
             />
             <input
               type="text"
-              value={form.empid}
+              value={form.email}
               readOnly
               className="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-100"
             />
 
-            <select
+           <select
               name="leave_type"
               value={form.leave_type}
               onChange={handleChange}
@@ -109,12 +110,15 @@ export default function LeaveRequest() {
               className="w-full p-3 border-2 border-gray-200 rounded-lg"
             >
               <option value="">Select Leave Type</option>
-              {leaveTypes.map((type) => (
-                <option key={type.id} value={type.type_name}>
-                  {type.type_name}
-                </option>
-              ))}
+              <option value="Casual Leave">Casual Leave</option>
+              <option value="Sick Leave">Sick Leave</option>
+              <option value="Earned Leave">Earned Leave</option>
+              <option value="Maternity Leave">Maternity Leave</option>
+              <option value="Unpaid Leave">Unpaid Leave</option>
+              <option value="Work From Home">Work From Home</option>
+              <option value="Special Leave">Special Leave</option>
             </select>
+
 
             <div className="flex gap-4">
               <input

@@ -84,7 +84,7 @@ useEffect(() => {
           </h2>
           <div className="flex justify-center mb-6">
             <Image
-              src={user.profile_photo || "/profile.png"}
+              src={user.profile_photo || "/images/profile.png"}
               alt="Profile"
               width={128}
               height={128}

@@ -37,17 +37,16 @@ export default async function handler(req, res) {
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ error: "File upload error" });
 
-    const file = files.profilePic?.[0]; // ✅ Use .[0] for formidable v3+
+    const file = files.profilePic?.[0]; 
     if (!file || !file.filepath) return res.status(400).json({ error: "No file uploaded" });
 
     const fileName = `${Date.now()}-${file.originalFilename}`;
     const finalPath = path.join(form.uploadDir, fileName);
 
-    fs.renameSync(file.filepath, finalPath); // ✅ Move temp file to final location
+    fs.renameSync(file.filepath, finalPath); 
 
     const imageUrl = `/uploads/${fileName}`;
 
-    // ✅ Update DB with new image path
     await prisma.users.update({
       where: { email: decoded.email },
       data: { profile_photo: imageUrl },

@@ -1,20 +1,21 @@
 import { format } from 'date-fns';
 import prisma from "@/lib/prisma";
 
-
 const formatTime = (date) => {
+  if (!date || isNaN(new Date(date))) return '';
   const options = { hour: 'numeric', minute: 'numeric', hour12: true };
-  return new Intl.DateTimeFormat('en-US', options).format(date);
+  return new Intl.DateTimeFormat('en-US', options).format(new Date(date));
 };
 
 const calculateTotalWorkingHours = (sessions) => {
   let totalSeconds = 0;
 
-  sessions.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
+  const validSessions = sessions.filter(s => s.check_in && s.check_out);
+  validSessions.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
 
-  for (let i = 0; i < sessions.length; i++) {
-    const checkInTime = new Date(sessions[i].check_in);
-    const checkOutTime = new Date(sessions[i].check_out);
+  for (let i = 0; i < validSessions.length; i++) {
+    const checkInTime = new Date(validSessions[i].check_in);
+    const checkOutTime = new Date(validSessions[i].check_out);
     const duration = (checkOutTime - checkInTime) / 1000;
     totalSeconds += duration;
   }
@@ -25,12 +26,23 @@ const calculateTotalWorkingHours = (sessions) => {
 
   return {
     totalSeconds,
-    formatted: `${hours} hour(s) ${minutes} minute(s) ${seconds} second(s)`
+    formatted: `${hours.toString().padStart(2, '0')}:${minutes
+      .toString()
+      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
   };
 };
 
-const calculatePresence = (totalSeconds) => {
+const calculateAttendanceStatus = (totalSeconds) => {
   return totalSeconds >= 14400 ? 'Present' : 'Absent';
+};
+
+const getLoginStatus = (sessions) => {
+  const hasCheckIn = sessions.some(s => s.check_in);
+  const hasCheckOut = sessions.every(s => s.check_out); // all check-outs done
+
+  if (hasCheckIn && hasCheckOut) return 'Logged Out';
+  if (hasCheckIn && !hasCheckOut) return 'Logged In';
+  return 'Not Logged In';
 };
 
 export default async function handler(req, res) {
@@ -48,72 +60,67 @@ export default async function handler(req, res) {
     const endOfMonth = new Date(startOfMonth);
     endOfMonth.setMonth(endOfMonth.getMonth() + 1);
 
-    // Converted SQL to Prisma (attendance rows)
     const rows = await prisma.attendance.findMany({
       where: {
-        empid: empid,
+        empid,
         date: {
           gte: startOfMonth,
-          lt: endOfMonth
-        }
+          lt: endOfMonth,
+        },
       },
       orderBy: {
-        date: 'asc'
-      }
+        date: 'asc',
+      },
     });
 
     const groupedSessions = rows.reduce((acc, row) => {
       const dateKey = new Date(row.date).toISOString().split('T')[0];
-      if (!acc[dateKey]) {
-        acc[dateKey] = [];
-      }
+      if (!acc[dateKey]) acc[dateKey] = [];
       acc[dateKey].push(row);
       return acc;
     }, {});
 
     const attendance = Object.entries(groupedSessions).map(([date, sessions]) => {
       const formattedDate = format(new Date(date), 'dd-MM-yyyy');
-      const firstCheckIn = new Date(Math.min(...sessions.map(s => new Date(s.check_in))));
-      const lastCheckOut = new Date(Math.max(...sessions.map(s => new Date(s.check_out))));
+      const login_status = getLoginStatus(sessions);
+
+      const validCheckIns = sessions.map(s => new Date(s.check_in)).filter(d => !isNaN(d));
+      const validCheckOuts = sessions.map(s => new Date(s.check_out)).filter(d => !isNaN(d));
+
+      const firstCheckIn = validCheckIns.length ? new Date(Math.min(...validCheckIns)) : null;
+      const lastCheckOut = validCheckOuts.length ? new Date(Math.max(...validCheckOuts)) : null;
+
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
-      const status = calculatePresence(totalSeconds);
+      const attendance_status = calculateAttendanceStatus(totalSeconds);
 
       return {
         date: formattedDate,
         check_in: formatTime(firstCheckIn),
-        check_out: formatTime(lastCheckOut),
+        check_out: login_status === 'Logged Out' ? formatTime(lastCheckOut) : '',
         total_hours: formatted,
-        status
+        login_status,
+        attendance_status,
       };
     });
 
-    const presentDays = attendance.filter(row => row.status === 'Present').length;
+    const presentDays = attendance.filter(row => row.attendance_status === 'Present').length;
     const totalDays = attendance.length;
     const absentDays = totalDays - presentDays;
 
-    // Converted SQL to Prisma (user info)
     const user = await prisma.users.findUnique({
-      where: {
-        empid: empid
-      },
-      select: {
-        name: true,
-        email: true
-      }
+      where: { empid },
+      select: { name: true, email: true },
     });
 
     const employee = {
-      name: user?.name || 'N/A',
-      email: user?.email || 'N/A',
-      empid: empid,
+      name: user?.name || '--',
+      email: user?.email || '--',
+      empid,
       daysPresent: presentDays,
-      daysAbsent: absentDays
+      daysAbsent: absentDays,
     };
 
-    res.status(200).json({
-      employee,
-      attendance
-    });
+    res.status(200).json({ employee, attendance });
 
   } catch (error) {
     console.error('Attendance Error:', error);
