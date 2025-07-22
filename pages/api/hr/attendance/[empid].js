@@ -9,13 +9,14 @@ const formatTime = (date) => {
 
 const calculateTotalWorkingHours = (sessions) => {
   let totalSeconds = 0;
+  const now = new Date();
 
-  const validSessions = sessions.filter(s => s.check_in && s.check_out);
+  const validSessions = sessions.filter(s => s.check_in);
   validSessions.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
 
   for (let i = 0; i < validSessions.length; i++) {
     const checkInTime = new Date(validSessions[i].check_in);
-    const checkOutTime = new Date(validSessions[i].check_out);
+    const checkOutTime = validSessions[i].check_out ? new Date(validSessions[i].check_out) : now;
     const duration = (checkOutTime - checkInTime) / 1000;
     totalSeconds += duration;
   }
@@ -38,7 +39,7 @@ const calculateAttendanceStatus = (totalSeconds) => {
 
 const getLoginStatus = (sessions) => {
   const hasCheckIn = sessions.some(s => s.check_in);
-  const hasCheckOut = sessions.every(s => s.check_out); // all check-outs done
+  const hasCheckOut = sessions.every(s => s.check_out); 
 
   if (hasCheckIn && hasCheckOut) return 'Logged Out';
   if (hasCheckIn && !hasCheckOut) return 'Logged In';
@@ -96,7 +97,7 @@ export default async function handler(req, res) {
       return {
         date: formattedDate,
         check_in: formatTime(firstCheckIn),
-        check_out: login_status === 'Logged Out' ? formatTime(lastCheckOut) : '',
+        check_out: login_status === 'Logged In' ? '--' : formatTime(lastCheckOut),
         total_hours: formatted,
         login_status,
         attendance_status,

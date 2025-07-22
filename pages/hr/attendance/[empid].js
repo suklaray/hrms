@@ -55,7 +55,7 @@ const ViewAttendance = () => {
 
         <div className="overflow-x-auto shadow-lg rounded-xl">
           <table className="min-w-full bg-white rounded-lg overflow-hidden">
-            <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
+            <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center">
               <tr>
                 <th className="border px-4 py-2">Date</th>
                 <th className="border px-4 py-2">Login Time</th>
@@ -65,13 +65,13 @@ const ViewAttendance = () => {
                 <th className="border px-4 py-2">Attendance Status</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 text-sm">
+            <tbody className="text-gray-700 text-sm text-center">
               {attendanceData.length > 0 ? (
                 attendanceData.map((attendance, index) => (
                   <tr
                     key={attendance.date}
                     className={`border-b hover:bg-indigo-300 transition ${
-                      index % 2 === 0 ? "bg-indigo-100" : "bg-white"
+                      index % 2 === 0 ? "bg-white-100" : "bg-gray-100"
                     }`}
                   >
                     <td className="px-6 py-4">{attendance.date}</td>

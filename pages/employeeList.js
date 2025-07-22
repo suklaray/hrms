@@ -64,11 +64,11 @@ export default function EmployeeListPage() {
       : employees.filter(emp => emp.role?.toLowerCase() === filter.toLowerCase());
 
   const roles = [
-    { label: "All", color: "bg-indigo-500" },
-    { label: "HR", color: "bg-green-500" },
-    { label: "Admin", color: "bg-yellow-500" },
-    { label: "SuperAdmin", color: "bg-pink-500" },
-    { label: "Employee", color: "bg-blue-500" },
+    { label: "All"},
+    { label: "HR"},
+    { label: "Admin"},
+    { label: "SuperAdmin"},
+    { label: "Employee"},
   ];
 
   return (
@@ -99,21 +99,21 @@ export default function EmployeeListPage() {
         <div className="bg-white shadow-xl rounded-2xl p-6 overflow-x-auto">
           <h2 className="text-3xl font-bold mb-6 text-indigo-700 text-center">Employee Directory</h2>
           <table className="min-w-full divide-y divide-indigo-300 rounded-lg overflow-hidden">
-            <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white uppercase">
+            <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white uppercase text-center">
               <tr>
-                <th className="px-4 py-3 text-sm font-medium text-left">Emp ID</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Name</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Email</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Position</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Experience</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Role</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Type</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Joining</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Status</th>
-                <th className="px-4 py-3 text-sm font-medium text-left">Actions</th>
+                <th className="px-4 py-3 text-sm font-medium ">Emp ID</th>
+                <th className="px-4 py-3 text-sm font-medium ">Name</th>
+                <th className="px-4 py-3 text-sm font-medium ">Email</th>
+                <th className="px-4 py-3 text-sm font-medium ">Position</th>
+                <th className="px-4 py-3 text-sm font-medium ">Experience</th>
+                <th className="px-4 py-3 text-sm font-medium ">Role</th>
+                <th className="px-4 py-3 text-sm font-medium ">Type</th>
+                <th className="px-4 py-3 text-sm font-medium ">Joining</th>
+                <th className="px-4 py-3 text-sm font-medium ">Status</th>
+                <th className="px-4 py-3 text-sm font-medium ">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 text-center">
               {filteredEmployees.map((emp, index) => (
                 <tr key={emp.id} className={index % 2 === 0 ? "bg-indigo-50" : "bg-white"}>
                   <td className="px-4 py-2">{emp.empid}</td>
@@ -129,13 +129,16 @@ export default function EmployeeListPage() {
                   <td className="px-4 py-2">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        emp.status === "Active"
+                        emp.status === "Logged In" || emp.status === "Active"
                           ? "bg-green-100 text-green-800"
+                          : emp.status === "Logged Out"
+                          ? "bg-gray-100 text-gray-700"
                           : "bg-red-100 text-red-800"
                       }`}
                     >
                       {emp.status}
                     </span>
+
                   </td>
                   <td className="px-4 py-2 space-x-2">
                     <button
