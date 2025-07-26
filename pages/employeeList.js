@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
 import { FaEye, FaTrash } from "react-icons/fa";
+import { withRoleProtection } from "@/lib/withRoleProtection"; // corrected import path
 
-export default function EmployeeListPage() {
+export const getServerSideProps = withRoleProtection(["hr", "admin", "superadmin"]);
+
+export default function EmployeeListPage({ user }) {
   const [employees, setEmployees] = useState([]);
   const [filter, setFilter] = useState("All");
   const router = useRouter();
@@ -58,26 +61,60 @@ export default function EmployeeListPage() {
   const countByRole = (roleName) =>
     employees.filter(emp => emp.role?.toLowerCase() === roleName.toLowerCase()).length;
 
-  const filteredEmployees =
-    filter === "All"
-      ? employees
-      : employees.filter(emp => emp.role?.toLowerCase() === filter.toLowerCase());
+  const canViewRole = (targetRole) => {
+    const role = user.role.toLowerCase();
+    const target = targetRole.toLowerCase();
+    if (role === "superadmin") return true;
+    if (role === "admin" && (target === "hr" || target === "employee")) return true;
+    if (role === "hr" && target === "employee") return true;
+    return false;
+  };
+
+  const filteredEmployees = employees.filter((emp) => {
+    const target = emp.role?.toLowerCase();
+    if (filter === "All") {
+      return canViewRole(target);
+    }
+    return emp.role?.toLowerCase() === filter.toLowerCase() && canViewRole(target);
+  });
 
   const roles = [
-    { label: "All"},
-    { label: "HR"},
-    { label: "Admin"},
-    { label: "SuperAdmin"},
-    { label: "Employee"},
+    { label: "HR" },
+    { label: "Admin" },
+    { label: "SuperAdmin" },
+    { label: "Employee" },
   ];
+
+  // Show "All" button only if user can view more than one role
+  const allowedRolesForUser = roles
+    .map(({ label }) => label)
+    .filter(role => canViewRole(role));
+
+  const showAllButton = allowedRolesForUser.length > 1;
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
       <SideBar handleLogout={handleLogout} />
       <div className="flex-1 p-6">
         {/* Total Count Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            {roles.map(({ label }) => (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          {showAllButton && (
+            <button
+              onClick={() => setFilter("All")}
+              className="rounded-xl bg-gray-400 p-0.5 transition-all hover:scale-105"
+            >
+              <div className="bg-gradient-to-l from-gray-100 to-white rounded-xl h-17 flex flex-col justify-center items-center shadow-inner">
+                <span className="text-xl font-semibold text-gray-500 uppercase">
+                  All
+                </span>
+                <span className="text-md font-bold text-gray-500">
+                  ({filteredEmployees.length})
+                </span>
+              </div>
+            </button>
+          )}
+          {roles.map(({ label }) => (
+            canViewRole(label) && (
               <button
                 key={label}
                 onClick={() => setFilter(label)}
@@ -87,35 +124,41 @@ export default function EmployeeListPage() {
                   <span className="text-xl font-semibold text-gray-500 uppercase">
                     {label}
                   </span>
-                  <span className="text-md font-bold text-gray-500">({label === "All" ? employees.length : countByRole(label)})</span>
+                  <span className="text-md font-bold text-gray-500">
+                    ({countByRole(label)})
+                  </span>
                 </div>
               </button>
-            ))}
-          </div>
-
-
+            )
+          ))}
+        </div>
 
         {/* Table */}
         <div className="bg-white shadow-xl rounded-2xl p-6 overflow-x-auto">
-          <h2 className="text-3xl font-bold mb-6 text-indigo-700 text-center">Employee Directory</h2>
+          <h2 className="text-3xl font-bold mb-6 text-indigo-700 text-center">
+            Employee Directory
+          </h2>
           <table className="min-w-full divide-y divide-indigo-300 rounded-lg overflow-hidden">
             <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white uppercase text-center">
               <tr>
-                <th className="px-4 py-3 text-sm font-medium ">Emp ID</th>
-                <th className="px-4 py-3 text-sm font-medium ">Name</th>
-                <th className="px-4 py-3 text-sm font-medium ">Email</th>
-                <th className="px-4 py-3 text-sm font-medium ">Position</th>
-                <th className="px-4 py-3 text-sm font-medium ">Experience</th>
-                <th className="px-4 py-3 text-sm font-medium ">Role</th>
-                <th className="px-4 py-3 text-sm font-medium ">Type</th>
-                <th className="px-4 py-3 text-sm font-medium ">Joining</th>
-                <th className="px-4 py-3 text-sm font-medium ">Status</th>
-                <th className="px-4 py-3 text-sm font-medium ">Actions</th>
+                <th className="px-4 py-3 text-sm font-medium">Emp ID</th>
+                <th className="px-4 py-3 text-sm font-medium">Name</th>
+                <th className="px-4 py-3 text-sm font-medium">Email</th>
+                <th className="px-4 py-3 text-sm font-medium">Position</th>
+                <th className="px-4 py-3 text-sm font-medium">Experience</th>
+                <th className="px-4 py-3 text-sm font-medium">Role</th>
+                <th className="px-4 py-3 text-sm font-medium">Type</th>
+                <th className="px-4 py-3 text-sm font-medium">Joining</th>
+                <th className="px-4 py-3 text-sm font-medium">Status</th>
+                <th className="px-4 py-3 text-sm font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 text-center">
               {filteredEmployees.map((emp, index) => (
-                <tr key={emp.id} className={index % 2 === 0 ? "bg-indigo-50" : "bg-white"}>
+                <tr
+                  key={emp.id}
+                  className={index % 2 === 0 ? "bg-indigo-50" : "bg-white"}
+                >
                   <td className="px-4 py-2">{emp.empid}</td>
                   <td className="px-4 py-2 font-medium text-gray-800">{emp.name}</td>
                   <td className="px-4 py-2">{emp.email}</td>
@@ -124,7 +167,9 @@ export default function EmployeeListPage() {
                   <td className="px-4 py-2 uppercase">{emp.role}</td>
                   <td className="px-4 py-2">{emp.employee_type || "N/A"}</td>
                   <td className="px-4 py-2">
-                    {emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString() : "N/A"}
+                    {emp.date_of_joining
+                      ? new Date(emp.date_of_joining).toLocaleDateString()
+                      : "N/A"}
                   </td>
                   <td className="px-4 py-2">
                     <span
@@ -138,7 +183,6 @@ export default function EmployeeListPage() {
                     >
                       {emp.status}
                     </span>
-
                   </td>
                   <td className="px-4 py-2 space-x-2">
                     <button
@@ -161,7 +205,7 @@ export default function EmployeeListPage() {
               {filteredEmployees.length === 0 && (
                 <tr>
                   <td colSpan="10" className="text-center text-gray-500 py-6">
-                    No employees found for this filter.
+                    No employees found for your role.
                   </td>
                 </tr>
               )}

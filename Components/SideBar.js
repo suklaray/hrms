@@ -1,17 +1,30 @@
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from "lucide-react";
 
-export default function Sidebar({ handleLogout }) {
+export default function Sidebar({ handleLogout, user }) {
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [payrollOpen, setPayrollOpen] = useState(false); 
+  const [payrollOpen, setPayrollOpen] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [performanceOpen, setPerformanceOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [checkedIn, setCheckedIn] = useState(false);
+
+  const role = user?.role?.toLowerCase();
+  const hoverColor =
+    role === "superadmin"
+      ? "hover:bg-purple-600"
+      : role === "admin"
+      ? "hover:bg-sky-600"
+      : "hover:bg-indigo-600"; // default to HR
+
+  const toggleCheckInOut = () => {
+    setCheckedIn((prev) => !prev);
+    // Optional: add API call here to persist check-in/check-out
+  };
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard" },
-    { name: "Register New Employee", path: "/registerEmployee" },
     { name: "View Employees Details", path: "/employeeList" },
     { name: "Recruitment Management", path: "/Recruitment/recruitment" },
   ];
@@ -43,12 +56,38 @@ export default function Sidebar({ handleLogout }) {
 
   return (
     <div className="min-h-screen w-72 bg-gray-900 text-white p-6 shadow-lg">
-      <h2 className="text-3xl font-bold mb-8">HRMS Panel</h2>
+      <h6 className="text-2xl font-bold mb-4 capitalize pb-5 pt-3 text-center bg-indigo-9g00 rounded-xl">
+        {role === "superadmin"
+          ? "Superadmin Panel"
+          : role === "admin"
+          ? "Admin Panel"
+          : "HR Portal"}
+      </h6>
+
+      {/* Toggle Check-in/Check-out Button */}
+      {/*{(role === "hr" || role === "admin") && (
+        <div className="mb-6">
+          <button
+            onClick={toggleCheckInOut}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition duration-300 ${
+              checkedIn
+                ? "bg-yellow-600 hover:bg-yellow-700"
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {checkedIn ? <ToggleLeft size={20} /> : <ToggleRight size={20} />}
+            {checkedIn ? "Check Out" : "Check In"}
+          </button>
+        </div>
+      )}*/}
+
       <ul className="space-y-4">
         {navItems.map((item) => (
           <li key={item.name}>
             <Link href={item.path}>
-              <span className="block w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer">
+              <span
+                className={`block w-full text-left px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+              >
                 {item.name}
               </span>
             </Link>
@@ -59,7 +98,7 @@ export default function Sidebar({ handleLogout }) {
         <li>
           <button
             onClick={() => setAttendanceOpen(!attendanceOpen)}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
           >
             <span>Attendance & Leave Management</span>
             {attendanceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -69,7 +108,9 @@ export default function Sidebar({ handleLogout }) {
               {attendanceSubItems.map((subItem) => (
                 <li key={subItem.name}>
                   <Link href={subItem.path}>
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    <span
+                      className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
+                    >
                       {subItem.name}
                     </span>
                   </Link>
@@ -83,7 +124,7 @@ export default function Sidebar({ handleLogout }) {
         <li>
           <button
             onClick={() => setPayrollOpen(!payrollOpen)}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
           >
             <span>Payroll Management</span>
             {payrollOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -93,7 +134,9 @@ export default function Sidebar({ handleLogout }) {
               {payrollSubItems.map((subItem) => (
                 <li key={subItem.name}>
                   <Link href={subItem.path}>
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    <span
+                      className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
+                    >
                       {subItem.name}
                     </span>
                   </Link>
@@ -103,11 +146,11 @@ export default function Sidebar({ handleLogout }) {
           )}
         </li>
 
-        {/* Compliance Management */}
+        {/* Compliance Dropdown */}
         <li>
           <button
             onClick={() => setComplianceOpen(!complianceOpen)}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
           >
             <span>Compliance Management</span>
             {complianceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -117,7 +160,9 @@ export default function Sidebar({ handleLogout }) {
               {complianceSubItems.map((subItem) => (
                 <li key={subItem.name}>
                   <Link href={subItem.path}>
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    <span
+                      className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
+                    >
                       {subItem.name}
                     </span>
                   </Link>
@@ -127,11 +172,11 @@ export default function Sidebar({ handleLogout }) {
           )}
         </li>
 
-        {/* Performance Management */}
+        {/* Performance Dropdown */}
         <li>
           <button
             onClick={() => setPerformanceOpen(!performanceOpen)}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
           >
             <span>Performance Management</span>
             {performanceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -141,7 +186,9 @@ export default function Sidebar({ handleLogout }) {
               {performanceSubItems.map((subItem) => (
                 <li key={subItem.name}>
                   <Link href={subItem.path}>
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    <span
+                      className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
+                    >
                       {subItem.name}
                     </span>
                   </Link>
@@ -154,7 +201,9 @@ export default function Sidebar({ handleLogout }) {
         {/* Customer Connect */}
         <li>
           <Link href="/customer-connect">
-            <span className="block w-full text-left px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer">
+            <span
+              className={`block w-full text-left px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+            >
               Customer Connect
             </span>
           </Link>
@@ -164,7 +213,7 @@ export default function Sidebar({ handleLogout }) {
         <li>
           <button
             onClick={() => setSettingsOpen(!settingsOpen)}
-            className="w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
           >
             <span>Settings</span>
             {settingsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -173,7 +222,9 @@ export default function Sidebar({ handleLogout }) {
             <ul className="pl-6 pt-2 space-y-2">
               <li>
                 <Link href="/settings/profile">
-                  <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                  <span
+                    className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
+                  >
                     Profile
                   </span>
                 </Link>

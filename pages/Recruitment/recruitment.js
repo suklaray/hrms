@@ -152,7 +152,7 @@ export default function Candidates() {
                 {(candidates || []).map((candidate, index) => (
                   <tr
                     key={candidate.candidate_id}
-                    className={`transition-all duration-300 hover:bg-indigo-300 ${index % 2 === 0 ? "bg-white" : "bg-indigo-50"}`}
+                    className={`transition-all duration-300 hover:bg-blue-200 ${index % 2 === 0 ? "bg-white" : "bg-indigo-50"}`}
                   >
                     <td className="px-6 py-4 font-semibold text-indigo-700">
                       #{candidate.candidate_id}
@@ -220,12 +220,12 @@ export default function Candidates() {
                     {/* Verification Button */}
                       <td className="px-6 py-4 text-center">
                         <button
-                          className={`px-4 py-1 text-xs font-semibold rounded-full transition ${
+                          onClick={() => handleVerification(candidate)}
+                          className={`px-3 py-1 rounded-full text-sm font-medium transition ${
                             candidate.verification
                               ? "bg-green-100 text-green-700"
-                              : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                          }`}
-                          onClick={() => handleVerification(candidate)}
+                              : "bg-yellow-100 text-yellow-700"
+                          } cursor-pointer hover:shadow-md`}
                         >
                           {candidate.verification ? "Verified" : "Not Verified"}
                         </button>

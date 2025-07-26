@@ -1,37 +1,8 @@
-// pages/dashboard.js
-import jwt from "jsonwebtoken";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { withRoleProtection } from "@/lib/withRoleProtection";
 
-export async function getServerSideProps({ req }) {
-  const token = req.cookies.token;
-
-  if (!token) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return {
-      props: {
-        user: decoded,
-      },
-    };
-  } catch (err) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-}
+export const getServerSideProps = withRoleProtection(["superadmin", "admin", "hr"]);
 
 export default function Dashboard({ user }) {
   const router = useRouter();
@@ -47,7 +18,8 @@ export default function Dashboard({ user }) {
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      <SideBar handleLogout={handleLogout} />
+      {/* Pass user to Sidebar here */}
+      <SideBar handleLogout={handleLogout} user={user} />
       <div className="flex-1 p-6 overflow-auto">
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-3xl font-semibold text-indigo-700 mb-2">

@@ -65,17 +65,15 @@ export default function CandidateForm() {
     }
   };
 
-  const handleDocumentUpload = async (e, type) => {
+const handleDocumentUpload = async (e, type) => {
   const file = e.target.files[0];
   if (!file) return;
 
   const formDataUpload = new FormData();
   formDataUpload.append("document", file);
+  formDataUpload.append("type", type); // 'aadhar' or 'pan'
 
-  // Show loader only for Aadhar or PAN
-  if (type === "aadhar" || type === "pan") {
-    setIsLoading(true);
-  }
+  setIsLoading(true);
 
   try {
     const res = await fetch("/api/textract", {
@@ -85,28 +83,32 @@ export default function CandidateForm() {
 
     const data = await res.json();
 
-    if (data?.extractedText) {
-      let number = "";
+    let number = "";
 
-      if (type === "aadhar") {
-        const match = data.extractedText.match(/\b\d{4}\s\d{4}\s\d{4}\b/);
+    // SAFETY CHECK
+    if (!data.extractedText) {
+      console.warn("No text extracted from document.");
+      alert("No text found in the uploaded document.");
+    } else {
+      if (type === "aadhar_card") {
+        const match = data.extractedText.match(/\b\d{4}\s?\d{4}\s?\d{4}\b/);
         if (match) number = match[0].replace(/\s/g, "");
-      } else if (type === "pan") {
+      } else if (type === "pan_card") {
         const match = data.extractedText.match(/\b[A-Z]{5}[0-9]{4}[A-Z]\b/);
         if (match) number = match[0];
       }
-
-      setFormData((prev) => ({
-        ...prev,
-        [`${type}_number`]: number,
-      }));
     }
+
+    setFormData((prev) => ({
+      ...prev,
+      [`${type}_number`]: number,
+      [`${type}_card`]: data?.filePath || "",
+    }));
   } catch (err) {
     console.error("Textract error:", err);
+    alert("Failed to process the document.");
   } finally {
-    if (type === "aadhar" || type === "pan") {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
   }
 };
 
@@ -323,7 +325,7 @@ export default function CandidateForm() {
                 type="file"
                 name="aadhar_card"
                 accept="image/*,application/pdf"
-                onChange={(e) => handleDocumentUpload(e, "aadhar")}
+                onChange={(e) => handleDocumentUpload(e, "aadhar_card")}
                 required
                 className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
               />
@@ -332,7 +334,7 @@ export default function CandidateForm() {
                 type="file"
                 name="pan_card"
                 accept="image/*,application/pdf"
-                onChange={(e) => handleDocumentUpload(e, "pan")}
+                onChange={(e) => handleDocumentUpload(e, "pan_card")}
                 required
                 className="w-full px-5 py-3 border border-indigo-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-center"
               />
