@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import moment from 'moment'; 
 import SideBar from "@/Components/SideBar";
+import { useRouter } from 'next/router';
 
 export default function ViewLeaveRequests() {
+  const router = useRouter();
   const [leaveData, setLeaveData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -18,6 +20,10 @@ export default function ViewLeaveRequests() {
         setLoading(false);
       });
   }, []);
+
+  const handleLogout = () => {
+    router.push("/login");
+  };
 
   const handleStatusChange = async (leaveId, newStatus) => {
     try {
@@ -40,68 +46,79 @@ export default function ViewLeaveRequests() {
     }
   };
 
-  // Helper function to format dates using moment.js
   const formatDate = (dateString) => {
     return moment(dateString).isValid() ? moment(dateString).format('DD/MM/YYYY') : 'Invalid Date';
   };
 
-  if (loading) return <div className="p-6 text-center text-xl">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
+        <SideBar handleLogout={handleLogout} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-indigo-700 text-xl font-semibold">Loading leave requests...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex">
-  {/* Sidebar */}
-  <SideBar />
-
-  {/* Main Content */}
-  <div className="min-h-screen w-full p-8 text-gray-900 "> {/* Adjusted to leave space for sidebar */}
-    <h2 className="text-3xl font-bold mb-6 text-center text-indigo-700">Employee Leave Requests</h2>
-    <div className="overflow-x-auto bg-white rounded-lg shadow-lg">
-      <table className="min-w-full text-sm text-gray-900">
-        <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
-          <tr>
-            <th className="p-3 text-left">Emp ID</th>
-            <th className="p-3 text-left">Name</th>
-            <th className="p-3 text-left">Leave Type</th>
-            <th className="p-3 text-left">Start Date</th>
-            <th className="p-3 text-left">End Date</th>
-            <th className="p-3 text-left">Reason</th>
-            <th className="p-3 text-left">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {leaveData.map((leave, index) => (
-            <tr key={leave.id} className={`border-b ${index % 2 === 0 ? 'bg-indigo-100' : 'bg-white'} hover:bg-indigo-300`}>
-              <td className="p-3">{leave.empid}</td>
-              <td className="p-3">{leave.name}</td>
-              <td className="p-3">{leave.leave_type}</td>
-              <td className="p-3">{formatDate(leave.from_date)}</td>
-              <td className="p-3">{formatDate(leave.to_date)}</td>
-              <td className="p-3">{leave.reason}</td>
-              <td className="p-3">
-                <select
-                  value={leave.status}
-                  onChange={(e) => handleStatusChange(leave.id, e.target.value)}
-                  className={`border rounded px-2 py-1
-                    ${
-                      leave.status === 'Approved'
-                        ? 'bg-green-100 text-green-800 border-green-300'
-                        : leave.status === 'Rejected'
-                        ? 'bg-orange-100 text-orange-800 border-orange-300'
-                        : 'bg-blue-100 text-blue-800 border-blue-300'
-                    }
-                  `}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
+      <SideBar handleLogout={handleLogout} />
+      <div className="flex-1 p-6">
+        {/* Table */}
+        <div className="bg-white shadow-xl rounded-2xl p-6 overflow-x-auto">
+          <h2 className="text-3xl font-bold mb-6 text-indigo-700 text-center">Employee Leave Requests</h2>
+          <table className="min-w-full divide-y divide-indigo-300 rounded-lg overflow-hidden">
+            <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white uppercase">
+              <tr>
+                <th className="px-4 py-3 text-sm font-medium text-left">Emp ID</th>
+                <th className="px-4 py-3 text-sm font-medium text-left">Name</th>
+                <th className="px-4 py-3 text-sm font-medium text-left">Leave Type</th>
+                <th className="px-4 py-3 text-sm font-medium text-left">Start Date</th>
+                <th className="px-4 py-3 text-sm font-medium text-left">End Date</th>
+                <th className="px-4 py-3 text-sm font-medium text-left">Reason</th>
+                <th className="px-4 py-3 text-sm font-medium text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {leaveData.map((leave, index) => (
+                <tr key={leave.id} className={index % 2 === 0 ? "bg-indigo-50" : "bg-white"}>
+                  <td className="px-4 py-2">{leave.empid}</td>
+                  <td className="px-4 py-2 font-medium text-gray-800">{leave.name}</td>
+                  <td className="px-4 py-2">{leave.leave_type}</td>
+                  <td className="px-4 py-2">{formatDate(leave.from_date)}</td>
+                  <td className="px-4 py-2">{formatDate(leave.to_date)}</td>
+                  <td className="px-4 py-2">{leave.reason}</td>
+                  <td className="px-4 py-2">
+                    <select
+                      value={leave.status}
+                      onChange={(e) => handleStatusChange(leave.id, e.target.value)}
+                      className={`px-2 py-1 rounded-full text-xs font-semibold border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                        leave.status === 'Approved'
+                          ? 'bg-green-100 text-green-800'
+                          : leave.status === 'Rejected'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+              {leaveData.length === 0 && (
+                <tr>
+                  <td colSpan="7" className="text-center text-gray-500 py-6">
+                    No leave requests found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-);
+  );
 }

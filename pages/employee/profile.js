@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Sidebar from "@/Components/empSidebar";
+import { User, Mail, Camera, Lock, Save, X, Eye, EyeOff } from "lucide-react";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -57,96 +58,177 @@ export default function Profile() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
-      <div className="flex-1 bg-gradient-to-l from-purple-100 to-sky-100 p-10">
-        <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-8 relative">
-          <h2 className="text-2xl font-bold text-indigo-700 mb-6 text-center">Profile Settings</h2>
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
+              <p className="text-gray-600">Manage your personal information and preferences</p>
+            </div>
+          </div>
+        </div>
 
-          {user ? (
-            <>
-              <div className="flex flex-col items-center mb-6">
-                {preview || user.profilePic ? (
-                  <img
-                    src={preview || user.profilePic}
-                    alt="Profile"
-                    className="w-[120px] h-[120px] rounded-full object-cover border-4 border-indigo-500"
-                  />
-                ) : (
-                  <div className="w-[120px] h-[120px] rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-semibold text-sm border-2 border-dashed border-indigo-400">
-                    + ADD
+        <div className="p-6">
+          <div className="max-w-4xl mx-auto">
+            {user ? (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Profile Picture Section */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-center">
+                      <Camera className="w-5 h-5 mr-2" />
+                      Profile Picture
+                    </h3>
+                    
+                    <div className="relative inline-block mb-4">
+                      {preview || user.profilePic ? (
+                        <img
+                          src={preview || user.profilePic}
+                          alt="Profile"
+                          className="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
+                        />
+                      ) : (
+                        <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
+                          <User className="w-12 h-12 text-gray-400" />
+                        </div>
+                      )}
+                      <button
+                        onClick={() => fileInputRef.current.click()}
+                        className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+
+                    <button
+                      onClick={() => fileInputRef.current.click()}
+                      className="w-full bg-blue-50 text-blue-700 py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                    >
+                      Change Profile Picture
+                    </button>
                   </div>
-                )}
+                </div>
 
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
+                {/* Personal Information */}
+                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
+                  <div className="p-6 border-b border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <User className="w-5 h-5 mr-2" />
+                      Personal Information
+                    </h3>
+                    <p className="text-sm text-gray-600">Your account details</p>
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                        <div className="flex items-center p-3 bg-gray-50 border border-gray-300 rounded-lg">
+                          <User className="w-5 h-5 text-gray-400 mr-3" />
+                          <span className="text-gray-900">{user.name}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                        <div className="flex items-center p-3 bg-gray-50 border border-gray-300 rounded-lg">
+                          <Mail className="w-5 h-5 text-gray-400 mr-3" />
+                          <span className="text-gray-900">{user.email}</span>
+                        </div>
+                      </div>
+                    </div>
 
-                <button
-                  onClick={() => fileInputRef.current.click()}
-                  className="mt-3 text-indigo-600 hover:underline text-sm font-medium"
-                >
-                  Change Profile Picture
-                </button>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                      <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300 rounded-lg">
+                        <div className="flex items-center">
+                          <Lock className="w-5 h-5 text-gray-400 mr-3" />
+                          <span className="text-gray-900">••••••••</span>
+                        </div>
+                        <button
+                          onClick={() => setShowPasswordModal(true)}
+                          className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                        >
+                          <Lock className="w-4 h-4 mr-1" />
+                          Change Password
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-
-              <div className="space-y-4 text-sm text-gray-800">
-                <p><span className="font-semibold">Name:</span> {user.name}</p>
-                <p><span className="font-semibold">Email:</span> {user.email}</p>
-                <p>
-                  <span className="font-semibold">Password:</span> *****{" "}
-                  <button
-                    onClick={() => setShowPasswordModal(true)}
-                    className="text-indigo-600 hover:underline font-medium ml-2"
-                  >
-                    Change Password
-                  </button>
-                </p>
+            ) : (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
-            </>
-          ) : (
-            <p>Loading...</p>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
+      {/* Password Change Modal */}
       {showPasswordModal && (
-        <div className="fixed inset-0 z-50 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg w-[90%] max-w-md shadow-xl relative">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Change Password</h2>
-
-            <input
-              type="password"
-              placeholder="New Password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full mb-3 px-4 py-2 border rounded"
-            />
-
-            <input
-              type="password"
-              placeholder="Confirm New Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full mb-3 px-4 py-2 border rounded"
-            />
-
-            <div className="flex justify-end gap-3 mt-4">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Lock className="w-5 h-5 mr-2" />
+                  Change Password
+                </h3>
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 flex justify-end space-x-3">
               <button
                 onClick={() => setShowPasswordModal(false)}
-                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 text-sm"
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center"
               >
+                <X className="w-4 h-4 mr-1" />
                 Cancel
               </button>
               <button
                 onClick={handlePasswordUpdate}
-                className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
+                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center"
               >
-                Update
+                <Save className="w-4 h-4 mr-1" />
+                Update Password
               </button>
             </div>
           </div>

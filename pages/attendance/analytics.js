@@ -1,4 +1,5 @@
 import SideBar from "@/Components/SideBar";
+import { useRouter } from 'next/router';
 import {
   BarChart,
   Bar,
@@ -31,19 +32,25 @@ const yearlyStats = [
   { name: "Absent", value: 300 },
 ];
 
-const COLORS = ["#4ade80", "#f43f5e"]; // green, red
+const COLORS = ["#4ade80", "#f43f5e"];
 
 export default function AttendanceAnalytics() {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    router.push("/login");
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-r from-indigo-50 via-purple-100 to-white flex">
-      <SideBar />
-      <div className="flex-1 p-6 md:p-10">
-        <h2 className="text-4xl font-bold text-center text-indigo-700 mb-10">
+    <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
+      <SideBar handleLogout={handleLogout} />
+      <div className="flex-1 p-6">
+        <h2 className="text-3xl font-bold text-center text-indigo-700 mb-8">
           Attendance Analytics
         </h2>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           <SummaryCard title="Total Employees" value="150" />
           <SummaryCard title="Working Today" value="138" />
           <SummaryCard title="On Sick Leave" value="5" />
@@ -51,7 +58,7 @@ export default function AttendanceAnalytics() {
         </div>
 
         {/* Daily Bar Chart */}
-        <div className="bg-white rounded-3xl shadow-xl p-6 mb-10">
+        <div className="bg-white shadow-xl rounded-2xl p-6 mb-8">
           <h3 className="text-xl font-semibold text-gray-800 mb-4">
             Daily Attendance (This Week)
           </h3>
@@ -68,7 +75,7 @@ export default function AttendanceAnalytics() {
         </div>
 
         {/* Pie Charts for Monthly & Yearly */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <PieCard title="Monthly Attendance" data={monthlyStats} />
           <PieCard title="Yearly Attendance" data={yearlyStats} />
         </div>
@@ -79,8 +86,8 @@ export default function AttendanceAnalytics() {
 
 function SummaryCard({ title, value }) {
   return (
-    <div className="bg-white rounded-2xl shadow p-4 text-center">
-      <h4 className="text-md font-semibold text-gray-600">{title}</h4>
+    <div className="bg-white shadow-xl rounded-2xl p-4 text-center">
+      <h4 className="text-sm font-semibold text-gray-600">{title}</h4>
       <p className="text-2xl font-bold text-indigo-700 mt-2">{value}</p>
     </div>
   );
@@ -88,7 +95,7 @@ function SummaryCard({ title, value }) {
 
 function PieCard({ title, data }) {
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6">
+    <div className="bg-white shadow-xl rounded-2xl p-6">
       <h3 className="text-xl font-semibold text-gray-800 mb-4">{title}</h3>
       <ResponsiveContainer width="100%" height={300}>
         <PieChart>
