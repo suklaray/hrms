@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import SideBar from "@/Components/SideBar";
 import {
@@ -31,41 +31,66 @@ export default function RegisterEmployee() {
         role: "employee"
     });
     const [generatedPassword, setGeneratedPassword] = useState("");
+    const [generatedUsername, setGeneratedUsername] = useState("");
     const [message, setMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [errors, setErrors] = useState({});
     const [passwordCopied, setPasswordCopied] = useState(false);
+    const [usernameCopied, setUsernameCopied] = useState(false);
+    const [currentDate, setCurrentDate] = useState('');
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        setCurrentDate(new Date().toLocaleDateString());
+    }, []);
+
+    if (!mounted) {
+        return null;
+    }
 
     const validateForm = () => {
-        const newErrors = {};
-        
-        if (!formData.name.trim()) newErrors.name = "Name is required";
-        if (!formData.email.trim()) {
-            newErrors.email = "Email is required";
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            newErrors.email = "Email is invalid";
+        if (!formData.name.trim()) {
+            alert("Name is required");
+            return false;
         }
-        if (!formData.position.trim()) newErrors.position = "Position is required";
-        if (!formData.dateOfJoining) newErrors.dateOfJoining = "Date of joining is required";
-        if (!formData.experience) newErrors.experience = "Experience is required";
-        if (!formData.employeeType) newErrors.employeeType = "Employee type is required";
-        if (!formData.role) newErrors.role = "Role is required";
-        
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        if (!formData.email.trim()) {
+            alert("Email is required");
+            return false;
+        }
+        if (!/\S+@\S+\.\S+/.test(formData.email)) {
+            alert("Email is invalid");
+            return false;
+        }
+        if (!formData.position.trim()) {
+            alert("Position is required");
+            return false;
+        }
+        if (!formData.dateOfJoining) {
+            alert("Date of joining is required");
+            return false;
+        }
+        if (!formData.experience) {
+            alert("Experience is required");
+            return false;
+        }
+        if (!formData.employeeType) {
+            alert("Employee type is required");
+            return false;
+        }
+        return true;
     };
 
     const handleInputChange = (field, value) => {
+        console.log('Input change:', field, value); // Debug log
         setFormData(prev => ({ ...prev, [field]: value }));
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: "" }));
         }
     };
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        
+    const handleRegister = async () => {
         if (!validateForm()) return;
         
         setIsLoading(true);
@@ -95,6 +120,7 @@ export default function RegisterEmployee() {
             }
 
             setGeneratedPassword(data.password);
+            setGeneratedUsername(data.empid || data.username || formData.email);
             setMessage(data.message);
             setFormData({
                 name: "",
@@ -123,6 +149,16 @@ export default function RegisterEmployee() {
         }
     };
 
+    const copyUsername = async () => {
+        try {
+            await navigator.clipboard.writeText(generatedUsername);
+            setUsernameCopied(true);
+            setTimeout(() => setUsernameCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy username:', err);
+        }
+    };
+
     const handleLogout = async () => {
         try {
             await fetch("/api/auth/logout");
@@ -132,30 +168,22 @@ export default function RegisterEmployee() {
         }
     };
 
-    const InputField = ({ icon: Icon, label, type = "text", field, placeholder, error, ...props }) => (
+    const InputField = ({ icon: Icon, label, type = "text", field, placeholder, error }) => (
         <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                 <Icon className="w-4 h-4 text-blue-600" />
                 {label}
             </label>
-            <div className="relative">
-                <input
-                    type={type}
-                    value={formData[field]}
-                    onChange={(e) => handleInputChange(field, e.target.value)}
-                    placeholder={placeholder}
-                    className={`w-full px-4 py-3 border rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        error ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    {...props}
-                />
-                {error && (
-                    <div className="absolute right-3 top-3">
-                        <AlertCircle className="w-5 h-5 text-red-500" />
-                    </div>
-                )}
-            </div>
-            {error && <p className="text-sm text-red-600 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{error}</p>}
+            <input
+                type={type}
+                value={formData[field]}
+                onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))}
+                placeholder={placeholder}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
     );
 
@@ -165,26 +193,19 @@ export default function RegisterEmployee() {
                 <Icon className="w-4 h-4 text-blue-600" />
                 {label}
             </label>
-            <div className="relative">
-                <select
-                    value={formData[field]}
-                    onChange={(e) => handleInputChange(field, e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white ${
-                        error ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                >
-                    <option value="">{placeholder}</option>
-                    {options.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                </select>
-                {error && (
-                    <div className="absolute right-10 top-3">
-                        <AlertCircle className="w-5 h-5 text-red-500" />
-                    </div>
-                )}
-            </div>
-            {error && <p className="text-sm text-red-600 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{error}</p>}
+            <select
+                value={formData[field]}
+                onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white ${
+                    error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+            >
+                <option value="">{placeholder}</option>
+                {options.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+            </select>
+            {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
     );
 
@@ -202,7 +223,7 @@ export default function RegisterEmployee() {
                         </div>
                         <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <Calendar className="w-4 h-4" />
-                            <span>{new Date().toLocaleDateString()}</span>
+                            <span>{currentDate || new Date().toLocaleDateString()}</span>
                         </div>
                     </div>
                 </div>
@@ -223,137 +244,159 @@ export default function RegisterEmployee() {
                                 </div>
                             </div>
 
-                            <form onSubmit={handleRegister} className="p-8">
+                            <div className="p-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <InputField
-                                        icon={User}
-                                        label="Full Name"
-                                        field="name"
-                                        placeholder="Enter employee's full name"
-                                        error={errors.name}
-                                    />
+                                    <div>
+                                        <label>Full Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={formData.name} 
+                                            onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                                            placeholder="Enter employee's full name"
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        />
+                                    </div>
 
-                                    <InputField
-                                        icon={Mail}
-                                        label="Email Address"
-                                        type="email"
-                                        field="email"
-                                        placeholder="employee@company.com"
-                                        error={errors.email}
-                                    />
+                                    <div>
+                                        <label>Email Address</label>
+                                        <input 
+                                            type="email" 
+                                            value={formData.email} 
+                                            onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                                            placeholder="employee@company.com"
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        />
+                                    </div>
 
-                                    <InputField
-                                        icon={Briefcase}
-                                        label="Position"
-                                        field="position"
-                                        placeholder="Job title or position"
-                                        error={errors.position}
-                                    />
+                                    <div>
+                                        <label>Position</label>
+                                        <input 
+                                            type="text" 
+                                            value={formData.position} 
+                                            onChange={(e) => setFormData(prev => ({...prev, position: e.target.value}))}
+                                            placeholder="Job title or position"
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        />
+                                    </div>
 
-                                    <InputField
-                                        icon={Calendar}
-                                        label="Date of Joining"
-                                        type="date"
-                                        field="dateOfJoining"
-                                        error={errors.dateOfJoining}
-                                    />
+                                    <div>
+                                        <label>Date of Joining</label>
+                                        <input 
+                                            type="date" 
+                                            value={formData.dateOfJoining} 
+                                            onChange={(e) => setFormData(prev => ({...prev, dateOfJoining: e.target.value}))}
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        />
+                                    </div>
 
-                                    <SelectField
-                                        icon={IdCard}
-                                        label="Status"
-                                        field="status"
-                                        placeholder="Select status"
-                                        options={[
-                                            { value: "Active", label: "Active" },
-                                            { value: "On Leave", label: "On Leave" },
-                                            { value: "Inactive", label: "Inactive" }
-                                        ]}
-                                        error={errors.status}
-                                    />
+                                    <div>
+                                        <label>Status</label>
+                                        <select 
+                                            value={formData.status} 
+                                            onChange={(e) => setFormData(prev => ({...prev, status: e.target.value}))}
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        >
+                                            <option value="Active">Active</option>
+                                            <option value="On Leave">On Leave</option>
+                                            <option value="Inactive">Inactive</option>
+                                        </select>
+                                    </div>
 
-                                    <InputField
-                                        icon={Clock}
-                                        label="Experience (Years)"
-                                        type="number"
-                                        field="experience"
-                                        placeholder="Years of experience"
-                                        min="0"
-                                        step="0.5"
-                                        error={errors.experience}
-                                    />
+                                    <div>
+                                        <label>Experience (Years)</label>
+                                        <input 
+                                            type="number" 
+                                            value={formData.experience} 
+                                            onChange={(e) => setFormData(prev => ({...prev, experience: e.target.value}))}
+                                            placeholder="Years of experience"
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        />
+                                    </div>
 
-                                    <SelectField
-                                        icon={Briefcase}
-                                        label="Employee Type"
-                                        field="employeeType"
-                                        placeholder="Select employee type"
-                                        options={[
-                                            { value: "Full_time", label: "Full-time" },
-                                            { value: "Part_time", label: "Part-time" },
-                                            { value: "Intern", label: "Intern" },
-                                            { value: "Contractor", label: "Contractor" }
-                                        ]}
-                                        error={errors.employeeType}
-                                    />
+                                    <div>
+                                        <label>Employee Type</label>
+                                        <select 
+                                            value={formData.employeeType} 
+                                            onChange={(e) => setFormData(prev => ({...prev, employeeType: e.target.value}))}
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        >
+                                            <option value="">Select employee type</option>
+                                            <option value="Full_time">Full-time</option>
+                                            <option value="Part_time">Part-time</option>
+                                            <option value="Intern">Intern</option>
+                                            <option value="Contractor">Contractor</option>
+                                        </select>
+                                    </div>
 
-                                    <SelectField
-                                        icon={Users}
-                                        label="Role"
-                                        field="role"
-                                        placeholder="Select role"
-                                        options={[
-                                            { value: "employee", label: "Employee" },
-                                            { value: "hr", label: "HR" },
-                                            { value: "admin", label: "Admin" },
-                                            { value: "ceo", label: "CEO" },
-                                            { value: "superadmin", label: "Super Admin" }
-                                        ]}
-                                        error={errors.role}
-                                    />
+                                    <div>
+                                        <label>Role</label>
+                                        <select 
+                                            value={formData.role} 
+                                            onChange={(e) => setFormData(prev => ({...prev, role: e.target.value}))}
+                                            className="w-full px-4 py-3 border rounded-xl"
+                                        >
+                                            <option value="employee">Employee</option>
+                                            <option value="hr">HR</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="ceo">CEO</option>
+                                            <option value="superadmin">Super Admin</option>
+                                        </select>
+                                    </div>
                                 </div>
 
-                                {/* Generated Password Display */}
+                                {/* Login Credentials Display */}
                                 {generatedPassword && (
-                                    <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-xl">
+                                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                                         <div className="flex items-center gap-2 mb-3">
                                             <CheckCircle className="w-5 h-5 text-green-600" />
                                             <h3 className="font-semibold text-green-800">Employee Registered Successfully!</h3>
                                         </div>
-                                        <div className="space-y-3">
-                                            <label className="text-sm font-medium text-green-700">Generated Password</label>
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-1 relative">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-sm font-medium text-green-700">Username</label>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <input
+                                                        type="text"
+                                                        value={generatedUsername}
+                                                        readOnly
+                                                        className="flex-1 px-3 py-2 bg-white border border-green-300 rounded font-mono text-green-800"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={copyUsername}
+                                                        className="p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
+                                                    >
+                                                        <Copy className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                                {usernameCopied && <p className="text-xs text-green-600 mt-1">Username copied!</p>}
+                                            </div>
+                                            <div>
+                                                <label className="text-sm font-medium text-green-700">Password</label>
+                                                <div className="flex items-center gap-2 mt-1">
                                                     <input
                                                         type={showPassword ? "text" : "password"}
                                                         value={generatedPassword}
                                                         readOnly
-                                                        className="w-full px-4 py-3 bg-white border border-green-300 rounded-lg font-mono text-green-800 pr-20"
+                                                        className="flex-1 px-3 py-2 bg-white border border-green-300 rounded font-mono text-green-800"
                                                     />
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowPassword(!showPassword)}
-                                                        className="absolute right-12 top-3 text-green-600 hover:text-green-800"
+                                                        className="p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
                                                     >
-                                                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={copyPassword}
-                                                        className="absolute right-3 top-3 text-green-600 hover:text-green-800"
+                                                        className="p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
                                                     >
-                                                        <Copy className="w-5 h-5" />
+                                                        <Copy className="w-4 h-4" />
                                                     </button>
                                                 </div>
+                                                {passwordCopied && <p className="text-xs text-green-600 mt-1">Password copied!</p>}
                                             </div>
-                                            {passwordCopied && (
-                                                <p className="text-sm text-green-600 flex items-center gap-1">
-                                                    <CheckCircle className="w-4 h-4" />
-                                                    Password copied to clipboard!
-                                                </p>
-                                            )}
-                                            <p className="text-sm text-green-700">
-                                                Please share this password securely with the employee. They can change it after first login.
-                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -361,7 +404,8 @@ export default function RegisterEmployee() {
                                 {/* Submit Button */}
                                 <div className="mt-8 flex gap-4">
                                     <button
-                                        type="submit"
+                                        type="button"
+                                        onClick={handleRegister}
                                         disabled={isLoading}
                                         className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                     >
@@ -385,7 +429,7 @@ export default function RegisterEmployee() {
                                         Cancel
                                     </button>
                                 </div>
-                            </form>
+                            </div>
 
                             {/* Message Display */}
                             {message && (

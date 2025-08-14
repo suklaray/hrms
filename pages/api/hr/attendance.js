@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       LEFT JOIN 
         attendance a ON u.empid = a.empid
       WHERE 
-        u.role = 'employee'
+        u.role IN ('employee', 'admin', 'hr', 'superadmin')
       GROUP BY 
         u.empid, u.name, u.email, u.role, u.status
       ORDER BY 

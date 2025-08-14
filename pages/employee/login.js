@@ -61,15 +61,15 @@ export default function EmployeeLogin() {
             </h1>
 
             <form onSubmit={handleLogin} className="space-y-6">
-              {/* Email input */}
+              {/* Email/Username input */}
               <div className="flex items-center border-b-2 border-indigo-500 py-2">
                 <FiMail className="text-gray-500 mr-3" />
                 <input
                   className="w-full bg-transparent text-purple-950 focus:outline-none text-center"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
+                  placeholder="Enter your email or username"
                   required
                 />
               </div>
