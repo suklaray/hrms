@@ -185,7 +185,7 @@ useEffect(() => {
                         <Briefcase className="w-5 h-5 text-gray-400" />
                         <div>
                           <p className="text-sm text-gray-600">Position</p>
-                          <p className="font-medium text-gray-900">{user.position || 'Not specified'}</p>
+                          <p className="font-medium text-gray-900">{user.position ||'Not specified' }</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
@@ -211,7 +211,7 @@ useEffect(() => {
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900">Today's Hours</span>
+                    <span className="text-sm font-medium text-blue-900">Todays Hours</span>
                   </div>
                   <span className="text-lg font-bold text-blue-600">0h</span>
                 </div>

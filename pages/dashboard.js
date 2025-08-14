@@ -3,6 +3,7 @@ import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { Users, UserCheck, Clock, FileText, TrendingUp, Calendar, Bell } from "lucide-react";
+import { withRoleProtection } from "@/lib/withRoleProtection";
 
 export const getServerSideProps = withRoleProtection(["superadmin", "admin", "hr"]);
 
@@ -72,7 +73,7 @@ export default function Dashboard({ user }) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>{new Date().toLocaleDateString()}</span>
               </div>
               <button className="p-2 text-gray-400 hover:text-gray-600 relative">
                 <Bell className="w-5 h-5" />
