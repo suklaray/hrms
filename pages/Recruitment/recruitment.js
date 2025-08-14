@@ -2,24 +2,51 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import SideBar from "@/Components/SideBar";
 import Link from "next/link";
+<<<<<<< HEAD
 import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
 //import { FaClock, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { withRoleProtection } from "@/lib/withRoleProtection";
 export const getServerSideProps = withRoleProtection(["superadmin", "admin", "hr"]);
+=======
+import { 
+  Eye, 
+  Trash2, 
+  Plus, 
+  Calendar, 
+  Mail, 
+  Phone, 
+  User, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Search,
+  Filter,
+  Download,
+  UserPlus
+} from "lucide-react";
+>>>>>>> 9f50d836d97ddc7675e2013f740aede5f83fa7e0
 
 export default function Candidates(user) {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [joiningDate, setJoiningDate] = useState("");
-  const [role, setRole] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [stats, setStats] = useState({ total: 0, selected: 0, rejected: 0, waiting: 0 });
 
 
   const fetchCandidates = async () => {
     try {
       const res = await axios.get("/api/recruitment/getCandidates");
-      setCandidates(res.data);
+      const data = res.data || [];
+      setCandidates(data);
+      
+      // Calculate stats
+      const total = data.length;
+      const selected = data.filter(c => c.status === 'Selected').length;
+      const rejected = data.filter(c => c.status === 'Rejected').length;
+      const waiting = data.filter(c => c.status === 'Waiting' || !c.status).length;
+      setStats({ total, selected, rejected, waiting });
+      
       setLoading(false);
     } catch (error) {
       console.error("Error fetching candidates:", error);
@@ -90,6 +117,35 @@ export default function Candidates(user) {
     }
   };
 
+  const filteredCandidates = candidates.filter(candidate => {
+    const matchesSearch = candidate.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         candidate.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || candidate.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Selected': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Rejected': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    }
+  };
+
+  const StatCard = ({ title, value, icon: Icon, color }) => (
+    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+        </div>
+        <div className={`p-3 rounded-lg ${color}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+      </div>
+    </div>
+  );
+
   const handleEmp = async (candidateId, newDate) => {
     try {
       await axios.put("/api/recruitment/addEmployee", {
@@ -123,6 +179,7 @@ export default function Candidates(user) {
 
 
   return (
+<<<<<<< HEAD
     <div className="flex h-screen bg-gray-50 bg-gradient-to-r from-gray-100 via-indigo-100 to-pink-100">
       <SideBar user={user} />
       <div className="w-full p-8">
@@ -133,150 +190,207 @@ export default function Candidates(user) {
               + Add Candidate
             </button>
           </Link>
+=======
+    <div className="flex min-h-screen bg-gray-50">
+      <SideBar />
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Recruitment Management</h1>
+              <p className="text-gray-600">Manage candidates and track recruitment progress</p>
+            </div>
+            <Link href="/Recruitment/addCandidates">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                <Plus className="w-4 h-4" />
+                Add Candidate
+              </button>
+            </Link>
+          </div>
+>>>>>>> 9f50d836d97ddc7675e2013f740aede5f83fa7e0
         </div>
 
-        {loading ? (
-          <p className="text-lg text-gray-500">Loading candidates...</p>
-        ) : (
-          <div className="overflow-x-auto shadow-2xl rounded-3xl bg-white border border-indigo-800 ">
-            <table className="min-w-full divide-y divide-indigo-200 text-sm text-gray-800">
-              <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white uppercase text-xs font-bold sticky top-0 z-10 text-center">
-                <tr>
-                  {["ID", "Name", "Email", "Contact No.", "Interview Date", "HR Decision", "Form Link", "Form Submission status", "Verification", "Actions", "employment"].map((head) => (
-                    <th key={head} className="px-6 py-4 text-center tracking-wider">
-                      {head}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white text-center">
-                {/*{candidates.map((candidate, index) => (*/}
-                {(candidates || []).map((candidate, index) => (
-                  <tr
-                    key={candidate.candidate_id}
-                    className={`transition-all duration-300 hover:bg-blue-200 ${index % 2 === 0 ? "bg-white" : "bg-indigo-50"}`}
-                  >
-                    <td className="px-6 py-4 font-semibold text-indigo-700">
-                      #{candidate.candidate_id}
-                    </td>
-                    <td className="px-6 py-4 font-medium">{candidate.name}</td>
-                    <td className="px-6 py-4 text-gray-600">{candidate.email}</td>
-                    <td className="px-6 py-4 text-gray-600">{candidate.contact_number}</td>
-                    <td className="px-6 py-4 text-center">
-                      <input
-                        type="date"
-                        value={candidate.interview_date ? candidate.interview_date.split("T")[0] : ""}
-                        onChange={(e) => handleDateChange(candidate.candidate_id, e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-1 text-sm shadow-inner focus:ring-2 focus:ring-indigo-300 focus:outline-none"
-                      />
-                    </td>
-                    {/* 
-                    <td className="px-6 py-4">
-                      <button
-                        className={`text-xs font-bold px-4 py-1 rounded-full shadow transition duration-200 ${candidate.interview_mail_status === "Interview Mail Sent" ? "bg-green-100 text-green-700 ring-1 ring-green-300" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}`}
-                        onClick={() => handleInterviewMail(candidate.candidate_id)}
-                      >
-                        {candidate.interview_mail_status === "Interview Mail Sent" ? "Mail Sent" : "Send Mail"}
-                      </button>
-                    </td>
-                    */}
-                    <td className="px-6 py-4 text-center">
-                      <select
-                        value={candidate.status || "Waiting"}
-                        onChange={(e) => handleStatusChange(candidate.candidate_id, e.target.value)}
-                        className="border border-gray-300 rounded-lg px-3 py-1 text-sm focus:ring-2 focus:ring-indigo-200 focus:outline-none bg-white shadow-sm"
-                      >
-                        <option value="Waiting">Waiting</option>
-                        <option value="Selected">Selected</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {candidate.form_link ? (
-                        <a href={candidate.form_link} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline text-sm font-medium">
-                          Form Link
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-sm italic">No form</span>
-                      )}
-                    </td>
-                    {/* 
-                    <td className="px-6 py-4">
-                      <button
-                        className={`text-xs font-bold px-4 py-1 rounded-full transition duration-200 ${candidate.form_mail_status === "Form Mail Sent" ? "bg-green-100 text-green-700 ring-1 ring-green-300" : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"}`}
-                        onClick={() => handleFormMail(candidate.candidate_id)}
-                      >
-                        {candidate.form_mail_status === "Form Mail Sent" ? "Form Sent" : "Send Form"}
-                      </button>
-                    </td> */}
-
-                    {/* Form Submission Status */}
-                    <td className="px-6 py-4 text-sm font-semibold text-center">
-                        {candidate.form_submitted ? (
-                          <span className="text-green-700 bg-green-100 px-3 py-1 rounded-full">Submitted</span>
-                        ) : (
-                          <span className="text-red-400 bg-red-50 px-3 py-1 rounded-full text-center">Not Submitted</span>
-                        )}
-                      </td>
-
-                    {/* Verification Button */}
-                      <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => handleVerification(candidate)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                            candidate.verification
-                              ? "bg-green-100 text-green-700"
-                              : "bg-yellow-100 text-yellow-700"
-                          } cursor-pointer hover:shadow-md`}
-                        >
-                          {candidate.verification ? "Verified" : "Not Verified"}
-                        </button>
-                      </td>
-
-
-                    <td className="px-6 py-4 flex gap-3 items-center">
-                      <Link href={`/Recruitment/${candidate.candidate_id}`}>
-                        <button className="text-green-600 hover:bg-indigo-100 p-2 rounded-full transition" title="View">
-                          <FaEye size={20} />
-                        </button>
-                      </Link>
-                      {/*<button
-                        className="text-yellow-600 hover:bg-yellow-100 p-2 rounded-full transition"
-                        onClick={() => console.log("Edit clicked")}
-                        title="Edit"
-                      >
-                        <FaEdit size={16} />
-                      </button>*/}
-                      <button
-                        className="text-red-600 hover:bg-red-100 p-2 rounded-full transition"
-                        onClick={() => handleDelete(candidate.candidate_id)}
-                        title="Delete"
-                      >
-                        <FaTrash size={16} />
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <Link href={`/Recruitment/add/${candidate.id}`}>
-                       <button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:bg-green-600 text-white px-4 py-2 rounded-lg">
-                            Add as Employee
-                        </button>
-                    </Link>
-                    </td>
-                          
-
-                  </tr>
-                ))}
-                {(candidates || []).length === 0 && (
-                  <tr>
-                    <td colSpan="12" className="text-center text-gray-500 py-4">
-                      No candidates found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        <div className="p-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <StatCard title="Total Candidates" value={stats.total} icon={User} color="bg-blue-500" />
+            <StatCard title="Selected" value={stats.selected} icon={CheckCircle} color="bg-green-500" />
+            <StatCard title="Rejected" value={stats.rejected} icon={XCircle} color="bg-red-500" />
+            <StatCard title="Waiting" value={stats.waiting} icon={Clock} color="bg-yellow-500" />
           </div>
-        )}
+
+          {/* Filters */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search candidates by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="Waiting">Waiting</option>
+                  <option value="Selected">Selected</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Candidates Table */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {loading ? (
+              <div className="p-8 text-center">
+                <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-500">Loading candidates...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verification</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredCandidates.map((candidate) => (
+                      <tr key={candidate.candidate_id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
+                              <div className="text-sm text-gray-500">ID: #{candidate.candidate_id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center text-sm text-gray-900">
+                              <Mail className="w-4 h-4 mr-2 text-gray-400" />
+                              {candidate.email}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-500">
+                              <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                              {candidate.contact_number}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                            <input
+                              type="date"
+                              value={candidate.interview_date ? candidate.interview_date.split("T")[0] : ""}
+                              onChange={(e) => handleDateChange(candidate.candidate_id, e.target.value)}
+                              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <select
+                            value={candidate.status || "Waiting"}
+                            onChange={(e) => handleStatusChange(candidate.candidate_id, e.target.value)}
+                            className={`text-xs font-medium px-3 py-1 rounded-full border ${getStatusColor(candidate.status || 'Waiting')}`}
+                          >
+                            <option value="Waiting">Waiting</option>
+                            <option value="Selected">Selected</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-2">
+                            {candidate.form_link ? (
+                              <a href={candidate.form_link} target="_blank" rel="noopener noreferrer" 
+                                 className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                View Form
+                              </a>
+                            ) : (
+                              <span className="text-gray-400 text-sm">No form</span>
+                            )}
+                            <div>
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                candidate.form_submitted 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {candidate.form_submitted ? 'Submitted' : 'Not Submitted'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => handleVerification(candidate)}
+                            className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
+                              candidate.verification
+                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                            }`}
+                          >
+                            {candidate.verification ? 'Verified' : 'Verify'}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <Link href={`/Recruitment/${candidate.candidate_id}`}>
+                              <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="View Details">
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            </Link>
+                            <Link href={`/Recruitment/add/${candidate.id}`}>
+                              <button className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors" title="Add as Employee">
+                                <UserPlus className="w-4 h-4" />
+                              </button>
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(candidate.candidate_id)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredCandidates.length === 0 && (
+                      <tr>
+                        <td colSpan="7" className="px-6 py-12 text-center">
+                          <div className="text-gray-500">
+                            <User className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                            <p className="text-lg font-medium">No candidates found</p>
+                            <p className="text-sm">Try adjusting your search or filters</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import SideBar from "@/Components/SideBar";
+import { useRouter } from 'next/router';
 import {
   BarChart,
   Bar,
@@ -24,6 +25,7 @@ export default function AttendanceAnalytics({ user }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+<<<<<<< HEAD
   useEffect(() => {
     fetchAnalytics();
   }, []);
@@ -129,6 +131,54 @@ export default function AttendanceAnalytics({ user }) {
             <PieCard title="Monthly Attendance" data={data?.monthlyStats || []} />
             <PieCard title="Yearly Attendance" data={data?.yearlyStats || []} />
           </div>
+=======
+const COLORS = ["#4ade80", "#f43f5e"];
+
+export default function AttendanceAnalytics() {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    router.push("/login");
+  };
+
+  return (
+    <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
+      <SideBar handleLogout={handleLogout} />
+      <div className="flex-1 p-6">
+        <h2 className="text-3xl font-bold text-center text-indigo-700 mb-8">
+          Attendance Analytics
+        </h2>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+          <SummaryCard title="Total Employees" value="150" />
+          <SummaryCard title="Working Today" value="138" />
+          <SummaryCard title="On Sick Leave" value="5" />
+          <SummaryCard title="Present Today" value="143" />
+        </div>
+
+        {/* Daily Bar Chart */}
+        <div className="bg-white shadow-xl rounded-2xl p-6 mb-8">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            Daily Attendance (This Week)
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={dailyData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="Present" fill="#4ade80" />
+              <Bar dataKey="Absent" fill="#f43f5e" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Pie Charts for Monthly & Yearly */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <PieCard title="Monthly Attendance" data={monthlyStats} />
+          <PieCard title="Yearly Attendance" data={yearlyStats} />
+>>>>>>> 9f50d836d97ddc7675e2013f740aede5f83fa7e0
         </div>
       </div>
     </div>
@@ -137,24 +187,36 @@ export default function AttendanceAnalytics({ user }) {
 
 function SummaryCard({ title, value, icon, gradient, bgColor }) {
   return (
+<<<<<<< HEAD
     <div className={`${bgColor} rounded-2xl shadow-lg p-6 text-center transform hover:scale-105 hover:shadow-xl transition-all duration-300 border border-gray-100`}>
       <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r ${gradient} text-white text-xl mb-4`}>
         {icon}
       </div>
       <h4 className="text-sm font-semibold text-gray-600 mb-2">{title}</h4>
       <p className="text-3xl font-bold text-gray-800">{value}</p>
+=======
+    <div className="bg-white shadow-xl rounded-2xl p-4 text-center">
+      <h4 className="text-sm font-semibold text-gray-600">{title}</h4>
+      <p className="text-2xl font-bold text-indigo-700 mt-2">{value}</p>
+>>>>>>> 9f50d836d97ddc7675e2013f740aede5f83fa7e0
     </div>
   );
 }
 
 function PieCard({ title, data }) {
   return (
+<<<<<<< HEAD
     <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
       <div className="flex items-center mb-6">
         <div className="w-1 h-6 bg-gradient-to-b from-purple-500 to-indigo-500 rounded-full mr-3"></div>
         <h3 className="text-2xl font-bold text-gray-800">{title}</h3>
       </div>
       <ResponsiveContainer width="100%" height={350}>
+=======
+    <div className="bg-white shadow-xl rounded-2xl p-6">
+      <h3 className="text-xl font-semibold text-gray-800 mb-4">{title}</h3>
+      <ResponsiveContainer width="100%" height={300}>
+>>>>>>> 9f50d836d97ddc7675e2013f740aede5f83fa7e0
         <PieChart>
           <Pie
             data={data}

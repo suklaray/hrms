@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import EmpSidebar from '@/Components/empSidebar';
+import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
 export default function LeaveRequest() {
   const [form, setForm] = useState({
@@ -76,129 +77,200 @@ export default function LeaveRequest() {
   };
 
   return (
-    <div className="flex">
+    <div className="flex min-h-screen bg-gray-50">
       <EmpSidebar />
-      <div className="flex-grow p-8 bg-indigo-50 flex gap-8">
-        {/* Leave Request Form */}
-        <div className="w-2/3">
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-6 bg-white p-10 rounded-lg shadow-lg"
-          >
-            <h1 className="text-3xl font-bold text-center text-indigo-800">
-              Apply for Leave
-            </h1>
-
-            <input
-              type="text"
-              value={form.name}
-              readOnly
-              className="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-100"
-            />
-            <input
-              type="text"
-              value={form.email}
-              readOnly
-              className="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-100"
-            />
-
-           <select
-              name="leave_type"
-              value={form.leave_type}
-              onChange={handleChange}
-              required
-              className="w-full p-3 border-2 border-gray-200 rounded-lg"
-            >
-              <option value="">Select Leave Type</option>
-              <option value="Casual Leave">Casual Leave</option>
-              <option value="Sick Leave">Sick Leave</option>
-              <option value="Earned Leave">Earned Leave</option>
-              <option value="Maternity Leave">Maternity Leave</option>
-              <option value="Unpaid Leave">Unpaid Leave</option>
-              <option value="Work From Home">Work From Home</option>
-              <option value="Special Leave">Special Leave</option>
-            </select>
-
-
-            <div className="flex gap-4">
-              <input
-                type="date"
-                name="from_date"
-                value={form.from_date}
-                onChange={handleChange}
-                required
-                className="w-full p-3 border-2 border-gray-200 rounded-lg"
-              />
-              <input
-                type="date"
-                name="to_date"
-                value={form.to_date}
-                onChange={handleChange}
-                required
-                className="w-full p-3 border-2 border-gray-200 rounded-lg"
-              />
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
+              <p className="text-gray-600">Apply for leave and track your requests</p>
             </div>
-
-            <textarea
-              name="reason"
-              value={form.reason}
-              onChange={handleChange}
-              placeholder="Reason for leave"
-              className="w-full p-3 border-2 border-gray-200 rounded-lg"
-              required
-            />
-
-            <input
-              type="file"
-              name="attachment"
-              onChange={handleChange}
-              className="w-full p-3 border-2 border-gray-200 rounded-lg"
-            />
-
-            <button
-              type="submit"
-              className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition"
-            >
-              Submit Request
-            </button>
-          </form>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Calendar className="w-4 h-4" />
+              <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            </div>
+          </div>
         </div>
 
-        {/* Leave Status Panel */}
-        <div className="w-1/3 bg-white p-6 rounded-2xl shadow-xl overflow-y-auto max-h-[600px] border border-indigo-100">
-          <h1 className="text-2xl font-bold text-center text-indigo-800 mb-6">
-            Your Leave Requests
-          </h1>
-
-          {leaveStatusList.length > 0 ? (
-            <div className="space-y-4">
-              {leaveStatusList.map((leave, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-xl p-4 bg-indigo-50 shadow-sm"
-                >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold text-indigo-700">{leave.leave_type}</span>
-                    <span
-                      className={`text-sm px-3 py-1 rounded-full font-semibold ${
-                        leave.status === 'Approved'
-                          ? 'bg-green-100 text-green-700'
-                          : leave.status === 'Rejected'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {leave.status}
-                    </span>
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Leave Request Form */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <FileText className="w-5 h-5 mr-2" />
+                  Apply for Leave
+                </h3>
+                <p className="text-sm text-gray-600">Submit your leave request</p>
+              </div>
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Employee Name</label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      readOnly
+                      className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                    />
                   </div>
-                  <p className="text-sm text-gray-700">From: {leave.from_date}</p>
-                  <p className="text-sm text-gray-700">To: {leave.to_date}</p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Employee ID</label>
+                    <input
+                      type="text"
+                      value={form.empid}
+                      readOnly
+                      className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                    />
+                  </div>
                 </div>
-              ))}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Leave Type</label>
+                  <select
+                    name="leave_type"
+                    value={form.leave_type}
+                    onChange={handleChange}
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Leave Type</option>
+                    {leaveTypes.map((type) => (
+                      <option key={type.id} value={type.type_name}>
+                        {type.type_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
+                    <input
+                      type="date"
+                      name="from_date"
+                      value={form.from_date}
+                      onChange={handleChange}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
+                    <input
+                      type="date"
+                      name="to_date"
+                      value={form.to_date}
+                      onChange={handleChange}
+                      required
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Leave</label>
+                  <textarea
+                    name="reason"
+                    value={form.reason}
+                    onChange={handleChange}
+                    placeholder="Please provide a detailed reason for your leave request"
+                    rows={4}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Attachment (Optional)</label>
+                  <input
+                    type="file"
+                    name="attachment"
+                    onChange={handleChange}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Submit Leave Request</span>
+                </button>
+              </form>
             </div>
-          ) : (
-            <p className="text-center text-gray-500">No leave requests found.</p>
-          )}
+
+            {/* Leave Status Panel */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Clock className="w-5 h-5 mr-2" />
+                  Leave Requests
+                </h3>
+                <p className="text-sm text-gray-600">Your request history</p>
+              </div>
+              <div className="p-6">
+                {leaveStatusList.length > 0 ? (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {leaveStatusList.map((leave, index) => {
+                      const getStatusIcon = (status) => {
+                        switch (status) {
+                          case 'Approved':
+                            return <CheckCircle className="w-4 h-4 text-green-600" />;
+                          case 'Rejected':
+                            return <XCircle className="w-4 h-4 text-red-600" />;
+                          default:
+                            return <AlertCircle className="w-4 h-4 text-yellow-600" />;
+                        }
+                      };
+
+                      const getStatusColor = (status) => {
+                        switch (status) {
+                          case 'Approved':
+                            return 'bg-green-50 border-green-200 text-green-800';
+                          case 'Rejected':
+                            return 'bg-red-50 border-red-200 text-red-800';
+                          default:
+                            return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+                        }
+                      };
+
+                      return (
+                        <div
+                          key={index}
+                          className={`border rounded-lg p-4 ${getStatusColor(leave.status)}`}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="font-medium">{leave.leave_type}</span>
+                            <div className="flex items-center space-x-1">
+                              {getStatusIcon(leave.status)}
+                              <span className="text-xs font-medium">{leave.status}</span>
+                            </div>
+                          </div>
+                          <div className="text-sm space-y-1">
+                            <p><span className="font-medium">From:</span> {new Date(leave.from_date).toLocaleDateString()}</p>
+                            <p><span className="font-medium">To:</span> {new Date(leave.to_date).toLocaleDateString()}</p>
+                            {leave.reason && (
+                              <p><span className="font-medium">Reason:</span> {leave.reason.substring(0, 50)}{leave.reason.length > 50 ? '...' : ''}</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No leave requests found</p>
+                    <p className="text-sm text-gray-400">Your submitted requests will appear here</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

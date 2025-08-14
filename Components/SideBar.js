@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from "lucide-react";
+import { useRouter } from "next/router";
+import { 
+  ChevronDown, ChevronUp, Menu, X, LayoutDashboard, UserPlus, Users, 
+  UserCheck, Clock, DollarSign, Shield, TrendingUp, Phone, Settings, LogOut 
+} from "lucide-react";
 
 export default function Sidebar({ handleLogout, user }) {
+  const router = useRouter();
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [payrollOpen, setPayrollOpen] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
@@ -10,7 +16,13 @@ export default function Sidebar({ handleLogout, user }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
 
-  const role = user?.role?.toLowerCase();
+  const role = user?.role?.toLowerCase() || 'hr';
+
+  const toggleAttendanceMenu = () => setAttendanceOpen(!attendanceOpen);
+  const togglePayrollMenu = () => setPayrollOpen(!payrollOpen);
+  const toggleComplianceMenu = () => setComplianceOpen(!complianceOpen);
+  const togglePerformanceMenu = () => setPerformanceOpen(!performanceOpen);
+  const toggleSettingsMenu = () => setSettingsOpen(!settingsOpen);
   const hoverColor =
     role === "superadmin"
       ? "hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600"
@@ -18,15 +30,11 @@ export default function Sidebar({ handleLogout, user }) {
       ? "hover:bg-purple-600"
       : "hover:bg-blue-600"; // hr
 
-  const toggleCheckInOut = () => {
-    setCheckedIn((prev) => !prev);
-    // Optional: add API call here to persist check-in/check-out
-  };
-
   const navItems = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "View Employees Details", path: "/employeeList" },
-    { name: "Recruitment Management", path: "/Recruitment/recruitment" },
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { name: "Register Employee", path: "/registerEmployee", icon: UserPlus },
+    { name: "Employee List", path: "/employeeList", icon: Users },
+    { name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck },
   ];
 
   const attendanceSubItems = [
@@ -55,55 +63,52 @@ export default function Sidebar({ handleLogout, user }) {
   ];
 
   return (
-    <div className="min-h-screen w-72 bg-gray-900 text-white p-6 shadow-lg">
-      <h6 className="text-2xl font-bold mb-4 capitalize pb-5 pt-3 text-center bg-indigo-9g00 rounded-xl">
-        {role === "superadmin"
-          ? "Superadmin Panel"
-          : role === "admin"
-          ? "Admin Panel"
-          : "HR Portal"}
-      </h6>
-
-      {/* Toggle Check-in/Check-out Button */}
-      {/*{(role === "hr" || role === "admin") && (
-        <div className="mb-6">
+    <div className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-72'}`}>
+      {/* Toggle Button */}
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between">
+          {!isCollapsed && <h2 className="text-2xl font-bold">HRMS Panel</h2>}
           <button
-            onClick={toggleCheckInOut}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition duration-300 ${
-              checkedIn
-                ? "bg-yellow-600 hover:bg-yellow-700"
-                : "bg-green-600 hover:bg-green-700"
-            }`}
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
           >
-            {checkedIn ? <ToggleLeft size={20} /> : <ToggleRight size={20} />}
-            {checkedIn ? "Check Out" : "Check In"}
+            {isCollapsed ? <Menu size={20} /> : <X size={20} />}
           </button>
         </div>
-      )}*/}
-
+      </div>
+      
+      <div className="p-4">
       <ul className="space-y-4">
-        {navItems.map((item) => (
-          <li key={item.name}>
-            <Link href={item.path}>
-              <span
-                className={`block w-full text-left px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+        {navItems.map((item) => {
+          const IconComponent = item.icon;
+          return (
+            <li key={item.name}>
+              <button
+                onClick={() => router.push(item.path)}
+                className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                title={isCollapsed ? item.name : ''}
               >
-                {item.name}
-              </span>
-            </Link>
-          </li>
-        ))}
+                <IconComponent size={18} className="flex-shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium">{item.name}</span>}
+              </button>
+            </li>
+          );
+        })}
 
         {/* Attendance Dropdown */}
         <li>
           <button
-            onClick={() => setAttendanceOpen(!attendanceOpen)}
-            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+            onClick={isCollapsed ? () => router.push('/hr/attendance') : toggleAttendanceMenu}
+            className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            title={isCollapsed ? 'Attendance & Leave' : ''}
           >
-            <span>Attendance & Leave Management</span>
-            {attendanceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <div className="flex items-center gap-3">
+              <Clock size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Attendance & Leave</span>}
+            </div>
+            {!isCollapsed && (attendanceOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
           </button>
-          {attendanceOpen && (
+          {!isCollapsed && attendanceOpen && (
             <ul className="pl-6 pt-2 space-y-2">
               {attendanceSubItems.map((subItem) => (
                 <li key={subItem.name}>
@@ -123,13 +128,17 @@ export default function Sidebar({ handleLogout, user }) {
         {/* Payroll Dropdown */}
         <li>
           <button
-            onClick={() => setPayrollOpen(!payrollOpen)}
-            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+            onClick={isCollapsed ? () => router.push('/hr/payroll/payroll-view') : togglePayrollMenu}
+            className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            title={isCollapsed ? 'Payroll Management' : ''}
           >
-            <span>Payroll Management</span>
-            {payrollOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <div className="flex items-center gap-3">
+              <DollarSign size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Payroll Management</span>}
+            </div>
+            {!isCollapsed && (payrollOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
           </button>
-          {payrollOpen && (
+          {!isCollapsed && payrollOpen && (
             <ul className="pl-6 pt-2 space-y-2">
               {payrollSubItems.map((subItem) => (
                 <li key={subItem.name}>
@@ -149,13 +158,17 @@ export default function Sidebar({ handleLogout, user }) {
         {/* Compliance Dropdown */}
         <li>
           <button
-            onClick={() => setComplianceOpen(!complianceOpen)}
-            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+            onClick={isCollapsed ? () => router.push('/compliance/empCompliance') : toggleComplianceMenu}
+            className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            title={isCollapsed ? 'Compliance Management' : ''}
           >
-            <span>Compliance Management</span>
-            {complianceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <div className="flex items-center gap-3">
+              <Shield size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Compliance</span>}
+            </div>
+            {!isCollapsed && (complianceOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
           </button>
-          {complianceOpen && (
+          {!isCollapsed && complianceOpen && (
             <ul className="pl-6 pt-2 space-y-2">
               {complianceSubItems.map((subItem) => (
                 <li key={subItem.name}>
@@ -175,13 +188,17 @@ export default function Sidebar({ handleLogout, user }) {
         {/* Performance Dropdown */}
         <li>
           <button
-            onClick={() => setPerformanceOpen(!performanceOpen)}
-            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+            onClick={isCollapsed ? () => router.push('/hr/performance/goals') : togglePerformanceMenu}
+            className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            title={isCollapsed ? 'Performance Management' : ''}
           >
-            <span>Performance Management</span>
-            {performanceOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <div className="flex items-center gap-3">
+              <TrendingUp size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Performance</span>}
+            </div>
+            {!isCollapsed && (performanceOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
           </button>
-          {performanceOpen && (
+          {!isCollapsed && performanceOpen && (
             <ul className="pl-6 pt-2 space-y-2">
               {performanceSubItems.map((subItem) => (
                 <li key={subItem.name}>
@@ -198,36 +215,39 @@ export default function Sidebar({ handleLogout, user }) {
           )}
         </li>
 
-        {/* Customer Connect */}
-        <li>
-          <Link href="/customer-connect">
-            <span
-              className={`block w-full text-left px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+          <li>
+            <button
+              onClick={() => router.push("/customer-connect")}
+              className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+              title={isCollapsed ? 'Customer Connect' : ''}
             >
-              Customer Connect
-            </span>
-          </Link>
-        </li>
+              <Phone size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Customer Connect</span>}
+            </button>
+          </li>
 
         {/* Settings Dropdown */}
         <li>
           <button
-            onClick={() => setSettingsOpen(!settingsOpen)}
-            className={`w-full text-left flex justify-between items-center px-4 py-3 bg-gray-800 rounded-lg ${hoverColor} transition cursor-pointer`}
+            onClick={isCollapsed ? () => router.push('/settings/profile') : toggleSettingsMenu}
+            className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            title={isCollapsed ? 'Settings' : ''}
           >
-            <span>Settings</span>
-            {settingsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <div className="flex items-center gap-3">
+              <Settings size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Settings</span>}
+            </div>
+            {!isCollapsed && (settingsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
           </button>
-          {settingsOpen && (
+          {!isCollapsed && settingsOpen && (
             <ul className="pl-6 pt-2 space-y-2">
               <li>
-                <Link href="/settings/profile">
-                  <span
-                    className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
-                  >
-                    Profile
-                  </span>
-                </Link>
+                <button
+                  onClick={() => router.push("/settings/profile")}
+                  className="w-full text-left text-xs px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
+                >
+                  Profile
+                </button>
               </li>
             </ul>
           )}
@@ -237,12 +257,15 @@ export default function Sidebar({ handleLogout, user }) {
         <li>
           <button
             onClick={handleLogout}
-            className="w-full text-left px-4 py-3 bg-red-600 hover:bg-red-700 transition rounded-lg mt-6 cursor-pointer"
+            className="w-full text-left px-3 py-2.5 bg-red-600 hover:bg-red-700 transition rounded-lg mt-6 cursor-pointer flex items-center gap-3"
+            title={isCollapsed ? 'Logout' : ''}
           >
-            Logout
+            <LogOut size={18} className="flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm font-medium">Logout</span>}
           </button>
         </li>
       </ul>
+      </div>
     </div>
   );
 }

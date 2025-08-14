@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Sidebar from "/Components/empSidebar";
 import Image from "next/image";
+import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp } from "lucide-react";
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
@@ -74,39 +75,210 @@ useEffect(() => {
     );
   }
 
+  const StatCard = ({ title, value, icon: Icon, color, description }) => (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value || '0'}</p>
+          {description && (
+            <p className="text-sm text-gray-500 mt-1">{description}</p>
+          )}
+        </div>
+        <div className={`p-3 rounded-lg ${color}`}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-r from-indigo-100 to-sky-100">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} handleLogout={handleLogout} />
-      <div className="flex-1 p-6 overflow-auto relative">
-        <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-xl mx-auto mt-20">
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
-            Welcome, {user.name}
-          </h2>
-          <div className="flex justify-center mb-6">
-            <Image
-              src={user.profile_photo || "/images/profile.png"}
-              alt="Profile"
-              width={128}
-              height={128}
-              className="rounded-full object-cover border-4 border-blue-500"
-            />
+      <div className="flex-1 overflow-auto">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Employee Dashboard</h1>
+              <p className="text-gray-600">Welcome back, {user.name}</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Calendar className="w-4 h-4" />
+                <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </div>
+              <button className="p-2 text-gray-400 hover:text-gray-600 relative">
+                <Bell className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              </button>
+            </div>
           </div>
-          <div className="mt-6 text-sm text-gray-700 border-t pt-4 space-y-1">
-            <p><strong>Email:</strong> {user.email}</p>
-            <p><strong>Position:</strong> {user.position}</p>
-            <p><strong>Role:</strong> {user.role}</p>
+        </div>
+
+        <div className="p-6">
+          {/* Work Status Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <Clock className={`w-8 h-8 ${isWorking ? 'text-green-600' : 'text-gray-400'}`} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {isWorking ? 'Currently Working' : 'Not Working'}
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    {isWorking ? 'You are checked in' : 'Click to start your work day'}
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={isWorking}
+                  onChange={handleToggleWork}
+                />
+                <div className="w-14 h-8 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors duration-300"></div>
+                <div className="absolute left-1 top-1 w-6 h-6 rounded-full bg-white shadow-md transform peer-checked:translate-x-6 transition-transform duration-300"></div>
+              </label>
+            </div>
           </div>
-          <div className="mt-6 text-center">
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={isWorking}
-                onChange={handleToggleWork}
-              />
-              <div className="w-12 h-7 bg-gray-300 rounded-full peer-checked:bg-indigo-500 transition-colors duration-300"></div>
-              <div className="absolute left-1 top-1 w-5 h-5 rounded-full bg-white shadow-md transform peer-checked:translate-x-5 transition-transform duration-300"></div>
-            </label>
+
+          {/* Profile Overview */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            {/* Profile Card */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Profile Overview</h3>
+                <p className="text-sm text-gray-600">Your personal information</p>
+              </div>
+              <div className="p-6">
+                <div className="flex items-start space-x-6">
+                  <div className="flex-shrink-0">
+                    <Image
+                      src={user.profile_photo || "/profile.png"}
+                      alt="Profile"
+                      width={96}
+                      height={96}
+                      className="rounded-full object-cover border-4 border-indigo-200"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-3">
+                        <User className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Full Name</p>
+                          <p className="font-medium text-gray-900">{user.name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Mail className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Email</p>
+                          <p className="font-medium text-gray-900">{user.email}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Briefcase className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Position</p>
+                          <p className="font-medium text-gray-900">{user.position ||'Not specified' }</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Shield className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="text-sm text-gray-600">Role</p>
+                          <p className="font-medium text-gray-900 capitalize">{user.role}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Quick Stats</h3>
+                <p className="text-sm text-gray-600">Your work summary</p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">Todays Hours</span>
+                  </div>
+                  <span className="text-lg font-bold text-blue-600">0h</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-medium text-green-900">This Week</span>
+                  </div>
+                  <span className="text-lg font-bold text-green-600">0h</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <TrendingUp className="w-5 h-5 text-purple-600" />
+                    <span className="text-sm font-medium text-purple-900">This Month</span>
+                  </div>
+                  <span className="text-lg font-bold text-purple-600">0h</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+              <p className="text-sm text-gray-600">Common tasks and shortcuts</p>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left">
+                  <div className="flex items-center space-x-3">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium text-blue-900">Apply Leave</p>
+                      <p className="text-sm text-blue-600">Request time off</p>
+                    </div>
+                  </div>
+                </button>
+                <button className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left">
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-900">View Attendance</p>
+                      <p className="text-sm text-green-600">Check your records</p>
+                    </div>
+                  </div>
+                </button>
+                <button className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left">
+                  <div className="flex items-center space-x-3">
+                    <User className="w-5 h-5 text-purple-600" />
+                    <div>
+                      <p className="font-medium text-purple-900">Update Profile</p>
+                      <p className="text-sm text-purple-600">Edit your details</p>
+                    </div>
+                  </div>
+                </button>
+                <button className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left">
+                  <div className="flex items-center space-x-3">
+                    <Mail className="w-5 h-5 text-orange-600" />
+                    <div>
+                      <p className="font-medium text-orange-900">Messages</p>
+                      <p className="text-sm text-orange-600">View notifications</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
