@@ -101,8 +101,8 @@ const handleDocumentUpload = async (e, type) => {
 
     setFormData((prev) => ({
       ...prev,
-      [`${type}_number`]: number,
-      [`${type}_card`]: data?.filePath || "",
+      [type === "aadhar_card" ? "aadhar_number" : "pan_number"]: number,
+      [type]: data?.filePath || "",
     }));
   } catch (err) {
     console.error("Textract error:", err);
@@ -137,7 +137,7 @@ const handleDocumentUpload = async (e, type) => {
 
     try {
       const response = await axios.post("/api/recruitment/submitForm", data);
-      alert(`Form submitted successfully.\nGenerated Password: ${response.data.password}`);
+      alert('Form submitted successfully.');
       router.push('/Recruitment/form/docs_submitted');
     } catch (error) {
       console.error("Error submitting form:", error);

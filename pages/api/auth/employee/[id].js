@@ -8,15 +8,14 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Update status to 'Inactive' instead of deleting
-    const updatedUser = await prisma.users.update({
+    // Delete user from database
+    await prisma.users.delete({
       where: { id: parseInt(id) },
-      data: { status: "Inactive" },
     });
 
-    res.status(200).json({ message: "User marked as Inactive", user: updatedUser });
+    res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     console.error("Prisma Update Error:", error);
-    res.status(500).json({ error: "Failed to mark user as inactive" });
+    res.status(500).json({ error: "Failed to delete user" });
   }
 }

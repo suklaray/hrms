@@ -13,10 +13,10 @@ export default function Sidebar({ handleLogout, user }) {
   const role = user?.role?.toLowerCase();
   const hoverColor =
     role === "superadmin"
-      ? "hover:bg-purple-600"
+      ? "hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600"
       : role === "admin"
-      ? "hover:bg-sky-600"
-      : "hover:bg-indigo-600"; // default to HR
+      ? "hover:bg-purple-600"
+      : "hover:bg-blue-600"; // hr
 
   const toggleCheckInOut = () => {
     setCheckedIn((prev) => !prev);

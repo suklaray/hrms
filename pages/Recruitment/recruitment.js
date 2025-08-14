@@ -3,9 +3,11 @@ import axios from "axios";
 import SideBar from "@/Components/SideBar";
 import Link from "next/link";
 import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
-import { FaClock, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+//import { FaClock, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { withRoleProtection } from "@/lib/withRoleProtection";
+export const getServerSideProps = withRoleProtection(["superadmin", "admin", "hr"]);
 
-export default function Candidates() {
+export default function Candidates(user) {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,7 +124,7 @@ export default function Candidates() {
 
   return (
     <div className="flex h-screen bg-gray-50 bg-gradient-to-r from-gray-100 via-indigo-100 to-pink-100">
-      <SideBar />
+      <SideBar user={user} />
       <div className="w-full p-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-extrabold text-indigo-700">Candidate List</h1>
