@@ -15,6 +15,7 @@ export default function ViewEmployee() {
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [position, setPosition] = useState("");
 
 useEffect(() => {
   const fetchEverything = async () => {
@@ -42,6 +43,7 @@ useEffect(() => {
       if (id) {
         const empRes = await axios.get(`/api/auth/employee/view/${id}`);
         setData(empRes.data);
+        setPosition(empRes.data?.user?.position || "");
       }
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -127,6 +129,39 @@ useEffect(() => {
   }
 };
 
+  const handlePositionUpdate = async () => {
+    if (!position.trim()) {
+      alert("Please enter a valid position");
+      return;
+    }
+
+    try {
+      const res = await axios.patch(`/api/auth/employee/update-position/${empid}`,
+        { position },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        }
+      );
+
+      if (res.status === 200) {
+        setData((prev) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            position: position,
+          },
+        }));
+        alert("Position updated successfully.");
+      }
+    } catch (err) {
+      console.error("Failed to update position:", err);
+      alert("Failed to update position. Please try again.");
+    }
+  };
+
   const handlePasswordReset = async () => {
     if (!user?.id) return;
     
@@ -211,6 +246,28 @@ useEffect(() => {
                   <Detail label="Contact No" value={employees?.contact_no || "N/A"} />
                   <Detail label="DOB" value={employees?.dob ? new Date(employees.dob).toLocaleDateString() : "N/A"} />
                   <Detail label="Gender" value={employees?.gender || "N/A"} />
+                  
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-1">Position</p>
+                    <p className="text-gray-900 font-medium">{user?.position || "N/A"}</p>
+                    {["admin", "superadmin"].includes(role) && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          type="text"
+                          value={position}
+                          onChange={(e) => setPosition(e.target.value)}
+                          placeholder="Enter new position"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                        <button
+                          onClick={handlePositionUpdate}
+                          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          Update
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   
                   <div>
                     <p className="text-sm font-medium text-gray-700 mb-1">Employment Type</p>

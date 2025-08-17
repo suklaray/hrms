@@ -14,6 +14,7 @@ export default function Sidebar({ handleLogout, user }) {
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [performanceOpen, setPerformanceOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [employeeOpen, setEmployeeOpen] = useState(false);
   const [checkedIn, setCheckedIn] = useState(false);
 
   const role = user?.role?.toLowerCase() || 'hr';
@@ -23,6 +24,7 @@ export default function Sidebar({ handleLogout, user }) {
   const toggleComplianceMenu = () => setComplianceOpen(!complianceOpen);
   const togglePerformanceMenu = () => setPerformanceOpen(!performanceOpen);
   const toggleSettingsMenu = () => setSettingsOpen(!settingsOpen);
+  const toggleEmployeeMenu = () => setEmployeeOpen(!employeeOpen);
   const hoverColor =
     role === "superadmin"
       ? "hover:bg-purple-600"
@@ -32,9 +34,12 @@ export default function Sidebar({ handleLogout, user }) {
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "Register Employee", path: "/registerEmployee", icon: UserPlus },
-    { name: "Employee List", path: "/employeeList", icon: Users },
     { name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck },
+  ];
+
+  const employeeSubItems = [
+    { name: "Register Employee", path: "/registerEmployee" },
+    { name: "View Employees", path: "/employeeList" },
   ];
 
   const attendanceSubItems = [
@@ -94,6 +99,36 @@ export default function Sidebar({ handleLogout, user }) {
             </li>
           );
         })}
+
+        {/* Employee Management Dropdown */}
+        <li>
+          <button
+            onClick={isCollapsed ? () => router.push('/employeeList') : toggleEmployeeMenu}
+            className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+            title={isCollapsed ? 'Employee Management' : ''}
+          >
+            <div className="flex items-center gap-3">
+              <Users size={18} className="flex-shrink-0" />
+              {!isCollapsed && <span className="text-sm font-medium">Employee Management</span>}
+            </div>
+            {!isCollapsed && (employeeOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+          </button>
+          {!isCollapsed && employeeOpen && (
+            <ul className="pl-6 pt-2 space-y-2">
+              {employeeSubItems.map((subItem) => (
+                <li key={subItem.name}>
+                  <Link href={subItem.path}>
+                    <span
+                      className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
+                    >
+                      {subItem.name}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </li>
 
         {/* Attendance Dropdown */}
         <li>
