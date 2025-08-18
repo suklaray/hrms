@@ -1,5 +1,5 @@
-// /pages/api/auth/employee/update-role/[id].js
 import prisma from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 
 export default async function handler(req, res) {
   const {
@@ -22,25 +22,21 @@ export default async function handler(req, res) {
     if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
       return res.status(403).json({ message: "Access denied" });
     }
-  } catch (authError) {
-    return res.status(401).json({ message: "Invalid token" });
-  }
 
-  const { role } = req.body;
+    const { position } = req.body;
 
-  if (!role || !["admin", "hr", "employee", "superadmin"].includes(role)) {
-    return res.status(400).json({ message: "Invalid or missing role" });
-  }
+    if (!position || typeof position !== 'string') {
+      return res.status(400).json({ message: "Invalid or missing position" });
+    }
 
-  try {
     const updatedUser = await prisma.users.update({
       where: { empid: id },
-      data: { role },
+      data: { position },
     });
 
-    return res.status(200).json({ message: "Role updated successfully", updatedUser });
+    return res.status(200).json({ message: "Position updated successfully", updatedUser });
   } catch (error) {
-    console.error("Error updating role:", error);
+    console.error("Error updating position:", error);
     return res.status(500).json({ message: "Internal server error", error: error.message });
   }
 }

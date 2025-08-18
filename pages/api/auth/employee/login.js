@@ -11,17 +11,20 @@ export default async function handler(req, res) {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ message: "Email and password are required" });
+    return res.status(400).json({ message: "Email/Username and password are required" });
   }
 
   try {
-    // Fetch user
-    const user = await prisma.users.findUnique({ where: { email } });
+    // Fetch user by email or empid
+    let user = await prisma.users.findUnique({ where: { email } });
+    if (!user) {
+      user = await prisma.users.findUnique({ where: { empid: email } });
+    }
     console.log("Fetched user:", user);
 
     if (!user) {
-      console.log("No user found with this email");
-      return res.status(401).json({ message: "Invalid email or not authorized" });
+      console.log("No user found with this email/username");
+      return res.status(401).json({ message: "Invalid email/username or not authorized" });
     }
 
     if (user.role !== "employee") {

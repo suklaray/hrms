@@ -15,37 +15,35 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== 'HR' && decoded.role !== 'Admin') {
+    if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const [totalEmployees, activeEmployees, pendingLeaves, totalCandidates] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { status: 'Active' } }),
-      prisma.leaveRequest.count({ where: { status: 'Pending' } }),
-      prisma.candidate.count()
+    const [totalEmployees, activeEmployees, pendingLeaves, todayAttendance] = await Promise.all([
+      prisma.users.count(),
+      prisma.users.count({ where: { status: 'Active' } }),
+      prisma.leave_requests.count({ where: { status: 'Pending' } }),
+      prisma.attendance.count({ 
+        where: { 
+          date: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+            lt: new Date(new Date().setHours(23, 59, 59, 999))
+          },
+          attendance_status: 'Present'
+        } 
+      })
     ]);
 
-    const recentEmployees = await prisma.user.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      select: { name: true, empid: true, role: true, createdAt: true }
-    });
-
-    const monthlyStats = await prisma.user.groupBy({
-      by: ['createdAt'],
-      _count: { id: true },
-      orderBy: { createdAt: 'desc' },
-      take: 6
-    });
+    const totalEmployeesForAttendance = await prisma.users.count({ where: { status: 'Active' } });
+    const attendancePercentage = totalEmployeesForAttendance > 0 
+      ? Math.round((todayAttendance / totalEmployeesForAttendance) * 100) 
+      : 0;
 
     res.status(200).json({
       totalEmployees,
       activeEmployees,
       pendingLeaves,
-      totalCandidates,
-      recentEmployees,
-      monthlyStats
+      todayAttendance: attendancePercentage
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
