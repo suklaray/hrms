@@ -65,42 +65,35 @@ export default function AttendanceList() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {Array.isArray(data) && data.length > 0 ? (
-                data.map((user, index) => {
-                  const lastLogin = parseDate(user.last_login);
-                  const lastLogout = parseDate(user.last_logout);
-                  const totalTimeSpent = calculateTimeSpent(user.last_login, user.last_logout);
-                  const attendanceStatus = totalTimeSpent >= 4 ? "Present" : "Absent";
-                  const status = user.status;
-
-                  return (
+                data.map((user, index) => (
                     <tr key={user.empid} className={index % 2 === 0 ? "bg-indigo-50" : "bg-white"}>
                       <td className="px-4 py-2">{user.empid}</td>
                       <td className="px-4 py-2 font-medium text-gray-800">{user.name}</td>
                       <td className="px-4 py-2">{user.email}</td>
                       <td className="px-4 py-2 uppercase">{user.role}</td>
-                      <td className="px-4 py-2">{lastLogin}</td>
-                      <td className="px-4 py-2">{lastLogout}</td>
-                      <td className="px-4 py-2 font-mono">{totalTimeSpent}</td>
+                      <td className="px-4 py-2">{user.last_login}</td>
+                      <td className="px-4 py-2">{user.last_logout}</td>
+                      <td className="px-4 py-2 font-mono">{user.total_hours}</td>
                       <td className="px-4 py-2">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            attendanceStatus === "Present"
+                            user.attendance_status === "Present"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {attendanceStatus}
+                          {user.attendance_status}
                         </span>
                       </td>
                       <td className="px-4 py-2">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            status === "Logged In"
+                            user.status === "Logged In"
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {status}
+                          {user.status}
                         </span>
                       </td>
                       <td className="px-4 py-2">
@@ -113,8 +106,7 @@ export default function AttendanceList() {
                         </button>
                       </td>
                     </tr>
-                  );
-                })
+                  ))
               ) : (
                 <tr>
                   <td colSpan="10" className="text-center text-gray-500 py-6">
@@ -130,22 +122,3 @@ export default function AttendanceList() {
   );
 }
 
-// Helper functions
-function parseDate(dateString) {
-  if (!dateString) return "N/A";
-  const date = new Date(dateString);
-  return date.toLocaleString();
-}
-
-function calculateTimeSpent(loginTime, logoutTime) {
-  if (!loginTime) return "0h 0m";
-  if (!logoutTime) return "Active";
-  
-  const login = new Date(loginTime);
-  const logout = new Date(logoutTime);
-  const diffMs = logout - login;
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  
-  return `${diffHours}h ${diffMinutes}m`;
-}

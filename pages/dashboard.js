@@ -11,8 +11,10 @@ export default function Dashboard({ user }) {
   const router = useRouter();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     fetchStats();
   }, []);
 
@@ -73,7 +75,7 @@ export default function Dashboard({ user }) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date().toLocaleDateString()}</span>
+                <span>{mounted ? new Date().toLocaleDateString() : ''}</span>
               </div>
               <button className="p-2 text-gray-400 hover:text-gray-600 relative">
                 <Bell className="w-5 h-5" />

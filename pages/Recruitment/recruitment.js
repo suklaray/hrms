@@ -2,12 +2,6 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import SideBar from "@/Components/SideBar";
 import Link from "next/link";
-<<<<<<< HEAD
-import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
-//import { FaClock, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import { withRoleProtection } from "@/lib/withRoleProtection";
-export const getServerSideProps = withRoleProtection(["superadmin", "admin", "hr"]);
-=======
 import { 
   Eye, 
   Trash2, 
@@ -24,7 +18,6 @@ import {
   Download,
   UserPlus
 } from "lucide-react";
->>>>>>> 9f50d836d97ddc7675e2013f740aede5f83fa7e0
 
 export default function Candidates(user) {
   const [candidates, setCandidates] = useState([]);
@@ -32,6 +25,7 @@ export default function Candidates(user) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [stats, setStats] = useState({ total: 0, selected: 0, rejected: 0, waiting: 0 });
+  const [mounted, setMounted] = useState(false);
 
 
   const fetchCandidates = async () => {
@@ -55,6 +49,7 @@ export default function Candidates(user) {
   };
 
   useEffect(() => {
+    setMounted(true);
     fetchCandidates();
   }, []);
 
@@ -107,7 +102,7 @@ export default function Candidates(user) {
   };
 
   const handleDelete = async (candidateId) => {
-    if (window.confirm("Are you sure you want to delete this candidate?")) {
+    if (mounted && window.confirm("Are you sure you want to delete this candidate?")) {
       try {
         await axios.delete(`/api/recruitment/deleteCandidate?candidate_id=${candidateId}`);
         fetchCandidates();
@@ -179,18 +174,6 @@ export default function Candidates(user) {
 
 
   return (
-<<<<<<< HEAD
-    <div className="flex h-screen bg-gray-50 bg-gradient-to-r from-gray-100 via-indigo-100 to-pink-100">
-      <SideBar user={user} />
-      <div className="w-full p-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-extrabold text-indigo-700">Candidate List</h1>
-          <Link href="/Recruitment/addCandidates">
-            <button className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-6 py-2 rounded-lg shadow-lg hover:from-indigo-600 hover:to-purple-700 transition duration-300">
-              + Add Candidate
-            </button>
-          </Link>
-=======
     <div className="flex min-h-screen bg-gray-50">
       <SideBar />
       <div className="flex-1 overflow-auto">
@@ -208,7 +191,6 @@ export default function Candidates(user) {
               </button>
             </Link>
           </div>
->>>>>>> 9f50d836d97ddc7675e2013f740aede5f83fa7e0
         </div>
 
         <div className="p-6">
