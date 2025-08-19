@@ -55,7 +55,7 @@ export default function CustomerConnect() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gradient-to-br from-purple-200 to-indigo-200">
+        <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-indigo-200">
         <SideBar />
 
         <div className="flex-grow p-6">
@@ -122,7 +122,7 @@ export default function CustomerConnect() {
                         {activeMessageId === msg.id && (
                             <div className="absolute z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                             <div className="bg-gradient-to-l from-indigo-500 to-purple-500 p-0.5 rounded-lg shadow-xl">
-                                <div className="bg-blue-100 pt-8 px-4 pb-4 rounded-md w-[300px] h-[180px] text-gray-900 relative overflow-y-auto whitespace-pre-wrap">
+                                <div className="bg-gray-50 pt-8 px-4 pb-4 rounded-md w-[300px] h-[180px] text-gray-900 relative overflow-y-auto whitespace-pre-wrap">
                                     <button
                                         onClick={() => setActiveMessageId(null)}
                                         className="absolute top-2 left-1/2 -translate-x-1/2 text-red-600 hover:text-red-800 text-sm font-bold z-50"

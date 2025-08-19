@@ -241,7 +241,10 @@ useEffect(() => {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <button className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left">
+                <button 
+                  onClick={() => router.push('/employee/leave-request')}
+                  className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left"
+                >
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-blue-600" />
                     <div>
@@ -250,7 +253,10 @@ useEffect(() => {
                     </div>
                   </div>
                 </button>
-                <button className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left">
+                <button 
+                  onClick={() => router.push('/employee/attendance')}
+                  className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left"
+                >
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-green-600" />
                     <div>
@@ -259,7 +265,10 @@ useEffect(() => {
                     </div>
                   </div>
                 </button>
-                <button className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left">
+                <button 
+                  onClick={() => router.push('/employee/profile')}
+                  className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left"
+                >
                   <div className="flex items-center space-x-3">
                     <User className="w-5 h-5 text-purple-600" />
                     <div>
@@ -268,12 +277,15 @@ useEffect(() => {
                     </div>
                   </div>
                 </button>
-                <button className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left">
+                <button 
+                  onClick={() => router.push('/employee/emp-payslip')}
+                  className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left"
+                >
                   <div className="flex items-center space-x-3">
                     <Mail className="w-5 h-5 text-orange-600" />
                     <div>
-                      <p className="font-medium text-orange-900">Messages</p>
-                      <p className="text-sm text-orange-600">View notifications</p>
+                      <p className="font-medium text-orange-900">Payslips & Docs</p>
+                      <p className="text-sm text-orange-600">View documents</p>
                     </div>
                   </div>
                 </button>

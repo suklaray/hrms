@@ -88,14 +88,12 @@ export default function Sidebar({ handleLogout, user }) {
           const IconComponent = item.icon;
           return (
             <li key={item.name}>
-              <button
-                onClick={() => router.push(item.path)}
-                className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
-                title={isCollapsed ? item.name : ''}
-              >
-                <IconComponent size={18} className="flex-shrink-0" />
-                {!isCollapsed && <span className="text-sm font-medium">{item.name}</span>}
-              </button>
+              <Link href={item.path}>
+                <div className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3" title={isCollapsed ? item.name : ''}>
+                  <IconComponent size={18} className="flex-shrink-0" />
+                  {!isCollapsed && <span className="text-sm font-medium">{item.name}</span>}
+                </div>
+              </Link>
             </li>
           );
         })}
@@ -251,14 +249,12 @@ export default function Sidebar({ handleLogout, user }) {
         </li>
 
           <li>
-            <button
-              onClick={() => router.push("/customer-connect")}
-              className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
-              title={isCollapsed ? 'Customer Connect' : ''}
-            >
-              <Phone size={18} className="flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium">Customer Connect</span>}
-            </button>
+            <Link href="/customer-connect">
+              <div className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3" title={isCollapsed ? 'Customer Connect' : ''}>
+                <Phone size={18} className="flex-shrink-0" />
+                {!isCollapsed && <span className="text-sm font-medium">Customer Connect</span>}
+              </div>
+            </Link>
           </li>
 
         {/* Settings Dropdown */}
@@ -277,12 +273,11 @@ export default function Sidebar({ handleLogout, user }) {
           {!isCollapsed && settingsOpen && (
             <ul className="pl-6 pt-2 space-y-2">
               <li>
-                <button
-                  onClick={() => router.push("/settings/profile")}
-                  className="w-full text-left text-xs px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer"
-                >
-                  Profile
-                </button>
+                <Link href="/settings/profile">
+                  <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    Profile
+                  </span>
+                </Link>
               </li>
             </ul>
           )}
