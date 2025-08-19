@@ -7,6 +7,8 @@ export default async function handler(req, res) {
       select: {
         id: true,
         type_name: true,
+        max_days: true,
+        paid: true,
       },
     });
 

@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import axios from "axios";
+import { User, FileText, MapPin, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
 
-export default function CandidateForm() {
+export default function EmployeeDocumentForm() {
   const router = useRouter();
   const { id } = router.query;
-  const [isLoading, setIsLoading] = useState(false); 
-  const [candidate, setCandidate] = useState(null);
+  const [mounted, setMounted] = useState(false);
+  const [employee, setEmployee] = useState(null);
   const [formData, setFormData] = useState({
+    contact_no: "",
+    dob: "",
+    gender: "",
     address_line_1: "",
     address_line_2: "",
     city: "",
@@ -29,117 +33,149 @@ export default function CandidateForm() {
     account_number: "",
     ifsc_code: "",
     bank_details: null,
-    contact_no: "",
-    dob: "",
-    gender: "",
   });
+  const [errors, setErrors] = useState({});
+  const [extracting, setExtracting] = useState({ aadhar: false, pan: false });
 
   useEffect(() => {
-    if (id) {
-      // Check if this is a prefill request from employee view
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && id) {
       const urlParams = new URLSearchParams(window.location.search);
-      const isPrefill = urlParams.get('prefill');
       const prefillName = urlParams.get('name');
       const prefillEmail = urlParams.get('email');
       
-      if (isPrefill && prefillName && prefillEmail) {
-        // Set candidate data from URL parameters
-        setCandidate({
-          candidate_id: id,
+      if (prefillName && prefillEmail) {
+        setEmployee({
+          empid: id,
           name: decodeURIComponent(prefillName),
           email: decodeURIComponent(prefillEmail)
         });
       } else {
-        // Fetch candidate data normally
-        axios
-          .get(`/api/recruitment/getCandidateById?id=${id}`)
+        // Fetch employee data
+        axios.get(`/api/employee/get-employee/${id}`)
           .then((res) => {
-            setCandidate(res.data);
-            setFormData((prev) => ({
-              ...prev,
-              contact_no: res.data.contact_no || "",
-            }));
+            setEmployee(res.data);
           })
-          .catch((err) => console.error("Error fetching candidate:", err));
+          .catch((err) => console.error("Error fetching employee:", err));
       }
     }
-  }, [id]);
+  }, [mounted, id]);
+
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+    
+    switch (name) {
+      case 'contact_no':
+        if (!/^\d{10}$/.test(value)) {
+          newErrors[name] = 'Contact number must be 10 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'pincode':
+        if (!/^\d{6}$/.test(value)) {
+          newErrors[name] = 'Pincode must be 6 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'aadhar_number':
+        if (!/^\d{12}$/.test(value)) {
+          newErrors[name] = 'Aadhar number must be 12 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'pan_number':
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
+          newErrors[name] = 'Invalid PAN format (e.g., ABCDE1234F)';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'ifsc_code':
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(value)) {
+          newErrors[name] = 'Invalid IFSC code format';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'account_number':
+        if (!/^\d{9,18}$/.test(value)) {
+          newErrors[name] = 'Account number must be 9-18 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      default:
+        if (value.trim() === '') {
+          newErrors[name] = 'This field is required';
+        } else {
+          delete newErrors[name];
+        }
+    }
+    
+    setErrors(newErrors);
+  };
+
+  const extractTextFromDocument = async (file, docType) => {
+    setExtracting(prev => ({ ...prev, [docType]: true }));
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('docType', docType);
+    
+    try {
+      const response = await axios.post('/api/textract/extract', formData);
+      const extractedNumber = response.data.extractedNumber;
+      
+      if (extractedNumber) {
+        setFormData(prev => ({
+          ...prev,
+          [`${docType}_number`]: extractedNumber
+        }));
+        validateField(`${docType}_number`, extractedNumber);
+      }
+    } catch (error) {
+      console.error('Error extracting text:', error);
+    } finally {
+      setExtracting(prev => ({ ...prev, [docType]: false }));
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, files, type } = e.target;
 
     if (type === "file") {
+      const file = files[0];
       setFormData((prev) => ({
         ...prev,
-        [name]: files[0],
+        [name]: file,
       }));
+      
+      // Auto-extract for Aadhar and PAN cards
+      if (name === 'aadhar_card' && file) {
+        extractTextFromDocument(file, 'aadhar');
+      } else if (name === 'pan_card' && file) {
+        extractTextFromDocument(file, 'pan');
+      }
     } else {
       setFormData((prev) => ({
         ...prev,
         [name]: value,
       }));
+      validateField(name, value);
     }
   };
-
-const handleDocumentUpload = async (e, type) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const formDataUpload = new FormData();
-  formDataUpload.append("document", file);
-  formDataUpload.append("type", type); // 'aadhar' or 'pan'
-
-  setIsLoading(true);
-
-  try {
-    const res = await fetch("/api/textract", {
-      method: "POST",
-      body: formDataUpload,
-    });
-
-    const data = await res.json();
-
-    let number = "";
-
-    // SAFETY CHECK
-    if (!data.extractedText) {
-      console.warn("No text extracted from document.");
-      alert("No text found in the uploaded document.");
-    } else {
-      if (type === "aadhar_card") {
-        const match = data.extractedText.match(/\b\d{4}\s?\d{4}\s?\d{4}\b/);
-        if (match) number = match[0].replace(/\s/g, "");
-      } else if (type === "pan_card") {
-        const match = data.extractedText.match(/\b[A-Z]{5}[0-9]{4}[A-Z]\b/);
-        if (match) number = match[0];
-      }
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      [type === "aadhar_card" ? "aadhar_number" : "pan_number"]: number,
-      [type]: data?.filePath || "",
-    }));
-  } catch (err) {
-    console.error("Textract error:", err);
-    alert("Failed to process the document.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (formData.contact_no.length !== 10 || !/^\d+$/.test(formData.contact_no)) {
-      alert("Invalid contact number. Please enter a 10-digit number.");
-      return;
-    }
-
-    if (formData.account_number.length > 19) {
-      alert("Account number cannot exceed 19 characters.");
+    if (Object.keys(errors).length > 0) {
+      alert("Please fix all validation errors before submitting.");
       return;
     }
 
@@ -147,31 +183,32 @@ const handleDocumentUpload = async (e, type) => {
     Object.entries(formData).forEach(([key, value]) => {
       if (value) data.append(key, value);
     });
-    data.append("candidate_id", id);
-    data.append("name", candidate.name);
-    data.append("email", candidate.email);
-    data.append("is_employee_registration", "true");
+    data.append("empid", id);
+    data.append("name", employee.name);
+    data.append("email", employee.email);
 
     try {
-      const response = await axios.post("/api/recruitment/submitForm", data);
-      alert('Form submitted successfully.');
-      router.push('/Recruitment/form/docs_submitted');
+      const response = await axios.post("/api/employee/submit-documents", data);
+      alert('Documents submitted successfully.');
+      router.push(`/employee/view/${id}`);
     } catch (error) {
-      console.error("Error submitting form:", error);
-      alert("Failed to submit form");
+      console.error("Error submitting documents:", error);
+      alert("Failed to submit documents");
     }
   };
+
+  if (!employee) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-700 text-xl font-semibold">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-8 py-6">
-            <h1 className="text-3xl font-bold text-white text-center">Document Submission Form</h1>
-            <p className="text-blue-100 text-center mt-2">Please fill in all required information</p>
-          </div>
-
           <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
             {/* Personal Information Section */}
             <div className="bg-gray-50 rounded-lg p-6">
@@ -185,7 +222,7 @@ const handleDocumentUpload = async (e, type) => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
                   <input
                     type="text"
-                    value={candidate?.name || "Loading..."}
+                    value={employee?.name || ""}
                     readOnly
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                   />
@@ -195,7 +232,7 @@ const handleDocumentUpload = async (e, type) => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                   <input
                     type="email"
-                    value={candidate?.email || "Loading..."}
+                    value={employee?.email || ""}
                     readOnly
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                   />
@@ -209,8 +246,16 @@ const handleDocumentUpload = async (e, type) => {
                     value={formData.contact_no}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.contact_no ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.contact_no && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      {errors.contact_no}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -242,7 +287,6 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
               </div>
             </div>
-
 
             {/* Address Section */}
             <div className="bg-gray-50 rounded-lg p-6">
@@ -307,8 +351,16 @@ const handleDocumentUpload = async (e, type) => {
                     value={formData.pincode}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.pincode ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.pincode && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      {errors.pincode}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -325,18 +377,13 @@ const handleDocumentUpload = async (e, type) => {
               </div>
             </div>
 
-            {isLoading && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-opacity-10 backdrop-brightness-75">
-                <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent"></div>
-              </div>
-            )}
-
             {/* Documents Section */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
                 <span className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm mr-3">3</span>
                 Identity Documents
               </h2>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Aadhar Card *</label>
@@ -344,7 +391,7 @@ const handleDocumentUpload = async (e, type) => {
                     type="file"
                     name="aadhar_card"
                     accept="image/*,application/pdf"
-                    onChange={(e) => handleDocumentUpload(e, "aadhar_card")}
+                    onChange={handleChange}
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -352,15 +399,30 @@ const handleDocumentUpload = async (e, type) => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Aadhar Number *</label>
-                  <input
-                    type="text"
-                    name="aadhar_number"
-                    placeholder="Enter Aadhar Number"
-                    value={formData.aadhar_number || ""}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="aadhar_number"
+                      placeholder="Enter Aadhar Number"
+                      value={formData.aadhar_number}
+                      onChange={handleChange}
+                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.aadhar_number ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {extracting.aadhar && (
+                      <div className="absolute right-3 top-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      </div>
+                    )}
+                  </div>
+                  {errors.aadhar_number && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      {errors.aadhar_number}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -369,7 +431,7 @@ const handleDocumentUpload = async (e, type) => {
                     type="file"
                     name="pan_card"
                     accept="image/*,application/pdf"
-                    onChange={(e) => handleDocumentUpload(e, "pan_card")}
+                    onChange={handleChange}
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -377,15 +439,30 @@ const handleDocumentUpload = async (e, type) => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">PAN Number *</label>
-                  <input
-                    type="text"
-                    name="pan_number"
-                    placeholder="Enter PAN Number"
-                    value={formData.pan_number || ""}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="pan_number"
+                      placeholder="Enter PAN Number"
+                      value={formData.pan_number}
+                      onChange={handleChange}
+                      required
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.pan_number ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    />
+                    {extracting.pan && (
+                      <div className="absolute right-3 top-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                      </div>
+                    )}
+                  </div>
+                  {errors.pan_number && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      {errors.pan_number}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -509,8 +586,16 @@ const handleDocumentUpload = async (e, type) => {
                     onChange={handleChange}
                     required
                     maxLength={20}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.account_number ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.account_number && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      {errors.account_number}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -521,8 +606,16 @@ const handleDocumentUpload = async (e, type) => {
                     value={formData.ifsc_code}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.ifsc_code ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.ifsc_code && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <AlertCircle className="w-4 h-4 mr-1" />
+                      {errors.ifsc_code}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -552,10 +645,11 @@ const handleDocumentUpload = async (e, type) => {
               type="submit" 
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-lg"
             >
-              Submit Application
+              Submit Documents
             </button>
           </form>
         </div>
       </div>
     </div>
-  );}
+  );
+}

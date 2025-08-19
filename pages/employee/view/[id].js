@@ -232,6 +232,33 @@ useEffect(() => {
               </div>
             </div>
 
+            {/* Complete Registration Form Link */}
+            {(!employees || !employees.contact_no || !addresses?.length || !bankDetails?.length) && (
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-orange-900">Complete Your Registration</h3>
+                      <p className="text-orange-700 text-sm">Some details are missing. Please complete your profile by filling the registration form.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const formUrl = `/employee/upload-documents/${empid}?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`;
+                      window.open(formUrl, '_blank');
+                    }}
+                    className="inline-flex items-center px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Complete Form
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Personal Details */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="p-6 border-b border-gray-100">
