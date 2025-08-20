@@ -44,7 +44,9 @@ export default function AddCandidate() {
     } catch (error) {
       if (error.response && error.response.data.error === "Email already exists") {
         setErrorMessage("The email address is already registered. Please use a different one.");
-      } else if (error.response) {
+      } else if (error.response && error.response.data && error.response.data.error) {
+        setErrorMessage(error.response.data.error);
+      } else {
         setErrorMessage("Failed to add candidate. Please try again.");
       }
       if (!(error.response && error.response.status === 400)) {
