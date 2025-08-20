@@ -2,15 +2,20 @@ import { useEffect, useState } from 'react';
 import moment from 'moment'; 
 import SideBar from "@/Components/SideBar";
 import { useRouter } from 'next/router';
-import { Eye, Calendar, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Eye, Calendar, User, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, Settings } from 'lucide-react';
 
 export default function ViewLeaveRequests() {
   const router = useRouter();
   const [leaveData, setLeaveData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [showLeaveTypeModal, setShowLeaveTypeModal] = useState(false);
+  const [leaveTypeForm, setLeaveTypeForm] = useState({ type_name: '', max_days: '', paid: true });
+  const [editingLeaveType, setEditingLeaveType] = useState(null);
 
 
   useEffect(() => {
+    // Fetch leave requests
     fetch('/api/hr/leave-requests')
       .then((res) => res.json())
       .then((data) => {
@@ -30,7 +35,22 @@ export default function ViewLeaveRequests() {
         console.error('Error fetching leave requests:', err);
         setLoading(false);
       });
+
+    // Fetch leave types
+    fetchLeaveTypes();
   }, []);
+
+  const fetchLeaveTypes = async () => {
+    try {
+      const res = await fetch('/api/hr/leave-types');
+      const data = await res.json();
+      if (data.success) {
+        setLeaveTypes(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching leave types:', error);
+    }
+  };
 
   const handleLogout = () => {
     router.push("/login");
@@ -85,6 +105,48 @@ export default function ViewLeaveRequests() {
     router.push(`/hr/employee-leave-details/${empid}`);
   };
 
+  const handleLeaveTypeSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const method = editingLeaveType ? 'PUT' : 'POST';
+      const body = editingLeaveType 
+        ? { ...leaveTypeForm, id: editingLeaveType.id }
+        : leaveTypeForm;
+
+      const res = await fetch('/api/hr/leave-types', {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        fetchLeaveTypes();
+        setShowLeaveTypeModal(false);
+        setLeaveTypeForm({ type_name: '', max_days: '', paid: true });
+        setEditingLeaveType(null);
+        alert(editingLeaveType ? 'Leave type updated successfully' : 'Leave type added successfully');
+      } else {
+        alert(data.message || 'Error saving leave type');
+      }
+    } catch (error) {
+      console.error('Error saving leave type:', error);
+      alert('Error saving leave type');
+    }
+  };
+
+  const handleEditLeaveType = (leaveType) => {
+    setEditingLeaveType(leaveType);
+    setLeaveTypeForm({
+      type_name: leaveType.type_name,
+      max_days: leaveType.max_days.toString(),
+      paid: leaveType.paid
+    });
+    setShowLeaveTypeModal(true);
+  };
+
+
+
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
@@ -106,7 +168,73 @@ export default function ViewLeaveRequests() {
           <p className="text-gray-600">Manage employee leave requests and track leave status</p>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 space-y-6">
+          {/* Leave Types Management */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Settings className="w-5 h-5 mr-2" />
+                  Leave Types Management
+                </h2>
+                <p className="text-sm text-gray-600">Configure available leave types for employees</p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingLeaveType(null);
+                  setLeaveTypeForm({ type_name: '', max_days: '', paid: true });
+                  setShowLeaveTypeModal(true);
+                }}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Leave Type</span>
+              </button>
+
+            </div>
+            
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max Days</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {leaveTypes.map((type) => (
+                      <tr key={type.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{type.type_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{type.max_days}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{type.paid ? 'Paid' : 'Unpaid'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleEditLeaveType(type)}
+                            className="text-blue-600 hover:text-blue-900 mr-3"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {leaveTypes.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
+                          <Settings className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <p>No leave types configured</p>
+                          <p className="text-sm">Add leave types for employees to request</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           {/* Leave Requests List */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
@@ -201,7 +329,83 @@ export default function ViewLeaveRequests() {
           </div>
         </div>
 
-
+        {/* Leave Type Modal */}
+        {showLeaveTypeModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">
+                  {editingLeaveType ? 'Edit Leave Type' : 'Add New Leave Type'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowLeaveTypeModal(false);
+                    setEditingLeaveType(null);
+                    setLeaveTypeForm({ type_name: '', max_days: '', paid: true });
+                  }}
+                  className="text-gray-400 hover:text-gray-600 text-xl"
+                >
+                  ×
+                </button>
+              </div>
+              <form onSubmit={handleLeaveTypeSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Leave Type Name</label>
+                  <input
+                    type="text"
+                    value={leaveTypeForm.type_name}
+                    onChange={(e) => setLeaveTypeForm({...leaveTypeForm, type_name: e.target.value})}
+                    placeholder="e.g., Sick Leave"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Maximum Days</label>
+                  <input
+                    type="number"
+                    value={leaveTypeForm.max_days}
+                    onChange={(e) => setLeaveTypeForm({...leaveTypeForm, max_days: e.target.value})}
+                    placeholder="e.g., 12"
+                    min="1"
+                    required
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={leaveTypeForm.paid}
+                      onChange={(e) => setLeaveTypeForm({...leaveTypeForm, paid: e.target.checked})}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Paid Leave</span>
+                  </label>
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLeaveTypeModal(false);
+                      setEditingLeaveType(null);
+                      setLeaveTypeForm({ type_name: '', max_days: '', paid: true });
+                    }}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+{editingLeaveType ? 'Update' : 'Add'} Leave Type
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

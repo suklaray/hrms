@@ -156,7 +156,7 @@ model main_employee {
 model leave_types {
   id             Int                   @id @default(autoincrement())
   max_days       Int
-  type_name      leave_types_type_name
+  type_name      String
   paid           Boolean?              @default(true)
   leave_balances leave_balances[]
 }
@@ -272,13 +272,6 @@ enum compliance_status_overall_status {
   Non_compliant @map("Non-compliant")
 }
 
-enum leave_types_type_name {
-  Sick_Leave      @map("Sick Leave")
-  Casual_Leave    @map("Casual Leave")
-  Earned_Leave    @map("Earned Leave")
-  Maternity_Leave @map("Maternity Leave")
-  Unpaid_Leave    @map("Unpaid Leave")
-}
 
 enum leave_requests_status {
   Pending

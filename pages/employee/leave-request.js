@@ -138,11 +138,14 @@ export default function LeaveRequest() {
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select Leave Type</option>
-                      {leaveTypes.map((type) => (
-                        <option key={type.id} value={type.type_name.replace('_', ' ')}>
-                          {type.type_name.replace('_', ' ')}
-                        </option>
-                      ))}
+                      {leaveTypes.map((type) => {
+                        const displayName = type.type_name.replace(/_/g, ' ');
+                        return (
+                          <option key={type.id} value={displayName}>
+                            {displayName} ({type.max_days} days - {type.paid ? 'Paid' : 'Unpaid'})
+                          </option>
+                        );
+                      })}
                     </select>
                   ) : (
                     <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-center">

@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const [totalEmployees, activeEmployees, pendingLeaves, todayAttendance, totalCandidates] = await Promise.all([
+    const [totalEmployees, activeEmployees, pendingLeaves, todayAttendance, totalCandidates, recentEmployees] = await Promise.all([
       prisma.users.count(),
       prisma.users.count({ where: { status: 'Active' } }),
       prisma.leave_requests.count({ where: { status: 'Pending' } }),
@@ -32,7 +32,18 @@ export default async function handler(req, res) {
           attendance_status: 'Present'
         } 
       }),
-      prisma.candidates.count()
+      prisma.candidates.count(),
+      prisma.users.findMany({
+        orderBy: { created_at: 'desc' },
+        take: 5,
+        select: {
+          empid: true,
+          name: true,
+          role: true,
+          created_at: true,
+          profile_photo: true
+        }
+      })
     ]);
 
     const totalEmployeesForAttendance = await prisma.users.count({ where: { status: 'Active' } });
@@ -45,7 +56,14 @@ export default async function handler(req, res) {
       activeEmployees,
       pendingLeaves,
       todayAttendance: attendancePercentage,
-      totalCandidates
+      totalCandidates,
+      recentEmployees: recentEmployees.map(emp => ({
+        empid: emp.empid,
+        name: emp.name,
+        role: emp.role,
+        createdAt: emp.created_at,
+        profile_photo: emp.profile_photo
+      }))
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);

@@ -142,10 +142,18 @@ export default function Dashboard({ user }) {
                   <div className="space-y-4">
                     {stats?.recentEmployees?.map((employee, index) => (
                       <div key={index} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                          <span className="text-indigo-600 font-medium text-sm">
-                            {employee.name?.charAt(0)?.toUpperCase()}
-                          </span>
+                        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center overflow-hidden">
+                          {employee.profile_photo ? (
+                            <img 
+                              src={employee.profile_photo} 
+                              alt={employee.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-indigo-600 font-medium text-sm">
+                              {employee.name?.charAt(0)?.toUpperCase()}
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{employee.name}</p>

@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -6,23 +7,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const leaveTypes = [
-      { type_name: 'Sick_Leave', max_days: 12, paid: true },
-      { type_name: 'Casual_Leave', max_days: 15, paid: true },
-      { type_name: 'Earned_Leave', max_days: 21, paid: true },
-      { type_name: 'Maternity_Leave', max_days: 180, paid: true },
-      { type_name: 'Unpaid_Leave', max_days: 30, paid: false },
-    ];
-
-    for (const leaveType of leaveTypes) {
-      await prisma.leave_types.upsert({
-        where: { type_name: leaveType.type_name },
-        update: {},
-        create: leaveType,
-      });
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    res.status(200).json({ message: 'Leave types seeded successfully' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!['hr', 'admin', 'superadmin'].includes(decoded.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { type_name, max_days, paid } = req.body;
+    
+    await prisma.leave_types.upsert({
+      where: { type_name },
+      update: { max_days, paid },
+      create: { type_name, max_days, paid },
+    });
+
+    res.status(200).json({ message: 'Leave type configured successfully' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Database error' });
