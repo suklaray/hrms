@@ -68,6 +68,9 @@ model candidates {
   contact_number        String?
   interview_date        DateTime?
   resume                String?
+  resume_data           Bytes?
+  resume_filename       String?
+  resume_mimetype       String?
   form_link             String?
   created_at            DateTime?          @default(now())
   form_token            String?

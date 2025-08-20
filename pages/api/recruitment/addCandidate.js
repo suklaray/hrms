@@ -1,6 +1,5 @@
 import formidable from "formidable";
 import fs from "fs";
-import path from "path";
 import prisma from "@/lib/prisma";
 
 export const config = {
@@ -20,16 +19,6 @@ export default async function handler(req, res) {
       keepExtensions: true,
       maxFileSize: 10 * 1024 * 1024
     });
-
-    const uploadDir = process.env.NODE_ENV === 'production' 
-      ? '/tmp/uploads/cv' 
-      : path.join(process.cwd(), "public/uploads/cv");
-    
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    form.uploadDir = uploadDir;
 
     form.parse(req, async (err, fields, files) => {
       if (err) {
@@ -70,13 +59,17 @@ export default async function handler(req, res) {
         const serialStr = String(count + 1).padStart(6, "0");
         const candidateId = `${datePrefix}${serialStr}`;
 
-        let filePath = null;
+        let resumeData = null;
+        let resumeFilename = null;
+        let resumeMimetype = null;
+
         if (file) {
           const fileArray = Array.isArray(file) ? file : [file];
-          const filename = path.basename(fileArray[0].filepath);
-          filePath = process.env.NODE_ENV === 'production' 
-            ? filename 
-            : `/uploads/cv/${filename}`;
+          const fileObj = fileArray[0];
+          
+          resumeData = fs.readFileSync(fileObj.filepath);
+          resumeFilename = fileObj.originalFilename || fileObj.newFilename;
+          resumeMimetype = fileObj.mimetype;
         }
 
         await prisma.candidates.create({
@@ -86,7 +79,9 @@ export default async function handler(req, res) {
             email: Array.isArray(email) ? email[0] : email,
             contact_number: Array.isArray(contact_number) ? contact_number[0] : contact_number,
             interview_date: new Date(Array.isArray(interviewDate) ? interviewDate[0] : interviewDate),
-            resume: filePath,
+            resume_data: resumeData,
+            resume_filename: resumeFilename,
+            resume_mimetype: resumeMimetype,
             form_link: null,
             status: "Pending"
           }
