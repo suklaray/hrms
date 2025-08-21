@@ -172,12 +172,19 @@ const handleDocumentUpload = async (e, type) => {
     return;
   }
 
+  // Set file immediately for form submission
+  setFormData((prev) => ({
+    ...prev,
+    [type]: file,
+  }));
+  setErrors(prev => ({ ...prev, [type]: undefined }));
+
+  // Try to extract text, but don't fail if it doesn't work
   const formDataUpload = new FormData();
   formDataUpload.append("document", file);
   formDataUpload.append("type", type);
 
   setIsLoading(true);
-  setErrors(prev => ({ ...prev, [type]: undefined }));
 
   try {
     const res = await fetch("/api/textract", {
@@ -187,13 +194,9 @@ const handleDocumentUpload = async (e, type) => {
 
     const data = await res.json();
 
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to process document');
-    }
+    if (res.ok && data.extractedText) {
+      let number = "";
 
-    let number = "";
-
-    if (data.extractedText) {
       if (type === "aadhar_card") {
         const match = data.extractedText.match(/\b\d{4}\s?\d{4}\s?\d{4}\b/);
         if (match) number = match[0].replace(/\s/g, "");
@@ -201,20 +204,21 @@ const handleDocumentUpload = async (e, type) => {
         const match = data.extractedText.match(/\b[A-Z]{5}[0-9]{4}[A-Z]\b/);
         if (match) number = match[0];
       }
-    }
 
-    setFormData((prev) => ({
-      ...prev,
-      [type === "aadhar_card" ? "aadhar_number" : "pan_number"]: number,
-      [type]: file,
-    }));
-    
-    if (number) {
-      validateField(type === "aadhar_card" ? "aadhar_number" : "pan_number", number);
+      if (number) {
+        setFormData((prev) => ({
+          ...prev,
+          [type === "aadhar_card" ? "aadhar_number" : "pan_number"]: number,
+        }));
+        validateField(type === "aadhar_card" ? "aadhar_number" : "pan_number", number);
+      }
+    } else {
+      // Textract failed, but file is still uploaded - user can enter number manually
+      console.warn("Document processing failed, user can enter number manually:", data.error);
     }
   } catch (err) {
-    console.error("Textract error:", err);
-    setErrors(prev => ({ ...prev, [type]: err.message || 'Failed to process document' }));
+    // Textract failed, but file is still uploaded - user can enter number manually
+    console.warn("Document processing failed, user can enter number manually:", err.message);
   } finally {
     setIsLoading(false);
   }
@@ -513,7 +517,7 @@ const handleDocumentUpload = async (e, type) => {
                     }`}
                   />
                   {errors.aadhar_card && <p className="text-red-500 text-sm mt-1">{errors.aadhar_card}</p>}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>

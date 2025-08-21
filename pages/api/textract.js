@@ -20,6 +20,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
+  // Check if AWS credentials are configured
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY || !process.env.AWS_REGION) {
+    console.error("AWS credentials not configured");
+    return res.status(500).json({ error: "Document processing service not configured" });
+  }
+
   const form = formidable({
     maxFileSize: 5 * 1024 * 1024, // 5MB limit
     keepExtensions: true,
@@ -61,7 +67,19 @@ export default async function handler(req, res) {
 
     } catch (err) {
       console.error("Processing failed:", err);
-      res.status(500).json({ error: err.message || "Processing failed" });
+      
+      // Handle specific AWS errors
+      if (err.code === 'InvalidSignatureException' || err.code === 'SignatureDoesNotMatch') {
+        return res.status(500).json({ error: "AWS authentication failed. Please check credentials." });
+      }
+      if (err.code === 'TokenRefreshRequired' || err.message?.includes('security token')) {
+        return res.status(500).json({ error: "AWS security token expired. Please refresh credentials." });
+      }
+      if (err.code === 'AccessDenied') {
+        return res.status(500).json({ error: "AWS access denied. Please check permissions." });
+      }
+      
+      res.status(500).json({ error: err.message || "Document processing failed" });
     }
   });
 }
