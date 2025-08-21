@@ -33,6 +33,8 @@ export default function CandidateForm() {
     dob: "",
     gender: "",
   });
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -65,15 +67,88 @@ export default function CandidateForm() {
     }
   }, [id]);
 
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+    
+    switch (name) {
+      case 'contact_no':
+        if (!/^\d{10}$/.test(value)) {
+          newErrors[name] = 'Contact number must be exactly 10 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'pincode':
+        if (!/^\d{6}$/.test(value)) {
+          newErrors[name] = 'Pincode must be exactly 6 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'aadhar_number':
+        if (!/^\d{12}$/.test(value.replace(/\s/g, ''))) {
+          newErrors[name] = 'Aadhar number must be exactly 12 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'pan_number':
+        if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value.toUpperCase())) {
+          newErrors[name] = 'PAN number format: ABCDE1234F';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'ifsc_code':
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(value.toUpperCase())) {
+          newErrors[name] = 'Invalid IFSC code format';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'account_number':
+        if (!/^\d{9,18}$/.test(value)) {
+          newErrors[name] = 'Account number must be 9-18 digits';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      default:
+        if (value.trim() === '' && document.querySelector(`[name="${name}"]`)?.required) {
+          newErrors[name] = 'This field is required';
+        } else {
+          delete newErrors[name];
+        }
+    }
+    
+    setErrors(newErrors);
+  };
+
   const handleChange = (e) => {
     const { name, value, files, type } = e.target;
 
     if (type === "file") {
+      const file = files[0];
+      if (file) {
+        // Validate file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          setErrors(prev => ({ ...prev, [name]: 'File size must be less than 5MB' }));
+          return;
+        }
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+        if (!allowedTypes.includes(file.type)) {
+          setErrors(prev => ({ ...prev, [name]: 'Only JPG, PNG, and PDF files are allowed' }));
+          return;
+        }
+        setErrors(prev => ({ ...prev, [name]: undefined }));
+      }
       setFormData((prev) => ({
         ...prev,
         [name]: files[0],
       }));
     } else {
+      validateField(name, value);
       setFormData((prev) => ({
         ...prev,
         [name]: value,
@@ -85,11 +160,24 @@ const handleDocumentUpload = async (e, type) => {
   const file = e.target.files[0];
   if (!file) return;
 
+  // Validate file first
+  if (file.size > 5 * 1024 * 1024) {
+    setErrors(prev => ({ ...prev, [type]: 'File size must be less than 5MB' }));
+    return;
+  }
+  
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  if (!allowedTypes.includes(file.type)) {
+    setErrors(prev => ({ ...prev, [type]: 'Only JPG, PNG, and PDF files are allowed' }));
+    return;
+  }
+
   const formDataUpload = new FormData();
   formDataUpload.append("document", file);
-  formDataUpload.append("type", type); // 'aadhar' or 'pan'
+  formDataUpload.append("type", type);
 
   setIsLoading(true);
+  setErrors(prev => ({ ...prev, [type]: undefined }));
 
   try {
     const res = await fetch("/api/textract", {
@@ -99,13 +187,13 @@ const handleDocumentUpload = async (e, type) => {
 
     const data = await res.json();
 
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to process document');
+    }
+
     let number = "";
 
-    // SAFETY CHECK
-    if (!data.extractedText) {
-      console.warn("No text extracted from document.");
-      alert("No text found in the uploaded document.");
-    } else {
+    if (data.extractedText) {
       if (type === "aadhar_card") {
         const match = data.extractedText.match(/\b\d{4}\s?\d{4}\s?\d{4}\b/);
         if (match) number = match[0].replace(/\s/g, "");
@@ -118,11 +206,15 @@ const handleDocumentUpload = async (e, type) => {
     setFormData((prev) => ({
       ...prev,
       [type === "aadhar_card" ? "aadhar_number" : "pan_number"]: number,
-      [type]: data?.filePath || "",
+      [type]: file,
     }));
+    
+    if (number) {
+      validateField(type === "aadhar_card" ? "aadhar_number" : "pan_number", number);
+    }
   } catch (err) {
     console.error("Textract error:", err);
-    alert("Failed to process the document.");
+    setErrors(prev => ({ ...prev, [type]: err.message || 'Failed to process document' }));
   } finally {
     setIsLoading(false);
   }
@@ -130,18 +222,75 @@ const handleDocumentUpload = async (e, type) => {
 
 
 
+  const validateForm = () => {
+    let formErrors = {};
+    
+    // Required text fields
+    const requiredFields = [
+      'address_line_1', 'city', 'state', 'pincode', 'country',
+      'contact_no', 'dob', 'gender', 'highest_qualification',
+      'aadhar_number', 'pan_number', 'account_holder_name',
+      'bank_name', 'branch_name', 'account_number', 'ifsc_code'
+    ];
+    
+    // Required files
+    const requiredFiles = [
+      'aadhar_card', 'pan_card', 'education_certificates',
+      'resume', 'profile_photo', 'experience_certificate', 'bank_details'
+    ];
+
+    // Check required text fields
+    requiredFields.forEach(field => {
+      if (!formData[field] || formData[field].toString().trim() === '') {
+        formErrors[field] = 'This field is required';
+      }
+    });
+
+    // Check required files
+    requiredFiles.forEach(field => {
+      if (!formData[field]) {
+        formErrors[field] = 'This file is required';
+      }
+    });
+
+    // Specific field validations
+    if (formData.contact_no && !/^\d{10}$/.test(formData.contact_no)) {
+      formErrors.contact_no = 'Contact number must be exactly 10 digits';
+    }
+    
+    if (formData.pincode && !/^\d{6}$/.test(formData.pincode)) {
+      formErrors.pincode = 'Pincode must be exactly 6 digits';
+    }
+    
+    if (formData.aadhar_number && !/^\d{12}$/.test(formData.aadhar_number.replace(/\s/g, ''))) {
+      formErrors.aadhar_number = 'Aadhar number must be exactly 12 digits';
+    }
+    
+    if (formData.pan_number && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(formData.pan_number.toUpperCase())) {
+      formErrors.pan_number = 'PAN number format: ABCDE1234F';
+    }
+    
+    if (formData.ifsc_code && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(formData.ifsc_code.toUpperCase())) {
+      formErrors.ifsc_code = 'Invalid IFSC code format';
+    }
+    
+    if (formData.account_number && !/^\d{9,18}$/.test(formData.account_number)) {
+      formErrors.account_number = 'Account number must be 9-18 digits';
+    }
+
+    setErrors(formErrors);
+    return Object.keys(formErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (formData.contact_no.length !== 10 || !/^\d+$/.test(formData.contact_no)) {
-      alert("Invalid contact number. Please enter a 10-digit number.");
+    
+    if (!validateForm()) {
+      alert('Please fix all validation errors before submitting.');
       return;
     }
 
-    if (formData.account_number.length > 19) {
-      alert("Account number cannot exceed 19 characters.");
-      return;
-    }
+    setIsSubmitting(true);
 
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
@@ -158,7 +307,9 @@ const handleDocumentUpload = async (e, type) => {
       router.push('/Recruitment/form/docs_submitted');
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("Failed to submit form");
+      alert(error.response?.data?.error || "Failed to submit form");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -209,8 +360,12 @@ const handleDocumentUpload = async (e, type) => {
                     value={formData.contact_no}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    maxLength={10}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.contact_no ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.contact_no && <p className="text-red-500 text-sm mt-1">{errors.contact_no}</p>}
                 </div>
                 
                 <div>
@@ -260,8 +415,11 @@ const handleDocumentUpload = async (e, type) => {
                     value={formData.address_line_1}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.address_line_1 ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.address_line_1 && <p className="text-red-500 text-sm mt-1">{errors.address_line_1}</p>}
                 </div>
                 
                 <div className="md:col-span-2">
@@ -307,8 +465,12 @@ const handleDocumentUpload = async (e, type) => {
                     value={formData.pincode}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    maxLength={6}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.pincode ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.pincode && <p className="text-red-500 text-sm mt-1">{errors.pincode}</p>}
                 </div>
                 
                 <div>
@@ -346,8 +508,12 @@ const handleDocumentUpload = async (e, type) => {
                     accept="image/*,application/pdf"
                     onChange={(e) => handleDocumentUpload(e, "aadhar_card")}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.aadhar_card ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.aadhar_card && <p className="text-red-500 text-sm mt-1">{errors.aadhar_card}</p>}
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only</p>
                 </div>
                 
                 <div>
@@ -355,12 +521,16 @@ const handleDocumentUpload = async (e, type) => {
                   <input
                     type="text"
                     name="aadhar_number"
-                    placeholder="Enter Aadhar Number"
+                    placeholder="Enter 12-digit Aadhar Number"
                     value={formData.aadhar_number || ""}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    maxLength={12}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.aadhar_number ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.aadhar_number && <p className="text-red-500 text-sm mt-1">{errors.aadhar_number}</p>}
                 </div>
                 
                 <div>
@@ -380,12 +550,17 @@ const handleDocumentUpload = async (e, type) => {
                   <input
                     type="text"
                     name="pan_number"
-                    placeholder="Enter PAN Number"
+                    placeholder="ABCDE1234F"
                     value={formData.pan_number || ""}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    maxLength={10}
+                    style={{ textTransform: 'uppercase' }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.pan_number ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.pan_number && <p className="text-red-500 text-sm mt-1">{errors.pan_number}</p>}
                 </div>
               </div>
             </div>
@@ -550,9 +725,14 @@ const handleDocumentUpload = async (e, type) => {
 
             <button 
               type="submit" 
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:from-blue-700 hover:to-indigo-800 transition-all duration-200 shadow-lg"
+              disabled={isSubmitting}
+              className={`w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg ${
+                isSubmitting 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800'
+              }`}
             >
-              Submit Application
+              {isSubmitting ? 'Submitting...' : 'Submit Application'}
             </button>
           </form>
         </div>

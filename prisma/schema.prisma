@@ -47,15 +47,18 @@ model audit_logs {
 }
 
 model bank_details {
-  id                  Int       @id @default(autoincrement())
-  employee_id         Int
-  account_holder_name String
-  bank_name           String
-  branch_name         String?
-  account_number      String
-  ifsc_code           String
-  checkbook_document  String?
-  employees           employees @relation(fields: [employee_id], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  id                           Int       @id @default(autoincrement())
+  employee_id                  Int
+  account_holder_name          String
+  bank_name                    String
+  branch_name                  String?
+  account_number               String
+  ifsc_code                    String
+  checkbook_document           String?
+  checkbook_document_data      Bytes?
+  checkbook_document_filename  String?
+  checkbook_document_mimetype  String?
+  employees                    employees @relation(fields: [employee_id], references: [empid], onDelete: Cascade, onUpdate: Restrict)
 
   @@index([employee_id])
 }
@@ -109,12 +112,31 @@ model employees {
   password                                      String?
   gender                                        String?
   dob                                           DateTime?
+  highest_qualification                         String?
   aadhar_card                                   String?
   pan_card                                      String?
   education_certificates                        String?
   resume                                        String?
   experience_certificate                        String?
   profile_photo                                 String?
+  aadhar_card_data                              Bytes?
+  aadhar_card_filename                          String?
+  aadhar_card_mimetype                          String?
+  pan_card_data                                 Bytes?
+  pan_card_filename                             String?
+  pan_card_mimetype                             String?
+  education_certificates_data                   Bytes?
+  education_certificates_filename               String?
+  education_certificates_mimetype               String?
+  resume_data                                   Bytes?
+  resume_filename                               String?
+  resume_mimetype                               String?
+  experience_certificate_data                   Bytes?
+  experience_certificate_filename               String?
+  experience_certificate_mimetype               String?
+  profile_photo_data                            Bytes?
+  profile_photo_filename                        String?
+  profile_photo_mimetype                        String?
   created_at                                    DateTime?              @default(now())
   experience_years                              Int?                   @default(0)
   experience_months                             Int?                   @default(0)
