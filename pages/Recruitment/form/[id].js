@@ -35,6 +35,7 @@ export default function CandidateForm() {
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -66,6 +67,36 @@ export default function CandidateForm() {
       }
     }
   }, [id]);
+
+  // Check if form is valid
+  useEffect(() => {
+    const requiredTextFields = [
+      'address_line_1', 'city', 'state', 'pincode', 'country',
+      'contact_no', 'dob', 'gender', 'highest_qualification',
+      'aadhar_number', 'pan_number', 'account_holder_name',
+      'bank_name', 'branch_name', 'account_number', 'ifsc_code'
+    ];
+    
+    const requiredFileFields = [
+      'aadhar_card', 'pan_card', 'education_certificates',
+      'resume', 'profile_photo', 'experience_certificate', 'bank_details'
+    ];
+
+    // Check if all text fields are filled
+    const hasAllTextFields = requiredTextFields.every(field => {
+      return formData[field] && formData[field].toString().trim() !== '';
+    });
+
+    // Check if all file fields are filled
+    const hasAllFileFields = requiredFileFields.every(field => {
+      return formData[field] !== null;
+    });
+
+    // Check if there are no validation errors
+    const hasNoErrors = Object.keys(errors).length === 0;
+
+    setIsFormValid(hasAllTextFields && hasAllFileFields && hasNoErrors);
+  }, [formData, errors]);
 
   const validateField = (name, value) => {
     const newErrors = { ...errors };
@@ -730,13 +761,16 @@ const handleDocumentUpload = async (e, type) => {
             <button 
               type="submit" 
               disabled={isSubmitting}
-              className={`w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg ${
-                isSubmitting 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800'
-              }`}
+              className="w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit Application'}
+              {isSubmitting ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                  Submitting...
+                </div>
+              ) : (
+                'Submit Application'
+              )}
             </button>
           </form>
         </div>

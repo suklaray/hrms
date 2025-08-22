@@ -10,14 +10,17 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ message: 'Method not allowed' });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
 
   const form = formidable({
     maxFileSize: 5 * 1024 * 1024, // 5MB limit
     keepExtensions: true,
   });
 
-  form.parse(req, async (err, fields, files) => {
+  try {
+    form.parse(req, async (err, fields, files) => {
     if (err) {
       console.error('Form parsing error:', err);
       return res.status(500).json({ error: 'File upload failed' });
@@ -154,5 +157,9 @@ export default async function handler(req, res) {
       console.error('Error in form submission:', err);
       return res.status(500).json({ error: err.message || 'Server error' });
     }
-  });
+    });
+  } catch (error) {
+    console.error('Form parsing failed:', error);
+    return res.status(500).json({ error: 'Form parsing failed' });
+  }
 }
