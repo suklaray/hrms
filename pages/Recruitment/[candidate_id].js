@@ -3,7 +3,11 @@ import axios from "axios";
 import { useRouter } from "next/router";
 import SideBar from "@/Components/SideBar";
 import { format } from 'date-fns';
-import { AiOutlineEye } from 'react-icons/ai';
+import { 
+  FaUser, FaEnvelope, FaPhone, FaCalendarAlt, 
+  FaCheckCircle, FaTimesCircle, FaFileAlt, FaEye,
+  FaIdCard, FaUserCheck
+} from 'react-icons/fa';
 
 export default function CandidateDetails() {
   const [candidate, setCandidate] = useState(null);
@@ -55,51 +59,146 @@ export default function CandidateDetails() {
     );
   }
 
-  return (
-    <div className="flex min-h-screen bg-gradient-to-r from-indigo-100 to-purple-100 overflow-y-auto">
-      <SideBar />
-      <div className="flex-1 p-10 sm:p-16">
-        <h1 className="text-4xl font-extrabold text-indigo-600 mb-8 text-center">Candidate Details</h1>
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'selected': return 'text-green-600 bg-green-50 border-green-200';
+      case 'rejected': return 'text-red-600 bg-red-50 border-red-200';
+      case 'pending': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      case 'waiting': return 'text-blue-600 bg-blue-50 border-blue-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
 
-        <div className="bg-white p-10 rounded-3xl shadow-2xl space-y-10 transform hover:scale-[1.02] transition duration-300 ease-in-out">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">{candidate.name}</h2>
-            <p className="text-gray-600">Candidate ID: {candidate.candidate_id}</p>
+  return (
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <SideBar />
+      <div className="flex-1 p-6 lg:p-10">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Candidate Profile</h1>
+          <p className="text-gray-600">Complete candidate information and status</p>
+        </div>
+
+        {/* Main Card */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Header Section */}
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-1">{candidate.name}</h2>
+                <div className="flex items-center text-indigo-100">
+                  <FaIdCard className="mr-2" />
+                  <span>ID: {candidate.candidate_id}</span>
+                </div>
+              </div>
+              <div className={`px-4 py-2 rounded-full border-2 font-semibold ${getStatusColor(candidate.status)}`}>
+                {candidate.status || 'Pending'}
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              ['Name', candidate.name],
-              ['Email', candidate.email],
-              ['Contact Number', candidate.contact_number],
-              ['Interview Date', candidate.interview_date ? format(new Date(candidate.interview_date), "dd/MM/yyyy") : "N/A"],
-              ['Status', candidate.status],
-              ['Form Status', candidate.form_status],
-              ['Interview Mail Status', candidate.interview_mail_status],
-              ['Verification', candidate.verification ? 'Verified' : 'Not Verified'],
-              ['Form Submitted', candidate.form_submitted ? 'Yes' : 'No'],
-            ].map(([label, value], i) => (
-              <div key={i} className="flex items-center gap-2">
-                <strong className="text-gray-800">{label}:</strong>
-                <span className="text-gray-700">{value || "N/A"}</span>
+          {/* Content */}
+          <div className="p-8">
+            {/* Contact Information */}
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <FaUser className="mr-2 text-indigo-500" />
+                Contact Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center p-4 bg-gray-50 rounded-xl">
+                  <FaEnvelope className="text-indigo-500 mr-3" />
+                  <div>
+                    <p className="text-sm text-gray-600">Email Address</p>
+                    <p className="font-semibold text-gray-900">{candidate.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center p-4 bg-gray-50 rounded-xl">
+                  <FaPhone className="text-indigo-500 mr-3" />
+                  <div>
+                    <p className="text-sm text-gray-600">Contact Number</p>
+                    <p className="font-semibold text-gray-900">{candidate.contact_number || 'Not provided'}</p>
+                  </div>
+                </div>
               </div>
-            ))}
+            </div>
 
-            {/* File Links */}
-            {[
-              ['Resume', candidate.resume],
-            ].map(([label, file], i) => (
-              <div key={i} className="flex items-center gap-2">
-                <strong className="text-gray-800">{label}:</strong>
-                {file ? (
-                  <a href={file} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800" title={`View ${label}`}>
-                    <AiOutlineEye size={20} />
-                  </a>
-                ) : (
-                  <span className="text-gray-500">No {label} available</span>
-                )}
+            {/* Interview & Status Information */}
+            <div className="mb-8">
+              <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <FaCalendarAlt className="mr-2 text-indigo-500" />
+                Interview & Status
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex items-center p-4 bg-gray-50 rounded-xl">
+                  <FaCalendarAlt className="text-indigo-500 mr-3" />
+                  <div>
+                    <p className="text-sm text-gray-600">Interview Date</p>
+                    <p className="font-semibold text-gray-900">
+                      {candidate.interview_date ? format(new Date(candidate.interview_date), "dd MMM yyyy") : "Not scheduled"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center p-4 bg-gray-50 rounded-xl">
+                  <FaUserCheck className="text-indigo-500 mr-3" />
+                  <div>
+                    <p className="text-sm text-gray-600">Verification Status</p>
+                    <div className="flex items-center mt-1">
+                      {candidate.verification ? (
+                        <><FaCheckCircle className="text-green-500 mr-1" /><span className="text-green-600 font-semibold">Verified</span></>
+                      ) : (
+                        <><FaTimesCircle className="text-red-500 mr-1" /><span className="text-red-600 font-semibold">Not Verified</span></>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center p-4 bg-gray-50 rounded-xl">
+                  <FaFileAlt className="text-indigo-500 mr-3" />
+                  <div>
+                    <p className="text-sm text-gray-600">Form Submitted</p>
+                    <div className="flex items-center mt-1">
+                      {candidate.form_submitted ? (
+                        <><FaCheckCircle className="text-green-500 mr-1" /><span className="text-green-600 font-semibold">Yes</span></>
+                      ) : (
+                        <><FaTimesCircle className="text-red-500 mr-1" /><span className="text-red-600 font-semibold">No</span></>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ))}
+            </div>
+
+            {/* Documents */}
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                <FaFileAlt className="mr-2 text-indigo-500" />
+                Documents
+              </h3>
+              <div className="bg-gray-50 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <FaFileAlt className="text-indigo-500 mr-3 text-xl" />
+                    <div>
+                      <p className="font-semibold text-gray-900">Resume</p>
+                      <p className="text-sm text-gray-600">Candidate's resume document</p>
+                    </div>
+                  </div>
+                  {candidate.resume ? (
+                    <a 
+                      href={candidate.resume} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      <FaEye className="mr-2" />
+                      View Resume
+                    </a>
+                  ) : (
+                    <span className="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg">No resume available</span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

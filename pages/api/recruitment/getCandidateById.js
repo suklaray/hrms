@@ -22,7 +22,22 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Candidate not found" });
     }
 
-    res.status(200).json(candidate);
+    // Handle resume data - prioritize database storage over URL
+    let resumeUrl = null;
+    if (candidate.resume_data && candidate.resume_filename) {
+      // Create a download URL for the resume stored in database
+      resumeUrl = `/api/recruitment/download-resume/${candidate.id}`;
+    } else if (candidate.resume) {
+      // Fallback to URL if no database data
+      resumeUrl = candidate.resume;
+    }
+
+    const responseData = {
+      ...candidate,
+      resume: resumeUrl
+    };
+
+    res.status(200).json(responseData);
   } catch (error) {
     console.error("Error fetching candidate:", error);
     res.status(500).json({ error: "Internal server error" });

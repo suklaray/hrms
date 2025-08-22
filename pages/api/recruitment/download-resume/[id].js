@@ -8,8 +8,8 @@ export default async function handler(req, res) {
   const { id } = req.query;
 
   try {
-    const candidate = await prisma.candidates.findFirst({
-      where: { candidate_id: id },
+    const candidate = await prisma.candidates.findUnique({
+      where: { id: parseInt(id) },
       select: {
         resume_data: true,
         resume_filename: true,
@@ -21,12 +21,15 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Resume not found' });
     }
 
-    // Set appropriate headers
-    res.setHeader('Content-Type', candidate.resume_mimetype || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${candidate.resume_filename || 'resume'}"`);
+    // Set appropriate headers for viewing in browser
+    res.setHeader('Content-Type', candidate.resume_mimetype || 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${candidate.resume_filename || 'resume'}"`);
     
-    // Send the file data
-    res.send(candidate.resume_data);
+    // Convert Bytes data to Buffer
+    const fileBuffer = Buffer.from(candidate.resume_data);
+    
+    // Send the file buffer
+    res.send(fileBuffer);
   } catch (error) {
     console.error('Error downloading resume:', error);
     res.status(500).json({ error: 'Internal server error' });
