@@ -180,7 +180,7 @@ export default function CandidateDetails() {
                     <FaFileAlt className="text-indigo-500 mr-3 text-xl" />
                     <div>
                       <p className="font-semibold text-gray-900">Resume</p>
-                      <p className="text-sm text-gray-600">Candidate's resume document</p>
+                      <p className="text-sm text-gray-600">Candidate&apos;s resume document</p>
                     </div>
                   </div>
                   {candidate.resume ? (
