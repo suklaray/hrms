@@ -50,48 +50,110 @@ export default function RegisterEmployee() {
         return null;
     }
 
+    const validateField = (name, value) => {
+        const newErrors = { ...errors };
+        
+        switch (name) {
+            case 'name':
+                if (!value.trim()) {
+                    newErrors[name] = 'Name is required';
+                } else if (value.trim().length < 2) {
+                    newErrors[name] = 'Name must be at least 2 characters';
+                } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+                    newErrors[name] = 'Name can only contain letters and spaces';
+                } else {
+                    delete newErrors[name];
+                }
+                break;
+            case 'email':
+                if (!value.trim()) {
+                    newErrors[name] = 'Email is required';
+                } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                    newErrors[name] = 'Please enter a valid email address';
+                } else {
+                    delete newErrors[name];
+                }
+                break;
+            case 'position':
+                if (!value.trim()) {
+                    newErrors[name] = 'Position is required';
+                } else if (value.trim().length < 2) {
+                    newErrors[name] = 'Position must be at least 2 characters';
+                } else {
+                    delete newErrors[name];
+                }
+                break;
+            case 'dateOfJoining':
+                if (!value) {
+                    newErrors[name] = 'Date of joining is required';
+                } else {
+                    const selectedDate = new Date(value);
+                    const today = new Date();
+                    const oneYearAgo = new Date();
+                    oneYearAgo.setFullYear(today.getFullYear() - 1);
+                    
+                    if (selectedDate > today) {
+                        newErrors[name] = 'Date cannot be in the future';
+                    } else if (selectedDate < oneYearAgo) {
+                        newErrors[name] = 'Date cannot be more than 1 year ago';
+                    } else {
+                        delete newErrors[name];
+                    }
+                }
+                break;
+            case 'experience':
+                if (!value) {
+                    newErrors[name] = 'Experience is required';
+                } else if (isNaN(value) || value < 0) {
+                    newErrors[name] = 'Experience must be a positive number';
+                } else if (value > 50) {
+                    newErrors[name] = 'Experience cannot exceed 50 years';
+                } else {
+                    delete newErrors[name];
+                }
+                break;
+            case 'employeeType':
+                if (!value) {
+                    newErrors[name] = 'Employee type is required';
+                } else {
+                    delete newErrors[name];
+                }
+                break;
+            default:
+                if (!value && ['status', 'role'].includes(name)) {
+                    newErrors[name] = `${name.charAt(0).toUpperCase() + name.slice(1)} is required`;
+                } else {
+                    delete newErrors[name];
+                }
+        }
+        
+        setErrors(newErrors);
+    };
+
     const validateForm = () => {
-        if (!formData.name.trim()) {
-            alert("Name is required");
-            return false;
-        }
-        if (!formData.email.trim()) {
-            alert("Email is required");
-            return false;
-        }
-        if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            alert("Email is invalid");
-            return false;
-        }
-        if (!formData.position.trim()) {
-            alert("Position is required");
-            return false;
-        }
-        if (!formData.dateOfJoining) {
-            alert("Date of joining is required");
-            return false;
-        }
-        if (!formData.experience) {
-            alert("Experience is required");
-            return false;
-        }
-        if (!formData.employeeType) {
-            alert("Employee type is required");
-            return false;
-        }
-        return true;
+        const requiredFields = ['name', 'email', 'position', 'dateOfJoining', 'experience', 'employeeType'];
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            validateField(field, formData[field]);
+            if (!formData[field] || (typeof formData[field] === 'string' && !formData[field].trim())) {
+                isValid = false;
+            }
+        });
+        
+        return isValid && Object.keys(errors).length === 0;
     };
 
     const handleInputChange = (field, value) => {
-        console.log('Input change:', field, value); // Debug log
         setFormData(prev => ({ ...prev, [field]: value }));
-        if (errors[field]) {
-            setErrors(prev => ({ ...prev, [field]: "" }));
-        }
+        validateField(field, value);
     };
 
     const handleRegister = async () => {
-        if (!validateForm()) return;
+        if (!validateForm()) {
+            alert('Please fix all validation errors before submitting.');
+            return;
+        }
         
         setIsLoading(true);
         setMessage("");
@@ -247,54 +309,66 @@ export default function RegisterEmployee() {
                             <div className="p-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label>Full Name</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
                                         <input 
                                             type="text" 
                                             value={formData.name} 
-                                            onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                                            onChange={(e) => handleInputChange('name', e.target.value)}
                                             placeholder="Enter employee's full name"
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                            }`}
                                         />
+                                        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
                                     </div>
 
                                     <div>
-                                        <label>Email Address</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
                                         <input 
                                             type="email" 
                                             value={formData.email} 
-                                            onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                                            onChange={(e) => handleInputChange('email', e.target.value)}
                                             placeholder="employee@company.com"
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                errors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                            }`}
                                         />
+                                        {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                                     </div>
 
                                     <div>
-                                        <label>Position</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Position *</label>
                                         <input 
                                             type="text" 
                                             value={formData.position} 
-                                            onChange={(e) => setFormData(prev => ({...prev, position: e.target.value}))}
+                                            onChange={(e) => handleInputChange('position', e.target.value)}
                                             placeholder="Job title or position"
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                errors.position ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                            }`}
                                         />
+                                        {errors.position && <p className="text-red-500 text-sm mt-1">{errors.position}</p>}
                                     </div>
 
                                     <div>
-                                        <label>Date of Joining</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Date of Joining *</label>
                                         <input 
                                             type="date" 
                                             value={formData.dateOfJoining} 
-                                            onChange={(e) => setFormData(prev => ({...prev, dateOfJoining: e.target.value}))}
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            onChange={(e) => handleInputChange('dateOfJoining', e.target.value)}
+                                            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                errors.dateOfJoining ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                            }`}
                                         />
+                                        {errors.dateOfJoining && <p className="text-red-500 text-sm mt-1">{errors.dateOfJoining}</p>}
                                     </div>
 
                                     <div>
-                                        <label>Status</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                                         <select 
                                             value={formData.status} 
-                                            onChange={(e) => setFormData(prev => ({...prev, status: e.target.value}))}
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            onChange={(e) => handleInputChange('status', e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         >
                                             <option value="Active">Active</option>
                                             <option value="On Leave">On Leave</option>
@@ -303,22 +377,29 @@ export default function RegisterEmployee() {
                                     </div>
 
                                     <div>
-                                        <label>Experience (Years)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Experience (Years) *</label>
                                         <input 
                                             type="number" 
                                             value={formData.experience} 
-                                            onChange={(e) => setFormData(prev => ({...prev, experience: e.target.value}))}
+                                            onChange={(e) => handleInputChange('experience', e.target.value)}
                                             placeholder="Years of experience"
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            min="0"
+                                            max="50"
+                                            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                errors.experience ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                            }`}
                                         />
+                                        {errors.experience && <p className="text-red-500 text-sm mt-1">{errors.experience}</p>}
                                     </div>
 
                                     <div>
-                                        <label>Employee Type</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Employee Type *</label>
                                         <select 
                                             value={formData.employeeType} 
-                                            onChange={(e) => setFormData(prev => ({...prev, employeeType: e.target.value}))}
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            onChange={(e) => handleInputChange('employeeType', e.target.value)}
+                                            className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                                                errors.employeeType ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                                            }`}
                                         >
                                             <option value="">Select employee type</option>
                                             <option value="Full_time">Full-time</option>
@@ -326,14 +407,15 @@ export default function RegisterEmployee() {
                                             <option value="Intern">Intern</option>
                                             <option value="Contractor">Contractor</option>
                                         </select>
+                                        {errors.employeeType && <p className="text-red-500 text-sm mt-1">{errors.employeeType}</p>}
                                     </div>
 
                                     <div>
-                                        <label>Role</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
                                         <select 
                                             value={formData.role} 
-                                            onChange={(e) => setFormData(prev => ({...prev, role: e.target.value}))}
-                                            className="w-full px-4 py-3 border rounded-xl"
+                                            onChange={(e) => handleInputChange('role', e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                         >
                                             <option value="employee">Employee</option>
                                             <option value="hr">HR</option>
