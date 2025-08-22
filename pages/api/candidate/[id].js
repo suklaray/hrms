@@ -17,13 +17,27 @@ export default async function handler(req, res) {
     // 2️⃣ Get profile photo from employees table where email matches
     const employee = await prisma.employees.findUnique({
       where: { email: candidate.email },
-      select: { profile_photo: true },
+      select: { 
+        profile_photo: true,
+        profile_photo_data: true,
+        profile_photo_filename: true,
+        profile_photo_mimetype: true
+      },
     });
+
+    let profilePhotoUrl = '';
+    if (employee?.profile_photo_data) {
+      // Convert Bytes to base64 for display
+      const base64 = Buffer.from(employee.profile_photo_data).toString('base64');
+      profilePhotoUrl = `data:${employee.profile_photo_mimetype || 'image/jpeg'};base64,${base64}`;
+    } else if (employee?.profile_photo) {
+      profilePhotoUrl = employee.profile_photo;
+    }
 
     res.status(200).json({
       name: candidate.name,
       email: candidate.email,
-      profile_photo: employee?.profile_photo || '', // return photo or empty
+      profile_photo: profilePhotoUrl,
     });
 
   } catch (err) {
