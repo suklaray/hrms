@@ -11,13 +11,13 @@ export default function handler(req, res) {
   }
 
   if (!token) {
-    return res.status(401).json({ user: null });
+    return res.status(200).json({ user: null, authenticated: false });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    return res.status(200).json({ user: decoded });
+    return res.status(200).json({ user: decoded, authenticated: true });
   } catch (err) {
-    return res.status(401).json({ user: null });
+    return res.status(200).json({ user: null, authenticated: false });
   }
 }
