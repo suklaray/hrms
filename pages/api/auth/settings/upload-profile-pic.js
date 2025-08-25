@@ -47,8 +47,20 @@ export default async function handler(req, res) {
 
     const imageUrl = `/uploads/${fileName}`;
 
+    // Try to update user by email first
+    let user = await prisma.users.findUnique({ where: { email: decoded.email } });
+    
+    if (!user) {
+      // If not found by email, try by empid (for employees who might login with empid)
+      user = await prisma.users.findUnique({ where: { empid: decoded.email } });
+    }
+    
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
     await prisma.users.update({
-      where: { email: decoded.email },
+      where: { id: user.id },
       data: { profile_photo: imageUrl },
     });
 

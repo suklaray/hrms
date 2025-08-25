@@ -14,7 +14,8 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Invalid token" });
   }
 
-  const user = await prisma.users.findUnique({
+  // Try to find user by email first
+  let user = await prisma.users.findUnique({
     where: { email: decoded.email },
     select: {
       name: true,
@@ -22,6 +23,18 @@ export default async function handler(req, res) {
       profile_photo: true,
     },
   });
+  
+  // If not found by email, try by empid
+  if (!user) {
+    user = await prisma.users.findUnique({
+      where: { empid: decoded.email },
+      select: {
+        name: true,
+        email: true,
+        profile_photo: true,
+      },
+    });
+  }
 
   if (!user) return res.status(404).json({ error: "User not found" });
 
