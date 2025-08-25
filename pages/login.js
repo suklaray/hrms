@@ -112,19 +112,6 @@ export default function Login() {
                                 Sign In
                                 </button>
                                 </div>
-                            {/*<div className="pt-3 w-full text-center">
-                                                <Link
-                                                    href="/signup"
-                                                    className="inline-flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-all duration-200">
-                                                    <span>Don&rsquo;t have an account? <span className="text-indigo-600">SignUp</span></span>
-                                                </Link>
-                                                <Link
-                                                    href="/employee/login"
-                                                    className="inline-flex items-center space-x-2 text-gray-700 hover:text-indigo-600 transition-all duration-200"
-                                                >
-                                                    <span>Are You an Employee?<span className="text-indigo-600">Let&rsquo;s LogIn</span></span>
-                                                </Link>
-                            </div>*/}
                         </form>
                     </div>
                 </div>
