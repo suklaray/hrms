@@ -42,7 +42,7 @@ export default function EmployeeLogin() {
       <div className="flex flex-grow">
         {/* Left side image */}
         <div className="w-1/1 flex items-center justify-center bg-amber-10">
-          <img 
+          <Image 
             src="/images/homepage.svg" 
             width={600}
             height={400}

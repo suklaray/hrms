@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import SideBar from "@/Components/SideBar";
 import axios from "axios";
 import { Copy, RefreshCw, Eye, EyeOff, User, FileText } from "lucide-react";
+import Image from "next/image";
 
 export default function ViewEmployee() {
   const router = useRouter();
@@ -206,9 +207,11 @@ useEffect(() => {
               <div className="flex items-center space-x-6">
                 <div className="flex-shrink-0">
                   {employees?.profile_photo ? (
-                    <img
+                    <Image
                       src={employees.profile_photo}
                       alt="Profile"
+                      width={96}
+                      height={96}
                       className="w-24 h-24 rounded-full object-cover border-4 border-blue-200"
                     />
                   ) : (

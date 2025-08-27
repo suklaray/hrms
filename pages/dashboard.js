@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { Users, UserCheck, Clock, FileText, TrendingUp, Calendar, Bell } from "lucide-react";
 import { withRoleProtection } from "@/lib/withRoleProtection";
+import Image from "next/image";
 
 export const getServerSideProps = withRoleProtection(["superadmin", "admin", "hr"]);
 
@@ -144,9 +145,11 @@ export default function Dashboard({ user }) {
                       <div key={index} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
                         <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center overflow-hidden">
                           {employee.profile_photo ? (
-                            <img 
+                            <Image 
                               src={employee.profile_photo} 
                               alt={employee.name}
+                              width={40}
+                              height={40}
                               className="w-full h-full object-cover"
                             />
                           ) : (

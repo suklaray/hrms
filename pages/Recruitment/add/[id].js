@@ -6,6 +6,7 @@ import {
   FaUser, FaEnvelope, FaBriefcase, FaCalendarAlt,
   FaRegClock, FaImage, FaCopy, FaCheck, FaEdit, FaSave, FaTimes
 } from 'react-icons/fa';
+import Image from 'next/image';
 
 const AddEmployee = () => {
   const router = useRouter();
@@ -184,9 +185,11 @@ const AddEmployee = () => {
               {profilePhotoUrl && (
                 <div className="flex justify-center mb-8">
                   <div className="relative">
-                    <img
+                    <Image
                       src={profilePhotoUrl}
                       alt="Profile"
+                      width={128}
+                      height={128}
                       className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 shadow-lg"
                     />
                     <div className={`absolute -bottom-2 -right-2 text-white rounded-full p-2 ${

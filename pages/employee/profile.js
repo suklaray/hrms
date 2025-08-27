@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Sidebar from "@/Components/empSidebar";
 import { User, Mail, Camera, Lock, Save, X, Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -85,9 +86,11 @@ export default function Profile() {
                     
                     <div className="relative inline-block mb-4">
                       {preview || user.profilePic ? (
-                        <img
+                        <Image
                           src={preview || user.profilePic}
                           alt="Profile"
+                          width={128}
+                          height={128}
                           className="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
                         />
                       ) : (

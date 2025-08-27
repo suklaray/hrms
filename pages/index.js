@@ -52,7 +52,7 @@ export default function Home() {
                                 </button>
                                 <Link href="/signup">
                                     <button className="px-8 py-4 text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-all duration-300">
-                                        Learn More
+                                        Learn More ...
                                     </button>
                                 </Link>
                             </div>

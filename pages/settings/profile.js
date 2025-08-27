@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import SideBar from "@/Components/SideBar";
+import Image from "next/image";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -65,9 +66,11 @@ export default function Profile() {
               {/* Profile Picture */}
               <div className="flex flex-col items-center mb-6">
                 {preview || user.profilePic ? (
-                  <img
+                  <Image
                     src={preview || user.profilePic}
                     alt="Profile"
+                    width={120}
+                    height={120}
                     className="w-[120px] h-[120px] rounded-full object-cover border-4 border-indigo-500"
                   />
                 ) : (
