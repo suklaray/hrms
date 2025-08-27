@@ -287,7 +287,7 @@ export default function ComplianceDashboard() {
               <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="text-white">
-                    <h2 className="text-xl font-bold">{selectedEmployee.name}'s Documents</h2>
+                    <h2 className="text-xl font-bold">{selectedEmployee.name}&apos;s Documents</h2>
                     <p className="text-indigo-100 text-sm">Employee ID: {selectedEmployee.empid}</p>
                   </div>
                   <button
