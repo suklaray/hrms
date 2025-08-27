@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: "Method Not Allowed" });
   }
 
-  const allow = rateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 })(req, res);
+  const allow = rateLimiter()(req, res);
   if (!allow) return;
 
   const { email, password } = req.body;
