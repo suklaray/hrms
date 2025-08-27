@@ -1,5 +1,6 @@
 import { formidable } from 'formidable';
 import fs from 'fs';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import prisma from '@/lib/prisma';
 
@@ -53,29 +54,33 @@ export default async function handler(req, res) {
         ifsc_code: getValue(fields.ifsc_code),
       };
 
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+
       // Helper function to process file
       const processFile = (file) => {
-        if (!file) return { data: null, filename: null, mimetype: null };
-        const fileData = fs.readFileSync(file.filepath);
-        return {
-          data: fileData,
-          filename: file.originalFilename,
-          mimetype: file.mimetype
-        };
+        if (!file) return null;
+        const fileName = `${Date.now()}-${file.originalFilename}`;
+        const finalPath = path.join(uploadsDir, fileName);
+        fs.renameSync(file.filepath, finalPath);
+        return `/uploads/${fileName}`;
       };
 
       // Process all files
-      const aadharFile = processFile(files.aadhar_card?.[0] || files.aadhar_card);
-      const panFile = processFile(files.pan_card?.[0] || files.pan_card);
-      const educationFile = processFile(files.education_certificates?.[0] || files.education_certificates);
-      const resumeFile = processFile(files.resume?.[0] || files.resume);
-      const experienceFile = processFile(files.experience_certificate?.[0] || files.experience_certificate);
-      const profileFile = processFile(files.profile_photo?.[0] || files.profile_photo);
-      const bankFile = processFile(files.bank_details?.[0] || files.bank_details);
+      const aadharPath = processFile(files.aadhar_card?.[0] || files.aadhar_card);
+      const panPath = processFile(files.pan_card?.[0] || files.pan_card);
+      const educationPath = processFile(files.education_certificates?.[0] || files.education_certificates);
+      const resumePath = processFile(files.resume?.[0] || files.resume);
+      const experiencePath = processFile(files.experience_certificate?.[0] || files.experience_certificate);
+      const profilePath = processFile(files.profile_photo?.[0] || files.profile_photo);
+      const bankPath = processFile(files.bank_details?.[0] || files.bank_details);
 
       const password = uuidv4().split('-')[0];
 
-      // Create employee with file data stored as Bytes
+      // Create employee with file paths
       const employee = await prisma.employees.create({
         data: {
           candidate_id: body.candidate_id,
@@ -88,25 +93,12 @@ export default async function handler(req, res) {
           highest_qualification: body.highest_qualification,
           aadhar_number: body.aadhar_number,
           pan_number: body.pan_number,
-          // Store file data as Bytes
-          aadhar_card_data: aadharFile.data,
-          aadhar_card_filename: aadharFile.filename,
-          aadhar_card_mimetype: aadharFile.mimetype,
-          pan_card_data: panFile.data,
-          pan_card_filename: panFile.filename,
-          pan_card_mimetype: panFile.mimetype,
-          education_certificates_data: educationFile.data,
-          education_certificates_filename: educationFile.filename,
-          education_certificates_mimetype: educationFile.mimetype,
-          resume_data: resumeFile.data,
-          resume_filename: resumeFile.filename,
-          resume_mimetype: resumeFile.mimetype,
-          experience_certificate_data: experienceFile.data,
-          experience_certificate_filename: experienceFile.filename,
-          experience_certificate_mimetype: experienceFile.mimetype,
-          profile_photo_data: profileFile.data,
-          profile_photo_filename: profileFile.filename,
-          profile_photo_mimetype: profileFile.mimetype,
+          aadhar_card: aadharPath,
+          pan_card: panPath,
+          education_certificates: educationPath,
+          resume: resumePath,
+          experience_certificate: experiencePath,
+          profile_photo: profilePath,
         }
       });
 
@@ -120,7 +112,7 @@ export default async function handler(req, res) {
         },
       });
 
-      // Create bank details with file data
+      // Create bank details with file path
       await prisma.bank_details.create({
         data: {
           employee_id: employee.empid,
@@ -129,9 +121,7 @@ export default async function handler(req, res) {
           branch_name: body.branch_name,
           account_number: body.account_number,
           ifsc_code: body.ifsc_code,
-          checkbook_document_data: bankFile.data,
-          checkbook_document_filename: bankFile.filename,
-          checkbook_document_mimetype: bankFile.mimetype,
+          checkbook_document: bankPath,
         }
       });
 

@@ -1,5 +1,3 @@
-// pages/api/auth/settings/upload-profile-pic.js
-
 import { IncomingForm } from "formidable";
 import fs from "fs";
 import path from "path";
@@ -27,12 +25,7 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Invalid token" });
   }
 
-  const form = new IncomingForm({
-    keepExtensions: true,
-    uploadDir: path.join(process.cwd(), "/public/uploads"),
-  });
-
-  if (!fs.existsSync(form.uploadDir)) fs.mkdirSync(form.uploadDir, { recursive: true });
+  const form = new IncomingForm({ keepExtensions: true });
 
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ error: "File upload error" });
@@ -40,30 +33,44 @@ export default async function handler(req, res) {
     const file = files.profilePic?.[0]; 
     if (!file || !file.filepath) return res.status(400).json({ error: "No file uploaded" });
 
-    const fileName = `${Date.now()}-${file.originalFilename}`;
-    const finalPath = path.join(form.uploadDir, fileName);
+    try {
+      // Try to find user by email first
+      let user = await prisma.users.findUnique({ where: { email: decoded.email } });
+      
+      if (!user) {
+        // If not found by email, try by empid
+        user = await prisma.users.findUnique({ where: { empid: decoded.email } });
+      }
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
 
-    fs.renameSync(file.filepath, finalPath); 
-
-    const imageUrl = `/uploads/${fileName}`;
-
-    // Try to update user by email first
-    let user = await prisma.users.findUnique({ where: { email: decoded.email } });
-    
-    if (!user) {
-      // If not found by email, try by empid (for employees who might login with empid)
-      user = await prisma.users.findUnique({ where: { empid: decoded.email } });
+      // Generate unique filename
+      const fileName = `${Date.now()}-${file.originalFilename}`;
+      const finalPath = path.join(uploadsDir, fileName);
+      
+      // Move file to uploads directory
+      fs.renameSync(file.filepath, finalPath);
+      const imagePath = `/uploads/${fileName}`;
+      
+      await prisma.users.update({
+        where: { id: user.id },
+        data: {
+          profile_photo: imagePath
+        },
+      });
+      
+      return res.status(200).json({ message: "Profile photo uploaded successfully" });
+    } catch (error) {
+      console.error("Database update error:", error);
+      return res.status(500).json({ error: "Failed to update profile photo" });
     }
-    
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    
-    await prisma.users.update({
-      where: { id: user.id },
-      data: { profile_photo: imageUrl },
-    });
-
-    return res.status(200).json({ message: "Image uploaded", imageUrl });
   });
 }

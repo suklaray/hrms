@@ -1,5 +1,6 @@
 import { formidable } from "formidable";
 import fs from "fs";
+import path from "path";
 import prisma from "@/lib/prisma";
 
 export const config = {
@@ -78,9 +79,7 @@ export default async function handler(req, res) {
         const candidateId = `${datePrefix}${serialStr}`;
 
         // Process CV file
-        let resumeData = null;
-        let resumeFilename = null;
-        let resumeMimetype = null;
+        let resumePath = null;
 
         const file = files.cv?.[0] || files.cv;
         if (file) {
@@ -90,9 +89,19 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: "Only PDF, DOC, and DOCX files are allowed" });
           }
 
-          resumeData = fs.readFileSync(file.filepath);
-          resumeFilename = file.originalFilename;
-          resumeMimetype = file.mimetype;
+          // Create uploads directory if it doesn't exist
+          const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+
+          // Generate unique filename
+          const fileName = `${Date.now()}-${file.originalFilename}`;
+          const finalPath = path.join(uploadsDir, fileName);
+          
+          // Move file to uploads directory
+          fs.renameSync(file.filepath, finalPath);
+          resumePath = `/uploads/${fileName}`;
         }
 
         // Create candidate record
@@ -103,9 +112,7 @@ export default async function handler(req, res) {
             email: email,
             contact_number: contact_number,
             interview_date: new Date(interviewDate),
-            resume_data: resumeData,
-            resume_filename: resumeFilename,
-            resume_mimetype: resumeMimetype,
+            resume: resumePath,
             form_link: null,
             status: "Pending"
           }
