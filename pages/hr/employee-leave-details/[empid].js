@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import SideBar from "@/Components/SideBar";
+import Breadcrumb from "@/Components/Breadcrumb";
 import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, FileText } from 'lucide-react';
 import moment from 'moment';
 
@@ -117,6 +118,11 @@ export default function EmployeeLeaveDetails() {
         </div>
 
         <div className="p-6">
+          <Breadcrumb items={[
+            { label: 'Leave Requests', href: '/hr/view-leave-requests' },
+            { label: employeeData?.name || 'Employee Details' }
+          ]} />
+          
           {/* Employee Info Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex items-center">
@@ -199,9 +205,9 @@ export default function EmployeeLeaveDetails() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {leave.document_path ? (
+                          {leave.attachment ? (
                             <a 
-                              href={leave.document_path} 
+                              href={leave.attachment} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="inline-flex items-center text-indigo-600 hover:text-indigo-900"

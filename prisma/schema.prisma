@@ -67,6 +67,7 @@ model candidates {
   email                 String
   contact_number        String?
   interview_date        DateTime?
+  interview_time        String?
   resume                String?
   form_link             String?
   created_at            DateTime?          @default(now())
@@ -216,23 +217,25 @@ model users {
 }
 
 model payroll {
-  id           Int       @id @default(autoincrement())
-  empid        String?
-  month        String?
-  year         Int?
-  basic_salary Decimal?
-  hra          Decimal?
-  bonus        Decimal?  @default(0.00)
-  da           Decimal?
-  allowances   Decimal?
-  deductions   Decimal?
-  net_pay      Decimal?
-  generated_on DateTime? @default(now())
-  payslip_pdf  String?
-  pf           Decimal?  @default(0.00)
-  ptax         Decimal?  @default(0.00)
-  esic         Decimal?  @default(0.00)
-  users        users?    @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+  id                 Int       @id @default(autoincrement())
+  empid              String?
+  month              String?
+  year               Int?
+  basic_salary       Decimal?
+  hra                Decimal?
+  bonus              Decimal?  @default(0.00)
+  da                 Decimal?
+  allowances         Decimal?
+  deductions         Decimal?
+  net_pay            Decimal?
+  generated_on       DateTime? @default(now())
+  payslip_pdf        String?
+  pf                 Decimal?  @default(0.00)
+  ptax               Decimal?  @default(0.00)
+  esic               Decimal?  @default(0.00)
+  allowance_details  String?   @db.Text
+  deduction_details  String?   @db.Text
+  users              users?    @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([empid])
 }

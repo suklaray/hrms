@@ -14,6 +14,7 @@ export default function AddCandidate() {
     email: "",
     contact_number: "",
     interviewDate: "",
+    interviewTime: "",
     cv: null,
   });
   const [loading, setLoading] = useState(false);
@@ -74,6 +75,14 @@ export default function AddCandidate() {
         }
         break;
         
+      case 'interviewTime':
+        if (!value) {
+          newErrors[name] = 'Interview time is required';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+        
       case 'cv':
         if (!value) {
           newErrors[name] = 'CV file is required';
@@ -131,7 +140,7 @@ export default function AddCandidate() {
 
   // Check if form is valid
   useEffect(() => {
-    const requiredFields = ['name', 'email', 'contact_number', 'interviewDate', 'cv'];
+    const requiredFields = ['name', 'email', 'contact_number', 'interviewDate', 'interviewTime', 'cv'];
     const hasAllFields = requiredFields.every(field => {
       if (field === 'cv') return formData[field] !== null;
       return formData[field].trim() !== '';
@@ -151,6 +160,7 @@ export default function AddCandidate() {
     data.append("email", formData.email);
     data.append("contact_number", formData.contact_number);
     data.append("interviewDate", formData.interviewDate);
+    data.append("interviewTime", formData.interviewTime);
     data.append("cv", formData.cv);
 
     try {
@@ -184,6 +194,14 @@ export default function AddCandidate() {
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <SideBar />
       <div className="flex-1 p-6 lg:p-10">
+        <div className="mb-6">
+          <button 
+            onClick={() => router.push('/Recruitment/recruitment')}
+            className="flex items-center px-4 py-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
+          >
+            ← Back to Recruitment
+          </button>
+        </div>
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Add New Candidate</h1>
@@ -332,6 +350,33 @@ export default function AddCandidate() {
                     )}
                   </div>
                   {errors.interviewDate && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.interviewDate}</p>}
+                </div>
+
+                {/* Interview Time */}
+                <div>
+                  <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                    <FaCalendarAlt className="mr-2 text-indigo-500" />
+                    Interview Time *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      name="interviewTime"
+                      value={formData.interviewTime}
+                      onChange={handleChange}
+                      className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
+                        errors.interviewTime 
+                          ? 'border-red-500 focus:border-red-500' 
+                          : formData.interviewTime && !errors.interviewTime
+                            ? 'border-green-500 focus:border-green-500'
+                            : 'border-gray-200 focus:border-indigo-500'
+                      }`}
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      {getFieldIcon('interviewTime', errors.interviewTime, formData.interviewTime && !errors.interviewTime)}
+                    </div>
+                  </div>
+                  {errors.interviewTime && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.interviewTime}</p>}
                 </div>
 
                 {/* CV Upload */}

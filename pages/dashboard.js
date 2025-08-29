@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken";
 import SideBar from "@/Components/SideBar";
+import ProfileSection from "@/Components/ProfileSection";
+import NotificationSidebar from "@/Components/NotificationSidebar";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { Users, UserCheck, Clock, FileText, TrendingUp, Calendar, Bell } from "lucide-react";
@@ -13,10 +15,14 @@ export default function Dashboard({ user }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     fetchStats();
+    fetchNotifications();
   }, []);
 
   const fetchStats = async () => {
@@ -31,6 +37,26 @@ export default function Dashboard({ user }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch('/api/notifications');
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data);
+        setHasUnread(data.some(n => !n.viewed));
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  };
+
+  const handleNotificationClick = (notificationId) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === notificationId ? { ...n, viewed: true } : n)
+    );
+    setHasUnread(notifications.some(n => !n.viewed && n.id !== notificationId));
   };
 
   const handleLogout = async () => {
@@ -78,15 +104,25 @@ export default function Dashboard({ user }) {
                 <Calendar className="w-4 h-4" />
                 <span>{mounted ? new Date().toLocaleDateString() : ''}</span>
               </div>
-              <button className="p-2 text-gray-400 hover:text-gray-600 relative">
+              <button 
+                onClick={() => setShowNotifications(true)}
+                className="p-2 text-gray-400 hover:text-gray-600 relative"
+              >
                 <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                {hasUnread && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                )}
               </button>
             </div>
           </div>
         </div>
 
         <div className="p-6">
+          {/* Profile Section */}
+          <div className="mb-6">
+            <ProfileSection user={user} />
+          </div>
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard
@@ -234,6 +270,13 @@ export default function Dashboard({ user }) {
           </div>
         </div>
       </div>
+      
+      <NotificationSidebar 
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        notifications={notifications}
+        onNotificationClick={handleNotificationClick}
+      />
     </div>
   );
 }

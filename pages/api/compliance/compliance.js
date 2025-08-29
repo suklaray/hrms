@@ -69,6 +69,14 @@ export default async function handler(req, res) {
         status,
         lastUpdated:
           emp?.created_at?.toISOString().split("T")[0] || "—",
+        // Include all document fields from employee record
+        resume: emp?.resume,
+        profile_photo: emp?.profile_photo,
+        aadhar_card: emp?.aadhar_card,
+        pan_card: emp?.pan_card,
+        bank_details: emp?.bank_details?.[0]?.checkbook_document,
+        education_certificates: emp?.education_certificates,
+        experience_certificate: emp?.experience_certificate,
         documents: [
           {
             type: "Aadhar Card",

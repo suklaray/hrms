@@ -34,9 +34,10 @@ export default async function handler(req, res) {
         const name = getValue(fields.name);
         const email = getValue(fields.email);
         const interviewDate = getValue(fields.interviewDate);
+        const interviewTime = getValue(fields.interviewTime);
         const contact_number = getValue(fields.contact_number);
 
-        if (!name || !email || !interviewDate || !contact_number) {
+        if (!name || !email || !interviewDate || !interviewTime || !contact_number) {
           return res.status(400).json({ error: "Missing required fields" });
         }
 
@@ -67,15 +68,8 @@ export default async function handler(req, res) {
         const day = String(today.getDate()).padStart(2, "0");
         const datePrefix = `${year}${month}${day}`;
 
-        const count = await prisma.candidates.count({
-          where: {
-            candidate_id: {
-              startsWith: datePrefix
-            }
-          }
-        });
-
-        const serialStr = String(count + 1).padStart(6, "0");
+        const totalCount = await prisma.candidates.count();
+        const serialStr = String(totalCount + 1).padStart(6, "0");
         const candidateId = `${datePrefix}${serialStr}`;
 
         // Process CV file
@@ -112,6 +106,7 @@ export default async function handler(req, res) {
             email: email,
             contact_number: contact_number,
             interview_date: new Date(interviewDate),
+            interview_time: interviewTime,
             resume: resumePath,
             form_link: null,
             status: "Pending"

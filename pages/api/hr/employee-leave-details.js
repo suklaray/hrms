@@ -37,7 +37,7 @@ export default async function handler(req, res) {
         to_date: true,
         reason: true,
         status: true,
-        document_path: true,
+        attachment: true,
       }
     });
 

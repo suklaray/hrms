@@ -13,19 +13,31 @@ export default async function handler(req, res) {
   }
 
   try {
-    const employee = await prisma.users.findUnique({
+    const user = await prisma.users.findUnique({
       where: { empid },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    // Get additional data from employees table
+    const employeeData = await prisma.employees.findFirst({
+      where: { 
+        OR: [
+          { email: user.email },
+          { empid: parseInt(empid) }
+        ]
+      },
       select: {
-        empid: true,
-        name: true,
-        email: true,
-        contact_number: true,
+        contact_no: true,
       },
     });
 
-    if (!employee) {
-      return res.status(404).json({ message: "Employee not found" });
-    }
+    const employee = {
+      ...user,
+      contact_no: employeeData?.contact_no || 'Not provided',
+    };
 
     return res.status(200).json({ employee });
   } catch (error) {

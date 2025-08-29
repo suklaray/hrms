@@ -60,7 +60,7 @@ export default function CandidateForm() {
             setCandidate(res.data);
             setFormData((prev) => ({
               ...prev,
-              contact_no: res.data.contact_no || "",
+              contact_no: res.data.contact_number || "",
             }));
           })
           .catch((err) => console.error("Error fetching candidate:", err));
@@ -87,8 +87,9 @@ export default function CandidateForm() {
       return formData[field] && formData[field].toString().trim() !== '';
     });
 
-    // Check if all file fields are filled
-    const hasAllFileFields = requiredFileFields.every(field => {
+    // Check if all required file fields are filled (excluding experience_certificate)
+    const requiredFiles = requiredFileFields.filter(field => field !== 'experience_certificate');
+    const hasAllFileFields = requiredFiles.every(field => {
       return formData[field] !== null;
     });
 
@@ -101,55 +102,106 @@ export default function CandidateForm() {
   const validateField = (name, value) => {
     const newErrors = { ...errors };
     
+    // Skip validation for empty values unless it's a required field check
+    if (!value || value.trim() === '') {
+      if (document.querySelector(`[name="${name}"]`)?.required) {
+        newErrors[name] = 'This field is required';
+      } else {
+        delete newErrors[name];
+      }
+      setErrors(newErrors);
+      return;
+    }
+    
     switch (name) {
       case 'contact_no':
-        if (!/^\d{10}$/.test(value)) {
-          newErrors[name] = 'Contact number must be exactly 10 digits';
+        if (!/^\d+$/.test(value)) {
+          newErrors[name] = '❌ Contact number must contain only digits';
+        } else if (value.length !== 10) {
+          newErrors[name] = `❌ Must be exactly 10 digits (current: ${value.length})`;
         } else {
           delete newErrors[name];
         }
         break;
       case 'pincode':
-        if (!/^\d{6}$/.test(value)) {
-          newErrors[name] = 'Pincode must be exactly 6 digits';
+        if (!/^\d+$/.test(value)) {
+          newErrors[name] = '❌ Pincode must contain only digits';
+        } else if (value.length !== 6) {
+          newErrors[name] = `❌ Must be exactly 6 digits (current: ${value.length})`;
         } else {
           delete newErrors[name];
         }
         break;
       case 'aadhar_number':
-        if (!/^\d{12}$/.test(value.replace(/\s/g, ''))) {
-          newErrors[name] = 'Aadhar number must be exactly 12 digits';
+        const cleanAadhar = value.replace(/\s/g, '');
+        if (!/^\d+$/.test(cleanAadhar)) {
+          newErrors[name] = '❌ Aadhar number must contain only digits';
+        } else if (cleanAadhar.length !== 12) {
+          newErrors[name] = `❌ Must be exactly 12 digits (current: ${cleanAadhar.length})`;
         } else {
           delete newErrors[name];
         }
         break;
       case 'pan_number':
-        if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value.toUpperCase())) {
-          newErrors[name] = 'PAN number format: ABCDE1234F';
+        const upperPan = value.toUpperCase();
+        if (upperPan.length !== 10) {
+          newErrors[name] = `❌ Must be exactly 10 characters (current: ${upperPan.length})`;
+        } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(upperPan)) {
+          newErrors[name] = '❌ Invalid format. Expected: ABCDE1234F';
         } else {
           delete newErrors[name];
         }
         break;
       case 'ifsc_code':
-        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(value.toUpperCase())) {
-          newErrors[name] = 'Invalid IFSC code format';
+        const upperIfsc = value.toUpperCase();
+        if (upperIfsc.length !== 11) {
+          newErrors[name] = `❌ Must be exactly 11 characters (current: ${upperIfsc.length})`;
+        } else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(upperIfsc)) {
+          newErrors[name] = '❌ Invalid format. Expected: ABCD0123456';
         } else {
           delete newErrors[name];
         }
         break;
       case 'account_number':
-        if (!/^\d{9,18}$/.test(value)) {
-          newErrors[name] = 'Account number must be 9-18 digits';
+        if (!/^\d+$/.test(value)) {
+          newErrors[name] = '❌ Account number must contain only digits. Example: 1234567890123';
+        } else if (value.length < 9 || value.length > 18) {
+          newErrors[name] = `❌ Must be 9-18 digits (current: ${value.length}). Example: 1234567890123`;
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'account_holder_name':
+        if (!/^[a-zA-Z\s]+$/.test(value)) {
+          newErrors[name] = '❌ Name must contain only letters and spaces. Example: John Doe';
+        } else if (value.length < 2) {
+          newErrors[name] = '❌ Name must be at least 2 characters. Example: John Doe';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'bank_name':
+        if (!/^[a-zA-Z\s]+$/.test(value)) {
+          newErrors[name] = '❌ Bank name must contain only letters and spaces. Example: State Bank of India';
+        } else if (value.length < 3) {
+          newErrors[name] = '❌ Bank name must be at least 3 characters. Example: HDFC Bank';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'branch_name':
+        if (!/^[a-zA-Z0-9\s,.-]+$/.test(value)) {
+          newErrors[name] = '❌ Invalid branch name format. Example: Main Branch, Mumbai';
+        } else if (value.length < 3) {
+          newErrors[name] = '❌ Branch name must be at least 3 characters. Example: Main Branch';
+        } else if (!/[a-zA-Z]/.test(value)) {
+          newErrors[name] = '❌ Branch name must contain at least one letter. Example: Main Branch, Mumbai';
         } else {
           delete newErrors[name];
         }
         break;
       default:
-        if (value.trim() === '' && document.querySelector(`[name="${name}"]`)?.required) {
-          newErrors[name] = 'This field is required';
-        } else {
-          delete newErrors[name];
-        }
+        delete newErrors[name];
     }
     
     setErrors(newErrors);
@@ -163,27 +215,32 @@ export default function CandidateForm() {
       if (file) {
         // Validate file size (5MB limit)
         if (file.size > 5 * 1024 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: 'File size must be less than 5MB' }));
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 5MB' }));
           return;
         }
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
         if (!allowedTypes.includes(file.type)) {
-          setErrors(prev => ({ ...prev, [name]: 'Only JPG, PNG, and PDF files are allowed' }));
+          setErrors(prev => ({ ...prev, [name]: '❌ Only JPG, PNG, and PDF files are allowed' }));
           return;
         }
         setErrors(prev => ({ ...prev, [name]: undefined }));
+      } else {
+        // File was removed
+        setErrors(prev => ({ ...prev, [name]: '❌ This file is required' }));
       }
       setFormData((prev) => ({
         ...prev,
         [name]: files[0],
       }));
     } else {
-      validateField(name, value);
+      // Update form data first
       setFormData((prev) => ({
         ...prev,
         [name]: value,
       }));
+      // Then validate immediately as user types
+      setTimeout(() => validateField(name, value), 100);
     }
   };
 
@@ -268,10 +325,10 @@ const handleDocumentUpload = async (e, type) => {
       'bank_name', 'branch_name', 'account_number', 'ifsc_code'
     ];
     
-    // Required files
+    // Required files (excluding experience_certificate which is optional)
     const requiredFiles = [
       'aadhar_card', 'pan_card', 'education_certificates',
-      'resume', 'profile_photo', 'experience_certificate', 'bank_details'
+      'resume', 'profile_photo', 'bank_details'
     ];
 
     // Check required text fields
@@ -388,7 +445,12 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Number <span className="text-red-800">*</span>
+                    {candidate?.contact_number && (
+                      <span className="text-green-600 text-xs ml-2">(Pre-filled from candidate data)</span>
+                    )}
+                  </label>
                   <input
                     type="text"
                     name="contact_no"
@@ -396,15 +458,30 @@ const handleDocumentUpload = async (e, type) => {
                     onChange={handleChange}
                     required
                     maxLength={10}
+                    placeholder={candidate?.contact_number ? "" : "Enter 10-digit contact number"}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.contact_no ? 'border-red-500' : 'border-gray-300'
+                      errors.contact_no ? 'border-red-500' : candidate?.contact_number ? 'border-green-300 bg-green-50' : 'border-gray-300'
                     }`}
                   />
-                  {errors.contact_no && <p className="text-red-500 text-sm mt-1">{errors.contact_no}</p>}
+                  {errors.contact_no && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.contact_no}
+                    </div>
+                  )}
+                  {formData.contact_no && !errors.contact_no && formData.contact_no.length === 10 && (
+                    <div className="mt-1 p-2 bg-green-50 border border-green-200 rounded text-green-700 text-sm">
+                      ✅ Valid contact number
+                    </div>
+                  )}
+                  {candidate?.contact_number && (
+                    <p className="text-green-600 text-xs mt-1">✓ Contact number loaded from candidate profile. You can edit if needed.</p>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date of Birth <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="date"
                     name="dob"
@@ -416,7 +493,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Gender *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender <span className="text-red-800">*</span>
+                  </label>
                   <select
                     name="gender"
                     value={formData.gender}
@@ -443,7 +522,9 @@ const handleDocumentUpload = async (e, type) => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address Line 1 *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Address Line 1 <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="address_line_1"
@@ -469,7 +550,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="city"
@@ -481,7 +564,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    State <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="state"
@@ -493,7 +578,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pincode <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="pincode"
@@ -509,7 +596,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Country <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="country"
@@ -536,7 +625,9 @@ const handleDocumentUpload = async (e, type) => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Aadhar Card *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Aadhar Card <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="file"
                     name="aadhar_card"
@@ -552,7 +643,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Aadhar Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Aadhar Number <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="aadhar_number"
@@ -569,7 +662,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PAN Card *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PAN Card <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="file"
                     name="pan_card"
@@ -581,7 +676,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PAN Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PAN Number <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="pan_number"
@@ -609,7 +706,9 @@ const handleDocumentUpload = async (e, type) => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Highest Qualification *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Highest Qualification <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="highest_qualification"
@@ -621,7 +720,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Educational Certificates *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Educational Certificates <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="file"
                     name="education_certificates"
@@ -632,7 +733,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Resume *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Resume <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="file"
                     name="resume"
@@ -643,7 +746,9 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Profile Photo <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="file"
                     name="profile_photo"
@@ -654,14 +759,16 @@ const handleDocumentUpload = async (e, type) => {
                 </div>
                 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Experience Certificate *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Experience Certificate (Optional)
+                  </label>
                   <input
                     type="file"
                     name="experience_certificate"
                     onChange={handleChange}
-                    required
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
+                  <p className="text-blue-600 text-sm mt-1">💡 This field is optional. Upload only if you have work experience.</p>
                 </div>
               </div>
             </div>
@@ -675,68 +782,136 @@ const handleDocumentUpload = async (e, type) => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Account Holder Name <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="account_holder_name"
                     value={formData.account_holder_name}
                     onChange={handleChange}
+                    onBlur={(e) => validateField('account_holder_name', e.target.value)}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter full name as per bank records"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.account_holder_name ? 'border-red-500 bg-red-50' : 
+                      formData.account_holder_name && !errors.account_holder_name ? 'border-green-500 bg-green-50' :
+                      'border-gray-300'
+                    }`}
                   />
+                  {errors.account_holder_name && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.account_holder_name}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bank Name <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="bank_name"
                     value={formData.bank_name}
                     onChange={handleChange}
+                    onBlur={(e) => validateField('bank_name', e.target.value)}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter bank name (e.g., State Bank of India)"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.bank_name ? 'border-red-500 bg-red-50' : 
+                      formData.bank_name && !errors.bank_name ? 'border-green-500 bg-green-50' :
+                      'border-gray-300'
+                    }`}
                   />
+                  {errors.bank_name && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.bank_name}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Branch Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Branch Name <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="branch_name"
                     value={formData.branch_name}
                     onChange={handleChange}
+                    onBlur={(e) => validateField('branch_name', e.target.value)}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter branch name (e.g., Main Branch, Mumbai)"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.branch_name ? 'border-red-500 bg-red-50' : 
+                      formData.branch_name && !errors.branch_name ? 'border-green-500 bg-green-50' :
+                      'border-gray-300'
+                    }`}
                   />
+                  {errors.branch_name && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.branch_name}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Account Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Account Number <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="account_number"
                     value={formData.account_number}
                     onChange={handleChange}
+                    onBlur={(e) => validateField('account_number', e.target.value)}
                     required
                     maxLength={20}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter account number (9-18 digits)"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.account_number ? 'border-red-500 bg-red-50' : 
+                      formData.account_number && !errors.account_number ? 'border-green-500 bg-green-50' :
+                      'border-gray-300'
+                    }`}
                   />
+                  {errors.account_number && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.account_number}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">IFSC Code *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    IFSC Code <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="text"
                     name="ifsc_code"
                     value={formData.ifsc_code}
                     onChange={handleChange}
+                    onBlur={(e) => validateField('ifsc_code', e.target.value)}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    maxLength={11}
+                    placeholder="Enter IFSC code (e.g., SBIN0001234)"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors.ifsc_code ? 'border-red-500 bg-red-50' : 
+                      formData.ifsc_code && !errors.ifsc_code ? 'border-green-500 bg-green-50' :
+                      'border-gray-300'
+                    }`}
                   />
+                  {errors.ifsc_code && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.ifsc_code}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bank Details File *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bank Details File <span className="text-red-800">*</span>
+                  </label>
                   <input
                     type="file"
                     name="bank_details"

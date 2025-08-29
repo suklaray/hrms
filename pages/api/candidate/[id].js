@@ -4,10 +4,12 @@ export default async function handler(req, res) {
   const { id } = req.query;
 
   try {
+    // Reconnect to database if connection is lost
+    await prisma.$connect();
+    
     // 1️⃣ Get the candidate info
     const candidate = await prisma.candidates.findUnique({
-      where: { id: parseInt(id) },
-      select: { name: true, email: true },
+      where: { candidate_id: id },
     });
 
     if (!candidate) {
@@ -18,30 +20,36 @@ export default async function handler(req, res) {
     const employee = await prisma.employees.findUnique({
       where: { email: candidate.email },
       select: { 
-        profile_photo: true,
-        profile_photo_data: true,
-        profile_photo_filename: true,
-        profile_photo_mimetype: true
+        profile_photo: true
       },
     });
 
     let profilePhotoUrl = '';
-    if (employee?.profile_photo_data) {
-      // Convert Bytes to base64 for display
-      const base64 = Buffer.from(employee.profile_photo_data).toString('base64');
-      profilePhotoUrl = `data:${employee.profile_photo_mimetype || 'image/jpeg'};base64,${base64}`;
-    } else if (employee?.profile_photo) {
+    if (employee?.profile_photo) {
       profilePhotoUrl = employee.profile_photo;
     }
 
     res.status(200).json({
-      name: candidate.name,
-      email: candidate.email,
+      ...candidate,
       profile_photo: profilePhotoUrl,
     });
 
   } catch (err) {
     console.error('Error fetching candidate/employee:', err);
+    
+    // If it's a connection error, try to reconnect
+    if (err.code === 'P1017') {
+      try {
+        await prisma.$disconnect();
+        await prisma.$connect();
+        return res.status(500).json({ error: 'Database connection lost. Please try again.' });
+      } catch (reconnectErr) {
+        console.error('Failed to reconnect:', reconnectErr);
+      }
+    }
+    
     res.status(500).json({ error: 'Server error' });
+  } finally {
+    // Don't disconnect here as it might be used by other requests
   }
 }

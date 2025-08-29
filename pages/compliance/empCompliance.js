@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import SideBar from "@/Components/SideBar";
 import { Eye, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, X, Filter, Users, Shield } from "lucide-react";
 
 export default function ComplianceDashboard() {
+  const router = useRouter();
   const [employees, setEmployees] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [filter, setFilter] = useState("All");
   const [roleFilter, setRoleFilter] = useState("All");
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [candidates, setCandidates] = useState([]);
+  const [interns, setInterns] = useState([]);
+  const [activeTab, setActiveTab] = useState('employees');
 
   useEffect(() => {
     const fetchCompliance = async () => {
@@ -30,7 +34,90 @@ export default function ComplianceDashboard() {
       }
     };
 
+    const fetchCandidates = async () => {
+      try {
+        const res = await fetch("/api/recruitment/getCandidates");
+        const data = await res.json();
+        
+        // Get list of employee emails to exclude candidates who are already employees
+        const empRes = await fetch("/api/compliance/compliance");
+        const employees = await empRes.json();
+        const employeeEmails = employees.map(emp => emp.email);
+        
+        // Filter out candidates who are already employees
+        const candidatesOnly = (data || []).filter(candidate => !employeeEmails.includes(candidate.email));
+        
+        // Fetch employee documents for each candidate using email
+        const candidatesWithCompliance = await Promise.all(candidatesOnly.map(async candidate => {
+          const hasForm = candidate.form_submitted;
+          const isVerified = candidate.verification;
+          const hasResume = candidate.resume;
+          
+          // Fetch employee documents using email
+          let employeeData = null;
+          try {
+            const empRes = await fetch(`/api/compliance/candidate-documents?email=${candidate.email}`);
+            if (empRes.ok) {
+              employeeData = await empRes.json();
+            }
+          } catch (err) {
+            console.error('Error fetching employee documents:', err);
+          }
+          
+          const hasAadhar = employeeData?.aadhar_card || candidate.aadhar_card;
+          const hasPan = employeeData?.pan_card || candidate.pan_card;
+          const hasBankDetails = employeeData?.bank_details || candidate.bank_details;
+          const hasExperience = employeeData?.experience_certificate || candidate.experience_certificate;
+          const hasProfilePhoto = candidate.profile_photo;
+          const hasEducation = employeeData?.education_certificates || candidate.education_certificates;
+          
+          const uploadedDocs = [hasResume, hasAadhar, hasPan, hasBankDetails].filter(Boolean).length;
+          
+          let status = "Non-compliant";
+          if (hasForm && isVerified && uploadedDocs >= 4) {
+            status = "Compliant";
+          } else if (hasForm && (isVerified || uploadedDocs >= 2)) {
+            status = "Partially Compliant";
+          }
+          
+          return {
+            ...candidate,
+            ...employeeData, // Include employee document paths
+            status,
+            documents: [
+              { type: "Resume", status: hasResume ? "Uploaded" : "Missing" },
+              { type: "Profile Photo", status: hasProfilePhoto ? "Uploaded" : "Missing" },
+              { type: "Aadhar Card", status: hasAadhar ? "Uploaded" : "Missing" },
+              { type: "PAN Card", status: hasPan ? "Uploaded" : "Missing" },
+              { type: "Bank Details", status: hasBankDetails ? "Uploaded" : "Missing" },
+              { type: "Education Certificates", status: hasEducation ? "Uploaded" : "Optional - Missing" },
+              { type: "Experience Certificate", status: hasExperience ? "Uploaded" : "Optional - Missing" },
+              { type: "Application Form", status: hasForm ? "Submitted" : "Missing" },
+              { type: "Verification", status: isVerified ? "Verified" : "Pending" }
+            ]
+          };
+        }));
+        
+        setCandidates(candidatesWithCompliance);
+      } catch (error) {
+        console.error("Error fetching candidates:", error);
+      }
+    };
+
+    const fetchInterns = async () => {
+      try {
+        const res = await fetch("/api/compliance/compliance");
+        const data = await res.json();
+        const internData = data.filter(emp => emp.employee_type === 'Intern');
+        setInterns(internData);
+      } catch (error) {
+        console.error("Error fetching interns:", error);
+      }
+    };
+
     fetchCompliance();
+    fetchCandidates();
+    fetchInterns();
   }, []);
 
   useEffect(() => {
@@ -47,9 +134,7 @@ export default function ComplianceDashboard() {
     setFiltered(data.sort((a, b) => a.name.localeCompare(b.name)));
   }, [filter, roleFilter, employees]);
 
-  const handleViewDocuments = (emp) => {
-    setSelectedEmployee(emp);
-  };
+
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -59,6 +144,8 @@ export default function ComplianceDashboard() {
         return <XCircle className="w-4 h-4 text-red-600" />;
       case "Expiring Soon":
         return <AlertCircle className="w-4 h-4 text-yellow-600" />;
+      case "Partially Compliant":
+        return <AlertCircle className="w-4 h-4 text-orange-600" />;
       default:
         return <AlertCircle className="w-4 h-4 text-gray-600" />;
     }
@@ -68,7 +155,8 @@ export default function ComplianceDashboard() {
     const styles = {
       "Compliant": "bg-green-100 text-green-800 border-green-200",
       "Non-compliant": "bg-red-100 text-red-800 border-red-200",
-      "Expiring Soon": "bg-yellow-100 text-yellow-800 border-yellow-200"
+      "Expiring Soon": "bg-yellow-100 text-yellow-800 border-yellow-200",
+      "Partially Compliant": "bg-orange-100 text-orange-800 border-orange-200"
     };
 
     return (
@@ -129,8 +217,46 @@ export default function ComplianceDashboard() {
         </div>
 
         <div className="p-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {/* Tab Navigation */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setActiveTab('employees')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'employees'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Employees ({employees.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('candidates')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'candidates'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Candidates ({candidates.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('interns')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'interns'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Interns ({interns.length})
+              </button>
+            </div>
+          </div>
+
+          {activeTab === 'employees' && (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -264,7 +390,7 @@ export default function ComplianceDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.lastUpdated}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
-                          onClick={() => handleViewDocuments(emp)}
+                          onClick={() => router.push(`/compliance/documents/${emp.empid}?type=employee`)}
                           className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                         >
                           <Eye className="w-4 h-4" />
@@ -277,121 +403,106 @@ export default function ComplianceDashboard() {
               </table>
             </div>
           </div>
-        </div>
+            </>
+          )}
 
-        {/* Document Modal */}
-        {selectedEmployee && (
-          <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-              {/* Modal Header */}
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-white">
-                    <h2 className="text-xl font-bold">{selectedEmployee.name}&apos;s Documents</h2>
-                    <p className="text-indigo-100 text-sm">Employee ID: {selectedEmployee.empid}</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedEmployee(null)}
-                    className="text-white hover:text-gray-200 transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedEmployee.documents.map((doc, idx) => {
-                    const isUploaded = doc.status === "Uploaded";
-                    const isOptional = doc.status.includes("Optional");
-                    
-                    return (
-                      <div key={idx} className={`border rounded-lg p-4 transition-all hover:shadow-md ${
-                        isUploaded ? 'border-green-200 bg-green-50' : 
-                        isOptional ? 'border-yellow-200 bg-yellow-50' : 
-                        'border-red-200 bg-red-50'
-                      }`}>
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <FileText className="w-5 h-5 text-gray-600" />
-                            <h3 className="font-medium text-gray-900">{doc.type}</h3>
+          {activeTab === 'candidates' && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {candidates.map((candidate) => (
+                      <tr key={candidate.candidate_id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
+                            <div className="text-sm text-gray-500">{candidate.candidate_id} • {candidate.email}</div>
                           </div>
-                          {getDocumentStatusIcon(doc.status)}
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${
-                            isUploaded ? 'text-green-700' : 
-                            isOptional ? 'text-yellow-700' : 
-                            'text-red-700'
-                          }`}>
-                            {doc.status}
-                          </span>
-                          
-                          {isUploaded && (
-                            <button 
-                              onClick={() => {
-                                // Create document view URL based on document type
-                                let docUrl = '';
-                                const empid = selectedEmployee.empid;
-                                
-                                switch(doc.type) {
-                                  case 'Aadhar Card':
-                                    docUrl = `/api/employee/documents/${empid}/aadhar`;
-                                    break;
-                                  case 'PAN Card':
-                                    docUrl = `/api/employee/documents/${empid}/pan`;
-                                    break;
-                                  case 'Resume':
-                                    docUrl = `/api/employee/documents/${empid}/resume`;
-                                    break;
-                                  case 'Bank Checkbook':
-                                    docUrl = `/api/employee/documents/${empid}/checkbook`;
-                                    break;
-                                  case 'Experience Certificate':
-                                    docUrl = `/api/employee/documents/${empid}/experience`;
-                                    break;
-                                }
-                                
-                                if (docUrl) {
-                                  window.open(docUrl, '_blank');
-                                }
-                              }}
-                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              View
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Summary */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-2">Compliance Summary</h4>
-                  <div className="flex items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
-                      <span>{selectedEmployee.documents.filter(d => d.status === "Uploaded").length} Uploaded</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <XCircle className="w-4 h-4 text-red-600" />
-                      <span>{selectedEmployee.documents.filter(d => d.status === "Missing").length} Missing</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <AlertCircle className="w-4 h-4 text-yellow-600" />
-                      <span>{selectedEmployee.documents.filter(d => d.status.includes("Optional")).length} Optional</span>
-                    </div>
-                  </div>
-                </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{candidate.email}</div>
+                          <div className="text-sm text-gray-500">{candidate.contact_number}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(candidate.status)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {candidate.interview_date ? new Date(candidate.interview_date).toLocaleDateString() : 'Not scheduled'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => router.push(`/compliance/documents/${candidate.candidate_id}?type=candidate`)}
+                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Documents
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {activeTab === 'interns' && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Intern Compliance</h3>
+                <p className="text-gray-600">Monitor document compliance for intern employees</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Intern</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {interns.map((intern) => (
+                      <tr key={intern.empid} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{intern.name}</div>
+                            <div className="text-sm text-gray-500">{intern.empid} • {intern.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {intern.intern_duration ? `${intern.intern_duration} months` : 'Not specified'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(intern.status)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{intern.lastUpdated}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => router.push(`/compliance/documents/${intern.empid}?type=employee`)}
+                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Documents
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+
       </div>
     </div>
   );

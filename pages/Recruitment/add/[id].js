@@ -152,6 +152,12 @@ const AddEmployee = () => {
       <SideBar />
 
       <div className="flex-1 p-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
+        <button
+          onClick={() => router.push('/Recruitment/recruitment')}
+          className="mb-6 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+        >
+          ← Back to Recruitment
+        </button>
         <div className="max-w-4xl mx-auto">
           <div className="bg-white shadow-2xl rounded-3xl overflow-hidden">
             {/* Header */}
@@ -230,8 +236,11 @@ const AddEmployee = () => {
                     ? 'border-gray-200 bg-gray-50 text-gray-600' 
                     : 'border-gray-200 bg-white focus:border-indigo-500'
                 }`}
+                name="name"
                 value={form.name}
-                readOnly
+                onChange={handleChange}
+                required
+                readOnly={!!id || (existingEmployee && !isEditing)}
               />
             </div>
 

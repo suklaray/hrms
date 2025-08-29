@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 import SideBar from "@/Components/SideBar";
+import Breadcrumb from "@/Components/Breadcrumb";
 import { format } from 'date-fns';
 import { 
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, 
   FaCheckCircle, FaTimesCircle, FaFileAlt, FaEye,
-  FaIdCard, FaUserCheck
+  FaIdCard, FaUserCheck, FaArrowLeft, FaEdit
 } from 'react-icons/fa';
 
 export default function CandidateDetails() {
@@ -73,8 +74,13 @@ export default function CandidateDetails() {
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <SideBar />
       <div className="flex-1 p-6 lg:p-10">
+        <Breadcrumb items={[
+          { label: 'Recruitment', href: '/Recruitment/recruitment' },
+          { label: candidate?.name || 'Candidate Details' }
+        ]} />
+
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 mt-6">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Candidate Profile</h1>
           <p className="text-gray-600">Complete candidate information and status</p>
         </div>
@@ -91,8 +97,17 @@ export default function CandidateDetails() {
                   <span>ID: {candidate.candidate_id}</span>
                 </div>
               </div>
-              <div className={`px-4 py-2 rounded-full border-2 font-semibold ${getStatusColor(candidate.status)}`}>
-                {candidate.status || 'Pending'}
+              <div className="flex items-center">
+                <div className={`px-4 py-2 rounded-full border-2 font-semibold mr-3 ${getStatusColor(candidate.status)}`}>
+                  {candidate.status || 'Pending'}
+                </div>
+                <button 
+                  onClick={() => router.push(`/Recruitment/add/${candidate.candidate_id}`)}
+                  className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                >
+                  <FaEdit className="mr-2" />
+                  Edit Profile
+                </button>
               </div>
             </div>
           </div>
@@ -133,9 +148,10 @@ export default function CandidateDetails() {
                 <div className="flex items-center p-4 bg-gray-50 rounded-xl">
                   <FaCalendarAlt className="text-indigo-500 mr-3" />
                   <div>
-                    <p className="text-sm text-gray-600">Interview Date</p>
+                    <p className="text-sm text-gray-600">Interview Date & Time</p>
                     <p className="font-semibold text-gray-900">
                       {candidate.interview_date ? format(new Date(candidate.interview_date), "dd MMM yyyy") : "Not scheduled"}
+                      {candidate.interview_time && ` at ${candidate.interview_time}`}
                     </p>
                   </div>
                 </div>

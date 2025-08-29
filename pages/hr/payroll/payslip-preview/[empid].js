@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import SideBar from "@/Components/SideBar";
-import Image from 'next/image';
+import { Building2 } from 'lucide-react';
 
 export default function PayslipPreview() {
   const router = useRouter();
@@ -66,17 +66,13 @@ export default function PayslipPreview() {
     );
   }
 
-  // Ensure allowances and deductions are arrays
-  const allowances = Array.isArray(payslip.allowances) ? payslip.allowances : [];
-  const deductions = Array.isArray(payslip.deductions) ? payslip.deductions : [];
+  // Parse allowance and deduction details
+  const allowanceDetails = payslip.allowance_details ? JSON.parse(payslip.allowance_details) : [];
+  const deductionDetails = payslip.deduction_details ? JSON.parse(payslip.deduction_details) : [];
 
-  // Filter allowances and deductions based on inclusion status
-  const filteredAllowances = allowances.filter(allowance => allowance.include);
-  const filteredDeductions = deductions.filter(deduction => deduction.include);
-
-  // Calculate total allowances and total deductions
-  const totalAllowances = filteredAllowances.reduce((total, allowance) => total + (allowance.value || 0), 0);
-  const totalDeductions = filteredDeductions.reduce((total, deduction) => total + (deduction.value || 0), 0);
+  // Calculate totals from details
+  const totalCustomAllowances = allowanceDetails.reduce((total, allowance) => total + (allowance.value || 0), 0);
+  const totalCustomDeductions = deductionDetails.reduce((total, deduction) => total + (deduction.value || 0), 0);
 
   // Include PF, PTAX, and ESIC in deductions
   const pf = payslip.pf || 0;
@@ -84,13 +80,25 @@ export default function PayslipPreview() {
   const esic = payslip.esic || 0;
 
   // Calculate total deductions including PF, PTAX, and ESIC
-  const totalDeductionsWithFixed = totalDeductions + (pf + ptax + esic);
+  const totalDeductionsWithFixed = totalCustomDeductions + (pf + ptax + esic);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#F3F4F6" }}>
       <SideBar /> {/* Add the Sidebar component here */}
 
       <div style={{ flex: 1, padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* Breadcrumb Navigation */}
+        <nav style={{ alignSelf: "flex-start", marginBottom: "1rem", fontSize: "0.875rem", color: "#6B7280" }}>
+          <button onClick={() => router.push('/hr/payroll/payroll-view')} style={{ color: "#6B7280", textDecoration: "none", cursor: "pointer" }}>
+            Payroll Management
+          </button>
+          <span> / </span>
+          <button onClick={() => router.push(`/hr/payroll/${empid}`)} style={{ color: "#6B7280", textDecoration: "none", cursor: "pointer" }}>
+            {employee?.name || empid}
+          </button>
+          <span> / </span>
+          <span style={{ color: "#111827", fontWeight: "500" }}>Payslip {month} {year}</span>
+        </nav>
         <div
           ref={slipRef}
           style={{
@@ -103,7 +111,10 @@ export default function PayslipPreview() {
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-          <Image src="/profile_icon.jpg" alt="Logo" width={48} height={48} />
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Building2 size={48} color="#4F46E5" />
+              <span style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#4F46E5" }}>HRMS</span>
+            </div>
             <div style={{ textAlign: "right" }}>
               <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#4F46E5" }}>PAYSLIP</h1>
               <p style={{ fontSize: "0.875rem", color: "#4B5563" }}>{month} {year}</p>
@@ -124,21 +135,27 @@ export default function PayslipPreview() {
               <h2 style={{ fontWeight: "600", color: "#4F46E5", marginBottom: "0.5rem" }}>Earnings</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                 <Row label="BASIC SALARY" value={payslip.basic_salary} />
-                <Row label="HRA" value={payslip.hra} />
-                <Row label="BONUS" value={payslip.bonus} />
-                <Row label="DA" value={payslip.da} />
-                <Row label="OTHER ALLOWANCES" value={totalAllowances} />
+                {payslip.hra_include && <Row label="HRA" value={payslip.hra} />}
+                {payslip.da_include && <Row label="DA" value={payslip.da} />}
+                {payslip.bonus > 0 && <Row label="BONUS" value={payslip.bonus} />}
+                {allowanceDetails.map((allowance, idx) => (
+                  <Row key={idx} label={allowance.name.toUpperCase()} value={allowance.value} />
+                ))}
               </div>
             </div>
 
             <div>
               <h2 style={{ fontWeight: "600", color: "#4F46E5", marginBottom: "0.5rem" }}>Deductions</h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-                <Row label="PF" value={pf} />
-                <Row label="PTAX" value={ptax} />
-                <Row label="ESIC" value={esic} />
-                <Row label="OTHER DEDUCTIONS" value={totalDeductions} />
-                <Row label="TOTAL DEDUCTIONS" value={totalDeductionsWithFixed} />
+                {(payslip.pf_include || pf > 0) && <Row label="PF" value={pf} />}
+                {(payslip.ptax_include || ptax > 0) && <Row label="PTAX" value={ptax} />}
+                {(payslip.esic_include || esic > 0) && <Row label="ESIC" value={esic} />}
+                {deductionDetails.map((deduction, idx) => (
+                  <Row key={idx} label={deduction.name.toUpperCase()} value={deduction.value} />
+                ))}
+                {(pf === 0 && ptax === 0 && esic === 0 && deductionDetails.length === 0) && (
+                  <Row label="NO DEDUCTIONS" value={0} />
+                )}
               </div>
             </div>
           </div>
@@ -148,7 +165,7 @@ export default function PayslipPreview() {
               Generated on: {new Date(payslip.generated_on).toLocaleDateString()}
             </p>
             <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#15803D" }}>
-              Net Pay: ₹{payslip.net_pay.toLocaleString("en-IN")}
+              Net Pay: ₹{Number(payslip.net_pay).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
 
@@ -180,7 +197,7 @@ function Row({ label, value }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
       <span>{label}</span>
-      <span>₹{Number(value).toLocaleString("en-IN")}</span>
+      <span>₹{Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Breadcrumb from "@/Components/Breadcrumb";
 
 export default function ViewDetails() {
     const [employee, setEmployee] = useState(null);
@@ -47,6 +48,10 @@ export default function ViewDetails() {
     return (
         <div className="min-h-screen bg-gray-100 p-6 flex justify-center">
             <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-6xl">
+                <Breadcrumb items={[
+                    { label: 'Employee List', href: '/employeeList' },
+                    { label: 'Employee Details' }
+                ]} />
                 <h2 className="text-2xl font-semibold text-center text-gray-800 mb-6">Employee Details</h2>
 
                 {message && <p className="text-red-500 text-center mb-4">{message}</p>}

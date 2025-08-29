@@ -69,6 +69,15 @@ export default function GeneratePayrollPage() {
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
+          {/* Breadcrumb Navigation */}
+          <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
+            <button onClick={() => router.push('/hr/payroll/payroll-view')} className="hover:text-indigo-600 transition-colors">
+              Payroll Management
+            </button>
+            <span>/</span>
+            <span className="text-gray-900 font-medium">Generate Payroll</span>
+          </nav>
+          
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Payroll Generation</h1>
@@ -186,15 +195,10 @@ export default function GeneratePayrollPage() {
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleGeneratePayroll(emp.empid)}
-                              disabled={emp.payrollGenerated}
-                              className={`inline-flex items-center px-3 py-2 border text-sm leading-4 font-medium rounded-md transition-colors ${
-                                emp.payrollGenerated
-                                  ? "border-gray-300 text-gray-400 bg-gray-100 cursor-not-allowed"
-                                  : "border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                              }`}
+                              className="inline-flex items-center px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm leading-4 font-medium rounded-md transition-colors"
                             >
-                              <DollarSign className="w-4 h-4 mr-1" />
-                              {emp.payrollGenerated ? "Generated" : "Generate"}
+                              <span className="mr-1">₹</span>
+                              Generate
                             </button>
                             {emp.payrollGenerated && (
                               <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">

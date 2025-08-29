@@ -26,6 +26,8 @@ export default function Candidates(user) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [stats, setStats] = useState({ total: 0, selected: 0, rejected: 0, waiting: 0 });
   const [mounted, setMounted] = useState(false);
+  const [selectedCandidates, setSelectedCandidates] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
 
 
   const fetchCandidates = async () => {
@@ -172,6 +174,44 @@ export default function Candidates(user) {
     }
   };
 
+  const handleSelectCandidate = (candidateId) => {
+    setSelectedCandidates(prev => {
+      if (prev.includes(candidateId)) {
+        return prev.filter(id => id !== candidateId);
+      } else {
+        return [...prev, candidateId];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedCandidates([]);
+    } else {
+      setSelectedCandidates(filteredCandidates.map(c => c.candidate_id));
+    }
+    setSelectAll(!selectAll);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCandidates.length === 0) return;
+    
+    if (mounted && window.confirm(`Are you sure you want to delete ${selectedCandidates.length} selected candidates?`)) {
+      try {
+        await Promise.all(
+          selectedCandidates.map(candidateId => 
+            axios.delete(`/api/recruitment/deleteCandidate?candidate_id=${candidateId}`)
+          )
+        );
+        setSelectedCandidates([]);
+        setSelectAll(false);
+        fetchCandidates();
+      } catch (error) {
+        console.error("Error deleting candidates:", error);
+      }
+    }
+  };
+
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -184,12 +224,23 @@ export default function Candidates(user) {
               <h1 className="text-2xl font-bold text-gray-900">Recruitment Management</h1>
               <p className="text-gray-600">Manage candidates and track recruitment progress</p>
             </div>
-            <Link href="/Recruitment/addCandidates">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
-                <Plus className="w-4 h-4" />
-                Add Candidate
-              </button>
-            </Link>
+            <div className="flex items-center gap-3">
+              {selectedCandidates.length > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="text-red-600 hover:text-red-800 px-2 py-1 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Selected
+                </button>
+              )}
+              <Link href="/Recruitment/addCandidates">
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer">
+                  <Plus className="w-4 h-4" />
+                  Add Candidate
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -233,19 +284,38 @@ export default function Candidates(user) {
 
           {/* Candidates Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Selection Counter */}
+            {selectedCandidates.length > 0 && (
+              <div className="px-6 py-2 border-b border-gray-100 flex justify-end">
+                <span className="text-red-600 font-medium">
+                  {selectedCandidates.length} selected
+                </span>
+              </div>
+            )}
             {loading ? (
-              <div className="p-8 text-center">
-                <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-gray-500">Loading candidates...</p>
+              <div className="flex flex-col items-center justify-center p-16">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-full border-4 border-gray-200"></div>
+                  <div className="w-12 h-12 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin absolute top-0 left-0"></div>
+                </div>
+                <p className="text-gray-600 mt-4 font-medium">Loading candidates...</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <input
+                          type="checkbox"
+                          checked={selectAll}
+                          onChange={handleSelectAll}
+                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Schedule</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verification</th>
@@ -255,6 +325,14 @@ export default function Candidates(user) {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredCandidates.map((candidate) => (
                       <tr key={candidate.candidate_id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedCandidates.includes(candidate.candidate_id)}
+                            onChange={() => handleSelectCandidate(candidate.candidate_id)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -279,21 +357,27 @@ export default function Candidates(user) {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                            <input
-                              type="date"
-                              value={candidate.interview_date ? candidate.interview_date.split("T")[0] : ""}
-                              onChange={(e) => handleDateChange(candidate.candidate_id, e.target.value)}
-                              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
+                          <div className="space-y-2">
+                            <div className="flex items-center">
+                              <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                              <input
+                                type="date"
+                                value={candidate.interview_date ? candidate.interview_date.split("T")[0] : ""}
+                                onChange={(e) => handleDateChange(candidate.candidate_id, e.target.value)}
+                                className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Clock className="w-4 h-4 mr-2 text-gray-400" />
+                              <span>{candidate.interview_time || 'Time not set'}</span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <select
                             value={candidate.status || "Waiting"}
                             onChange={(e) => handleStatusChange(candidate.candidate_id, e.target.value)}
-                            className={`text-xs font-medium px-3 py-1 rounded-full border ${getStatusColor(candidate.status || 'Waiting')}`}
+                            className={`text-xs font-medium px-3 py-1 rounded-full border cursor-pointer ${getStatusColor(candidate.status || 'Waiting')}`}
                           >
                             <option value="Waiting">Waiting</option>
                             <option value="Selected">Selected</option>
@@ -324,7 +408,7 @@ export default function Candidates(user) {
                         <td className="px-6 py-4">
                           <button
                             onClick={() => handleVerification(candidate)}
-                            className={`text-xs font-medium px-3 py-1 rounded-full transition-colors ${
+                            className={`text-xs font-medium px-3 py-1 rounded-full transition-colors cursor-pointer ${
                               candidate.verification
                                 ? 'bg-green-100 text-green-800 hover:bg-green-200'
                                 : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
@@ -336,18 +420,18 @@ export default function Candidates(user) {
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
                             <Link href={`/Recruitment/${candidate.candidate_id}`}>
-                              <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="View Details">
+                              <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer" title="View Details">
                                 <Eye className="w-4 h-4" />
                               </button>
                             </Link>
-                            <Link href={`/Recruitment/add/${candidate.id}`}>
-                              <button className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors" title="Add as Employee">
+                            <Link href={`/Recruitment/add/${candidate.candidate_id}`}>
+                              <button className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors cursor-pointer" title="Add as Employee">
                                 <UserPlus className="w-4 h-4" />
                               </button>
                             </Link>
                             <button
                               onClick={() => handleDelete(candidate.candidate_id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -358,7 +442,7 @@ export default function Candidates(user) {
                     ))}
                     {filteredCandidates.length === 0 && (
                       <tr>
-                        <td colSpan="7" className="px-6 py-12 text-center">
+                        <td colSpan="8" className="px-6 py-12 text-center">
                           <div className="text-gray-500">
                             <User className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                             <p className="text-lg font-medium">No candidates found</p>
