@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Sidebar from "@/Components/empSidebar";
-import { User, Mail, Camera, Lock, Save, X, Eye, EyeOff } from "lucide-react";
+import { User, Mail, Camera, Lock, Save, X, Eye, EyeOff, FileText, CheckCircle } from "lucide-react";
 import Image from "next/image";
 
 export default function Profile() {
@@ -10,13 +10,46 @@ export default function Profile() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [documentsSubmitted, setDocumentsSubmitted] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    const cachedUser = localStorage.getItem('employee_user');
+    if (cachedUser) {
+      try {
+        const userData = JSON.parse(cachedUser);
+        setUser(userData);
+        checkDocumentStatus(userData.empid);
+        return;
+      } catch (e) {
+        localStorage.removeItem('employee_user');
+      }
+    }
+    
     axios.get("/api/auth/settings/user-profile", { withCredentials: true })
-      .then((res) => setUser(res.data))
+      .then((res) => {
+        setUser(res.data);
+        localStorage.setItem('employee_user', JSON.stringify(res.data));
+        checkDocumentStatus(res.data.empid);
+      })
       .catch(() => console.error("Failed to fetch user profile"));
   }, []);
+
+  const checkDocumentStatus = async (empid) => {
+    try {
+      const res = await axios.get(`/api/employee/documents/${empid}`, { withCredentials: true });
+      setDocumentsSubmitted(res.data.submitted || false);
+    } catch (error) {
+      console.error("Failed to check document status:", error);
+    }
+  };
+
+  const handleDocumentSubmission = () => {
+    if (user) {
+      const url = `/Recruitment/form/${user.empid}?prefill=true&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -85,19 +118,23 @@ export default function Profile() {
                     </h3>
                     
                     <div className="relative inline-block mb-4">
-                      {preview || user.profilePic ? (
+                      {preview || user.profile_photo ? (
                         <Image
-                          src={preview || user.profilePic}
+                          src={preview || user.profile_photo}
                           alt="Profile"
                           width={128}
                           height={128}
                           className="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
+                          priority
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
                         />
-                      ) : (
-                        <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
-                          <User className="w-12 h-12 text-gray-400" />
-                        </div>
-                      )}
+                      ) : null}
+                      <div className={`w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300 ${preview || user.profile_photo ? 'hidden' : ''}`}>
+                        <User className="w-12 h-12 text-gray-400" />
+                      </div>
                       <button
                         onClick={() => fileInputRef.current.click()}
                         className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
@@ -119,6 +156,41 @@ export default function Profile() {
                       className="w-full bg-blue-50 text-blue-700 py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
                     >
                       Change Profile Picture
+                    </button>
+                  </div>
+                </div>
+
+                {/* Document Submission Section */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <div className="text-center">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-center">
+                      <FileText className="w-5 h-5 mr-2" />
+                      Document Submission
+                    </h3>
+                    
+                    <div className="mb-4">
+                      {documentsSubmitted ? (
+                        <div className="flex items-center justify-center p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
+                          <span className="text-green-700 font-medium">Documents Submitted Successfully</span>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                          <FileText className="w-8 h-8 text-red-600 mx-auto mb-2" />
+                          <span className="text-red-700 font-medium">Documents Not Submitted</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={handleDocumentSubmission}
+                      className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                        documentsSubmitted 
+                          ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100' 
+                          : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
+                      }`}
+                    >
+                      {documentsSubmitted ? 'View/Update Documents' : 'Submit Documentation Form'}
                     </button>
                   </div>
                 </div>

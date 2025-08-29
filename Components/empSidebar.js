@@ -1,16 +1,16 @@
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
-  LayoutDashboard, User, FileText, CreditCard, Menu, X, LogOut 
+  LayoutDashboard, User, FileText, CreditCard, Menu, X, LogOut, Calendar 
 } from "lucide-react";
 
 export default function Sidebar({ user }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
-
   const navItems = [
     { name: "Dashboard", path: "/employee/dashboard", icon: LayoutDashboard },
     { name: "Profile Management", path: "/employee/profile", icon: User },
+    { name: "Attendance Record", path: "/employee/attendance", icon: Calendar },
     { name: "Leave Requests", path: "/employee/leave-request", icon: FileText },
     { name: "Payslips & Docs", path: "/employee/emp-payslip", icon: CreditCard },
   ];
@@ -69,6 +69,8 @@ export default function Sidebar({ user }) {
             );
           })}
           
+
+
           {/* Logout */}
           <li>
             <button

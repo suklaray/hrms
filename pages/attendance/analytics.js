@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from 'next/router';
 import {
@@ -18,11 +18,8 @@ export default function AttendanceAnalytics({ user }) {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('month');
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [period]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch(`/api/attendance/analytics?period=${period}`);
       const result = await res.json();
@@ -32,7 +29,11 @@ export default function AttendanceAnalytics({ user }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");

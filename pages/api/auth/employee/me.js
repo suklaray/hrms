@@ -46,12 +46,14 @@ export default async function handler(req, res) {
     });
 
     const isWorking = !!(attendance?.check_in && !attendance?.check_out);
+    const workStartTime = attendance?.check_in || null;
 
     // 5. Return user info + attendance status
     res.status(200).json({
       user: {
         ...user,
         isWorking,
+        workStartTime,
       },
     });
   } catch (err) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import EmpSidebar from '@/Components/empSidebar';
-import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus } from 'lucide-react';
 
 export default function LeaveRequest() {
   const [form, setForm] = useState({
@@ -16,6 +16,8 @@ export default function LeaveRequest() {
 
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [leaveStatusList, setLeaveStatusList] = useState([]);
+  const [activeTab, setActiveTab] = useState('apply');
+  const [selectedLeaveType, setSelectedLeaveType] = useState(null);
 
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));
@@ -39,9 +41,27 @@ export default function LeaveRequest() {
     const { name, value, files } = e.target;
     if (name === 'attachment') {
       setForm(prev => ({ ...prev, attachment: files[0] }));
+    } else if (name === 'leave_type') {
+      const selectedType = leaveTypes.find(type => type.type_name.replace(/_/g, ' ') === value);
+      setSelectedLeaveType(selectedType);
+      setForm(prev => ({ ...prev, [name]: value, to_date: '' })); // Reset to_date when leave type changes
     } else {
       setForm(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  const getMaxToDate = () => {
+    if (!form.from_date || !selectedLeaveType) return '';
+    
+    const fromDate = new Date(form.from_date);
+    const maxDate = new Date(fromDate);
+    maxDate.setDate(fromDate.getDate() + selectedLeaveType.max_days - 1);
+    
+    return maxDate.toISOString().split('T')[0];
+  };
+
+  const getTodayDate = () => {
+    return new Date().toISOString().split('T')[0];
   };
 
   const handleSubmit = async (e) => {
@@ -95,9 +115,39 @@ export default function LeaveRequest() {
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Leave Request Form */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
+          {/* Tab Navigation */}
+          <div className="mb-6">
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('apply')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'apply'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 inline mr-2" />
+                  Apply Leave
+                </button>
+                <button
+                  onClick={() => setActiveTab('history')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'history'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <History className="w-4 h-4 inline mr-2" />
+                  Leave History
+                </button>
+              </nav>
+            </div>
+          </div>
+
+          {activeTab === 'apply' ? (
+            /* Leave Request Form */
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="p-6 border-b border-gray-100">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                   <FileText className="w-5 h-5 mr-2" />
@@ -162,6 +212,7 @@ export default function LeaveRequest() {
                       name="from_date"
                       value={form.from_date}
                       onChange={handleChange}
+                      min={getTodayDate()}
                       required
                       className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -173,9 +224,19 @@ export default function LeaveRequest() {
                       name="to_date"
                       value={form.to_date}
                       onChange={handleChange}
+                      min={form.from_date || getTodayDate()}
+                      max={getMaxToDate()}
+                      disabled={!form.from_date || !selectedLeaveType}
                       required
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        !form.from_date || !selectedLeaveType ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
+                    {selectedLeaveType && form.from_date && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        Maximum {selectedLeaveType.max_days} days allowed. Last selectable date: {new Date(getMaxToDate()).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -211,75 +272,108 @@ export default function LeaveRequest() {
                 </button>
               </form>
             </div>
-
-            {/* Leave Status Panel */}
+          ) : (
+            /* Leave History Table */
             <div className="bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="p-6 border-b border-gray-100">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Leave Requests
+                  <History className="w-5 h-5 mr-2" />
+                  Leave History
                 </h3>
-                <p className="text-sm text-gray-600">Your request history</p>
+                <p className="text-sm text-gray-600">Track all your leave requests and their status</p>
               </div>
-              <div className="p-6">
+              <div className="overflow-x-auto">
                 {leaveStatusList.length > 0 ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {leaveStatusList.map((leave, index) => {
-                      const getStatusIcon = (status) => {
-                        switch (status) {
-                          case 'Approved':
-                            return <CheckCircle className="w-4 h-4 text-green-600" />;
-                          case 'Rejected':
-                            return <XCircle className="w-4 h-4 text-red-600" />;
-                          default:
-                            return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-                        }
-                      };
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied On</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {leaveStatusList.map((leave, index) => {
+                        const fromDate = new Date(leave.from_date);
+                        const toDate = new Date(leave.to_date);
+                        const today = new Date();
+                        const isPastLeave = toDate < today;
+                        const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
 
-                      const getStatusColor = (status) => {
-                        switch (status) {
-                          case 'Approved':
-                            return 'bg-green-50 border-green-200 text-green-800';
-                          case 'Rejected':
-                            return 'bg-red-50 border-red-200 text-red-800';
-                          default:
-                            return 'bg-yellow-50 border-yellow-200 text-yellow-800';
-                        }
-                      };
+                        const getStatusBadge = (status) => {
+                          switch (status) {
+                            case 'Approved':
+                              return (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Approved
+                                </span>
+                              );
+                            case 'Rejected':
+                              return (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                  Rejected
+                                </span>
+                              );
+                            default:
+                              return (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                  Pending
+                                </span>
+                              );
+                          }
+                        };
 
-                      return (
-                        <div
-                          key={index}
-                          className={`border rounded-lg p-4 ${getStatusColor(leave.status)}`}
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="font-medium">{leave.leave_type}</span>
-                            <div className="flex items-center space-x-1">
-                              {getStatusIcon(leave.status)}
-                              <span className="text-xs font-medium">{leave.status}</span>
-                            </div>
-                          </div>
-                          <div className="text-sm space-y-1">
-                            <p><span className="font-medium">From:</span> {new Date(leave.from_date).toLocaleDateString()}</p>
-                            <p><span className="font-medium">To:</span> {new Date(leave.to_date).toLocaleDateString()}</p>
-                            {leave.reason && (
-                              <p><span className="font-medium">Reason:</span> {leave.reason.substring(0, 50)}{leave.reason.length > 50 ? '...' : ''}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <tr key={index} className={`hover:bg-gray-50 transition-colors ${
+                            isPastLeave ? 'bg-gray-50 text-gray-500' : 'bg-white'
+                          }`}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-medium text-gray-900">{leave.leave_type}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{fromDate.toLocaleDateString()}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{toDate.toLocaleDateString()}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">{days} day{days > 1 ? 's' : ''}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getStatusBadge(leave.status)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                {new Date(leave.applied_at).toLocaleDateString()}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900 max-w-xs truncate" title={leave.reason}>
+                                {leave.reason || 'No reason provided'}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 ) : (
-                  <div className="text-center py-8">
-                    <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No leave requests found</p>
-                    <p className="text-sm text-gray-400">Your submitted requests will appear here</p>
+                  <div className="text-center py-12">
+                    <History className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Leave History</h3>
+                    <p className="text-gray-500">Your leave requests will appear here once submitted</p>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

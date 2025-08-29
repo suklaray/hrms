@@ -7,27 +7,50 @@ import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp } from
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
+  const [workStartTime, setWorkStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const router = useRouter();
 
-useEffect(() => {
-  async function fetchUser() {
-    try {
-      const res = await fetch("/api/auth/employee/me", {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        return router.replace("/employee/login");
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/auth/employee/me", {
+          credentials: "include",
+        });
+        if (!res.ok) {
+          return router.replace("/employee/login");
+        }
+        const data = await res.json();
+        setUser(data.user);
+        setIsWorking(data.user.isWorking);
+        if (data.user.isWorking && data.user.workStartTime) {
+          setWorkStartTime(new Date(data.user.workStartTime));
+        } 
+      } catch (err) {
+        console.error("Error fetching user:", err);
+        router.replace("/employee/login");
       }
-      const data = await res.json();
-      setUser(data.user);
-      setIsWorking(data.user.isWorking); 
-    } catch (err) {
-      console.error("Error fetching user:", err);
-      router.replace("/employee/login");
     }
-  }
-  fetchUser();
-}, [router]);
+    fetchUser();
+  }, [router]);
+
+  // Timer effect
+  useEffect(() => {
+    let interval;
+    if (isWorking && workStartTime) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const diff = now - workStartTime;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setElapsedTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      }, 1000);
+    } else {
+      setElapsedTime('00:00:00');
+    }
+    return () => clearInterval(interval);
+  }, [isWorking, workStartTime]);
 
 
   const handleLogout = async () => {
@@ -55,6 +78,14 @@ useEffect(() => {
       const data = await res.json();
       if (res.ok) {
         setIsWorking(!isWorking);
+        if (!isWorking) {
+          // Checking in
+          setWorkStartTime(new Date());
+        } else {
+          // Checking out
+          setWorkStartTime(null);
+          setElapsedTime('00:00:00');
+        }
         alert(
           data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : "")
         );
@@ -131,6 +162,12 @@ useEffect(() => {
                   <p className="text-sm text-gray-600">
                     {isWorking ? 'You are checked in' : 'Click to start your work day'}
                   </p>
+                  {isWorking && (
+                    <div className="flex items-center mt-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+                      <span className="text-lg font-mono font-bold text-green-600">{elapsedTime}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">

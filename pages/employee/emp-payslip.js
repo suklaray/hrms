@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Sidebar from "@/Components/empSidebar";
-import { FileText, Download, Calendar, AlertCircle } from "lucide-react";
+import { FileText, Download, Calendar, AlertCircle, Eye } from "lucide-react";
 
 export default function EmpPayslip() {
   const [user, setUser] = useState(null);
@@ -113,14 +113,27 @@ export default function EmpPayslip() {
                               {doc.year}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <a
-                                href={doc.payslip_pdf}
-                                download
-                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                              >
-                                <Download className="w-4 h-4 mr-2" />
-                                Download Payslip
-                              </a>
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => window.open(`/hr/payroll/payslip-preview/${user?.empid}?month=${doc.month}&year=${doc.year}`, '_blank')}
+                                  className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  View
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = `/hr/payroll/payslip-preview/${user?.empid}?month=${doc.month}&year=${doc.year}&download=true`;
+                                    link.target = '_blank';
+                                    link.click();
+                                  }}
+                                  className="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  <Download className="w-4 h-4 mr-1" />
+                                  Download
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}

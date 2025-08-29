@@ -1,4 +1,4 @@
-import { IncomingForm } from "formidable";
+import formidable from "formidable";
 import fs from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
@@ -25,12 +25,12 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Invalid token" });
   }
 
-  const form = new IncomingForm({ keepExtensions: true });
+  const form = formidable({ keepExtensions: true });
 
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ error: "File upload error" });
 
-    const file = files.profilePic?.[0]; 
+    const file = Array.isArray(files.profilePic) ? files.profilePic[0] : files.profilePic;
     if (!file || !file.filepath) return res.status(400).json({ error: "No file uploaded" });
 
     try {

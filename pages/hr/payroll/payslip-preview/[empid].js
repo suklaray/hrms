@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import SideBar from "@/Components/SideBar";
@@ -7,7 +7,7 @@ import { Building2 } from 'lucide-react';
 
 export default function PayslipPreview() {
   const router = useRouter();
-  const { empid, month, year } = router.query;
+  const { empid, month, year, download } = router.query;
   const [employee, setEmployee] = useState(null);
   const [payslip, setPayslip] = useState(null);
   const slipRef = useRef(null);
@@ -21,15 +21,24 @@ export default function PayslipPreview() {
 
     fetch(`/api/hr/payroll/get?empid=${empid}`)
       .then(r => r.json())
-      .then(rows => {
-        const rec = rows.find(
-          r => r.month === month && String(r.year) === String(year)
-        );
-        setPayslip(rec || null);
+      .then(data => {
+        if (Array.isArray(data)) {
+          const rec = data.find(
+            r => r.month === month && String(r.year) === String(year)
+          );
+          setPayslip(rec || null);
+        } else {
+          console.error('Payroll data error:', data);
+          setPayslip(null);
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching payroll:', error);
+        setPayslip(null);
       });
   }, [empid, month, year]);
 
-  const downloadPDF = async () => {
+  const downloadPDF = useCallback(async () => {
     if (!slipRef.current) return;
 
     await new Promise((res) => setTimeout(res, 500));
@@ -56,7 +65,15 @@ export default function PayslipPreview() {
 
     pdf.addImage(imgData, "PNG", marginX, marginY, finalW, finalH);
     pdf.save(`Payslip-${empid}-${month}-${year}.pdf`);
-  };
+  }, [empid, month, year]);
+
+  useEffect(() => {
+    if (download === 'true' && payslip && employee) {
+      setTimeout(() => {
+        downloadPDF();
+      }, 1000);
+    }
+  }, [download, payslip, employee, downloadPDF]);
 
   if (!employee || !payslip) {
     return (

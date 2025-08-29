@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import SideBar from "@/Components/SideBar";
 import { FileText, CheckCircle, XCircle, AlertCircle, Eye, ArrowLeft } from "lucide-react";
 
@@ -9,13 +9,7 @@ export default function DocumentsPage() {
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id && type) {
-      fetchEmployeeDocuments();
-    }
-  }, [id, type]);
-
-  const fetchEmployeeDocuments = async () => {
+  const fetchEmployeeDocuments = useCallback(async () => {
     try {
       if (type === 'candidate') {
         const candidateRes = await fetch(`/api/candidate/${id}`);
@@ -93,7 +87,13 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, type]);
+
+  useEffect(() => {
+    if (id && type) {
+      fetchEmployeeDocuments();
+    }
+  }, [id, type, fetchEmployeeDocuments]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -177,7 +177,7 @@ export default function DocumentsPage() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
             <div className="text-white">
-              <h1 className="text-2xl font-bold">{employee?.name}'s Documents</h1>
+              <h1 className="text-2xl font-bold">{employee?.name}&apos;s Documents</h1>
               <p className="text-indigo-100 text-sm">
                 {type === 'candidate' ? `Candidate ID: ${employee?.candidate_id}` : `Employee ID: ${employee?.empid}`}
               </p>
