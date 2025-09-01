@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import SideBar from "@/Components/SideBar";
 import ProfileSection from "@/Components/ProfileSection";
-import AdminNotifications from "@/Components/AdminNotifications";
+
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { Users, UserCheck, Clock, FileText, Calendar } from "lucide-react";
@@ -108,7 +108,7 @@ export default function Dashboard({ user }) {
                 <Calendar className="w-4 h-4" />
                 <span>{mounted ? new Date().toLocaleDateString() : ''}</span>
               </div>
-              <AdminNotifications />
+
             </div>
           </div>
         </div>

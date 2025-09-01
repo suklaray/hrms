@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Sidebar from "/Components/empSidebar";
 import Image from "next/image";
 import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp } from "lucide-react";
-import EmployeeNotifications from '@/Components/EmployeeNotifications';
+
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
@@ -164,7 +164,7 @@ export default function EmployeeDashboard() {
                 <Calendar className="w-4 h-4" />
                 <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
               </div>
-              <EmployeeNotifications />
+
             </div>
           </div>
         </div>
