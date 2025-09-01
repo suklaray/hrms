@@ -3,12 +3,14 @@ import { useRouter } from "next/router";
 import Sidebar from "/Components/empSidebar";
 import Image from "next/image";
 import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp } from "lucide-react";
+import EmployeeNotifications from '@/Components/EmployeeNotifications';
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+
   const router = useRouter();
 
   useEffect(() => {
@@ -25,14 +27,19 @@ export default function EmployeeDashboard() {
         setIsWorking(data.user.isWorking);
         if (data.user.isWorking && data.user.workStartTime) {
           setWorkStartTime(new Date(data.user.workStartTime));
-        } 
+        }
+        
+
       } catch (err) {
         console.error("Error fetching user:", err);
-        router.replace("/employee/login");
+        // Show error message instead of immediate redirect
+        setUser({ error: 'Unable to load profile data' });
       }
     }
     fetchUser();
   }, [router]);
+
+
 
   // Timer effect
   useEffect(() => {
@@ -106,6 +113,24 @@ export default function EmployeeDashboard() {
     );
   }
 
+  if (user.error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="text-red-500 text-xl mb-4">⚠️</div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Dashboard</h2>
+          <p className="text-gray-600 mb-4">{user.error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const StatCard = ({ title, value, icon: Icon, color, description }) => (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
@@ -139,10 +164,7 @@ export default function EmployeeDashboard() {
                 <Calendar className="w-4 h-4" />
                 <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
               </div>
-              <button className="p-2 text-gray-400 hover:text-gray-600 relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-              </button>
+              <EmployeeNotifications />
             </div>
           </div>
         </div>
@@ -195,11 +217,14 @@ export default function EmployeeDashboard() {
                 <div className="flex items-start space-x-6">
                   <div className="flex-shrink-0">
                     <Image
-                      src={user.profile_photo || "/profile.png"}
+                      src={user?.profile_photo || "/profile.png"}
                       alt="Profile"
                       width={96}
                       height={96}
                       className="rounded-full object-cover border-4 border-indigo-200"
+                      onError={(e) => {
+                        e.target.src = '/profile.png';
+                      }}
                     />
                   </div>
                   <div className="flex-1 space-y-4">
@@ -250,21 +275,21 @@ export default function EmployeeDashboard() {
                     <Clock className="w-5 h-5 text-blue-600" />
                     <span className="text-sm font-medium text-blue-900">Todays Hours</span>
                   </div>
-                  <span className="text-lg font-bold text-blue-600">0h</span>
+                  <span className="text-lg font-bold text-blue-600">No data</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-green-600" />
                     <span className="text-sm font-medium text-green-900">This Week</span>
                   </div>
-                  <span className="text-lg font-bold text-green-600">0h</span>
+                  <span className="text-lg font-bold text-green-600">No data</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <TrendingUp className="w-5 h-5 text-purple-600" />
                     <span className="text-sm font-medium text-purple-900">This Month</span>
                   </div>
-                  <span className="text-lg font-bold text-purple-600">0h</span>
+                  <span className="text-lg font-bold text-purple-600">No data</span>
                 </div>
               </div>
             </div>
@@ -280,7 +305,7 @@ export default function EmployeeDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <button 
                   onClick={() => router.push('/employee/leave-request')}
-                  className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left"
+                  className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-blue-600" />
@@ -292,7 +317,7 @@ export default function EmployeeDashboard() {
                 </button>
                 <button 
                   onClick={() => router.push('/employee/attendance')}
-                  className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left"
+                  className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-green-600" />
@@ -304,7 +329,7 @@ export default function EmployeeDashboard() {
                 </button>
                 <button 
                   onClick={() => router.push('/employee/profile')}
-                  className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left"
+                  className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <User className="w-5 h-5 text-purple-600" />
@@ -316,7 +341,7 @@ export default function EmployeeDashboard() {
                 </button>
                 <button 
                   onClick={() => router.push('/employee/emp-payslip')}
-                  className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left"
+                  className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <Mail className="w-5 h-5 text-orange-600" />
@@ -331,6 +356,8 @@ export default function EmployeeDashboard() {
           </div>
         </div>
       </div>
+
+
     </div>
   );
 }

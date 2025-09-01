@@ -19,11 +19,35 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const [totalEmployees, activeEmployees, pendingLeaves, todayAttendance, totalCandidates, recentEmployees] = await Promise.all([
-      prisma.users.count(),
-      prisma.users.count({ where: { status: 'Active' } }),
-      prisma.leave_requests.count({ where: { status: 'Pending' } }),
-      prisma.attendance.count({ 
+    // Get basic counts with error handling
+    let totalEmployees = 0;
+    let activeEmployees = 0;
+    let pendingLeaves = 0;
+    let todayAttendance = 0;
+    let totalCandidates = 0;
+    let recentEmployees = [];
+
+    try {
+      totalEmployees = await prisma.users.count();
+    } catch (e) {
+      console.error('Error counting users:', e);
+    }
+
+    try {
+      activeEmployees = await prisma.users.count({ where: { status: 'Active' } });
+    } catch (e) {
+      console.error('Error counting active users:', e);
+      activeEmployees = totalEmployees; // fallback
+    }
+
+    try {
+      pendingLeaves = await prisma.leave_requests.count({ where: { status: 'Pending' } });
+    } catch (e) {
+      console.error('Error counting leave requests:', e);
+    }
+
+    try {
+      todayAttendance = await prisma.attendance.count({ 
         where: { 
           date: {
             gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -31,24 +55,38 @@ export default async function handler(req, res) {
           },
           attendance_status: 'Present'
         } 
-      }),
-      prisma.candidates.count(),
-      prisma.users.findMany({
-        orderBy: { created_at: 'desc' },
+      });
+    } catch (e) {
+      console.error('Error counting attendance:', e);
+    }
+
+    try {
+      totalCandidates = await prisma.candidates.count();
+    } catch (e) {
+      console.error('Error counting candidates:', e);
+    }
+
+    try {
+      recentEmployees = await prisma.users.findMany({
+        orderBy: { id: 'desc' },
         take: 5,
         select: {
           empid: true,
           name: true,
           role: true,
-          created_at: true,
+          position: true,
+          employee_type: true,
+          date_of_joining: true,
           profile_photo: true
         }
-      })
-    ]);
+      });
+    } catch (e) {
+      console.error('Error fetching recent employees:', e);
+      recentEmployees = [];
+    }
 
-    const totalEmployeesForAttendance = await prisma.users.count({ where: { status: 'Active' } });
-    const attendancePercentage = totalEmployeesForAttendance > 0 
-      ? Math.round((todayAttendance / totalEmployeesForAttendance) * 100) 
+    const attendancePercentage = activeEmployees > 0 
+      ? Math.round((todayAttendance / activeEmployees) * 100) 
       : 0;
 
     res.status(200).json({
@@ -61,7 +99,9 @@ export default async function handler(req, res) {
         empid: emp.empid,
         name: emp.name,
         role: emp.role,
-        createdAt: emp.created_at,
+        position: emp.position,
+        type: emp.employee_type,
+        createdAt: emp.date_of_joining || new Date(),
         profile_photo: emp.profile_photo
       }))
     });

@@ -1,28 +1,68 @@
 import jwt from "jsonwebtoken";
 import SideBar from "@/Components/SideBar";
 import ProfileSection from "@/Components/ProfileSection";
-import NotificationSidebar from "@/Components/NotificationSidebar";
+import AdminNotifications from "@/Components/AdminNotifications";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { Users, UserCheck, Clock, FileText, TrendingUp, Calendar, Bell } from "lucide-react";
-import { withRoleProtection } from "@/lib/withRoleProtection";
-import Image from "next/image";
+import { Users, UserCheck, Clock, FileText, Calendar } from "lucide-react";
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import prisma from "@/lib/prisma";
 
-export const getServerSideProps = withRoleProtection(["superadmin", "admin", "hr"]);
+export async function getServerSideProps(context) {
+  const { req } = context;
+  const token = req?.cookies?.token || req?.cookies?.employeeToken || "";
+  const user = getUserFromToken(token);
+
+  if (!user || !["superadmin", "admin", "hr"].includes(user.role)) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  let userData = null;
+  try {
+    userData = await prisma.users.findUnique({
+      where: { empid: user.empid || user.id },
+      select: {
+        empid: true,
+        name: true,
+        email: true,
+        profile_photo: true,
+        position: true,
+        role: true
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+  }
+
+  return {
+    props: {
+      user: {
+        id: user.id,
+        empid: userData?.empid || user.empid,
+        name: userData?.name || user.name,
+        role: (userData?.role || user.role).toLowerCase(),
+        email: userData?.email || user.email,
+        profile_photo: userData?.profile_photo || null,
+        position: userData?.position || null,
+      },
+    },
+  };
+}
 
 export default function Dashboard({ user }) {
   const router = useRouter();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     fetchStats();
-    fetchNotifications();
   }, []);
 
   const fetchStats = async () => {
@@ -31,32 +71,16 @@ export default function Dashboard({ user }) {
       if (response.ok) {
         const data = await response.json();
         setStats(data);
+      } else {
+        console.error('Stats API failed:', response.status);
+        setStats(null);
       }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
+      setStats(null);
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const response = await fetch('/api/notifications');
-      if (response.ok) {
-        const data = await response.json();
-        setNotifications(data);
-        setHasUnread(data.some(n => !n.viewed));
-      }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error);
-    }
-  };
-
-  const handleNotificationClick = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === notificationId ? { ...n, viewed: true } : n)
-    );
-    setHasUnread(notifications.some(n => !n.viewed && n.id !== notificationId));
   };
 
   const handleLogout = async () => {
@@ -67,26 +91,6 @@ export default function Dashboard({ user }) {
       console.error("Logout failed:", error);
     }
   };
-
-  const StatCard = ({ title, value, icon: Icon, color, trend }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value || '0'}</p>
-          {trend && (
-            <p className="text-sm text-green-600 mt-1 flex items-center">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              {trend}
-            </p>
-          )}
-        </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -104,63 +108,78 @@ export default function Dashboard({ user }) {
                 <Calendar className="w-4 h-4" />
                 <span>{mounted ? new Date().toLocaleDateString() : ''}</span>
               </div>
-              <button 
-                onClick={() => setShowNotifications(true)}
-                className="p-2 text-gray-400 hover:text-gray-600 relative"
-              >
-                <Bell className="w-5 h-5" />
-                {hasUnread && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-                )}
-              </button>
+              <AdminNotifications />
             </div>
           </div>
         </div>
 
         <div className="p-6">
-          {/* Profile Section */}
           <div className="mb-6">
             <ProfileSection user={user} />
           </div>
 
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <StatCard
-              title="Total Employees"
-              value={stats?.totalEmployees}
-              icon={Users}
-              color="bg-blue-500"
-              trend="+12% from last month"
-            />
-            <StatCard
-              title="Active Employees"
-              value={stats?.activeEmployees}
-              icon={UserCheck}
-              color="bg-green-500"
-              trend="+5% from last month"
-            />
-            <StatCard
-              title="Pending Leaves"
-              value={stats?.pendingLeaves}
-              icon={Clock}
-              color="bg-orange-500"
-            />
-            <StatCard
-              title="Total Candidates"
-              value={stats?.totalCandidates}
-              icon={FileText}
-              color="bg-purple-500"
-              trend="+8% from last month"
-            />
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-blue-500 text-white">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Employees</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {stats ? (stats.totalEmployees || 'No employees') : 'Loading...'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-green-500 text-white">
+                  <UserCheck className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Active Employees</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {stats ? (stats.activeEmployees || 'None active') : 'Loading...'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-orange-500 text-white">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Pending Leaves</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {stats ? (stats.pendingLeaves || 'No requests') : 'Loading...'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-purple-500 text-white">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Candidates</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {stats ? (stats.totalCandidates || 'No candidates') : 'Loading...'}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Employees */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900">Recent Employees</h3>
-                <p className="text-sm text-gray-600">Latest employee registrations</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Recent Employees</h3>
               </div>
               <div className="p-6">
                 {loading ? (
@@ -175,24 +194,14 @@ export default function Dashboard({ user }) {
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : stats?.recentEmployees?.length > 0 ? (
                   <div className="space-y-4">
-                    {stats?.recentEmployees?.map((employee, index) => (
-                      <div key={index} className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center overflow-hidden">
-                          {employee.profile_photo ? (
-                            <Image 
-                              src={employee.profile_photo} 
-                              alt={employee.name}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-indigo-600 font-medium text-sm">
-                              {employee.name?.charAt(0)?.toUpperCase()}
-                            </span>
-                          )}
+                    {stats.recentEmployees.map((employee, index) => (
+                      <div key={index} className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                          <span className="text-indigo-600 font-medium text-sm">
+                            {employee.name?.charAt(0)?.toUpperCase()}
+                          </span>
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{employee.name}</p>
@@ -202,67 +211,69 @@ export default function Dashboard({ user }) {
                           <p className="text-sm text-gray-500">
                             {new Date(employee.createdAt).toLocaleDateString()}
                           </p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(employee.createdAt).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
                         </div>
                       </div>
                     ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">
+                      {stats === null ? 'Unable to load data' : 'No employees added yet'}
+                    </p>
+                    {stats === null && (
+                      <p className="text-xs text-gray-400 mt-1">Check server connection</p>
+                    )}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
-                <p className="text-sm text-gray-600">Common tasks</p>
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
               </div>
               <div className="p-6 space-y-3">
                 <button
                   onClick={() => router.push('/registerEmployee')}
-                  className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200"
+                  className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <Users className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium text-blue-900">Add Employee</p>
-                      <p className="text-sm text-blue-600">Register new employee</p>
-                    </div>
+                    <span className="font-medium text-blue-900">Add Employee</span>
                   </div>
                 </button>
                 <button
                   onClick={() => router.push('/hr/attendance')}
-                  className="w-full text-left p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200"
+                  className="w-full text-left p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <Clock className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="font-medium text-green-900">Attendance</p>
-                      <p className="text-sm text-green-600">View attendance records</p>
-                    </div>
+                    <span className="font-medium text-green-900">View Attendance</span>
                   </div>
                 </button>
                 <button
                   onClick={() => router.push('/hr/payroll/generate')}
-                  className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
+                  className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <FileText className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <p className="font-medium text-purple-900">Generate Payroll</p>
-                      <p className="text-sm text-purple-600">Process monthly payroll</p>
-                    </div>
+                    <span className="font-medium text-purple-900">Generate Payroll</span>
                   </div>
                 </button>
                 <button
                   onClick={() => router.push('/Recruitment/recruitment')}
-                  className="w-full text-left p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200"
+                  className="w-full text-left p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
                 >
                   <div className="flex items-center space-x-3">
                     <UserCheck className="w-5 h-5 text-orange-600" />
-                    <div>
-                      <p className="font-medium text-orange-900">Recruitment</p>
-                      <p className="text-sm text-orange-600">Manage candidates</p>
-                    </div>
+                    <span className="font-medium text-orange-900">Recruitment</span>
                   </div>
                 </button>
               </div>
@@ -270,13 +281,6 @@ export default function Dashboard({ user }) {
           </div>
         </div>
       </div>
-      
-      <NotificationSidebar 
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
-        notifications={notifications}
-        onNotificationClick={handleNotificationClick}
-      />
     </div>
   );
 }
