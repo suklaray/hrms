@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/router";
-import AdminNotifications from './AdminNotifications';
+
 import { 
   ChevronDown, ChevronUp, Menu, X, LayoutDashboard, UserPlus, Users, 
   UserCheck, Clock, DollarSign, Shield, TrendingUp, Phone, Settings, LogOut 
@@ -75,7 +75,7 @@ export default function Sidebar({ handleLogout, user }) {
         <div className="flex items-center justify-between">
           {!isCollapsed && <h2 className="text-2xl font-bold">HRMS Panel</h2>}
           <div className="flex items-center space-x-2">
-            <AdminNotifications />
+
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
