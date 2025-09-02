@@ -2,9 +2,55 @@ import { useEffect, useState } from "react";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
 import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown } from "react-icons/fa";
-import { withRoleProtection } from "@/lib/withRoleProtection"; // corrected import path
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import prisma from "@/lib/prisma";
 
-export const getServerSideProps = withRoleProtection(["hr", "admin", "superadmin"]);
+export async function getServerSideProps(context) {
+  const { req } = context;
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+  const allowedRoles = ["hr", "admin", "superadmin"];
+
+  if (!user || !allowedRoles.includes(user.role)) {
+    return {
+      redirect: {
+        destination: "/unauthorized",
+        permanent: false,
+      },
+    };
+  }
+
+  let userData = null;
+  try {
+    userData = await prisma.users.findUnique({
+      where: { empid: user.empid || user.id },
+      select: {
+        empid: true,
+        name: true,
+        email: true,
+        profile_photo: true,
+        position: true,
+        role: true
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+  }
+
+  return {
+    props: {
+      user: {
+        id: user.id,
+        empid: userData?.empid || user.empid,
+        name: userData?.name || user.name,
+        role: (userData?.role || user.role).toLowerCase(),
+        email: userData?.email || user.email,
+        profile_photo: userData?.profile_photo || null,
+        position: userData?.position || null,
+      },
+    },
+  };
+}
 
 export default function EmployeeListPage({ user }) {
   const [employees, setEmployees] = useState([]);
