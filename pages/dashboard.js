@@ -4,7 +4,7 @@ import ProfileSection from "@/Components/ProfileSection";
 
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { Users, UserCheck, Clock, FileText, Calendar } from "lucide-react";
+import { Users, UserCheck, Clock, FileText, Calendar, Bell } from "lucide-react";
 import Image from "next/image";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
@@ -109,6 +109,10 @@ export default function Dashboard({ user }) {
                 <Calendar className="w-4 h-4" />
                 <span>{mounted ? new Date().toLocaleDateString() : ''}</span>
               </div>
+              <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
             </div>
           </div>
         </div>
