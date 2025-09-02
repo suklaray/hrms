@@ -1,13 +1,72 @@
 import Image from "next/image";
 import { User, Clock } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function ProfileSection({ user }) {
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
+  const [workStartTime, setWorkStartTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleToggle = () => {
-    setIsCheckedIn(!isCheckedIn);
-    // Add API call for check-in/out here
+  // Timer effect
+  useEffect(() => {
+    let interval;
+    if (isWorking && workStartTime) {
+      interval = setInterval(() => {
+        const now = new Date();
+        const diff = now - workStartTime;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setElapsedTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      }, 1000);
+    } else {
+      setElapsedTime('00:00:00');
+    }
+    return () => clearInterval(interval);
+  }, [isWorking, workStartTime]);
+
+  const handleToggleWork = async () => {
+    if (!user?.empid || isLoading) return;
+    
+    setIsLoading(true);
+    const endpoint = isWorking ? "checkout" : "checkin";
+    
+    try {
+      const res = await fetch(`/api/employee/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ empid: user.empid }),
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      
+      setIsWorking(!isWorking);
+      if (!isWorking) {
+        setWorkStartTime(new Date());
+      } else {
+        setWorkStartTime(null);
+        setElapsedTime('00:00:00');
+      }
+      
+      // Success feedback
+      if (data.message) {
+        console.log(data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : ""));
+      }
+      
+    } catch (err) {
+      console.error("Work toggle error:", err);
+      // Revert state on error
+      setIsWorking(isWorking);
+      alert("Failed to update attendance. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -19,10 +78,13 @@ export default function ProfileSection({ user }) {
             {user?.profile_photo ? (
               <Image
                 src={user.profile_photo}
-                alt={user.name || "Profile"}
+                alt={user?.name || "Profile"}
                 width={64}
                 height={64}
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
               />
             ) : (
               <User className="w-8 h-8 text-gray-400" />
@@ -38,23 +100,31 @@ export default function ProfileSection({ user }) {
         </div>
         <div className="flex flex-col items-center space-y-2">
           <div className="flex items-center space-x-2">
-            <Clock className="w-4 h-4 text-gray-500" />
-            <span className="text-sm text-gray-600">
-              {isCheckedIn ? "Checked In" : "Checked Out"}
+            <Clock className={`w-4 h-4 ${isWorking ? 'text-green-600' : 'text-gray-500'}`} />
+            <span className={`text-sm font-medium ${isWorking ? 'text-green-600' : 'text-gray-600'}`}>
+              {isWorking ? "Currently Working" : "Not Working"}
             </span>
           </div>
-          <button
-            onClick={handleToggle}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              isCheckedIn ? "bg-green-600" : "bg-gray-200"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                isCheckedIn ? "translate-x-6" : "translate-x-1"
-              }`}
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={isWorking}
+              onChange={handleToggleWork}
+              disabled={isLoading || !user?.empid}
             />
-          </button>
+            <div className={`w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-green-600 transition-colors duration-300 ${isLoading ? 'opacity-50' : ''}`}></div>
+            <div className="absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow-md transform peer-checked:translate-x-5 transition-transform duration-300"></div>
+          </label>
+          {isWorking && (
+            <div className="flex items-center mt-1">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
+              <span className="text-sm font-mono font-bold text-green-600">{elapsedTime}</span>
+            </div>
+          )}
+          {isLoading && (
+            <div className="text-xs text-gray-500">Updating...</div>
+          )}
         </div>
       </div>
     </div>
