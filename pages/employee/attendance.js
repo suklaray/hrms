@@ -148,7 +148,9 @@ export default function EmployeeAttendance() {
                 <CheckCircle className="h-8 w-8 text-green-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Present Days</p>
-                  <p className="text-2xl font-bold text-gray-900">{presentDays}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {error ? 'Unable to load' : (presentDays || 'No records')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -158,7 +160,9 @@ export default function EmployeeAttendance() {
                 <XCircle className="h-8 w-8 text-red-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Absent Days</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalDays - presentDays}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {error ? 'Unable to load' : (totalDays > 0 ? totalDays - presentDays : 'No records')}
+                  </p>
                 </div>
               </div>
             </div>
@@ -169,7 +173,7 @@ export default function EmployeeAttendance() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Attendance Rate</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0}%
+                    {error ? 'Unable to load' : (totalDays > 0 ? `${Math.round((presentDays / totalDays) * 100)}%` : 'No data')}
                   </p>
                 </div>
               </div>
@@ -209,6 +213,9 @@ export default function EmployeeAttendance() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Total Time
                       </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -217,6 +224,8 @@ export default function EmployeeAttendance() {
                         const workingHours = record.total_working_minutes > 0
                           ? (record.total_working_minutes / 60).toFixed(1)
                           : '--';
+                        
+                        const attendanceStatus = workingHours >= 4 ? 'Present' : 'Absent';
                         
                         return (
                           <tr key={index} className="hover:bg-gray-50">
@@ -235,13 +244,38 @@ export default function EmployeeAttendance() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {workingHours !== '--' ? `${workingHours} hrs` : '--'}
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                attendanceStatus === 'Present'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {attendanceStatus}
+                              </span>
+                            </td>
                           </tr>
                         );
                       })
                     ) : (
                       <tr>
-                        <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                          No attendance records found for {monthNames[currentMonth]} {currentYear}
+                        <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                          {error ? (
+                            <div>
+                              <XCircle className="w-8 h-8 text-red-400 mx-auto mb-2" />
+                              <p>Unable to load attendance records</p>
+                              <button 
+                                onClick={fetchAttendance}
+                                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                              >
+                                Try Again
+                              </button>
+                            </div>
+                          ) : (
+                            <div>
+                              <Calendar className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                              <p>No attendance records found for {monthNames[currentMonth]} {currentYear}</p>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     )}

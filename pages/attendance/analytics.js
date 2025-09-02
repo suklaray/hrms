@@ -5,13 +5,37 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area
 } from "recharts";
-import { withRoleProtection } from "@/lib/withRoleProtection";
+import { getUserFromToken } from "@/lib/getUserFromToken";
 import { 
   Calendar, Users, CheckCircle, XCircle, Clock, TrendingUp, 
   BarChart3, PieChart as PieChartIcon, Activity, Target
 } from "lucide-react";
 
-export const getServerSideProps = withRoleProtection(["hr", "admin", "superadmin"]);
+export async function getServerSideProps(context) {
+  const { req } = context;
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+
+  if (!user || !["hr", "admin", "superadmin"].includes(user.role)) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  return {
+    props: {
+      user: {
+        id: user.id,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+      },
+    },
+  };
+}
 
 export default function AttendanceAnalytics({ user }) {
   const [data, setData] = useState(null);

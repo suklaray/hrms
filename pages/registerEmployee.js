@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import SideBar from "@/Components/SideBar";
+
 import {
   User,
   Mail,
@@ -184,6 +185,9 @@ export default function RegisterEmployee() {
             setGeneratedPassword(data.password);
             setGeneratedUsername(data.empid || data.username || formData.email);
             setMessage(data.message);
+            
+
+            
             setFormData({
                 name: "",
                 email: "",

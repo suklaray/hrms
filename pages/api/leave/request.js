@@ -1,4 +1,4 @@
-import { IncomingForm } from 'formidable';
+import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/prisma';
@@ -18,13 +18,13 @@ export default async function handler(req, res) {
   const user = await verifyEmployeeToken(req);
   if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
-  const form = new IncomingForm();
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  form.uploadDir = uploadDir;
-  form.keepExtensions = true;
+  const form = formidable({ 
+    keepExtensions: true,
+    uploadDir: uploadDir
+  });
 
   form.parse(req, async (err, fields, files) => {
     if (err) {
@@ -37,10 +37,13 @@ export default async function handler(req, res) {
     const from_date = new Date(Array.isArray(fields.from_date) ? fields.from_date[0] : fields.from_date);
     const to_date = new Date(Array.isArray(fields.to_date) ? fields.to_date[0] : fields.to_date);
 
-
     let attachment = null;
-    if (files.attachment && files.attachment.filepath) {
-      const fileName = path.basename(files.attachment.filepath);
+    const file = Array.isArray(files.attachment) ? files.attachment[0] : files.attachment;
+    
+    if (file && file.filepath) {
+      const fileName = `${Date.now()}-${file.originalFilename}`;
+      const finalPath = path.join(uploadDir, fileName);
+      fs.renameSync(file.filepath, finalPath);
       attachment = `/uploads/${fileName}`;
     }
 

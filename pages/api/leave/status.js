@@ -8,10 +8,16 @@ export default async function handler(req, res) {
     const rows = await prisma.leave_requests.findMany({
       where: { empid: empid },
       select: {
+        id: true,
         leave_type: true,
         from_date: true,
         to_date: true,
         status: true,
+        reason: true,
+        attachment: true,
+      },
+      orderBy: {
+        id: 'desc',
       },
     });
 

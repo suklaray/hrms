@@ -45,3 +45,4 @@ next-env.d.ts
 /public/uploads
 /lib/generated/prisma
 /uploads
+.env*.local

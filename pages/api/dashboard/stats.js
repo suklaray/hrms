@@ -28,13 +28,26 @@ export default async function handler(req, res) {
     let recentEmployees = [];
 
     try {
-      totalEmployees = await prisma.users.count();
+      totalEmployees = await prisma.users.count({
+        where: {
+          role: {
+            not: 'superadmin'
+          }
+        }
+      });
     } catch (e) {
       console.error('Error counting users:', e);
     }
 
     try {
-      activeEmployees = await prisma.users.count({ where: { status: 'Active' } });
+      activeEmployees = await prisma.users.count({ 
+        where: { 
+          status: 'Active',
+          role: {
+            not: 'superadmin'
+          }
+        } 
+      });
     } catch (e) {
       console.error('Error counting active users:', e);
       activeEmployees = totalEmployees; // fallback
@@ -68,6 +81,11 @@ export default async function handler(req, res) {
 
     try {
       recentEmployees = await prisma.users.findMany({
+        where: {
+          role: {
+            not: 'superadmin'
+          }
+        },
         orderBy: { id: 'desc' },
         take: 5,
         select: {

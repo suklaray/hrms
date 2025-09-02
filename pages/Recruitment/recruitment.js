@@ -196,7 +196,11 @@ export default function Candidates(user) {
   const handleBulkDelete = async () => {
     if (selectedCandidates.length === 0) return;
     
-    if (mounted && window.confirm(`Are you sure you want to delete ${selectedCandidates.length} selected candidates?`)) {
+    const confirmMessage = selectedCandidates.length === 1 
+      ? "Are you sure you want to delete this candidate?" 
+      : `Are you sure you want to delete ${selectedCandidates.length} selected candidates?`;
+    
+    if (mounted && window.confirm(confirmMessage)) {
       try {
         await Promise.all(
           selectedCandidates.map(candidateId => 
@@ -206,8 +210,10 @@ export default function Candidates(user) {
         setSelectedCandidates([]);
         setSelectAll(false);
         fetchCandidates();
+        alert(`Successfully deleted ${selectedCandidates.length} candidate(s)`);
       } catch (error) {
         console.error("Error deleting candidates:", error);
+        alert("Error deleting candidates. Please try again.");
       }
     }
   };
@@ -225,15 +231,6 @@ export default function Candidates(user) {
               <p className="text-gray-600">Manage candidates and track recruitment progress</p>
             </div>
             <div className="flex items-center gap-3">
-              {selectedCandidates.length > 0 && (
-                <button
-                  onClick={handleBulkDelete}
-                  className="text-red-600 hover:text-red-800 px-2 py-1 flex items-center gap-2 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete Selected
-                </button>
-              )}
               <Link href="/Recruitment/addCandidates">
                 <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer">
                   <Plus className="w-4 h-4" />
@@ -284,14 +281,7 @@ export default function Candidates(user) {
 
           {/* Candidates Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            {/* Selection Counter */}
-            {selectedCandidates.length > 0 && (
-              <div className="px-6 py-2 border-b border-gray-100 flex justify-end">
-                <span className="text-red-600 font-medium">
-                  {selectedCandidates.length} selected
-                </span>
-              </div>
-            )}
+
             {loading ? (
               <div className="flex flex-col items-center justify-center p-16">
                 <div className="relative">
@@ -302,6 +292,17 @@ export default function Candidates(user) {
               </div>
             ) : (
               <div className="overflow-x-auto">
+                {selectedCandidates.length > 0 && (
+                  <div className="px-6 py-2 border-b border-gray-100 flex justify-end">
+                    <button
+                      onClick={handleBulkDelete}
+                      className="text-red-600 hover:text-red-800 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      {selectedCandidates.length} selected
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>

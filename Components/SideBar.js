@@ -54,17 +54,17 @@ export default function Sidebar({ handleLogout, user }) {
     { name: "Generate Payroll", path: "/hr/payroll/generate" },
   ];
 
-  const performanceSubItems = [
+  /*const performanceSubItems = [
     { name: "Goal Setting", path: "/hr/performance/goals" },
     { name: "Report Apraisal", path: "/hr/performance/reports" },
-  ];
+  ];*/
 
   const complianceSubItems = [
     { name: "Employee Compliance", path: "/compliance/empCompliance" },
     { name: "Statutory Compliance", path: "/compliance/statutoryCompliance" },
     { name: "Document Center", path: "/compliance/documentCenter" },
     { name: "Policy Acknowledgements", path: "/compliance/policyAcknowledge" },
-    { name: "Audit Logs", path: "/compliance/auditLog" },
+    //{ name: "Audit Logs", path: "/compliance/auditLog" },
     { name: "Reports & Filings", path: "/compliance/ReportFillings" },
   ];
 
@@ -222,7 +222,7 @@ export default function Sidebar({ handleLogout, user }) {
           )}
         </li>
 
-        {/* Performance Dropdown */}
+        {/* {/* Performance Dropdown 
         <li>
           <button
             onClick={isCollapsed ? () => router.push('/hr/performance/goals') : togglePerformanceMenu}
@@ -251,8 +251,10 @@ export default function Sidebar({ handleLogout, user }) {
             </ul>
           )}
         </li>
+        */}
 
-          <li>
+        {/* Customer Connect */}
+        <li>
             <Link href="/customer-connect">
               <div className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3" title={isCollapsed ? 'Customer Connect' : ''}>
                 <Phone size={18} className="flex-shrink-0" />

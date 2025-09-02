@@ -99,6 +99,7 @@ export default async function handler(req, res) {
         check_in: firstCheckIn,
         check_out: lastCheckOut,
         total_working_minutes: totalWorkingMinutes,
+        status: (totalWorkingMinutes >= 240) ? 'Present' : 'Absent', // 240 minutes = 4 hours
       };
     });
 
