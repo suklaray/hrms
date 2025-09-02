@@ -11,6 +11,7 @@ export default function Profile() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [documentsSubmitted, setDocumentsSubmitted] = useState(false);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -37,10 +38,13 @@ export default function Profile() {
 
   const checkDocumentStatus = async (empid) => {
     try {
+      setDocumentsLoading(true);
       const res = await axios.get(`/api/employee/documents/${empid}`, { withCredentials: true });
       setDocumentsSubmitted(res.data.submitted || false);
     } catch (error) {
       console.error("Failed to check document status:", error);
+    } finally {
+      setDocumentsLoading(false);
     }
   };
 
@@ -118,9 +122,9 @@ export default function Profile() {
                     </h3>
                     
                     <div className="relative inline-block mb-4">
-                      {preview || user.profile_photo ? (
+                      {preview || user?.profile_photo ? (
                         <Image
-                          src={preview || user.profile_photo}
+                          src={preview || user.profile_photo || '/default-avatar.png'}
                           alt="Profile"
                           width={128}
                           height={128}
@@ -132,7 +136,7 @@ export default function Profile() {
                           }}
                         />
                       ) : null}
-                      <div className={`w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300 ${preview || user.profile_photo ? 'hidden' : ''}`}>
+                      <div className={`w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300 ${preview || user?.profile_photo ? 'hidden' : ''}`}>
                         <User className="w-12 h-12 text-gray-400" />
                       </div>
                       <button
@@ -169,7 +173,12 @@ export default function Profile() {
                     </h3>
                     
                     <div className="mb-4">
-                      {documentsSubmitted ? (
+                      {documentsLoading ? (
+                        <div className="flex items-center justify-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                          <span className="text-blue-700 font-medium">Checking Document Status...</span>
+                        </div>
+                      ) : documentsSubmitted ? (
                         <div className="flex items-center justify-center p-4 bg-green-50 border border-green-200 rounded-lg">
                           <CheckCircle className="w-6 h-6 text-green-600 mr-2" />
                           <span className="text-green-700 font-medium">Documents Submitted Successfully</span>
