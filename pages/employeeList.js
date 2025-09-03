@@ -149,7 +149,7 @@ export default function EmployeeListPage({ user }) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={handleLogout} />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-auto">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Employee Directory</h1>
