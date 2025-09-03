@@ -27,12 +27,11 @@ export default function EmployeeDashboard() {
         setIsWorking(data.user.isWorking);
         if (data.user.isWorking && data.user.workStartTime) {
           setWorkStartTime(new Date(data.user.workStartTime));
+        } else {
+          setWorkStartTime(null);
         }
-        
-
       } catch (err) {
         console.error("Error fetching user:", err);
-        // Show error message instead of immediate redirect
         setUser({ error: 'Unable to load profile data' });
       }
     }
@@ -84,14 +83,20 @@ export default function EmployeeDashboard() {
       });
       const data = await res.json();
       if (res.ok) {
-        setIsWorking(!isWorking);
-        if (!isWorking) {
-          // Checking in
-          setWorkStartTime(new Date());
-        } else {
-          // Checking out
-          setWorkStartTime(null);
-          setElapsedTime('00:00:00');
+        // Refetch user data to get updated work status
+        const userRes = await fetch("/api/auth/employee/me", {
+          credentials: "include",
+        });
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUser(userData.user);
+          setIsWorking(userData.user.isWorking);
+          if (userData.user.isWorking && userData.user.workStartTime) {
+            setWorkStartTime(new Date(userData.user.workStartTime));
+          } else {
+            setWorkStartTime(null);
+            setElapsedTime('00:00:00');
+          }
         }
         alert(
           data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : "")
@@ -199,8 +204,21 @@ export default function EmployeeDashboard() {
                   checked={isWorking}
                   onChange={handleToggleWork}
                 />
-                <div className="w-14 h-8 bg-gray-300 rounded-full peer-checked:bg-green-500 transition-colors duration-300"></div>
-                <div className="absolute left-1 top-1 w-6 h-6 rounded-full bg-white shadow-md transform peer-checked:translate-x-6 transition-transform duration-300"></div>
+                <div className="w-40 sm:w-44 h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full peer-checked:from-green-400 peer-checked:to-green-600 transition-all duration-500 shadow-inner relative overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-between px-4 text-xs sm:text-sm font-medium">
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
+                      Check In
+                    </span>
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
+                      Check Out
+                    </span>
+                  </div>
+                </div>
+                <div className="absolute left-1 top-1 w-18 sm:w-20 h-10 bg-white rounded-full shadow-lg transform peer-checked:translate-x-20 sm:peer-checked:translate-x-22 transition-all duration-500 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                    {isWorking ? 'Check Out' : 'Check In'}
+                  </span>
+                </div>
               </label>
             </div>
           </div>
