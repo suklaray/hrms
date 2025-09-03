@@ -50,7 +50,7 @@ export default function Home() {
                                     <span>Get Started</span>
                                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </button>
-                                <Link href="/signup">
+                                <Link href="/AboutUs">
                                     <button className="px-8 py-4 text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-all duration-300">
                                         Learn More ...
                                     </button>
