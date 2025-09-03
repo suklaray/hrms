@@ -77,17 +77,17 @@ const Header = () => {
 
             {user ? (
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2 px-3 py-2 bg-white/20 rounded-full">
+                <Link 
+                  href={user.role === "employee" ? "/employee/dashboard" : "/dashboard"}
+                  className="flex items-center space-x-2 px-3 py-2 bg-white/20 rounded-full hover:bg-white/30 transition-all duration-200 cursor-pointer"
+                >
                   <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
-                  <Link 
-                    href={user.role === "employee" ? "/employee/dashboard" : "/dashboard"}
-                    className="text-white font-medium hover:text-yellow-300 transition-colors"
-                  >
+                  <span className="text-white font-medium hover:text-yellow-300 transition-colors">
                     {user.name}
-                  </Link>
-                </div>
+                  </span>
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="flex items-center space-x-2 px-4 py-2 text-white hover:text-red-300 hover:bg-white/10 rounded-lg transition-all duration-200"
@@ -155,18 +155,18 @@ const Header = () => {
 
             {user ? (
               <div className="space-y-2 pt-2 border-t border-white/20">
-                <div className="flex items-center space-x-3 px-4 py-3">
+                <Link 
+                  href={user.role === "employee" ? "/employee/dashboard" : "/dashboard"}
+                  className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-all duration-200 cursor-pointer"
+                  onClick={() => setMenuOpen(false)}
+                >
                   <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
-                  <Link 
-                    href={user.role === "employee" ? "/employee/dashboard" : "/dashboard"}
-                    className="text-white font-medium"
-                    onClick={() => setMenuOpen(false)}
-                  >
+                  <span className="text-white font-medium">
                     {user.name}
-                  </Link>
-                </div>
+                  </span>
+                </Link>
                 <button
                   onClick={() => {
                     handleLogout();
