@@ -1,6 +1,9 @@
 import jwt from "jsonwebtoken";
 import SideBar from "@/Components/SideBar";
 import ProfileSection from "@/Components/ProfileSection";
+import CalendarSection from "@/Components/CalendarSection";
+import AttendanceChart from "@/Components/AttendanceChart";
+import Head from "next/head";
 
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -94,7 +97,11 @@ export default function Dashboard({ user }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Dashboard - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={handleLogout} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -178,6 +185,12 @@ export default function Dashboard({ user }) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Calendar and Chart Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <CalendarSection />
+            <AttendanceChart />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -299,5 +312,6 @@ export default function Dashboard({ user }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

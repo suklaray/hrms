@@ -7,6 +7,27 @@ export default function ProfileSection({ user }) {
   const [workStartTime, setWorkStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [isLoading, setIsLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWorkStatus = async () => {
+      try {
+        const res = await fetch('/api/employee/work-status', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setIsWorking(data.isWorking);
+          if (data.isWorking && data.workStartTime) {
+            setWorkStartTime(new Date(data.workStartTime));
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching work status:', err);
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+    fetchWorkStatus();
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -46,8 +67,9 @@ export default function ProfileSection({ user }) {
       
       const data = await res.json();
       
-      setIsWorking(!isWorking);
-      if (!isWorking) {
+      const newStatus = !isWorking;
+      setIsWorking(newStatus);
+      if (newStatus) {
         setWorkStartTime(new Date());
       } else {
         setWorkStartTime(null);
@@ -99,24 +121,45 @@ export default function ProfileSection({ user }) {
           </div>
         </div>
         <div className="flex flex-col items-center space-y-2">
-          <div className="flex items-center space-x-2">
-            <Clock className={`w-4 h-4 ${isWorking ? 'text-green-600' : 'text-gray-500'}`} />
-            <span className={`text-sm font-medium ${isWorking ? 'text-green-600' : 'text-gray-600'}`}>
-              {isWorking ? "Currently Working" : "Not Working"}
-            </span>
-          </div>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={isWorking}
-              onChange={handleToggleWork}
-              disabled={isLoading || !user?.empid}
-            />
-            <div className={`w-11 h-6 bg-gray-200 rounded-full peer-checked:bg-green-600 transition-colors duration-300 ${isLoading ? 'opacity-50' : ''}`}></div>
-            <div className="absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow-md transform peer-checked:translate-x-5 transition-transform duration-300"></div>
-          </label>
-          {isWorking && (
+          {statusLoading ? (
+            <div className="flex items-center justify-center w-40 sm:w-44 h-12">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center space-x-2">
+                <Clock className={`w-4 h-4 ${isWorking ? 'text-green-600' : 'text-gray-500'}`} />
+                <span className={`text-sm font-medium ${isWorking ? 'text-green-600' : 'text-gray-600'}`}>
+                  {isWorking ? "Currently Working" : "Not Working"}
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={isWorking}
+                  onChange={handleToggleWork}
+                  disabled={isLoading || !user?.empid}
+                />
+                <div className={`w-40 sm:w-44 h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full peer-checked:from-green-400 peer-checked:to-green-600 transition-all duration-500 shadow-inner relative overflow-hidden ${isLoading ? 'opacity-50' : ''}`}>
+                  <div className="absolute inset-0 flex items-center justify-between px-4 text-xs sm:text-sm font-medium">
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
+                      Check In
+                    </span>
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
+                      Check Out
+                    </span>
+                  </div>
+                </div>
+                <div className="absolute left-1 top-1 w-16 sm:w-20 h-10 bg-white rounded-full shadow-lg transform peer-checked:translate-x-20 sm:peer-checked:translate-x-20 transition-all duration-500 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                    {isWorking ? 'Check Out' : 'Check In'}
+                  </span>
+                </div>
+              </label>
+            </>
+          )}
+          {!statusLoading && isWorking && (
             <div className="flex items-center mt-1">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
               <span className="text-sm font-mono font-bold text-green-600">{elapsedTime}</span>
