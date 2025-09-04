@@ -1,4 +1,4 @@
-import formidable from "formidable";
+import { IncomingForm } from "formidable";
 import fs from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
@@ -25,12 +25,17 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Invalid token" });
   }
 
-  const form = formidable({ keepExtensions: true });
+  const form = new IncomingForm({
+    keepExtensions: true,
+    uploadDir: path.join(process.cwd(), "/public/uploads"),
+  });
+
+  if (!fs.existsSync(form.uploadDir)) fs.mkdirSync(form.uploadDir, { recursive: true });
 
   form.parse(req, async (err, fields, files) => {
     if (err) return res.status(500).json({ error: "File upload error" });
 
-    const file = Array.isArray(files.profilePic) ? files.profilePic[0] : files.profilePic;
+    const file = files.profilePic?.[0];
     if (!file || !file.filepath) return res.status(400).json({ error: "No file uploaded" });
 
     try {
@@ -45,25 +50,18 @@ export default async function handler(req, res) {
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
 
-      // Generate unique filename
       const fileName = `${Date.now()}-${file.originalFilename}`;
-      const finalPath = path.join(uploadsDir, fileName);
-      
-      // Move file to uploads directory
+      const finalPath = path.join(form.uploadDir, fileName);
+
       fs.renameSync(file.filepath, finalPath);
-      const imagePath = `/uploads/${fileName}`;
+
+      const imageUrl = `/uploads/${fileName}`;
       
       await prisma.users.update({
         where: { id: user.id },
         data: {
-          profile_photo: imagePath
+          profile_photo: imageUrl
         },
       });
       
