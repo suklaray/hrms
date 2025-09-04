@@ -9,8 +9,8 @@ export default function App({ Component, pageProps }) {
   // Define paths where header/footer should be hidden
   const noLayoutPaths = ["/Recruitment/form", "/Recruitment/docs_submitted"];
 
-  // Check if current path starts with any no-layout path
-  const hideLayout = noLayoutPaths.some((path) => router.pathname.startsWith(path));
+  // Check if current path matches any no-layout path
+  const hideLayout = noLayoutPaths.some((path) => router.pathname.startsWith(path) || router.pathname === path);
 
   return (
     <div className="min-h-screen w-full overflow-x-auto">

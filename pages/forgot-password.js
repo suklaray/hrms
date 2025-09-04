@@ -6,16 +6,22 @@ import axios from "axios";
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
+    setError("");
 
     try {
       const res = await axios.post("/api/auth/forgot-password", { email });
       setMessage(res.data.message);
     } catch (err) {
-      setMessage("Something went wrong. Please try again.");
+      if (err.response?.status === 404) {
+        setError("This email is not registered. Please enter a valid registered email.");
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     }
   };
 
@@ -25,7 +31,7 @@ export default function ForgotPassword() {
         {/* Left Side - Image */}
         <div className="w-1/1 flex items-center justify-center bg-amber-10">
           <Image
-            src="/homepage.svg"
+            src="/images/homepage.svg"
             width={600}
             height={400}
             alt="image"
@@ -37,6 +43,7 @@ export default function ForgotPassword() {
         <div className="w-1/2 flex flex-col items-center justify-center bg-gray-50 text-center p-10">
           <div className="bg-white p-10 rounded-lg shadow-xl w-full max-w-md">
             {message && <p className="text-green-600 text-center mb-4 text-lg">{message}</p>}
+            {error && <p className="text-red-600 text-center mb-4 text-lg">{error}</p>}
 
             <h1 className="pb-8 text-center text-indigo-600 text-3xl font-medium mb-6">
               Forgot Password?
@@ -47,10 +54,13 @@ export default function ForgotPassword() {
               <div className="flex items-center border-b-2 border-indigo-500 py-2">
                 <FiMail className="text-gray-500 mr-3" />
                 <input
-                  className="w-full bg-transparent text-purple-950 focus:outline-none text-center"
+                  className="w-full bg-transparent text-purple-950 focus:outline-none text-center lowercase"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                   onKeyDown={(e) => {
+                        if (e.key === " ") e.preventDefault(); // block space key
+                      }}
                   placeholder="Enter your email"
                   required
                 />

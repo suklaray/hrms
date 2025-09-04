@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     const user = await prisma.users.findUnique({ where: { email } });
     if (!user) {
-      return res.status(200).json({ message: "If this email exists, a reset link has been sent." });
+      return res.status(404).json({ message: "Email not registered. Please enter a valid registered email." });
     }
 
     const token = crypto.randomBytes(32).toString("hex");

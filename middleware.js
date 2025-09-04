@@ -16,7 +16,7 @@ export function middleware(request) {
 
   const token = request.cookies.get('token')?.value;
 
-  const publicRoutes = ['/', '/login', '/AboutUs', '/Contact', '/employee/login'];
+  const publicRoutes = ['/', '/login', '/AboutUs', '/Contact', '/employee/login', '/forgot-password', '/reset-password'];
 
   const isPublic = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
