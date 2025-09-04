@@ -1,12 +1,15 @@
 // pages/api/leave/status.js
 import prisma from "@/lib/prisma";
+import { verifyEmployeeToken } from '@/lib/auth';
 
 export default async function handler(req, res) {
-  const { empid } = req.query;
+  // Verify JWT token and get user data
+  const user = await verifyEmployeeToken(req);
+  if (!user) return res.status(401).json({ message: 'Unauthorized' });
 
   try {
     const rows = await prisma.leave_requests.findMany({
-      where: { empid: empid },
+      where: { empid: user.empid },
       select: {
         id: true,
         leave_type: true,

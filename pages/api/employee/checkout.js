@@ -1,12 +1,29 @@
 import prisma from "@/lib/prisma";
-
+import jwt from "jsonwebtoken";
+import cookie from "cookie";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { empid } = req.body;
-
   try {
+    // Verify JWT token
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const token = cookies.token;
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized - No token' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.role !== 'employee') {
+      return res.status(403).json({ error: 'Access denied - Employee only' });
+    }
+
+    // Use empid from JWT token, not request body
+    const empid = decoded.empid;
+
+    // Proceed with checkout
     await prisma.$transaction([
       prisma.users.update({
         where: { empid },

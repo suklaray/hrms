@@ -115,7 +115,7 @@ export default function EmpPayslip() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex space-x-2">
                                 <button
-                                  onClick={() => window.open(`/hr/payroll/payslip-preview/${user?.empid}?month=${doc.month}&year=${doc.year}`, '_blank')}
+                                  onClick={() => window.open(`/employee/payslip-preview?month=${doc.month}&year=${doc.year}`, '_blank')}
                                   className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
@@ -124,7 +124,7 @@ export default function EmpPayslip() {
                                 <button
                                   onClick={() => {
                                     const link = document.createElement('a');
-                                    link.href = `/hr/payroll/payslip-preview/${user?.empid}?month=${doc.month}&year=${doc.year}&download=true`;
+                                    link.href = `/employee/payslip-preview?month=${doc.month}&year=${doc.year}&download=true`;
                                     link.target = '_blank';
                                     link.click();
                                   }}

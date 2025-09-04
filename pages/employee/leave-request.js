@@ -34,7 +34,7 @@ export default function LeaveRequest() {
       }));
 
       axios
-        .get(`/api/leave/status?empid=${user.empid}`)
+        .get('/api/leave/status', { withCredentials: true })
         .then(res => setLeaveStatusList(res.data));
     });
   }, []);
@@ -126,7 +126,7 @@ export default function LeaveRequest() {
       }));
       setErrors({});
 
-      const res = await axios.get(`/api/leave/status?empid=${form.empid}`);
+      const res = await axios.get('/api/leave/status', { withCredentials: true });
       setLeaveStatusList(res.data);
       setActiveTab('history');
     } catch (err) {

@@ -10,6 +10,7 @@ export default function EmployeeDashboard() {
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [stats, setStats] = useState({ todayHours: '0.0', weekHours: '0.0', monthHours: '0.0' });
 
   const router = useRouter();
 
@@ -29,6 +30,15 @@ export default function EmployeeDashboard() {
           setWorkStartTime(new Date(data.user.workStartTime));
         } else {
           setWorkStartTime(null);
+        }
+        
+        // Fetch stats
+        const statsRes = await fetch("/api/employee/stats", {
+          credentials: "include",
+        });
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
         }
       } catch (err) {
         console.error("Error fetching user:", err);
@@ -79,7 +89,6 @@ export default function EmployeeDashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ empid: user.empid }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -234,16 +243,24 @@ export default function EmployeeDashboard() {
               <div className="p-6">
                 <div className="flex items-start space-x-6">
                   <div className="flex-shrink-0">
-                    <Image
-                      src={user?.profile_photo || "/profile.png"}
-                      alt="Profile"
-                      width={96}
-                      height={96}
-                      className="rounded-full object-cover border-4 border-indigo-200"
-                      onError={(e) => {
-                        e.target.src = '/profile.png';
-                      }}
-                    />
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center border-4 border-indigo-200 overflow-hidden">
+                      {user?.profile_photo ? (
+                        <Image
+                          src={user.profile_photo}
+                          alt="Profile"
+                          width={96}
+                          height={96}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-full h-full flex items-center justify-center ${user?.profile_photo ? 'hidden' : ''}`}>
+                        <User className="w-8 h-8 text-white" />
+                      </div>
+                    </div>
                   </div>
                   <div className="flex-1 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -293,21 +310,21 @@ export default function EmployeeDashboard() {
                     <Clock className="w-5 h-5 text-blue-600" />
                     <span className="text-sm font-medium text-blue-900">Todays Hours</span>
                   </div>
-                  <span className="text-lg font-bold text-blue-600">No data</span>
+                  <span className="text-lg font-bold text-blue-600">{stats.todayHours}h</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-green-600" />
                     <span className="text-sm font-medium text-green-900">This Week</span>
                   </div>
-                  <span className="text-lg font-bold text-green-600">No data</span>
+                  <span className="text-lg font-bold text-green-600">{stats.weekHours}h</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <TrendingUp className="w-5 h-5 text-purple-600" />
                     <span className="text-sm font-medium text-purple-900">This Month</span>
                   </div>
-                  <span className="text-lg font-bold text-purple-600">No data</span>
+                  <span className="text-lg font-bold text-purple-600">{stats.monthHours}h</span>
                 </div>
               </div>
             </div>

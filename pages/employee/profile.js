@@ -10,30 +10,27 @@ export default function Profile() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordValidation, setPasswordValidation] = useState({ error: null, loading: false });
+  const [showPassword, setShowPassword] = useState({ new: false, confirm: false });
   const [documentsSubmitted, setDocumentsSubmitted] = useState(false);
   const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [uploadMessage, setUploadMessage] = useState({ type: '', text: '', show: false });
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    const cachedUser = localStorage.getItem('employee_user');
-    if (cachedUser) {
-      try {
-        const userData = JSON.parse(cachedUser);
-        setUser(userData);
-        checkDocumentStatus(userData.empid);
-        return;
-      } catch (e) {
-        localStorage.removeItem('employee_user');
-      }
-    }
-    
-    axios.get("/api/auth/settings/user-profile", { withCredentials: true })
+    // Fetch employee's own profile data only - secure endpoint
+    axios.get('/api/employee/my-profile', { withCredentials: true })
       .then((res) => {
         setUser(res.data);
-        localStorage.setItem('employee_user', JSON.stringify(res.data));
         checkDocumentStatus(res.data.empid);
       })
-      .catch(() => console.error("Failed to fetch user profile"));
+      .catch((error) => {
+        console.error('Failed to fetch employee profile:', error);
+        // Redirect to login if unauthorized
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          window.location.href = '/employee/login';
+        }
+      });
   }, []);
 
   const checkDocumentStatus = async (empid) => {
@@ -59,6 +56,30 @@ export default function Profile() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // File validation
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!allowedTypes.includes(file.type)) {
+      setUploadMessage({ 
+        type: 'error', 
+        text: 'Please select a valid image file (JPEG, PNG, or GIF)', 
+        show: true 
+      });
+      setTimeout(() => setUploadMessage({ type: '', text: '', show: false }), 5000);
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setUploadMessage({ 
+        type: 'error', 
+        text: 'File size must be less than 5MB', 
+        show: true 
+      });
+      setTimeout(() => setUploadMessage({ type: '', text: '', show: false }), 5000);
+      return;
+    }
+
     const previewURL = URL.createObjectURL(file);
     setPreview(previewURL);
 
@@ -71,27 +92,78 @@ export default function Profile() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (res.status === 200) {
-        setTimeout(() => window.location.reload(), 300);
+        setUploadMessage({ 
+          type: 'success', 
+          text: 'Profile picture uploaded successfully!', 
+          show: true 
+        });
+        setTimeout(() => {
+          setUploadMessage({ type: '', text: '', show: false });
+          window.location.reload();
+        }, 5000);
       }
     } catch (error) {
-      alert("Upload failed.");
+      setUploadMessage({ 
+        type: 'error', 
+        text: 'Upload failed. Please try again.', 
+        show: true 
+      });
+      setTimeout(() => setUploadMessage({ type: '', text: '', show: false }), 5000);
     }
   };
 
+
+
+  const validatePassword = (password) => {
+    const minLength = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    return {
+      minLength,
+      hasUpper,
+      hasLower,
+      hasNumber,
+      hasSpecial,
+      isValid: minLength && hasUpper && hasLower && hasNumber && hasSpecial
+    };
+  };
+
   const handlePasswordUpdate = async () => {
+    setPasswordValidation({ error: null, loading: false });
+    
+    if (!newPassword || !confirmPassword) {
+      setPasswordValidation({ error: 'Please fill in all fields', loading: false });
+      return;
+    }
+    
+    const validation = validatePassword(newPassword);
+    if (!validation.isValid) {
+      setPasswordValidation({ error: 'Password does not meet requirements', loading: false });
+      return;
+    }
+    
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match");
+      setPasswordValidation({ error: 'Passwords do not match', loading: false });
       return;
     }
 
+    setPasswordValidation({ error: null, loading: true });
+    
     try {
       const res = await axios.post("/api/auth/change-password", { newPassword }, { withCredentials: true });
       alert(res.data.message);
       setShowPasswordModal(false);
       setNewPassword("");
       setConfirmPassword("");
+      setPasswordValidation({ error: null, loading: false });
     } catch (err) {
-      alert(err.response?.data?.error || "Failed to update password");
+      setPasswordValidation({ 
+        error: err.response?.data?.error || "Failed to update password", 
+        loading: false 
+      });
     }
   };
 
@@ -112,7 +184,8 @@ export default function Profile() {
         <div className="p-6">
           <div className="max-w-4xl mx-auto">
             {user ? (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Profile Picture Section */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <div className="text-center">
@@ -122,26 +195,28 @@ export default function Profile() {
                     </h3>
                     
                     <div className="relative inline-block mb-4">
-                      {preview || user?.profile_photo ? (
-                        <Image
-                          src={preview || user.profile_photo || '/default-avatar.png'}
-                          alt="Profile"
-                          width={128}
-                          height={128}
-                          className="w-32 h-32 rounded-full object-cover border-4 border-blue-200"
-                          priority
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <div className={`w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300 ${preview || user?.profile_photo ? 'hidden' : ''}`}>
-                        <User className="w-12 h-12 text-gray-400" />
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center border-4 border-blue-200 overflow-hidden">
+                        {preview || user?.profile_photo ? (
+                          <Image
+                            src={preview || user.profile_photo}
+                            alt="Profile"
+                            width={128}
+                            height={128}
+                            className="w-full h-full object-cover"
+                            priority
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-full h-full flex items-center justify-center ${preview || user?.profile_photo ? 'hidden' : ''}`}>
+                          <User className="w-12 h-12 text-white" />
+                        </div>
                       </div>
                       <button
                         onClick={() => fileInputRef.current.click()}
-                        className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                        className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors cursor-pointer"
                       >
                         <Camera className="w-4 h-4" />
                       </button>
@@ -150,14 +225,31 @@ export default function Profile() {
                     <input
                       type="file"
                       ref={fileInputRef}
-                      accept="image/*"
+                      accept="image/jpeg,image/jpg,image/png,image/gif"
                       onChange={handleFileChange}
                       className="hidden"
                     />
 
+                    {/* Upload Guidelines */}
+                    <div className="mb-3 text-xs text-gray-500 text-center">
+                      <p>Accepted formats: JPEG, PNG, GIF</p>
+                      <p>Maximum size: 5MB</p>
+                    </div>
+
+                    {/* Success/Error Message */}
+                    {uploadMessage.show && (
+                      <div className={`mb-3 p-2 rounded-lg text-xs text-center ${
+                        uploadMessage.type === 'success' 
+                          ? 'bg-green-50 text-green-700 border border-green-200' 
+                          : 'bg-red-50 text-red-700 border border-red-200'
+                      }`}>
+                        {uploadMessage.text}
+                      </div>
+                    )}
+
                     <button
                       onClick={() => fileInputRef.current.click()}
-                      className="w-full bg-blue-50 text-blue-700 py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                      className="w-full bg-blue-50 text-blue-700 py-2 px-4 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium cursor-pointer"
                     >
                       Change Profile Picture
                     </button>
@@ -193,7 +285,7 @@ export default function Profile() {
 
                     <button
                       onClick={handleDocumentSubmission}
-                      className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                      className={`w-full py-3 px-4 rounded-lg font-medium transition-colors cursor-pointer ${
                         documentsSubmitted 
                           ? 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100' 
                           : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100'
@@ -240,7 +332,7 @@ export default function Profile() {
                         </div>
                         <button
                           onClick={() => setShowPasswordModal(true)}
-                          className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                          className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center cursor-pointer"
                         >
                           <Lock className="w-4 h-4 mr-1" />
                           Change Password
@@ -248,6 +340,149 @@ export default function Profile() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Password Change Section - Inline */}
+                {showPasswordModal && (
+                  <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
+                    <div className="p-6 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <Lock className="w-5 h-5 mr-2" />
+                            Change Password
+                          </h3>
+                          <p className="text-sm text-gray-600">Update your account password</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowPasswordModal(false);
+                            setNewPassword("");
+                            setConfirmPassword("");
+                            setPasswordValidation({ error: null, loading: false });
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6 space-y-6">
+                      {/* New Password */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                        <div className="relative">
+                          <input
+                            type={showPassword.new ? "text" : "password"}
+                            placeholder="Enter new password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all pr-12"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(prev => ({ ...prev, new: !prev.new }))}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+                          >
+                            {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        
+                        {/* Password Requirements */}
+                        {newPassword && (
+                          <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs font-medium text-gray-600 mb-2">Password Requirements:</p>
+                            <div className="grid grid-cols-1 gap-1 text-xs">
+                              {Object.entries({
+                                'At least 8 characters': validatePassword(newPassword).minLength,
+                                'Uppercase letter (A-Z)': validatePassword(newPassword).hasUpper,
+                                'Lowercase letter (a-z)': validatePassword(newPassword).hasLower,
+                                'Number (0-9)': validatePassword(newPassword).hasNumber,
+                                'Special character (!@#$...)': validatePassword(newPassword).hasSpecial
+                              }).map(([req, met]) => (
+                                <div key={req} className={`flex items-center ${met ? 'text-green-600' : 'text-red-500'}`}>
+                                  <span className="mr-2">{met ? '✓' : '✗'}</span>
+                                  <span>{req}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Confirm Password */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+                        <div className="relative">
+                          <input
+                            type={showPassword.confirm ? "text" : "password"}
+                            placeholder="Confirm new password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-transparent transition-all pr-12 ${
+                              confirmPassword && newPassword !== confirmPassword 
+                                ? 'border-red-300 bg-red-50' 
+                                : confirmPassword && newPassword === confirmPassword 
+                                  ? 'border-green-300 bg-green-50' 
+                                  : 'border-gray-300'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(prev => ({ ...prev, confirm: !prev.confirm }))}
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+                          >
+                            {showPassword.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        
+                        {confirmPassword && (
+                          <p className={`mt-1 text-xs ${
+                            newPassword === confirmPassword ? 'text-green-600' : 'text-red-500'
+                          }`}>
+                            {newPassword === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Error Message */}
+                      {passwordValidation.error && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-red-600 text-sm font-medium">{passwordValidation.error}</p>
+                        </div>
+                      )}
+
+                      {/* Buttons */}
+                      <div className="flex justify-end space-x-3 pt-4">
+                        <button
+                          onClick={() => {
+                            setShowPasswordModal(false);
+                            setNewPassword("");
+                            setConfirmPassword("");
+                            setPasswordValidation({ error: null, loading: false });
+                          }}
+                          disabled={passwordValidation.loading}
+                          className="px-6 py-2.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium transition-colors disabled:opacity-50 flex items-center cursor-pointer"
+                        >
+                          <X className="w-4 h-4 mr-1" />
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handlePasswordUpdate}
+                          disabled={passwordValidation.loading || !validatePassword(newPassword).isValid || newPassword !== confirmPassword}
+                          className="px-6 py-2.5 rounded-lg bg-gray-800 hover:bg-gray-900 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center cursor-pointer"
+                        >
+                          {passwordValidation.loading && (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          )}
+                          <Save className="w-4 h-4 mr-1" />
+                          {passwordValidation.loading ? 'Updating...' : 'Update Password'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 </div>
               </div>
             ) : (
@@ -259,65 +494,7 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Password Change Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <Lock className="w-5 h-5 mr-2" />
-                  Change Password
-                </h3>
-                <button
-                  onClick={() => setShowPasswordModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                <input
-                  type="password"
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                <input
-                  type="password"
-                  placeholder="Confirm new password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-100 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowPasswordModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center"
-              >
-                <X className="w-4 h-4 mr-1" />
-                Cancel
-              </button>
-              <button
-                onClick={handlePasswordUpdate}
-                className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center"
-              >
-                <Save className="w-4 h-4 mr-1" />
-                Update Password
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
