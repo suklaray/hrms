@@ -167,6 +167,9 @@ export default function PayrollForm() {
     const totalDeductions = deductions + pf + ptax + esic;
     const net_pay = calculateNetPay();
 
+    // Generate payslip PDF path
+    const payslipPath = `/payslips/${empid}_${formData.month}_${formData.year}.pdf`;
+
     try {
       const res = await fetch('/api/hr/payroll/generate', {
         method: 'POST',
@@ -185,8 +188,18 @@ export default function PayrollForm() {
           net_pay,
           month: formData.month,
           year: formData.year,
-          allowance_details: formData.allowances.filter(a => a.include && a.name),
-          deduction_details: formData.deductions.filter(d => d.include && d.name),
+          payslip_pdf: payslipPath,
+          allowance_details: [
+            ...(formData.hra_include ? [{ name: 'House Rent Allowance (HRA)', percent: formData.hra_percent, amount: calculateAmount(formData.hra_percent) }] : []),
+            ...(formData.da_include ? [{ name: 'Dearness Allowance (DA)', percent: formData.da_percent, amount: calculateAmount(formData.da_percent) }] : []),
+            ...formData.allowances.filter(a => a.include && a.name).map(a => ({ ...a, amount: calculateAmount(parseFloat(a.percent || 0)) }))
+          ],
+          deduction_details: [
+            ...(formData.pf_include ? [{ name: 'Provident Fund (PF)', percent: formData.pf_percent, amount: calculateAmount(formData.pf_percent) }] : []),
+            ...(formData.ptax_include ? [{ name: 'Professional Tax (PTAX)', amount: 200, fixed: true }] : []),
+            ...(formData.esic_include ? [{ name: 'Employee State Insurance (ESIC)', percent: formData.esic_percent, amount: calculateAmount(formData.esic_percent) }] : []),
+            ...formData.deductions.filter(d => d.include && d.name).map(d => ({ ...d, amount: calculateAmount(parseFloat(d.percent || 0)) }))
+          ],
           hra_include: formData.hra_include,
           da_include: formData.da_include,
           pf_include: formData.pf_include,

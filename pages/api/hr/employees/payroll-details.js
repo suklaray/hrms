@@ -22,7 +22,16 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
+    if (!decoded) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Allow employees to access their own data
+    if (decoded.role === 'employee') {
+      if (decoded.empid !== empid) {
+        return res.status(403).json({ message: 'Access denied to this employee data' });
+      }
+    } else if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -41,8 +50,8 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    // Check if user can access this employee's data
-    if (!canAccessRole(decoded.role, user.role)) {
+    // For HR/admin roles, check if they can access this employee's data
+    if (['admin', 'hr', 'superadmin'].includes(decoded.role) && !canAccessRole(decoded.role, user.role)) {
       return res.status(403).json({ message: 'Access denied to this employee data' });
     }
 

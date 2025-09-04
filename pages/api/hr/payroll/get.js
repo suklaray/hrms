@@ -21,18 +21,27 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
+    if (!decoded) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Check if user can access this employee's data
-    const targetEmployee = await prisma.users.findUnique({
-      where: { empid },
-      select: { role: true }
-    });
+    // Allow employees to access their own payroll data
+    if (decoded.role === 'employee') {
+      if (decoded.empid !== empid) {
+        return res.status(403).json({ message: 'Access denied to this employee data' });
+      }
+    } else if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    } else {
+      // For HR/admin roles, check if they can access this employee's data
+      const targetEmployee = await prisma.users.findUnique({
+        where: { empid },
+        select: { role: true }
+      });
 
-    if (!targetEmployee || !canAccessRole(decoded.role, targetEmployee.role)) {
-      return res.status(403).json({ message: 'Access denied to this employee data' });
+      if (!targetEmployee || !canAccessRole(decoded.role, targetEmployee.role)) {
+        return res.status(403).json({ message: 'Access denied to this employee data' });
+      }
     }
 
     const payrolls = await prisma.payroll.findMany({
