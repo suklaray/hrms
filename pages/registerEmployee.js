@@ -92,13 +92,6 @@ export default function RegisterEmployee() {
                     const oneYearAgo = new Date();
                     oneYearAgo.setFullYear(today.getFullYear() - 1);
                     
-                    if (selectedDate > today) {
-                        newErrors[name] = 'Date cannot be in the future';
-                    } else if (selectedDate < oneYearAgo) {
-                        newErrors[name] = 'Date cannot be more than 1 year ago';
-                    } else {
-                        delete newErrors[name];
-                    }
                 }
                 break;
             case 'experience':
