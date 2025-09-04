@@ -20,7 +20,7 @@ export default async function handler(req, res) {
         role: true,
         payroll: {
           where: {
-            generated_date: {
+            generated_on: {
               gte: startOfMonth,
               lte: endOfMonth,
             },
