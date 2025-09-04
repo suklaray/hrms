@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 import SideBar from "@/Components/SideBar";
 import ProfileSection from "@/Components/ProfileSection";
 import CalendarSection from "@/Components/CalendarSection";
-import AttendanceChart from "@/Components/AttendanceChart";
 import Head from "next/head";
 
 import { useRouter } from "next/router";
@@ -113,13 +112,23 @@ export default function Dashboard({ user }) {
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Calendar className="w-4 h-4" />
-                <span>{mounted ? new Date().toLocaleDateString() : ''}</span>
-              </div>
-              <button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                  <Calendar className="w-4 h-4" />
+                  <span>
+                    {mounted
+                      ? new Date().toLocaleDateString("en-US", {
+                          weekday: "long",   // Thursday
+                          day: "numeric",    // 4
+                          month: "long",     // September
+                          year: "numeric",   // 2025
+                        })
+                      : ""}
+                  </span>
+                </div>
+
+              {/*<button className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              </button>*/}
             </div>
           </div>
         </div>
@@ -136,8 +145,8 @@ export default function Dashboard({ user }) {
                   <Users className="w-6 h-6" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Employees</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-md font-medium text-gray-600">Total Employees</p>
+                  <p className="text-sm font-semibold text-gray-900">
                     {stats ? (stats.totalEmployees || 'No employees') : 'Loading...'}
                   </p>
                 </div>
@@ -150,8 +159,8 @@ export default function Dashboard({ user }) {
                   <UserCheck className="w-6 h-6" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Active Employees</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-md font-medium text-gray-600">Active Employees</p>
+                  <p className="text-sm font-semibold text-gray-900">
                     {stats ? (stats.activeEmployees || 'None active') : 'Loading...'}
                   </p>
                 </div>
@@ -164,8 +173,8 @@ export default function Dashboard({ user }) {
                   <Clock className="w-6 h-6" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Pending Leaves</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-md font-medium text-gray-600">Pending Leaves</p>
+                  <p className="text-sm font-semibold text-gray-900">
                     {stats ? (stats.pendingLeaves || 'No requests') : 'Loading...'}
                   </p>
                 </div>
@@ -178,8 +187,8 @@ export default function Dashboard({ user }) {
                   <FileText className="w-6 h-6" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Candidates</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-md font-medium text-gray-600">Total Candidates</p>
+                  <p className="text-sm font-semibold text-gray-900">
                     {stats ? (stats.totalCandidates || 'No candidates') : 'Loading...'}
                   </p>
                 </div>
@@ -187,13 +196,56 @@ export default function Dashboard({ user }) {
             </div>
           </div>
 
-          {/* Calendar and Chart Section */}
+          {/* Calendar and Quick Actions Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <CalendarSection />
-            <AttendanceChart />
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
+              </div>
+              <div className="p-6 space-y-3">
+                <button
+                  onClick={() => router.push('/registerEmployee')}
+                  className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <span className="font-medium text-blue-900">Add Employee</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => router.push('/hr/attendance')}
+                  className="w-full text-left p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-green-600" />
+                    <span className="font-medium text-green-900">View Attendance</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => router.push('/hr/payroll/generate')}
+                  className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    <FileText className="w-5 h-5 text-purple-600" />
+                    <span className="font-medium text-purple-900">Generate Payroll</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => router.push('/Recruitment/recruitment')}
+                  className="w-full text-left p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center space-x-3">
+                    <UserCheck className="w-5 h-5 text-orange-600" />
+                    <span className="font-medium text-orange-900">Recruitment</span>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Employees Section */}
+          <div className="grid grid-cols-1 gap-6">
             <div className="bg-white rounded-lg shadow">
               <div className="p-6 border-b border-gray-200">
                 <h3 className="text-lg font-medium text-gray-900">Recent Employees</h3>
@@ -262,50 +314,6 @@ export default function Dashboard({ user }) {
                     )}
                   </div>
                 )}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
-              </div>
-              <div className="p-6 space-y-3">
-                <button
-                  onClick={() => router.push('/registerEmployee')}
-                  className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium text-blue-900">Add Employee</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => router.push('/hr/attendance')}
-                  className="w-full text-left p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Clock className="w-5 h-5 text-green-600" />
-                    <span className="font-medium text-green-900">View Attendance</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => router.push('/hr/payroll/generate')}
-                  className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <FileText className="w-5 h-5 text-purple-600" />
-                    <span className="font-medium text-purple-900">Generate Payroll</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => router.push('/Recruitment/recruitment')}
-                  className="w-full text-left p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <UserCheck className="w-5 h-5 text-orange-600" />
-                    <span className="font-medium text-orange-900">Recruitment</span>
-                  </div>
-                </button>
               </div>
             </div>
           </div>
