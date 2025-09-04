@@ -115,16 +115,16 @@ export default function RegisterEmployee() {
                 } else {
                     const selectedDate = new Date(value);
                     const today = new Date();
-                    const oneYearAgo = new Date();
+                    const twoYearsAgo = new Date();
                     const twoYearsFromNow = new Date();
                     
-                    oneYearAgo.setFullYear(today.getFullYear() - 1);
+                    twoYearsAgo.setFullYear(today.getFullYear() - 2);
                     twoYearsFromNow.setFullYear(today.getFullYear() + 2);
                     
                     if (isNaN(selectedDate.getTime())) {
                         newErrors[name] = 'Please enter a valid date';
-                    } else if (selectedDate < oneYearAgo) {
-                        newErrors[name] = 'Date cannot be more than 1 year ago';
+                    } else if (selectedDate < twoYearsAgo) {
+                        newErrors[name] = 'Date cannot be more than 2 years ago';
                     } else if (selectedDate > twoYearsFromNow) {
                         newErrors[name] = 'Date cannot be more than 2 years in the future';
                     } else {

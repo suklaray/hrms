@@ -159,9 +159,9 @@ export default function Dashboard({ user }) {
                   <UserCheck className="w-6 h-6" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-md font-medium text-gray-600">Active Employees</p>
+                  <p className="text-md font-medium text-gray-600">Currently Logged In</p>
                   <p className="text-sm font-semibold text-gray-900">
-                    {stats ? (stats.activeEmployees || 'None active') : 'Loading...'}
+                    {stats ? (stats.activeEmployees || 'None logged in') : 'Loading...'}
                   </p>
                 </div>
               </div>

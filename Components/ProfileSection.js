@@ -61,11 +61,13 @@ export default function ProfileSection({ user }) {
         body: JSON.stringify({ empid: user.empid }),
       });
       
-      if (!res.ok) {
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-      
       const data = await res.json();
+      
+      if (!res.ok) {
+        console.error(`API Error: ${res.status} - ${data.error || 'Unknown error'}`);
+        alert(data.error || `Failed to ${endpoint}. Please try again.`);
+        return;
+      }
       
       const newStatus = !isWorking;
       setIsWorking(newStatus);
@@ -83,9 +85,7 @@ export default function ProfileSection({ user }) {
       
     } catch (err) {
       console.error("Work toggle error:", err);
-      // Revert state on error
-      setIsWorking(isWorking);
-      alert("Failed to update attendance. Please try again.");
+      alert("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }

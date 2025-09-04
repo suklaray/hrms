@@ -16,9 +16,7 @@ export default async function handler(req, res) {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    if (decoded.role !== 'employee') {
-      return res.status(403).json({ error: 'Access denied - Employee only' });
-    }
+    // Allow all authenticated users to check out
 
     // Use empid from JWT token, not request body
     const empid = decoded.empid;

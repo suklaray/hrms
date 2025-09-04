@@ -66,108 +66,135 @@ export default function CustomerConnect() {
             <Head>
                 <title>Customer Connect - HRMS</title>
             </Head>
-            <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-indigo-200">
+            <div className="flex min-h-screen bg-gray-50">
         <SideBar />
+        
+        <div className="flex-1 overflow-auto">
+          {/* Header */}
+          <div className="bg-white border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Customer Connect</h1>
+                <p className="text-gray-600">Manage customer inquiries and feedback</p>
+              </div>
 
-        <div className="flex-grow p-6">
-            <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold text-indigo-800 text-center w-full">
-                CUSTOMER CONNECT
-            </h1>
+              {selected.length > 0 && (
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-600">{selected.length} selected</span>
+                  <button 
+                    onClick={handleDelete}
+                    className="flex items-center space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              )}
             </div>
+          </div>
 
-            {selected.length > 0 && (
-            <div className="flex justify-end items-center gap-3 mb-2 text-sm text-red-600 font-semibold">
-                <span>{selected.length} selected</span>
-                <button onClick={handleDelete} title="Delete selected">
-                <Trash2 className="hover:text-red-800 transition" />
-                </button>
-            </div>
-            )}
+          <div className="p-6">
 
-            <div className="overflow-visible relative rounded-xl shadow-xl bg-white z-0">
-            <table className="min-w-full text-center text-sm border-collapse">
-                <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white uppercase text-xs tracking-wider">
-                <tr>
-                    <th className="p-4">
-                    <input
-                        type="checkbox"
-                        checked={selectAll}
-                        onChange={toggleSelectAll}
-                    />
-                    </th>
-                    <th className="p-4">Name</th>
-                    <th className="p-4">Email</th>
-                    <th className="p-4">Subject</th>
-                    <th className="p-4">Message</th>
-                    <th className="p-4">Date</th>
-                </tr>
-                </thead>
-                <tbody>
-                {messages.map((msg, index) => (
-                    <tr
-                    key={msg.id}
-                    className={`${
-                        selected.includes(msg.id) ? "bg-indigo-200" : index % 2 === 0 ? "bg-white" : "bg-indigo-50"
-                    } hover:bg-blue-200 transition-all duration-200`}
-                    >
-                        <td className="p-4 align-middle">
-                            <input
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <input
+                          type="checkbox"
+                          checked={selectAll}
+                          onChange={toggleSelectAll}
+                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {messages.map((msg, index) => (
+                      <tr
+                        key={msg.id}
+                        className={`hover:bg-gray-50 transition-colors ${
+                          selected.includes(msg.id) ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''
+                        }`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
                             type="checkbox"
                             checked={selected.includes(msg.id)}
                             onChange={() => toggleSelection(msg.id)}
-                            />
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
                         </td>
-                        <td className="p-4">{msg.name}</td>
-                        <td className="p-4">{msg.email}</td>
-                        <td className="p-4">{msg.subject}</td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{msg.name}</div>
+                            <div className="text-sm text-gray-500">{msg.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 font-medium">{msg.subject}</div>
+                        </td>
                         <td className="relative text-center max-w-[300px]">
-                        <div
+                          <div
                             className="truncate text-gray-800 cursor-pointer"
                             onClick={() => togglePopup(msg.id)}
-                        >
+                          >
                             {msg.message.length > 50 ? msg.message.slice(0, 50) + "..." : msg.message}
-                        </div>
+                          </div>
 
-                        {/* Popup */}
-                        {activeMessageId === msg.id && (
+                          {/* Popup */}
+                          {activeMessageId === msg.id && (
                             <div className="absolute z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                            <div className="bg-gradient-to-l from-indigo-500 to-purple-500 p-0.5 rounded-lg shadow-xl">
+                              <div className="bg-gradient-to-l from-indigo-500 to-purple-500 p-0.5 rounded-lg shadow-xl">
                                 <div className="bg-gray-50 pt-8 px-4 pb-4 rounded-md w-[300px] h-[180px] text-gray-900 relative overflow-y-auto whitespace-pre-wrap">
-                                    <button
-                                        onClick={() => setActiveMessageId(null)}
-                                        className="absolute top-2 left-1/2 -translate-x-1/2 text-red-600 hover:text-red-800 text-sm font-bold z-50"
-                                    >
-                                        ✕
-                                    </button>
-                                     <div className="text-justify">{msg.message}</div>
-                                    </div>
+                                  <button
+                                    onClick={() => setActiveMessageId(null)}
+                                    className="absolute top-2 left-1/2 -translate-x-1/2 text-red-600 hover:text-red-800 text-sm font-bold z-50"
+                                  >
+                                    ✕
+                                  </button>
+                                  <div className="text-justify">{msg.message}</div>
+                                </div>
+                              </div>
                             </div>
-                            </div>
-                        )}
+                          )}
                         </td>
-
-
-
-
-
-                    <td className="p-4">
-                        {new Date(msg.created_at).toLocaleString()}
-                    </td>
-                    </tr>
-                ))}
-                {messages.length === 0 && (
-                    <tr>
-                    <td colSpan="6" className="p-6 text-center text-gray-500">
-                        No messages found.
-                    </td>
-                    </tr>
-                )}
-                </tbody>
-            </table>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {new Date(msg.created_at).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {new Date(msg.created_at).toLocaleTimeString('en-US', {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {messages.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="px-6 py-12 text-center">
+                          <div className="text-gray-500">
+                            <Trash2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium mb-2">No Messages</h3>
+                            <p className="text-sm">Customer messages will appear here when received</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+          </div>
         </div>
-        </div>
+      </div>
         </>
     );
 }

@@ -42,15 +42,14 @@ export default async function handler(req, res) {
     try {
       activeEmployees = await prisma.users.count({ 
         where: { 
-          status: 'Active',
+          status: 'Logged In',
           role: {
             not: 'superadmin'
           }
         } 
       });
     } catch (e) {
-      console.error('Error counting active users:', e);
-      activeEmployees = totalEmployees; // fallback
+      console.error('Error counting logged in users:', e);
     }
 
     try {
