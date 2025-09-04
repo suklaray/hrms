@@ -88,8 +88,8 @@ export default function PayslipPreview() {
   const deductionDetails = payslip.deduction_details ? JSON.parse(payslip.deduction_details) : [];
 
   // Calculate totals from details
-  const totalCustomAllowances = allowanceDetails.reduce((total, allowance) => total + (allowance.value || 0), 0);
-  const totalCustomDeductions = deductionDetails.reduce((total, deduction) => total + (deduction.value || 0), 0);
+  const totalCustomAllowances = allowanceDetails.reduce((total, allowance) => total + (allowance.amount || 0), 0);
+  const totalCustomDeductions = deductionDetails.reduce((total, deduction) => total + (deduction.amount || 0), 0);
 
   // Include PF, PTAX, and ESIC in deductions
   const pf = payslip.pf || 0;
@@ -156,7 +156,7 @@ export default function PayslipPreview() {
                 {payslip.da_include && <Row label="DA" value={payslip.da} />}
                 {payslip.bonus > 0 && <Row label="BONUS" value={payslip.bonus} />}
                 {allowanceDetails.map((allowance, idx) => (
-                  <Row key={idx} label={allowance.name.toUpperCase()} value={allowance.value} />
+                  <Row key={idx} label={allowance.name.toUpperCase()} value={allowance.amount} />
                 ))}
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function PayslipPreview() {
                 {(payslip.ptax_include || ptax > 0) && <Row label="PTAX" value={ptax} />}
                 {(payslip.esic_include || esic > 0) && <Row label="ESIC" value={esic} />}
                 {deductionDetails.map((deduction, idx) => (
-                  <Row key={idx} label={deduction.name.toUpperCase()} value={deduction.value} />
+                  <Row key={idx} label={deduction.name.toUpperCase()} value={deduction.amount} />
                 ))}
                 {(pf === 0 && ptax === 0 && esic === 0 && deductionDetails.length === 0) && (
                   <Row label="NO DEDUCTIONS" value={0} />
@@ -211,10 +211,11 @@ export default function PayslipPreview() {
 }
 
 function Row({ label, value }) {
+  const numValue = Number(value) || 0;
   return (
     <div style={{ display: "flex", justifyContent: "space-between" }}>
       <span>{label}</span>
-      <span>₹{Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      <span>₹{numValue.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
     </div>
   );
 }

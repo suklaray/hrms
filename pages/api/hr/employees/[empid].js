@@ -21,22 +21,9 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    // Get additional data from employees table
-    const employeeData = await prisma.employees.findFirst({
-      where: { 
-        OR: [
-          { email: user.email },
-          { empid: parseInt(empid) }
-        ]
-      },
-      select: {
-        contact_no: true,
-      },
-    });
-
     const employee = {
       ...user,
-      contact_no: employeeData?.contact_no || 'Not provided',
+      contact_no: 'Not provided',
     };
 
     return res.status(200).json({ employee });

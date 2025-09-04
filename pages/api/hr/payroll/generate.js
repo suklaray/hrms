@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     const pt_ded = Number(ptax) || 0;
     const es_ded = Number(esic) || 0;
 
-    const net_pay = bs + h + d_a + all + bon - (ded + pf_ded + pt_ded + es_ded);
+    const calculated_net_pay = bs + h + d_a + all + bon - (ded + pf_ded + pt_ded + es_ded);
 
     const paymentDate = new Date();
 
@@ -58,9 +58,11 @@ export default async function handler(req, res) {
         ptax: pt_ded,
         esic: es_ded,
         deductions: ded,
-        net_pay,
+        net_pay: calculated_net_pay,
         generated_on: paymentDate,
-        payslip_pdf: payslip_pdf || null
+        payslip_pdf: payslip_pdf || null,
+        allowance_details: JSON.stringify(allowance_details || []),
+        deduction_details: JSON.stringify(deduction_details || [])
       },
     });
 
@@ -82,7 +84,7 @@ export default async function handler(req, res) {
       empid,
       month,
       year,
-      net_pay
+      net_pay: calculated_net_pay
     });
   } catch (err) {
     console.error("Error generating payroll:", err);

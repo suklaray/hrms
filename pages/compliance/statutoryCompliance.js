@@ -32,7 +32,7 @@ export default function Compliance() {
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
       <SideBar />
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-auto">
         <h1 className="text-3xl font-bold mb-6 text-center text-indigo-700">Statutory Compliance</h1>
 
         {/* Button to show all employees */}
@@ -100,7 +100,7 @@ export default function Compliance() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredEmployees.map(emp => (
-                <tr key={emp.empid} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewDetails(emp.empid)}>
+                <tr key={emp.empid} className="hover:bg-gray-50 cursor-pointer" >
                   <td className="px-4 py-3">{emp.empid}</td>
                   <td className="px-4 py-3">{emp.name}</td>
                   <td className="px-4 py-3">{emp.department}</td>
@@ -117,7 +117,7 @@ export default function Compliance() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-indigo-600 cursor-pointer">
-                    <FaEye/>
+                    <FaEye onClick={() => handleViewDetails(emp.empid)}/>
                   </td>
                 </tr>
               ))}

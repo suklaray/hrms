@@ -47,6 +47,16 @@ export default function Login() {
             <Head>
                 <title>Login - HRMS</title>
             </Head>
+            <style jsx>{`
+                input[type="password"]::-ms-reveal,
+                input[type="password"]::-ms-clear {
+                  display: none;
+                }
+                input[type="password"]::-webkit-credentials-auto-fill-button,
+                input[type="password"]::-webkit-strong-password-auto-fill-button {
+                  display: none !important;
+                }
+            `}</style>
             <div className="min-h-screen flex flex-col">
             {/* Two Columns */}
             <div className="flex flex-grow">
@@ -92,6 +102,10 @@ export default function Login() {
                                     type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    style={{
+                                        WebkitTextSecurity: 'none',
+                                        MsRevealButton: 'none'
+                                    }}
                                     placeholder="Enter your password"
                                     required
                                 />

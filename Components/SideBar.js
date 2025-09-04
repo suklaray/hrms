@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
 import { 
@@ -10,6 +10,19 @@ import {
 export default function Sidebar({ handleLogout, user }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsCollapsed(mobile);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [payrollOpen, setPayrollOpen] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
@@ -69,7 +82,7 @@ export default function Sidebar({ handleLogout, user }) {
   ];
 
   return (
-    <div className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-72'}`}>
+    <div className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-72'} ${isMobile && !isCollapsed ? 'absolute z-50 h-full' : ''}`}>
       {/* Header with Toggle and Notifications */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">

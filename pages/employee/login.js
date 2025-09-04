@@ -38,7 +38,18 @@ export default function EmployeeLogin() {
 
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
+      <style jsx>{`
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+          display: none;
+        }
+        input[type="password"]::-webkit-credentials-auto-fill-button,
+        input[type="password"]::-webkit-strong-password-auto-fill-button {
+          display: none !important;
+        }
+      `}</style>
+      <div className="min-h-screen flex flex-col">
       <div className="flex flex-grow">
         {/* Left side image */}
         <div className="w-1/1 flex items-center justify-center bg-amber-10">
@@ -84,6 +95,10 @@ export default function EmployeeLogin() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  style={{
+                    WebkitTextSecurity: 'none',
+                    MsRevealButton: 'none'
+                  }}
                 />
                 <span
                   className="absolute right-0 cursor-pointer pr-2 text-gray-500"
@@ -120,5 +135,6 @@ export default function EmployeeLogin() {
         </div>
       </div>
     </div>
+    </>
   );
 }
