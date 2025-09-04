@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download } from 'lucide-react';
 
@@ -140,7 +141,11 @@ export default function LeaveRequest() {
 
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Leave Request - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <EmpSidebar />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -509,5 +514,6 @@ export default function LeaveRequest() {
         </div>
       </div>
     </div>
+    </>
   );
 }

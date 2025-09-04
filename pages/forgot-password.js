@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Head from 'next/head';
 import { FiMail } from "react-icons/fi";
 import Image from "next/image";
 import axios from "axios";
@@ -26,7 +27,11 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
+      <Head>
+        <title>Forgot Password - HRMS</title>
+      </Head>
+      <div className="min-h-screen flex flex-col">
       <div className="flex flex-grow">
         {/* Left Side - Image */}
         <div className="w-1/1 flex items-center justify-center bg-amber-10">
@@ -79,5 +84,6 @@ export default function ForgotPassword() {
         </div>
       </div>
     </div>
+    </>
   );
 }

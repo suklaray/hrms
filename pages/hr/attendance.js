@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Clock, Users, Search, Calendar, TrendingUp, Eye } from "lucide-react";
 import { useRouter } from "next/router";
@@ -67,7 +68,11 @@ export default function AttendanceList() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>HR Attendance - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={handleLogout} />
       
       <div className="flex-1 overflow-auto">
@@ -246,6 +251,7 @@ export default function AttendanceList() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

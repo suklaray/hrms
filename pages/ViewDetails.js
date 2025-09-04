@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import Breadcrumb from "@/Components/Breadcrumb";
 
 export default function ViewDetails() {
@@ -46,7 +47,11 @@ export default function ViewDetails() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 p-6 flex justify-center">
+        <>
+            <Head>
+                <title>Employee Details - HRMS</title>
+            </Head>
+            <div className="min-h-screen bg-gray-100 p-6 flex justify-center">
             <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-6xl">
                 <Breadcrumb items={[
                     { label: 'Employee List', href: '/employeeList' },
@@ -89,5 +94,6 @@ export default function ViewDetails() {
                 </div>
             </div>
         </div>
+        </>
     );
 }

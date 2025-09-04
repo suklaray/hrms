@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import Head from 'next/head';
 import { Mail, Phone, MapPin, Send, MessageCircle } from "lucide-react";
 
 export default function ContactPage() {
@@ -56,7 +57,11 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <>
+      <Head>
+        <title>Contact Us - HRMS</title>
+      </Head>
+      <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* Animated Background Shapes */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-40 animate-blob"></div>
@@ -248,5 +253,6 @@ export default function ContactPage() {
         .animate-shake { animation: shake 0.5s ease-in-out; }
       `}</style>
     </div>
+    </>
   );
 }

@@ -1,8 +1,13 @@
+import Head from 'next/head';
 import { Users, Target, Award, Zap, Shield, Clock } from 'lucide-react';
 
 export default function AboutUs() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/40 relative overflow-hidden">
+    <>
+      <Head>
+        <title>About Us - HRMS</title>
+      </Head>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/40 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-10 w-32 h-32 bg-blue-100/20 rounded-full animate-pulse"></div>
@@ -143,5 +148,6 @@ export default function AboutUs() {
         }
       `}</style>
     </div>
+    </>
   );
 }

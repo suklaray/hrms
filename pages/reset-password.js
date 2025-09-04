@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import axios from "axios";
 import Image from "next/image";
 import { FaEye, FaEyeSlash, FaCheckCircle, FaTimesCircle, FaRegCircle } from "react-icons/fa";
@@ -71,7 +72,11 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <>
+      <Head>
+        <title>Reset Password - HRMS</title>
+      </Head>
+      <div className="min-h-screen flex flex-col">
       <div className="flex flex-grow">
         <div className="w-1/1 flex items-center justify-center bg-amber-10">
           <Image
@@ -215,5 +220,6 @@ export default function ResetPassword() {
         </div>
       </div>
     </div>
+    </>
   );
 }

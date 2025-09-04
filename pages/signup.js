@@ -1,6 +1,7 @@
 // pages/signup.js
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import { FaCheckCircle, FaRegCircle, FaTimesCircle, FaEye, FaEyeSlash } from "react-icons/fa";
 import Link from "next/link";
 import Image from "next/image";
@@ -108,7 +109,11 @@ export default function Signup() {
         confirmPassword === password;
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <>
+            <Head>
+                <title>Sign Up - HRMS</title>
+            </Head>
+            <div className="min-h-screen flex flex-col">
             <div className="flex flex-grow">
                 <div className="w-full relative h-screen">
                     <Image src="/homepage.svg" alt="Homepage Background" fill className="z-0" />
@@ -257,5 +262,6 @@ export default function Signup() {
                 </div>
             </div>
         </div>
+        </>
     );
 }

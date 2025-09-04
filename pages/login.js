@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import { FiMail, FiLock } from "react-icons/fi";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import Image from 'next/image';
@@ -42,7 +43,11 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <>
+            <Head>
+                <title>Login - HRMS</title>
+            </Head>
+            <div className="min-h-screen flex flex-col">
             {/* Two Columns */}
             <div className="flex flex-grow">
                 {/* Left Side - Image */}
@@ -117,5 +122,6 @@ export default function Login() {
                 </div>
             </div>
         </div>
+        </>
     );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from 'next/image';
+import Head from 'next/head';
 import { ArrowRight, Users, BarChart3, Shield, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -25,6 +26,9 @@ export default function Home() {
 
     return (
         <>
+            <Head>
+                <title>HRMS - Human Resource Management System</title>
+            </Head>
             <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
                 {/* Hero Section */}
                 <div className="flex min-h-screen">

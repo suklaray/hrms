@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
 import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown } from "react-icons/fa";
@@ -147,7 +148,11 @@ export default function EmployeeListPage({ user }) {
   const showAllButton = allowedRolesForUser.length > 1;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Employee List - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={handleLogout} />
       <div className="flex-1 p-6">
         {/* Header */}
@@ -306,5 +311,6 @@ export default function EmployeeListPage({ user }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

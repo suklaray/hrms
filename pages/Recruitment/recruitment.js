@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import Link from "next/link";
 import { 
@@ -220,7 +221,11 @@ export default function Candidates(user) {
 
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Recruitment Management - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -460,5 +465,6 @@ export default function Candidates(user) {
         </div>
       </div>
     </div>
+    </>
   );
 }

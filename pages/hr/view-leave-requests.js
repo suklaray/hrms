@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import moment from 'moment'; 
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from 'next/router';
 import { Eye, Calendar, User, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, Settings } from 'lucide-react';
@@ -159,7 +160,11 @@ export default function ViewLeaveRequests() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Leave Requests Management - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={handleLogout} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -408,5 +413,6 @@ export default function ViewLeaveRequests() {
         )}
       </div>
     </div>
+    </>
   );
 }

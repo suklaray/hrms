@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import Image from "next/image";
 
@@ -120,7 +121,11 @@ export default function Profile() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <>
+      <Head>
+        <title>Profile Settings - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen">
       <SideBar />
       <div className="flex-1 bg-gradient-to-b from-white to-gray-100 p-10">
         <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-8 relative">
@@ -334,5 +339,6 @@ export default function Profile() {
         )}
       </div>
     </div>
+    </>
   );
 }

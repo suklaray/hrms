@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState, useCallback } from "react";
+import Head from 'next/head';
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import Sidebar from "@/Components/empSidebar";
@@ -93,7 +94,11 @@ export default function EmployeePayslipPreview() {
   const totalDeductionsWithFixed = totalCustomDeductions + (pf + ptax + esic);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Payslip Preview - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
 
       <div className="flex-1 p-8 flex flex-col items-center">
@@ -181,6 +186,7 @@ export default function EmployeePayslipPreview() {
         </button>
       </div>
     </div>
+    </>
   );
 }
 

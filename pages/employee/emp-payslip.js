@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import Sidebar from "@/Components/empSidebar";
 import { FileText, Download, Calendar, AlertCircle, Eye } from "lucide-react";
 
@@ -37,7 +38,11 @@ export default function EmpPayslip() {
   }, [router]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Payslips - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -147,5 +152,6 @@ export default function EmpPayslip() {
         </div>
       </div>
     </div>
+    </>
   );
 }

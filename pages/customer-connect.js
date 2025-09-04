@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Head from 'next/head';
 import { Trash2 } from "lucide-react";
 import SideBar from "@/Components/SideBar";
 
@@ -61,7 +62,11 @@ export default function CustomerConnect() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-indigo-200">
+        <>
+            <Head>
+                <title>Customer Connect - HRMS</title>
+            </Head>
+            <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-indigo-200">
         <SideBar />
 
         <div className="flex-grow p-6">
@@ -163,5 +168,6 @@ export default function CustomerConnect() {
             </div>
         </div>
         </div>
+        </>
     );
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { Settings, Save, ArrowLeft } from 'lucide-react';
 
@@ -43,7 +44,11 @@ export default function ManageLeaveTypes() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Manage Leave Types - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={() => router.push('/login')} />
       <div className="flex-1 overflow-auto">
         <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -113,5 +118,6 @@ export default function ManageLeaveTypes() {
         </div>
       </div>
     </div>
+    </>
   );
 }
