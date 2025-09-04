@@ -61,11 +61,11 @@ export default function Sidebar({ handleLogout, user }) {
 
   const complianceSubItems = [
     { name: "Employee Compliance", path: "/compliance/empCompliance" },
-    { name: "Statutory Compliance", path: "/compliance/statutoryCompliance" },
+    //{ name: "Statutory Compliance", path: "/compliance/statutoryCompliance" },
     { name: "Document Center", path: "/compliance/documentCenter" },
-    { name: "Policy Acknowledgements", path: "/compliance/policyAcknowledge" },
+    //{ name: "Policy Acknowledgements", path: "/compliance/policyAcknowledge" },
     //{ name: "Audit Logs", path: "/compliance/auditLog" },
-    { name: "Reports & Filings", path: "/compliance/ReportFillings" },
+    //{ name: "Reports & Filings", path: "/compliance/ReportFillings" },
   ];
 
   return (

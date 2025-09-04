@@ -35,6 +35,12 @@ export default function CustomerConnect() {
     };
 
     const handleDelete = async () => {
+        const confirmDelete = confirm(`Are you sure you want to delete ${selected.length} selected message(s)? This action cannot be undone.`);
+        
+        if (!confirmDelete) {
+            return;
+        }
+
         try {
         const res = await fetch("/api/contact/delete-multiple", {
             method: "POST",
