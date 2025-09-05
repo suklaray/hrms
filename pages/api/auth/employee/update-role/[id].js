@@ -1,5 +1,6 @@
 // /pages/api/auth/employee/update-role/[id].js
 import prisma from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 
 export default async function handler(req, res) {
   const {
