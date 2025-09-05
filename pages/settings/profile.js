@@ -119,7 +119,9 @@ export default function Profile() {
       });
     }
   };
-
+const loaderProp =({ src }) => {
+    return src;
+}
   return (
     <>
       <Head>
@@ -142,6 +144,7 @@ export default function Profile() {
                     width={120}
                     height={120}
                     className="w-[120px] h-[120px] rounded-full object-cover border-4 border-indigo-500"
+                    loader={loaderProp}
                   />
                 ) : (
                   <div className="w-[120px] h-[120px] rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-semibold text-sm border-2 border-dashed border-indigo-400">

@@ -56,7 +56,9 @@ export async function getServerSideProps(context) {
     },
   };
 }
-
+const loaderProp =({ src }) => {
+    return src;
+}
 export default function Dashboard({ user }) {
   const router = useRouter();
   const [stats, setStats] = useState(null);
@@ -279,6 +281,7 @@ export default function Dashboard({ user }) {
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'flex';
                               }}
+                              loader={loaderProp}
                             />
                           ) : null}
                           <span className={`text-indigo-600 font-medium text-sm ${employee.profile_photo ? 'hidden' : 'flex'}`}>
