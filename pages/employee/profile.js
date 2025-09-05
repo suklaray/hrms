@@ -48,7 +48,7 @@ export default function Profile() {
 
   const handleDocumentSubmission = () => {
     if (user) {
-      const url = `/Recruitment/form/${user.empid}?prefill=true&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`;
+      const url = `/employee/upload-documents/${user.empid}?name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
