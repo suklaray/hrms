@@ -1,7 +1,13 @@
+import Head from 'next/head';
+
 export default function ChangePassword() {
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded shadow">
-      <h2 className="text-2xl font-bold mb-4">Change Password</h2>
+    <>
+      <Head>
+        <title>Change Password - HRMS</title>
+      </Head>
+      <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded shadow">
+        <h2 className="text-2xl font-bold mb-4">Change Password</h2>
       <form className="space-y-4">
         <div>
           <label className="block text-sm font-medium">Current Password</label>
@@ -22,6 +28,7 @@ export default function ChangePassword() {
           Update Password
         </button>
       </form>
-    </div>
+      </div>
+    </>
   );
 }

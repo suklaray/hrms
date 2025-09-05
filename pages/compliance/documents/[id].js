@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState, useCallback } from 'react';
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { FileText, CheckCircle, XCircle, AlertCircle, Eye, ArrowLeft } from "lucide-react";
 
@@ -162,7 +163,11 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Employee Documents - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar />
       
       <div className="flex-1 p-6">
@@ -251,5 +256,6 @@ export default function DocumentsPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

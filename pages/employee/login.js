@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import { FiMail, FiLock } from "react-icons/fi";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import Image from "next/image";
@@ -39,6 +40,9 @@ export default function EmployeeLogin() {
 
   return (
     <>
+      <Head>
+        <title>Employee Login - HRMS</title>
+      </Head>
       <style jsx>{`
         input[type="password"]::-ms-reveal,
         input[type="password"]::-ms-clear {

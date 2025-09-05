@@ -1,6 +1,7 @@
 //generate payroll for each employee (individual)
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { FaEye } from 'react-icons/fa';
 
@@ -26,7 +27,11 @@ export default function EmployeePayroll() {
   }, [empid]);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <>
+      <Head>
+        <title>Employee Payroll - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <SideBar />
 
       <main className="flex-1 p-8">
@@ -158,5 +163,6 @@ export default function EmployeePayroll() {
         </div>
       </main>
     </div>
+    </>
   );
 }

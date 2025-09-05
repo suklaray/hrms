@@ -1,6 +1,7 @@
 
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import axios from "axios";
 import { Copy, RefreshCw, Eye, EyeOff, User, FileText } from "lucide-react";
@@ -186,7 +187,11 @@ useEffect(() => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Employee Details - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -476,6 +481,7 @@ useEffect(() => {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

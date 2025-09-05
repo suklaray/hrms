@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import Head from 'next/head';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import Sidebar from '../../Components/empSidebar';
 
@@ -91,7 +92,11 @@ export default function EmployeeAttendance() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>My Attendance - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
       
       <div className="flex-1 p-6">
@@ -287,5 +292,6 @@ export default function EmployeeAttendance() {
         </div>
       </div>
     </div>
+    </>
   );
 }

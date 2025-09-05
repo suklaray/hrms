@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import axios from "axios";
 
 export default function CandidateForm() {
@@ -575,7 +576,11 @@ const handleDocumentUpload = async (e, type) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <>
+      <Head>
+        <title>Document Submission Form - HRMS</title>
+      </Head>
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
           {/* Header */}
@@ -1213,4 +1218,5 @@ const handleDocumentUpload = async (e, type) => {
         </div>
       </div>
     </div>
+    </>
   );}

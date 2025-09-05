@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import Head from 'next/head';
 import Sidebar from "@/Components/empSidebar";
 import { User, Mail, Camera, Lock, Save, X, Eye, EyeOff, FileText, CheckCircle } from "lucide-react";
 import Image from "next/image";
@@ -168,7 +169,11 @@ export default function Profile() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Employee Profile - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <Sidebar user={user} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -496,5 +501,6 @@ export default function Profile() {
 
 
     </div>
+    </>
   );
 }

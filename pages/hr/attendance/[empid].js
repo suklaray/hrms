@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
 
@@ -48,7 +49,11 @@ const ViewAttendance = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Employee Attendance - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar />
       
       <div className="flex-1 overflow-auto">
@@ -222,6 +227,7 @@ const ViewAttendance = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

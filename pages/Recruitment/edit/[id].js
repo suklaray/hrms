@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import axios from "axios";
 import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
@@ -148,7 +149,11 @@ export default function EditCandidate() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <>
+        <Head>
+          <title>Edit Candidate Profile - HRMS</title>
+        </Head>
+        <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <SideBar />
         <div className="flex-1 p-4 lg:p-8">
           <div className="flex justify-center items-center py-20">
@@ -156,11 +161,16 @@ export default function EditCandidate() {
           </div>
         </div>
       </div>
+      </>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <>
+      <Head>
+        <title>Edit Candidate Profile - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <SideBar />
       <div className="flex-1 p-4 lg:p-8">
         <Breadcrumb items={[
@@ -310,5 +320,6 @@ export default function EditCandidate() {
         </div>
       </div>
     </div>
+    </>
   );
 }

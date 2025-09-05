@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { useRouter } from 'next/router';
 import { 
@@ -108,7 +109,11 @@ export default function EmployeeDetails({ user }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Employee Details - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={handleLogout} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -271,5 +276,6 @@ export default function EmployeeDetails({ user }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

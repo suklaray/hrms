@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import axios from "axios";
 import { User, FileText, MapPin, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
 
@@ -206,7 +207,11 @@ export default function EmployeeDocumentForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <>
+      <Head>
+        <title>Employee Document Form - HRMS</title>
+      </Head>
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
           <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
@@ -651,5 +656,6 @@ export default function EmployeeDocumentForm() {
         </div>
       </div>
     </div>
+    </>
   );
 }
