@@ -50,28 +50,28 @@ export default function EmployeeLogin() {
         }
       `}</style>
       <div className="min-h-screen flex flex-col">
-      <div className="flex flex-grow">
+      <div className="flex flex-col lg:flex-row flex-grow">
         {/* Left side image */}
-        <div className="w-1/1 flex items-center justify-center bg-amber-10">
+        <div className="w-full lg:w-1/2 flex items-center justify-center bg-amber-10 py-6 lg:py-0">
           <Image 
             src="/images/homepage.svg" 
             width={600}
             height={400}
             alt="image" 
-            style={{ width: '100%', height: 'auto' }}
+            className="w-full h-auto max-w-xs sm:max-w-sm lg:max-w-none"
             />
         </div>
 
         {/* Right side form */}
-        <div className="w-1/2 flex flex-col items-center justify-center bg-gray-50 text-center p-10">
-          <div className="bg-white p-10 rounded-lg shadow-xl w-full max-w-md">
+        <div className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-gray-50 text-center p-4 sm:p-6 lg:p-10">
+          <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-lg shadow-xl w-full max-w-md">
             {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
-            <h1 className="pb-8 text-center text-indigo-600 text-3xl font-medium mb-6">
+            <h1 className="pb-6 lg:pb-8 text-center text-indigo-600 text-xl sm:text-2xl lg:text-3xl font-medium mb-4 lg:mb-6">
               EMPLOYEE SIGN IN
             </h1>
 
-            <form onSubmit={handleLogin} className="space-y-6">
+            <form onSubmit={handleLogin} className="space-y-4 lg:space-y-6">
               {/* Email/Username input */}
               <div className="flex items-center border-b-2 border-indigo-500 py-2">
                 <FiMail className="text-gray-500 mr-3" />
@@ -115,10 +115,10 @@ export default function EmployeeLogin() {
               </div>
 
               {/* Submit button */}
-              <div className="pt-8">
+              <div className="pt-6 lg:pt-8">
                 <button
                   type="submit"
-                  className="w-full text-white py-2 rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 transition duration-300"
+                  className="w-full text-white py-3 sm:py-2 rounded-md bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 transition duration-300 cursor-pointer"
                 >
                   Sign In
                 </button>
