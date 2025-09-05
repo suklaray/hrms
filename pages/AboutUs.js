@@ -49,7 +49,7 @@ export default function AboutUs() {
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">Why Choose Our HRMS?</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-8 shadow-md hover:shadow-lg hover:bg-white/80 transition-all duration-300 border border-white/30 hover:scale-105">
+            <div className="bg-white/60 backdrop-blur-sm rounded-xl p-8 shadow-md hover:shadow-lg hover:bg-white/80 transition-all duration-300 border border-white/30 hover:scale-105 cursor-pointer">
               <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center mb-6 animate-pulse">
                 <Users className="w-6 h-6 text-white" />
               </div>

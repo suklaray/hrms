@@ -90,7 +90,7 @@ const Header = () => {
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center space-x-2 px-4 py-2 text-white hover:text-red-300 hover:bg-white/10 rounded-lg transition-all duration-200"
+                  className="flex items-center space-x-2 px-4 py-2 text-white hover:text-red-300 hover:bg-white/10 rounded-lg transition-all duration-200 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4" />
                   <span>Logout</span>
@@ -119,7 +119,7 @@ const Header = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 text-white hover:text-yellow-300 hover:bg-white/10 rounded-lg transition-all duration-200"
+            className="md:hidden p-2 text-white hover:text-yellow-300 hover:bg-white/10 rounded-lg transition-all duration-200 cursor-pointer"
           >
             {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -172,7 +172,7 @@ const Header = () => {
                     handleLogout();
                     setMenuOpen(false);
                   }}
-                  className="flex items-center space-x-3 px-4 py-3 text-white hover:text-red-300 hover:bg-white/10 rounded-lg transition-all duration-200 w-full"
+                  className="flex items-center space-x-3 px-4 py-3 text-white hover:text-red-300 hover:bg-white/10 rounded-lg transition-all duration-200 w-full cursor-pointer"
                 >
                   <LogOut className="w-5 h-5" />
                   <span>Logout</span>

@@ -16,13 +16,15 @@ export default function Sidebar({ handleLogout, user }) {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      setIsCollapsed(mobile);
+      if (mobile !== isCollapsed) {
+        setIsCollapsed(mobile);
+      }
     };
     
     checkScreenSize();
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
+  }, [isCollapsed]);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [payrollOpen, setPayrollOpen] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
