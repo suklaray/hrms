@@ -67,7 +67,7 @@ model candidates {
   email                 String
   contact_number        String?
   interview_date        DateTime?
-  interview_time        String?
+  interview_timing      String?
   resume                String?
   form_link             String?
   created_at            DateTime?          @default(now())
