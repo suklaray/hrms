@@ -110,7 +110,7 @@ useEffect(() => {
 
   const handleRoleChange = async (newRole) => {
     try {
-      const res = await axios.patch(`/api/auth/employee/update-role/${user.id}`,
+      const res = await axios.patch(`/api/auth/employee/update-role/${empid}`,
         { role: newRole },
         {
           headers: {
@@ -136,7 +136,7 @@ useEffect(() => {
   };
   const handleEmployeeTypeChange = async (newType) => {
     try {
-      const res = await axios.patch(`/api/auth/employee/update-type/${user.id}`,
+      const res = await axios.patch(`/api/auth/employee/update-type/${empid}`,
       { employee_type: newType },
       {
         headers: {
