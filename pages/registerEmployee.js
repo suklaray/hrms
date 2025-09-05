@@ -29,6 +29,7 @@ export default function RegisterEmployee() {
     const [formData, setFormData] = useState({
         name: "",
         email: "",
+        contact_number: "",
         position: "",
         dateOfJoining: "",
         status: "Active",
@@ -57,7 +58,7 @@ export default function RegisterEmployee() {
 
     // Check if form is valid
     useEffect(() => {
-        const requiredFields = ['name', 'email', 'position', 'dateOfJoining', 'experience', 'employeeType'];
+        const requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
         const hasAllFields = requiredFields.every(field => {
             return formData[field] && formData[field].toString().trim() !== '';
         });
@@ -98,6 +99,15 @@ export default function RegisterEmployee() {
                     if (emailTimeout) clearTimeout(emailTimeout);
                     const timeout = setTimeout(() => checkEmailAvailability(value), 800);
                     setEmailTimeout(timeout);
+                }
+                break;
+            case 'contact_number':
+                if (!value.trim()) {
+                    newErrors[name] = 'Contact number is required';
+                } else if (!/^\d{10}$/.test(value)) {
+                    newErrors[name] = 'Contact number must be exactly 10 digits';
+                } else {
+                    delete newErrors[name];
                 }
                 break;
             case 'position':
@@ -209,7 +219,7 @@ export default function RegisterEmployee() {
     };
 
     const validateForm = () => {
-        const requiredFields = ['name', 'email', 'position', 'dateOfJoining', 'experience', 'employeeType'];
+        const requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
         let isValid = true;
         
         requiredFields.forEach(field => {
@@ -248,6 +258,7 @@ export default function RegisterEmployee() {
                 body: JSON.stringify({
                     name: formData.name,
                     email: formData.email,
+                    contact_number: formData.contact_number,
                     position: formData.position,
                     date_of_joining: formData.dateOfJoining,
                     status: formData.status,
@@ -273,6 +284,7 @@ export default function RegisterEmployee() {
             setFormData({
                 name: "",
                 email: "",
+                contact_number: "",
                 position: "",
                 dateOfJoining: "",
                 status: "Active",
@@ -465,6 +477,34 @@ export default function RegisterEmployee() {
                                     {errors.email && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.email}</p>}
                                 </div>
 
+                                {/* Contact Number */}
+                                <div>
+                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                        <FaPhone className="mr-2 text-indigo-500" />
+                                        Contact Number *
+                                    </label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            value={formData.contact_number} 
+                                            onChange={(e) => handleInputChange('contact_number', e.target.value)}
+                                            placeholder="Enter 10-digit contact number"
+                                            maxLength={10}
+                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
+                                                errors.contact_number 
+                                                    ? 'border-red-500 focus:border-red-500' 
+                                                    : formData.contact_number && !errors.contact_number
+                                                        ? 'border-green-500 focus:border-green-500'
+                                                        : 'border-gray-200 focus:border-indigo-500'
+                                            }`}
+                                        />
+                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                            {getFieldIcon('contact_number', errors.contact_number, formData.contact_number && !errors.contact_number)}
+                                        </div>
+                                    </div>
+                                    {errors.contact_number && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.contact_number}</p>}
+                                </div>
+
                                 {/* Position */}
                                 <div>
                                     <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
@@ -616,7 +656,7 @@ export default function RegisterEmployee() {
                                 {generatedPassword && (
                                     <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                                         <div className="flex items-center gap-2 mb-3">
-                                            <CheckCircle className="w-5 h-5 text-green-600" />
+                                            <CheckCircle className="w-5 h-5 text-green-600 cursor-pointer" />
                                             <h3 className="font-semibold text-green-800">Employee Registered Successfully!</h3>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -634,7 +674,7 @@ export default function RegisterEmployee() {
                                                         onClick={copyUsername}
                                                         className="p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
                                                     >
-                                                        <Copy className="w-4 h-4" />
+                                                        <Copy className="w-4 h-4 cursor-pointer" />
                                                     </button>
                                                 </div>
                                                 {usernameCopied && <p className="text-xs text-green-600 mt-1">Username copied!</p>}
@@ -651,14 +691,14 @@ export default function RegisterEmployee() {
                                                     <button
                                                         type="button"
                                                         onClick={() => setShowPassword(!showPassword)}
-                                                        className="p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
+                                                        className="cursor-pointer p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
                                                     >
-                                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                        {showPassword ? <EyeOff className="w-4 h-4 cursor-pointer" /> : <Eye className="w-4 h-4" />}
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={copyPassword}
-                                                        className="p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
+                                                        className="cursor-pointer p-2 text-green-600 hover:text-green-800 border border-green-300 rounded"
                                                     >
                                                         <Copy className="w-4 h-4" />
                                                     </button>
@@ -677,7 +717,7 @@ export default function RegisterEmployee() {
                                     disabled={!isFormValid || isLoading}
                                     className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg ${
                                         isFormValid && !isLoading
-                                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02]'
+                                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] cursor-pointer'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                     }`}
                                 >

@@ -56,7 +56,7 @@ export default function Sidebar({ handleLogout, user }) {
 
   const employeeSubItems = [
     { name: "Register Employee", path: "/registerEmployee" },
-    { name: "View Employees", path: "/employeeList" },
+    { name: "Employees List", path: "/employeeList" },
   ];
 
   const attendanceSubItems = [

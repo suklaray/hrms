@@ -61,17 +61,47 @@ useEffect(() => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-lg font-medium">Loading employee details...</p>
-      </div>
+      <>
+        <Head>
+          <title>Employee Details - HRMS</title>
+        </Head>
+        <div className="flex min-h-screen bg-gray-50">
+          <SideBar />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full border-4 border-gray-200 mx-auto"></div>
+                <div className="w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin absolute top-0 left-1/2 transform -translate-x-1/2"></div>
+              </div>
+              <p className="text-gray-600 mt-4 font-medium text-lg">Loading employee details...</p>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-red-600 text-lg font-medium">Employee not found</p>
-      </div>
+      <>
+        <Head>
+          <title>Employee Details - HRMS</title>
+        </Head>
+        <div className="flex min-h-screen bg-gray-50">
+          <SideBar />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-red-600 text-lg font-medium mb-4">Employee not found</p>
+              <button
+                onClick={() => router.push('/employeeList')}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+              >
+                Back to Employee List
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
     );
   }
 
@@ -194,6 +224,26 @@ useEffect(() => {
       <div className="flex min-h-screen bg-gray-50">
       <SideBar />
       <div className="flex-1 overflow-auto">
+        {/* Breadcrumb Navigation */}
+        <div className="bg-white border-b border-gray-200 px-6 py-3">
+          <nav className="flex items-center space-x-2 text-sm">
+            <button
+              onClick={() => router.push('/employeeList')}
+              className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
+            >
+              Employee List
+            </button>
+            <span className="text-gray-400">/</span>
+            <span className="text-gray-600">Employee Details</span>
+            {name && (
+              <>
+                <span className="text-gray-400">/</span>
+                <span className="text-gray-900 font-medium">{name}</span>
+              </>
+            )}
+          </nav>
+        </div>
+
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -201,6 +251,12 @@ useEffect(() => {
               <h1 className="text-2xl font-bold text-gray-900">Employee Details</h1>
               <p className="text-gray-600">View and manage employee information</p>
             </div>
+            <button
+              onClick={() => router.push('/employeeList')}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors cursor-pointer"
+            >
+              ← Back to List
+            </button>
           </div>
         </div>
 

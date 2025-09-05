@@ -186,7 +186,7 @@ export default function EmployeeListPage({ user }) {
               <button
                 key={label}
                 onClick={() => setFilter(label)}
-                className={`p-4 rounded-xl transition-all hover:scale-105 ${
+                className={`p-4 rounded-xl transition-all hover:scale-105 cursor-pointer ${
                   filter === label 
                     ? 'bg-indigo-600 text-white shadow-lg' 
                     : 'bg-white text-gray-700 shadow-md hover:shadow-lg border border-gray-200'
@@ -279,14 +279,14 @@ export default function EmployeeListPage({ user }) {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => handleView(emp.id)}
-                          className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 p-2 rounded-lg transition-colors"
+                          className="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 p-2 rounded-lg transition-colors cursor-pointer"
                           title="View Employee"
                         >
                           <FaEye size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(emp.id)}
-                          className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors"
+                          className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors cursor-pointer"
                           title="Delete Employee"
                         >
                           <FaTrash size={14} />

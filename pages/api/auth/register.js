@@ -10,6 +10,7 @@ export default async function handler(req, res) {
   const {
     name,
     email,
+    contact_number,
     position,
     date_of_joining,
     status,
@@ -43,6 +44,7 @@ export default async function handler(req, res) {
         empid,
         name,
         email,
+        contact_number: contact_number || null,
         password: hashedPassword,
         position: position || null,
         date_of_joining: date_of_joining ? new Date(date_of_joining) : null,
