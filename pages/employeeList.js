@@ -89,7 +89,7 @@ export default function EmployeeListPage({ user }) {
   };
 
   const handleDelete = async (id) => {
-    const confirm = window.confirm("Are you sure you want to delete this employee?");
+    const confirm = window.confirm("Do you want to remove this employee and make the user inactive? You won't be able to access this employee in other pages.");
     if (!confirm) return;
 
     try {
@@ -98,11 +98,14 @@ export default function EmployeeListPage({ user }) {
       });
       if (res.ok) {
         setEmployees(employees.filter((emp) => emp.id !== id));
+        alert("Employee has been made inactive successfully.");
       } else {
         console.error("Delete failed");
+        alert("Failed to make employee inactive. Please try again.");
       }
     } catch (error) {
-      console.error("Error deleting employee:", error);
+      console.error("Error making employee inactive:", error);
+      alert("Error occurred. Please try again.");
     }
   };
 

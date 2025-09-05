@@ -41,7 +41,13 @@ export default function Candidates(user) {
       const total = data.length;
       const selected = data.filter(c => c.status === 'Selected').length;
       const rejected = data.filter(c => c.status === 'Rejected').length;
-      const waiting = data.filter(c => c.status === 'Waiting' || !c.status).length;
+      const waiting = data.filter(c => 
+        !c.status || 
+        c.status === 'Pending' || 
+        c.status === 'Waiting' || 
+        c.status === 'Mail Sent' || 
+        c.status === 'Document Submitted'
+      ).length;
       setStats({ total, selected, rejected, waiting });
       
       setLoading(false);

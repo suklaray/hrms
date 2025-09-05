@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import axios from "axios";
@@ -24,13 +24,7 @@ export default function EditCandidate() {
   const [saving, setSaving] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
 
-  useEffect(() => {
-    if (id) {
-      fetchCandidate();
-    }
-  }, [id]);
-
-  const fetchCandidate = async () => {
+  const fetchCandidate = useCallback(async () => {
     try {
       const res = await axios.get(`/api/recruitment/getCandidateById?id=${id}`);
       setCandidate(res.data);
@@ -48,7 +42,13 @@ export default function EditCandidate() {
       console.error("Error fetching candidate:", error);
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchCandidate();
+    }
+  }, [id, fetchCandidate]);
 
   const handleChange = (e) => {
     const { name, value, files, type } = e.target;

@@ -43,11 +43,17 @@ export default async function handler(req, res) {
         email: true,
         role: true,
         position: true,
+        status: true,
       },
     });
 
     if (!user) {
       return res.status(404).json({ message: 'Employee not found' });
+    }
+
+    // Check if user is inactive
+    if (user.status === "Inactive") {
+      return res.status(403).json({ message: "Access denied. Employee is inactive." });
     }
 
     // For HR/admin roles, check if they can access this employee's data

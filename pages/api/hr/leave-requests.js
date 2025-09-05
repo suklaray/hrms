@@ -8,12 +8,22 @@ export default async function handler(req, res) {
 
   try {
     const leaveRequests = await prisma.leave_requests.findMany({
+      include: {
+        users: {
+          select: {
+            status: true
+          }
+        }
+      },
       orderBy: {
         applied_at: 'desc', 
       },
     });
 
-    res.status(200).json({ success: true, data: leaveRequests });
+    // Filter out requests from inactive employees
+    const activeLeaveRequests = leaveRequests.filter(req => req.users.status !== 'Inactive');
+
+    res.status(200).json({ success: true, data: activeLeaveRequests });
   } catch (error) {
     console.error("Error fetching leave requests:", error);
     res.status(500).json({ success: false, error: "Server error" });

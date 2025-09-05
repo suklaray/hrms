@@ -30,6 +30,7 @@ export default async function handler(req, res) {
         attendance a ON u.empid = a.empid
       WHERE 
         u.role IN ('employee', 'admin', 'hr', 'superadmin')
+        AND u.status != 'Inactive'
       GROUP BY 
         u.empid, u.name, u.email, u.role, u.status
       ORDER BY 

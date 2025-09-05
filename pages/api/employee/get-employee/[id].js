@@ -18,11 +18,17 @@ export default async function handler(req, res) {
         empid: true,
         name: true,
         email: true,
+        status: true,
       }
     });
 
     if (!user) {
       return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    // Check if user is inactive
+    if (user.status === "Inactive") {
+      return res.status(403).json({ error: 'Access denied. Employee is inactive.' });
     }
 
     res.status(200).json(user);

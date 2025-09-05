@@ -11,7 +11,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    const users = await prisma.users.findMany();
+    const users = await prisma.users.findMany({
+      where: {
+        status: { not: "Inactive" } // Exclude inactive employees
+      }
+    });
     const employees = await prisma.employees.findMany({
       include: {
         bank_details: true,

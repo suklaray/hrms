@@ -21,6 +21,11 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
+    // Check if user is inactive
+    if (user.status === "Inactive") {
+      return res.status(403).json({ message: "Access denied. Employee is inactive." });
+    }
+
     const employee = {
       ...user,
       contact_no: 'Not provided',

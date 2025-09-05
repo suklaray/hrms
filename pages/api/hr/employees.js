@@ -25,7 +25,8 @@ export default async function handler(req, res) {
       where: { 
         role: { 
           in: accessibleRoles 
-        } 
+        },
+        status: { not: "Inactive" } // Exclude inactive employees
       },
       select: {
         empid: true,

@@ -10,7 +10,9 @@ export default async function handler(req, res) {
   const { role } = req.query;
 
   try {
-    const filters = {};
+    const filters = {
+      status: { not: "Inactive" } // Exclude inactive employees
+    };
 
     // If role is given in query string, e.g. ?role=HR
     if (role && typeof role === "string" && role !== "All") {

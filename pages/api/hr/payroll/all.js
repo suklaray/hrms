@@ -11,7 +11,8 @@ export default async function handler(req, res) {
         users: {
           select: {
             name: true,
-            position: true
+            position: true,
+            status: true
           }
         }
       },
@@ -21,12 +22,14 @@ export default async function handler(req, res) {
       ]
     });
 
-    // Combine payroll with user info
-    const formatted = payrolls.map(p => ({
-      ...p,
-      name: p.users.name,
-      position: p.users.position
-    }));
+    // Combine payroll with user info and filter out inactive employees
+    const formatted = payrolls
+      .filter(p => p.users.status !== 'Inactive')
+      .map(p => ({
+        ...p,
+        name: p.users.name,
+        position: p.users.position
+      }));
 
     res.status(200).json(formatted);
   } catch (error) {
