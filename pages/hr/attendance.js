@@ -4,6 +4,46 @@ import SideBar from "@/Components/SideBar";
 import { Clock, Users, Search, Calendar, TrendingUp, Eye } from "lucide-react";
 import { useRouter } from "next/router";
 
+// Live Timer Component
+function LiveTimer({ checkInTime, isLoggedIn, totalHours, completedSeconds }) {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isLoggedIn]);
+
+  if (!isLoggedIn || !checkInTime) {
+    return <span className="text-sm font-mono text-gray-900">{totalHours || "000:00:00"}</span>;
+  }
+
+  const checkIn = new Date(checkInTime);
+  
+  // Only validate if checkIn is invalid
+  if (isNaN(checkIn.getTime())) {
+    return <span className="text-sm font-mono text-gray-900">{totalHours || "000:00:00"}</span>;
+  }
+
+  const currentSessionSeconds = (currentTime - checkIn) / 1000;
+  const completedTime = Number(completedSeconds) || 0;
+  const totalSecondsToday = completedTime + currentSessionSeconds;
+  
+  const hours = Math.floor(totalSecondsToday / 3600);
+  const minutes = Math.floor((totalSecondsToday % 3600) / 60);
+  const seconds = Math.floor(totalSecondsToday % 60);
+
+  return (
+    <span className="text-sm font-mono text-green-600 font-semibold">
+      {String(hours).padStart(3, '0')}:{String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+    </span>
+  );
+}
+
 export default function AttendanceList() {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -200,7 +240,12 @@ export default function AttendanceList() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm font-mono text-gray-900">{user.total_hours || "0h"}</span>
+                            <LiveTimer 
+                              checkInTime={user.today_checkin}
+                              isLoggedIn={user.status === "Logged In"}
+                              totalHours={user.total_hours}
+                              completedSeconds={user.today_completed_seconds}
+                            />
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

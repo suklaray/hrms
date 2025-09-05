@@ -42,6 +42,7 @@ export default async function handler(req, res) {
         date: true,
         check_in: true,
         check_out: true,
+        total_hours: true,
         attendance_status: true,
       },
       orderBy: {
@@ -98,8 +99,9 @@ export default async function handler(req, res) {
         attendance_status: dayRecord.attendance_status,
         check_in: firstCheckIn,
         check_out: lastCheckOut,
+        total_hours: dayRecord.total_hours || (totalWorkingMinutes / 60),
         total_working_minutes: totalWorkingMinutes,
-        status: (totalWorkingMinutes >= 240) ? 'Present' : 'Absent', // 240 minutes = 4 hours
+        status: dayRecord.attendance_status || ((totalWorkingMinutes >= 240) ? 'Present' : 'Absent'),
       };
     });
 

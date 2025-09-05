@@ -226,11 +226,27 @@ export default function EmployeeAttendance() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {attendance.length > 0 ? (
                       attendance.map((record, index) => {
-                        const workingHours = record.total_working_minutes > 0
-                          ? (record.total_working_minutes / 60).toFixed(1)
+                        const workingHours = record.total_hours > 0
+                          ? record.total_hours.toFixed(1)
                           : '--';
                         
-                        const attendanceStatus = workingHours >= 4 ? 'Present' : 'Absent';
+                        const attendanceStatus = record.attendance_status || (workingHours >= 4 ? 'Present' : 'Absent');
+                        
+                        // Format dates to show proper login/logout dates
+                        const checkInDate = record.check_in ? new Date(record.check_in) : null;
+                        const checkOutDate = record.check_out ? new Date(record.check_out) : null;
+                        
+                        const formatDateTime = (date) => {
+                          if (!date) return '--';
+                          return date.toLocaleString('en-US', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: true
+                          });
+                        };
                         
                         return (
                           <tr key={index} className="hover:bg-gray-50">
@@ -241,10 +257,24 @@ export default function EmployeeAttendance() {
                               {new Date(record.date).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatTime(record.check_in)}
+                              <div className="flex flex-col">
+                                <span>{formatTime(record.check_in)}</span>
+                                {checkInDate && (
+                                  <span className="text-xs text-gray-500">
+                                    {checkInDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatTime(record.check_out)}
+                              <div className="flex flex-col">
+                                <span>{formatTime(record.check_out)}</span>
+                                {checkOutDate && (
+                                  <span className="text-xs text-gray-500">
+                                    {checkOutDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {workingHours !== '--' ? `${workingHours} hrs` : '--'}

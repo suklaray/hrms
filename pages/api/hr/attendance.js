@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 
 const formatDuration = (seconds) => {
-  const hrs = Math.floor(seconds / 3600).toString().padStart(2, '0');
+  const hrs = Math.floor(seconds / 3600).toString().padStart(3, '0');
   const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
   const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
   return `${hrs}:${mins}:${secs}`;
@@ -15,14 +15,43 @@ export default async function handler(req, res) {
         u.name,
         u.email,
         u.role,
-        MAX(a.check_in) AS last_login,
+        (
+          SELECT a2.check_in 
+          FROM attendance a2 
+          WHERE a2.empid = u.empid 
+            AND DATE(a2.check_in) = CURRENT_DATE 
+          ORDER BY a2.check_in ASC 
+          LIMIT 1
+        ) AS last_login,
         MAX(a.check_out) AS last_logout,
-        DATE(MAX(a.check_in)) AS attendance_date,
-        SUM(
-          EXTRACT(EPOCH FROM 
-            COALESCE(a.check_out, NOW()) - a.check_in
-          )
-        ) AS total_seconds,
+        (
+          SELECT a2.check_in 
+          FROM attendance a2 
+          WHERE a2.empid = u.empid 
+            AND DATE(a2.check_in) = CURRENT_DATE 
+            AND a2.check_out IS NULL 
+          ORDER BY a2.check_in DESC 
+          LIMIT 1
+        ) AS today_checkin,
+        (
+          SELECT COALESCE(SUM(
+            EXTRACT(EPOCH FROM 
+              COALESCE(a3.check_out, NOW()) - a3.check_in
+            )
+          ), 0)
+          FROM attendance a3 
+          WHERE a3.empid = u.empid 
+            AND DATE(a3.check_in) = CURRENT_DATE
+        ) AS today_total_seconds,
+        (
+          SELECT COALESCE(SUM(
+            EXTRACT(EPOCH FROM a4.check_out - a4.check_in)
+          ), 0)
+          FROM attendance a4 
+          WHERE a4.empid = u.empid 
+            AND DATE(a4.check_in) = CURRENT_DATE
+            AND a4.check_out IS NOT NULL
+        ) AS today_completed_seconds,
         u.status
       FROM 
         users u
@@ -38,17 +67,19 @@ export default async function handler(req, res) {
     `);
 
     const attendanceData = results.map((user) => {
-      const attendance_status = (user.total_seconds || 0) >= 14400 ? "Present" : "Absent";
+      const attendance_status = (user.today_total_seconds || 0) >= 14400 ? "Present" : "Absent";
 
       return {
         empid: user.empid,
         name: user.name,
         email: user.email,
         role: user.role,
-        date: user.attendance_date ? new Date(user.attendance_date).toLocaleDateString() : "N/A",
-        last_login: user.last_login ? new Date(user.last_login).toLocaleString() : "N/A",
+        last_login: user.last_login ? new Date(user.last_login).toLocaleString() : "--",
         last_logout: user.last_logout ? new Date(user.last_logout).toLocaleString() : "--",
-        total_hours: formatDuration(user.total_seconds || 0),
+        today_checkin: user.today_checkin ? user.today_checkin.toISOString() : null,
+        today_completed_seconds: user.today_completed_seconds || 0,
+        today_total_seconds: user.today_total_seconds || 0,
+        total_hours: formatDuration(user.today_total_seconds || 0),
         attendance_status,
         status: user.status,
       };

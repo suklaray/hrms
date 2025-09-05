@@ -31,7 +31,9 @@ export default async function handler(req, res) {
       prisma.attendance.create({
         data: {
           empid,
-          check_in: new Date(), // this is equivalent to NOW()
+          check_in: new Date(),
+          date: new Date(),
+          attendance_status: "Present"
         },
       }),
     ]);

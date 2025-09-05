@@ -22,21 +22,41 @@ export default async function handler(req, res) {
     const empid = decoded.empid;
 
     // Proceed with checkout
-    await prisma.$transaction([
-      prisma.users.update({
-        where: { empid },
-        data: { status: "Logged Out" },
-      }),
-      prisma.attendance.updateMany({
-        where: {
-          empid,
-          check_out: null,
-        },
-        data: {
-          check_out: new Date(),
-        },
-      }),
-    ]);
+    const checkoutTime = new Date();
+    
+    // Find the latest check-in record without checkout
+    const latestCheckin = await prisma.attendance.findFirst({
+      where: {
+        empid,
+        check_out: null,
+      },
+      orderBy: {
+        check_in: 'desc'
+      }
+    });
+
+    if (latestCheckin) {
+      // Calculate total hours
+      const totalHours = (checkoutTime - new Date(latestCheckin.check_in)) / (1000 * 60 * 60);
+      const attendanceStatus = totalHours >= 4 ? "Present" : "Absent";
+      
+      await prisma.$transaction([
+        prisma.users.update({
+          where: { empid },
+          data: { status: "Logged Out" },
+        }),
+        prisma.attendance.update({
+          where: { id: latestCheckin.id },
+          data: {
+            check_out: checkoutTime,
+            total_hours: totalHours,
+            attendance_status: attendanceStatus
+          },
+        }),
+      ]);
+    } else {
+      return res.status(400).json({ error: "No active check-in found" });
+    }
 
     res.status(200).json({ message: "Check-out successful" });
   } catch (err) {
