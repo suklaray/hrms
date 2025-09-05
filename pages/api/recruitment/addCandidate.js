@@ -68,9 +68,36 @@ export default async function handler(req, res) {
         const day = String(today.getDate()).padStart(2, "0");
         const datePrefix = `${year}${month}${day}`;
 
-        const totalCount = await prisma.candidates.count();
-        const serialStr = String(totalCount + 1).padStart(6, "0");
+        // Find the highest candidate ID for today's date
+        const lastCandidate = await prisma.candidates.findFirst({
+          where: {
+            candidate_id: {
+              startsWith: datePrefix
+            }
+          },
+          orderBy: {
+            candidate_id: 'desc'
+          }
+        });
+
+        let nextSerial = 1;
+        if (lastCandidate) {
+          // Extract the serial number from the last candidate ID
+          const lastSerial = parseInt(lastCandidate.candidate_id.slice(-6));
+          nextSerial = lastSerial + 1;
+        }
+
+        const serialStr = String(nextSerial).padStart(6, "0");
         const candidateId = `${datePrefix}${serialStr}`;
+
+        // Double-check for uniqueness
+        const existingId = await prisma.candidates.findFirst({
+          where: { candidate_id: candidateId }
+        });
+        
+        if (existingId) {
+          return res.status(500).json({ error: "ID generation conflict. Please try again." });
+        }
 
         // Process CV file
         let resumePath = null;

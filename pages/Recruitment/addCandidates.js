@@ -409,15 +409,15 @@ export default function AddCandidate() {
                   <button
                     type="submit"
                     disabled={!isFormValid || loading}
-                    className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg ${
+                    className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg  ${
                       isFormValid && !loading
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02]'
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] cursor-pointer'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                   >
                     {loading ? (
                       <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2 "></div>
                         Submitting...
                       </div>
                     ) : (
