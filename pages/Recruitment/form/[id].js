@@ -34,8 +34,10 @@ export default function CandidateForm() {
     gender: "",
   });
   const [errors, setErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
+  const [showAllErrors, setShowAllErrors] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -83,18 +85,33 @@ export default function CandidateForm() {
     ];
 
     // Check if all text fields are filled
-    const hasAllTextFields = requiredTextFields.every(field => {
-      return formData[field] && formData[field].toString().trim() !== '';
+    const missingTextFields = requiredTextFields.filter(field => {
+      return !formData[field] || formData[field].toString().trim() === '';
     });
+    const hasAllTextFields = missingTextFields.length === 0;
+    
+    console.log('Missing text fields:', missingTextFields);
 
     // Check if all required file fields are filled (excluding experience_certificate)
     const requiredFiles = requiredFileFields.filter(field => field !== 'experience_certificate');
-    const hasAllFileFields = requiredFiles.every(field => {
-      return formData[field] !== null;
+    const missingFileFields = requiredFiles.filter(field => {
+      return formData[field] === null || formData[field] === undefined;
     });
+    const hasAllFileFields = missingFileFields.length === 0;
+    
+    console.log('Missing file fields:', missingFileFields);
 
     // Check if there are no validation errors
     const hasNoErrors = Object.keys(errors).length === 0;
+
+    // Debug logging
+    console.log('Form validation check:', {
+      hasAllTextFields,
+      hasAllFileFields,
+      hasNoErrors,
+      errors: errors,
+      formData: Object.keys(formData).filter(key => formData[key])
+    });
 
     setIsFormValid(hasAllTextFields && hasAllFileFields && hasNoErrors);
   }, [formData, errors]);
@@ -200,11 +217,108 @@ export default function CandidateForm() {
           delete newErrors[name];
         }
         break;
+      case 'dob':
+        if (value) {
+          const birthDate = new Date(value);
+          const currentDate = new Date();
+          const minDate = new Date(currentDate.getFullYear() - 10, currentDate.getMonth(), currentDate.getDate());
+          const year = birthDate.getFullYear();
+          const yearStr = year.toString();
+          
+          if (yearStr.length !== 4) {
+            newErrors[name] = '❌ Year must be exactly 4 digits';
+          } else if (year < 1900) {
+            newErrors[name] = '❌ Please enter a valid birth year';
+          } else if (birthDate > minDate) {
+            newErrors[name] = '❌ Must be at least 10 years old';
+          } else {
+            delete newErrors[name];
+          }
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'city':
+      case 'state':
+      case 'country':
+        if (!/^[a-zA-Z\s]+$/.test(value)) {
+          newErrors[name] = '❌ Only letters and spaces allowed';
+        } else if (value.length < 2) {
+          newErrors[name] = '❌ Must be at least 2 characters';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+      case 'address_line_1':
+        if (value.length < 5) {
+          newErrors[name] = '❌ Address must be at least 5 characters';
+        } else if (!/^[a-zA-Z0-9\s,.-/#]+$/.test(value)) {
+          newErrors[name] = '❌ Invalid address format';
+        } else {
+          delete newErrors[name];
+        }
+        break;
       default:
         delete newErrors[name];
     }
     
     setErrors(newErrors);
+  };
+
+  const handleCheckboxClick = () => {
+    const requiredTextFields = [
+      'address_line_1', 'city', 'state', 'pincode', 'country',
+      'contact_no', 'dob', 'gender', 'highest_qualification',
+      'aadhar_number', 'pan_number', 'account_holder_name',
+      'bank_name', 'branch_name', 'account_number', 'ifsc_code'
+    ];
+    
+    const requiredFiles = [
+      'aadhar_card', 'pan_card', 'education_certificates',
+      'resume', 'profile_photo', 'bank_details'
+    ];
+
+    let newErrors = {};
+
+    // Check required text fields
+    requiredTextFields.forEach(field => {
+      if (!formData[field] || formData[field].toString().trim() === '') {
+        newErrors[field] = '❌ This field is required';
+      }
+    });
+
+    // Check required files
+    requiredFiles.forEach(field => {
+      if (!formData[field]) {
+        newErrors[field] = '❌ This field is required';
+      }
+    });
+
+    setErrors(prev => ({ ...prev, ...newErrors }));
+    setShowAllErrors(true);
+  };
+
+  const handleBlur = (e) => {
+    const { name, value, type } = e.target;
+    setTouchedFields(prev => ({ ...prev, [name]: true }));
+    
+    if (type === 'file') {
+      // Skip required validation for optional experience_certificate
+      if (name === 'experience_certificate') {
+        return;
+      }
+      if (!formData[name]) {
+        setErrors(prev => ({ ...prev, [name]: '❌ This field is required' }));
+      } else {
+        setErrors(prev => ({ ...prev, [name]: undefined }));
+      }
+    } else {
+      if (!value || value.trim() === '') {
+        setErrors(prev => ({ ...prev, [name]: '❌ This field is required' }));
+      } else {
+        validateField(name, value);
+      }
+    }
   };
 
   const handleChange = (e) => {
@@ -213,21 +327,34 @@ export default function CandidateForm() {
     if (type === "file") {
       const file = files[0];
       if (file) {
-        // Validate file size (5MB limit)
-        if (file.size > 5 * 1024 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 5MB' }));
+        // Validate file size (5KB minimum, 10MB maximum)
+        if (file.size <= 5 * 1024) {
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be greater than 5KB' }));
+          return;
+        }
+        if (file.size >= 10 * 1024 * 1024) {
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 10MB' }));
           return;
         }
         // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+        let allowedTypes, errorMessage;
+        if (name === 'profile_photo') {
+          allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+          errorMessage = '❌ Only JPG, PNG, and JPEG files are allowed for profile photo';
+        } else {
+          allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+          errorMessage = '❌ Only JPG, PNG, and PDF files are allowed';
+        }
         if (!allowedTypes.includes(file.type)) {
-          setErrors(prev => ({ ...prev, [name]: '❌ Only JPG, PNG, and PDF files are allowed' }));
+          setErrors(prev => ({ ...prev, [name]: errorMessage }));
           return;
         }
         setErrors(prev => ({ ...prev, [name]: undefined }));
       } else {
-        // File was removed
-        setErrors(prev => ({ ...prev, [name]: '❌ This file is required' }));
+        // File was removed - only show error for required files
+        if (name !== 'experience_certificate') {
+          setErrors(prev => ({ ...prev, [name]: '❌ This file is required' }));
+        }
       }
       setFormData((prev) => ({
         ...prev,
@@ -239,6 +366,10 @@ export default function CandidateForm() {
         ...prev,
         [name]: value,
       }));
+      // Clear error if user starts typing
+      if (value && touchedFields[name]) {
+        setErrors(prev => ({ ...prev, [name]: undefined }));
+      }
       // Then validate immediately as user types
       setTimeout(() => validateField(name, value), 100);
     }
@@ -249,8 +380,12 @@ const handleDocumentUpload = async (e, type) => {
   if (!file) return;
 
   // Validate file first
-  if (file.size > 5 * 1024 * 1024) {
-    setErrors(prev => ({ ...prev, [type]: 'File size must be less than 5MB' }));
+  if (file.size <= 5 * 1024) {
+    setErrors(prev => ({ ...prev, [type]: '❌ File size must be greater than 5KB' }));
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    setErrors(prev => ({ ...prev, [type]: '❌ File size must be less than 10MB' }));
     return;
   }
   
@@ -299,14 +434,32 @@ const handleDocumentUpload = async (e, type) => {
           [type === "aadhar_card" ? "aadhar_number" : "pan_number"]: number,
         }));
         validateField(type === "aadhar_card" ? "aadhar_number" : "pan_number", number);
+      } else {
+        // Show user-friendly message when number extraction fails
+        const fieldName = type === "aadhar_card" ? "aadhar_number" : "pan_number";
+        const docType = type === "aadhar_card" ? "Aadhar" : "PAN";
+        setErrors(prev => ({ 
+          ...prev, 
+          [fieldName]: `ⓘ Unable to extract ${docType} number automatically. Please enter it manually below.` 
+        }));
       }
     } else {
-      // Textract failed, but file is still uploaded - user can enter number manually
-      console.warn("Document processing failed, user can enter number manually:", data.error);
+      // Show user-friendly message when processing fails
+      const fieldName = type === "aadhar_card" ? "aadhar_number" : "pan_number";
+      const docType = type === "aadhar_card" ? "Aadhar" : "PAN";
+      setErrors(prev => ({ 
+        ...prev, 
+        [fieldName]: `ⓘ Unable to extract ${docType} number automatically. Please enter it manually below.` 
+      }));
     }
   } catch (err) {
-    // Textract failed, but file is still uploaded - user can enter number manually
-    console.warn("Document processing failed, user can enter number manually:", err.message);
+    // Show user-friendly message when processing fails
+    const fieldName = type === "aadhar_card" ? "aadhar_number" : "pan_number";
+    const docType = type === "aadhar_card" ? "Aadhar" : "PAN";
+    setErrors(prev => ({ 
+      ...prev, 
+      [fieldName]: `ⓘ Unable to extract ${docType} number automatically. Please enter it manually below.` 
+    }));
   } finally {
     setIsLoading(false);
   }
@@ -380,6 +533,22 @@ const handleDocumentUpload = async (e, type) => {
     if (!validateForm()) {
       alert('Please fix all validation errors before submitting.');
       return;
+    }
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(
+      "⚠️ FINAL SUBMISSION CONFIRMATION ⚠️\n\n" +
+      "Are you absolutely sure you want to submit this application?\n\n" +
+      "IMPORTANT NOTICE:\n" +
+      "• Once submitted, NO changes can be made to any information\n" +
+      "• All documents and details will be permanently locked\n" +
+      "• This action cannot be undone\n" +
+      "• Please verify all information is correct before proceeding\n\n" +
+      "Click 'OK' only if you are certain all details are accurate and final."
+    );
+    
+    if (!confirmed) {
+      return; // User cancelled submission
     }
 
     setIsSubmitting(true);
@@ -456,6 +625,7 @@ const handleDocumentUpload = async (e, type) => {
                     name="contact_no"
                     value={formData.contact_no}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
                     maxLength={10}
                     placeholder={candidate?.contact_number ? "" : "Enter 10-digit contact number"}
@@ -487,9 +657,17 @@ const handleDocumentUpload = async (e, type) => {
                     name="dob"
                     value={formData.dob}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.dob ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.dob && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.dob}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -500,14 +678,22 @@ const handleDocumentUpload = async (e, type) => {
                     name="gender"
                     value={formData.gender}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.gender ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
                   </select>
+                  {errors.gender && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.gender}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -530,6 +716,7 @@ const handleDocumentUpload = async (e, type) => {
                     name="address_line_1"
                     value={formData.address_line_1}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.address_line_1 ? 'border-red-500' : 'border-gray-300'
@@ -558,9 +745,17 @@ const handleDocumentUpload = async (e, type) => {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.city ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.city && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.city}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -572,9 +767,17 @@ const handleDocumentUpload = async (e, type) => {
                     name="state"
                     value={formData.state}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.state ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.state && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.state}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -586,6 +789,7 @@ const handleDocumentUpload = async (e, type) => {
                     name="pincode"
                     value={formData.pincode}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
                     maxLength={6}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -604,9 +808,17 @@ const handleDocumentUpload = async (e, type) => {
                     name="country"
                     value={formData.country}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.country ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.country && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.country}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -633,13 +845,14 @@ const handleDocumentUpload = async (e, type) => {
                     name="aadhar_card"
                     accept="image/*,application/pdf"
                     onChange={(e) => handleDocumentUpload(e, "aadhar_card")}
+                    onBlur={handleBlur}
                     required
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.aadhar_card ? 'border-red-500' : 'border-gray-300'
                     }`}
                   />
                   {errors.aadhar_card && <p className="text-red-500 text-sm mt-1">{errors.aadhar_card}</p>}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -670,9 +883,14 @@ const handleDocumentUpload = async (e, type) => {
                     name="pan_card"
                     accept="image/*,application/pdf"
                     onChange={(e) => handleDocumentUpload(e, "pan_card")}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.pan_card ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.pan_card && <p className="text-red-500 text-sm mt-1">{errors.pan_card}</p>}
+                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -714,9 +932,17 @@ const handleDocumentUpload = async (e, type) => {
                     name="highest_qualification"
                     value={formData.highest_qualification}
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.highest_qualification ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.highest_qualification && (
+                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                      {errors.highest_qualification}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -727,9 +953,14 @@ const handleDocumentUpload = async (e, type) => {
                     type="file"
                     name="education_certificates"
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.education_certificates ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.education_certificates && <p className="text-red-500 text-sm mt-1">{errors.education_certificates}</p>}
+                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -740,9 +971,14 @@ const handleDocumentUpload = async (e, type) => {
                     type="file"
                     name="resume"
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.resume ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.resume && <p className="text-red-500 text-sm mt-1">{errors.resume}</p>}
+                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -752,10 +988,16 @@ const handleDocumentUpload = async (e, type) => {
                   <input
                     type="file"
                     name="profile_photo"
+                    accept="image/jpeg,image/png,image/jpg"
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.profile_photo ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.profile_photo && <p className="text-red-500 text-sm mt-1">{errors.profile_photo}</p>}
+                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/JPEG only.</p>
                 </div>
                 
                 <div className="md:col-span-2">
@@ -766,9 +1008,13 @@ const handleDocumentUpload = async (e, type) => {
                     type="file"
                     name="experience_certificate"
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.experience_certificate ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
-                  <p className="text-blue-600 text-sm mt-1">💡 This field is optional. Upload only if you have work experience.</p>
+                  {errors.experience_certificate && <p className="text-red-500 text-sm mt-1">{errors.experience_certificate}</p>}
+                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
+                  <p className="text-blue-600 text-sm mt-1">ⓘ This field is optional. Upload only if you have work experience.</p>
                 </div>
               </div>
             </div>
@@ -916,9 +1162,14 @@ const handleDocumentUpload = async (e, type) => {
                     type="file"
                     name="bank_details"
                     onChange={handleChange}
+                    onBlur={handleBlur}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      errors.bank_details ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {errors.bank_details && <p className="text-red-500 text-sm mt-1">{errors.bank_details}</p>}
+                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
                 </div>
               </div>
             </div>
@@ -926,17 +1177,28 @@ const handleDocumentUpload = async (e, type) => {
             {/* Confirmation */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
-                <input type="checkbox" id="confirm" required className="w-5 h-5 text-blue-600 mt-1" />
-                <label htmlFor="confirm" className="text-gray-700 text-sm leading-relaxed">
+                <input 
+                  type="checkbox" 
+                  id="confirm" 
+                  required 
+                  className="w-5 h-5 text-blue-600 mt-1" 
+                  onClick={handleCheckboxClick}
+                />
+                <label htmlFor="confirm" className="text-gray-700 text-sm leading-relaxed flex-1">
                   I have reviewed all the details provided above, and I confirm that they are accurate and final.
                 </label>
+                {showAllErrors && isFormValid && (
+                  <div className="text-2xl">
+                    ✅
+                  </div>
+                )}
               </div>
             </div>
 
             <button 
               type="submit" 
               disabled={isSubmitting}
-              className="w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 transform hover:scale-[1.02] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center">

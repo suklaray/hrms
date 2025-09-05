@@ -1,9 +1,14 @@
 import React from 'react';
+import Head from 'next/head';
 import { CheckCircle } from 'lucide-react';
 
 const DocsSubmitted = () => {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <>
+      <Head>
+        <title>Documents Submitted - HRMS</title>
+      </Head>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
       <div className="text-center bg-white rounded-2xl shadow-xl p-12 max-w-md mx-4">
         <div className="mb-6">
           <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
@@ -20,6 +25,7 @@ const DocsSubmitted = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

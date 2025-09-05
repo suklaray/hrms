@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
+import Head from "next/head";
 import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
 import { format } from 'date-fns';
@@ -38,8 +39,26 @@ export default function CandidateDetails() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-        <p className="text-2xl font-bold">Loading candidate details...</p>
+      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <SideBar />
+        <div className="flex-1 p-6 lg:p-10">
+          <Breadcrumb items={[
+            { label: 'Recruitment', href: '/Recruitment/recruitment' },
+            { label: 'Candidate Details' }
+          ]} />
+          
+          <div className="mb-8 mt-6">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Candidate Profile</h1>
+            <p className="text-gray-600">Loading candidate information...</p>
+          </div>
+          
+          <div className="flex justify-center items-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent mx-auto mb-4"></div>
+              <p className="text-xl font-semibold text-gray-700">Loading candidate details...</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -71,8 +90,12 @@ export default function CandidateDetails() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <SideBar />
+    <>
+      <Head>
+        <title>Candidate Profile - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <SideBar />
       <div className="flex-1 p-6 lg:p-10">
         <Breadcrumb items={[
           { label: 'Recruitment', href: '/Recruitment/recruitment' },
@@ -102,8 +125,8 @@ export default function CandidateDetails() {
                   {candidate.status || 'Pending'}
                 </div>
                 <button 
-                  onClick={() => router.push(`/Recruitment/add/${candidate.candidate_id}`)}
-                  className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors"
+                  onClick={() => router.push(`/Recruitment/edit/${candidate.candidate_id}`)}
+                  className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors cursor-pointer"
                 >
                   <FaEdit className="mr-2" />
                   Edit Profile
@@ -219,5 +242,6 @@ export default function CandidateDetails() {
         </div>
       </div>
     </div>
+    </>
   );
 }

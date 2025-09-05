@@ -118,7 +118,24 @@ export default function Candidates(user) {
   const filteredCandidates = candidates.filter(candidate => {
     const matchesSearch = candidate.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          candidate.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || candidate.status === statusFilter;
+    
+    let matchesStatus = false;
+    if (statusFilter === 'all') {
+      matchesStatus = true;
+    } else if (statusFilter === 'Waiting') {
+      matchesStatus = !candidate.status || candidate.status === 'Waiting' || candidate.status === 'Pending';
+    } else if (statusFilter === 'form_submitted') {
+      matchesStatus = candidate.form_submitted === true;
+    } else if (statusFilter === 'form_not_submitted') {
+      matchesStatus = candidate.form_submitted === false;
+    } else if (statusFilter === 'verified') {
+      matchesStatus = candidate.verification === true;
+    } else if (statusFilter === 'not_verified') {
+      matchesStatus = candidate.verification === false;
+    } else {
+      matchesStatus = candidate.status === statusFilter;
+    }
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -237,9 +254,10 @@ export default function Candidates(user) {
             </div>
             <div className="flex items-center gap-3">
               <Link href="/Recruitment/addCandidates">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer">
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer text-sm sm:text-base">
                   <Plus className="w-4 h-4" />
-                  Add Candidate
+                  <span className="hidden sm:inline">Add Candidate</span>
+                  <span className="sm:hidden">Add</span>
                 </button>
               </Link>
             </div>
@@ -256,16 +274,16 @@ export default function Candidates(user) {
           </div>
 
           {/* Filters */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-            <div className="flex flex-col md:flex-row gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search candidates by name or email..."
+                  placeholder="Search candidates..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -273,12 +291,16 @@ export default function Candidates(user) {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                 >
                   <option value="all">All Status</option>
                   <option value="Waiting">Waiting</option>
                   <option value="Selected">Selected</option>
                   <option value="Rejected">Rejected</option>
+                  <option value="form_submitted">Form Submitted</option>
+                  <option value="form_not_submitted">Form Not Submitted</option>
+                  <option value="verified">Verified</option>
+                  <option value="not_verified">Not Verified</option>
                 </select>
               </div>
             </div>
@@ -323,7 +345,7 @@ export default function Candidates(user) {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Schedule</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Form</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verification</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -390,23 +412,24 @@ export default function Candidates(user) {
                             <option value="Rejected">Rejected</option>
                           </select>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-2 sm:px-4 lg:px-6 py-4">
                           <div className="space-y-2">
                             {candidate.form_link ? (
                               <a href={candidate.form_link} target="_blank" rel="noopener noreferrer" 
-                                 className="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                 className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium block">
                                 View Form
                               </a>
                             ) : (
-                              <span className="text-gray-400 text-sm">No form</span>
+                              <span className="text-gray-400 text-xs sm:text-sm block">No form</span>
                             )}
                             <div>
-                              <span className={`text-xs px-2 py-1 rounded-full ${
+                              <span className={`text-xs px-1 sm:px-2 py-1 rounded-full whitespace-nowrap inline-block ${
                                 candidate.form_submitted 
                                   ? 'bg-green-100 text-green-800' 
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {candidate.form_submitted ? 'Submitted' : 'Not Submitted'}
+                                <span className="hidden sm:inline">{candidate.form_submitted ? 'Submitted' : 'Not Submitted'}</span>
+                                <span className="sm:hidden">{candidate.form_submitted ? 'Yes' : 'No'}</span>
                               </span>
                             </div>
                           </div>

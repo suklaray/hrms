@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import {
   FaUser, FaEnvelope, FaBriefcase, FaCalendarAlt,
@@ -31,9 +32,13 @@ const AddEmployee = () => {
   const [copiedField, setCopiedField] = useState('');
   const [existingEmployee, setExistingEmployee] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (id) {
+      setLoading(true);
       axios.get(`/api/candidate/${id}`).then((res) => {
         const { name, email, profile_photo } = res.data;
         setForm((prev) => ({
@@ -58,10 +63,83 @@ const AddEmployee = () => {
               employee_type: emp.employee_type || '',
             }));
           }
-        }).catch(err => console.error('Error checking employee:', err));
+          setLoading(false);
+        }).catch(err => {
+          console.error('Error checking employee:', err);
+          setLoading(false);
+        });
+      }).catch(err => {
+        console.error('Error fetching candidate:', err);
+        setLoading(false);
       });
     }
   }, [id]);
+
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+    
+    // Required field validation for edit mode
+    if (isEditing) {
+      const requiredFields = ['position', 'role', 'employee_type', 'date_of_joining'];
+      if (requiredFields.includes(name) && (!value || value.toString().trim() === '')) {
+        newErrors[name] = 'This field is required';
+        setErrors(newErrors);
+        return;
+      }
+    }
+    
+    switch (name) {
+      case 'date_of_joining':
+        if (value) {
+          const selectedDate = new Date(value);
+          const today = new Date();
+          const twoYearsAgo = new Date();
+          const twoYearsFromNow = new Date();
+          
+          twoYearsAgo.setFullYear(today.getFullYear() - 2);
+          twoYearsFromNow.setFullYear(today.getFullYear() + 2);
+          
+          const year = selectedDate.getFullYear();
+          if (year.toString().length !== 4) {
+            newErrors[name] = 'Please enter a valid 4-digit year';
+          } else if (selectedDate < twoYearsAgo) {
+            newErrors[name] = 'Date cannot be more than 2 years in the past';
+          } else if (selectedDate > twoYearsFromNow) {
+            newErrors[name] = 'Date cannot be more than 2 years in the future';
+          } else {
+            delete newErrors[name];
+          }
+        } else if (isEditing) {
+          newErrors[name] = 'This field is required';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+        
+      case 'experience':
+        if (value !== '' && (isNaN(value) || value < 0 || value > 90)) {
+          newErrors[name] = 'Experience must be between 0 and 90 years';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+        
+      case 'position':
+      case 'role':
+      case 'employee_type':
+        if (isEditing && (!value || value.toString().trim() === '')) {
+          newErrors[name] = 'This field is required';
+        } else {
+          delete newErrors[name];
+        }
+        break;
+        
+      default:
+        delete newErrors[name];
+    }
+    
+    setErrors(newErrors);
+  };
 
   const handleChange = async (e) => {
     const { name, value } = e.target;
@@ -77,11 +155,16 @@ const AddEmployee = () => {
 
     } else if (name === 'experience') {
       const num = value === '' ? '' : parseInt(value, 10);
-      if (num === '' || (num >= 0 && num <= 99)) {
-        setForm((prev) => ({ ...prev, [name]: num }));
-      }
+      setForm((prev) => ({ ...prev, [name]: num }));
+      validateField(name, num);
+    } else if (name === 'date_of_joining') {
+      setForm((prev) => ({ ...prev, [name]: value }));
+      validateField(name, value);
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
+      if (isEditing) {
+        validateField(name, value);
+      }
     }
   };
 
@@ -98,6 +181,7 @@ const AddEmployee = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
+    setSubmitting(true);
 
     try {
       let res;
@@ -144,12 +228,34 @@ const AddEmployee = () => {
       console.error(err);
       setMessage(isEditing ? "Error updating employee." : "Error adding employee.");
       if (!isEditing) setEmployeeData(null);
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex">
+        <SideBar />
+        <div className="flex-1 p-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
+          <div className="flex justify-center items-center h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent mx-auto mb-4"></div>
+              <p className="text-xl font-semibold text-gray-700">Loading candidate information...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex">
-      <SideBar />
+    <>
+      <Head>
+        <title>Add as Employee - HRMS</title>
+      </Head>
+      <div className="flex">
+        <SideBar />
 
       <div className="flex-1 p-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
         <button
@@ -177,7 +283,7 @@ const AddEmployee = () => {
                 {existingEmployee && (
                   <button
                     onClick={() => setIsEditing(!isEditing)}
-                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                    className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
                   >
                     {isEditing ? <FaTimes /> : <FaEdit />}
                     {isEditing ? 'Cancel' : 'Edit'}
@@ -283,9 +389,11 @@ const AddEmployee = () => {
                 onChange={handleChange}
                 required
                 className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                  existingEmployee && !isEditing 
-                    ? 'border-gray-200 bg-gray-50 text-gray-600' 
-                    : 'border-gray-200 bg-white focus:border-indigo-500'
+                  errors.role
+                    ? 'border-red-500 bg-red-50'
+                    : existingEmployee && !isEditing 
+                      ? 'border-gray-200 bg-gray-50 text-gray-600' 
+                      : 'border-gray-200 bg-white focus:border-indigo-500'
                 }`}
                 disabled={existingEmployee && !isEditing}
               >
@@ -294,6 +402,9 @@ const AddEmployee = () => {
                 <option value="employee">Employee</option>
                 <option value="admin">Admin</option>
               </select>
+              {errors.role && (
+                <p className="text-red-500 text-sm mt-1">{errors.role}</p>
+              )}
             </div>
 
             {/* Position */}
@@ -304,9 +415,11 @@ const AddEmployee = () => {
               </label>
               <input
                 className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                  existingEmployee && !isEditing 
-                    ? 'border-gray-200 bg-gray-50 text-gray-600' 
-                    : 'border-gray-200 bg-white focus:border-indigo-500'
+                  errors.position
+                    ? 'border-red-500 bg-red-50'
+                    : existingEmployee && !isEditing 
+                      ? 'border-gray-200 bg-gray-50 text-gray-600' 
+                      : 'border-gray-200 bg-white focus:border-indigo-500'
                 }`}
                 name="position"
                 placeholder="e.g. Software Engineer"
@@ -315,6 +428,9 @@ const AddEmployee = () => {
                 required
                 disabled={existingEmployee && !isEditing}
               />
+              {errors.position && (
+                <p className="text-red-500 text-sm mt-1">{errors.position}</p>
+              )}
             </div>
 
             {/* Employee Type */}
@@ -329,9 +445,11 @@ const AddEmployee = () => {
                 onChange={handleChange}
                 required
                 className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                  existingEmployee && !isEditing 
-                    ? 'border-gray-200 bg-gray-50 text-gray-600' 
-                    : 'border-gray-200 bg-white focus:border-indigo-500'
+                  errors.employee_type
+                    ? 'border-red-500 bg-red-50'
+                    : existingEmployee && !isEditing 
+                      ? 'border-gray-200 bg-gray-50 text-gray-600' 
+                      : 'border-gray-200 bg-white focus:border-indigo-500'
                 }`}
                 disabled={existingEmployee && !isEditing}
               >
@@ -340,6 +458,9 @@ const AddEmployee = () => {
                 <option value="Intern">Intern</option>
                 <option value="Contractor">Contractor</option>
               </select>
+              {errors.employee_type && (
+                <p className="text-red-500 text-sm mt-1">{errors.employee_type}</p>
+              )}
             </div>
 
             {/* Intern Duration - Show only if Intern is selected */}
@@ -376,9 +497,11 @@ const AddEmployee = () => {
               </label>
               <input
                 className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                  existingEmployee && !isEditing 
-                    ? 'border-gray-200 bg-gray-50 text-gray-600' 
-                    : 'border-gray-200 bg-white focus:border-indigo-500'
+                  errors.date_of_joining 
+                    ? 'border-red-500 bg-red-50'
+                    : existingEmployee && !isEditing 
+                      ? 'border-gray-200 bg-gray-50 text-gray-600' 
+                      : 'border-gray-200 bg-white focus:border-indigo-500'
                 }`}
                 type="date"
                 name="date_of_joining"
@@ -387,6 +510,9 @@ const AddEmployee = () => {
                 required
                 disabled={existingEmployee && !isEditing}
               />
+              {errors.date_of_joining && (
+                <p className="text-red-500 text-sm mt-1">{errors.date_of_joining}</p>
+              )}
             </div>
 
             {/* Experience */}
@@ -397,9 +523,11 @@ const AddEmployee = () => {
               </label>
               <input
                 className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                  existingEmployee && !isEditing 
-                    ? 'border-gray-200 bg-gray-50 text-gray-600' 
-                    : 'border-gray-200 bg-white focus:border-indigo-500'
+                  errors.experience 
+                    ? 'border-red-500 bg-red-50'
+                    : existingEmployee && !isEditing 
+                      ? 'border-gray-200 bg-gray-50 text-gray-600' 
+                      : 'border-gray-200 bg-white focus:border-indigo-500'
                 }`}
                 type="number"
                 name="experience"
@@ -407,9 +535,12 @@ const AddEmployee = () => {
                 onChange={handleChange}
                 value={form.experience}
                 min="0"
-                max="99"
+                max="90"
                 disabled={existingEmployee && !isEditing}
               />
+              {errors.experience && (
+                <p className="text-red-500 text-sm mt-1">{errors.experience}</p>
+              )}
             </div>
 
                 {/* Submit Button */}
@@ -417,16 +548,22 @@ const AddEmployee = () => {
                   <button
                     type="submit"
                     className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={emailExists || (existingEmployee && !isEditing)}
+                    disabled={emailExists || (existingEmployee && !isEditing) || submitting || Object.keys(errors).length > 0}
                   >
-                    {existingEmployee && !isEditing 
-                      ? 'Employee Already Added' 
-                      : isEditing 
-                        ? 'Update Employee' 
-                        : emailExists 
-                          ? 'Email Already Exists' 
-                          : 'Add Employee'
-                    }
+                    {submitting ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                        {isEditing ? 'Updating...' : 'Adding Employee...'}
+                      </div>
+                    ) : (
+                      existingEmployee && !isEditing 
+                        ? 'Employee Already Added' 
+                        : isEditing 
+                          ? 'Update Employee' 
+                          : emailExists 
+                            ? 'Email Already Exists' 
+                            : 'Add Employee'
+                    )}
                   </button>
                 </div>
 
@@ -502,6 +639,7 @@ const AddEmployee = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

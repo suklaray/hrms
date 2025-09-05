@@ -16,8 +16,9 @@ export default function Sidebar({ handleLogout, user }) {
     const checkScreenSize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile !== isCollapsed) {
-        setIsCollapsed(mobile);
+      // Only auto-collapse on mobile, don't interfere with manual toggle on desktop
+      if (mobile && !isCollapsed) {
+        setIsCollapsed(true);
       }
     };
     
@@ -93,7 +94,7 @@ export default function Sidebar({ handleLogout, user }) {
 
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
             >
               {isCollapsed ? <Menu size={20} /> : <X size={20} />}
             </button>

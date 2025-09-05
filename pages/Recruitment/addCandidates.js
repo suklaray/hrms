@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import axios from "axios";
+import Head from "next/head";
 import SideBar from "@/Components/SideBar";
 import { 
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaFileUpload,
@@ -191,8 +192,12 @@ export default function AddCandidate() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <SideBar />
+    <>
+      <Head>
+        <title>Add Candidate - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <SideBar />
       <div className="flex-1 p-6 lg:p-10">
         <div className="mb-6">
           <button 
@@ -436,5 +441,6 @@ export default function AddCandidate() {
         </div>
       </div>
     </div>
+    </>
   );
 }
