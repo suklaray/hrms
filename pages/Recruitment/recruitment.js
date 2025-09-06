@@ -403,7 +403,7 @@ export default function Candidates(user) {
                             </div>
                             <div className="flex items-center text-sm text-gray-600">
                               <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                              <span>{candidate.interview_time || 'Time not set'}</span>
+                              <span>{candidate.interview_timing || 'Time not set'}</span>
                             </div>
                           </div>
                         </td>

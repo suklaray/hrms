@@ -56,9 +56,9 @@ export async function getServerSideProps(context) {
     },
   };
 }
-const loaderProp =({ src }) => {
-    return src;
-}
+// const loaderProp =({ src }) => {
+//     return src;
+// }
 export default function Dashboard({ user }) {
   const router = useRouter();
   const [stats, setStats] = useState(null);
@@ -269,24 +269,32 @@ export default function Dashboard({ user }) {
                   <div className="space-y-4">
                     {stats.recentEmployees.map((employee, index) => (
                       <div key={index} className="flex items-center space-x-4">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-indigo-100 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
                           {employee.profile_photo ? (
-                            <Image
-                              src={employee.profile_photo}
-                              alt={employee.name}
-                              width={40}
-                              height={40}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextSibling.style.display = 'flex';
-                              }}
-                              loader={loaderProp}
-                            />
-                          ) : null}
-                          <span className={`text-indigo-600 font-medium text-sm ${employee.profile_photo ? 'hidden' : 'flex'}`}>
-                            {employee.name?.charAt(0)?.toUpperCase()}
-                          </span>
+                            <>
+                              <Image
+                                src={employee.profile_photo}
+                                alt={employee.name}
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'flex';
+                                }}
+                                // loader={loaderProp}
+                              />
+                              <div className="hidden w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center">
+                                <span className="text-white font-medium text-sm">
+                                  {employee.name?.charAt(0)?.toUpperCase() || 'U'}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-white font-medium text-sm">
+                              {employee.name?.charAt(0)?.toUpperCase() || 'U'}
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{employee.name}</p>

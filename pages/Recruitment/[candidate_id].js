@@ -174,7 +174,7 @@ export default function CandidateDetails() {
                     <p className="text-sm text-gray-600">Interview Date & Time</p>
                     <p className="font-semibold text-gray-900">
                       {candidate.interview_date ? format(new Date(candidate.interview_date), "dd MMM yyyy") : "Not scheduled"}
-                      {candidate.interview_time && ` at ${candidate.interview_time}`}
+                      {candidate.interview_timing && ` at ${candidate.interview_timing}`}
                     </p>
                   </div>
                 </div>

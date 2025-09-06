@@ -15,7 +15,7 @@ export default function EditCandidate() {
     email: "",
     contact_number: "",
     interview_date: "",
-    interview_time: "",
+    interview_timing: "",
     resume: null
   });
   const [errors, setErrors] = useState({});
@@ -34,7 +34,7 @@ export default function EditCandidate() {
         email: res.data.email || "",
         contact_number: res.data.contact_number || "",
         interview_date: res.data.interview_date ? res.data.interview_date.split('T')[0] : "",
-        interview_time: res.data.interview_time || "",
+        interview_timing: res.data.interview_timing || "",
         resume: null
       });
       setLoading(false);
@@ -129,7 +129,7 @@ export default function EditCandidate() {
       submitData.append('candidate_id', id);
       submitData.append('contact_number', formData.contact_number);
       submitData.append('interview_date', formData.interview_date);
-      submitData.append('interview_time', formData.interview_time);
+      submitData.append('interview_timing', formData.interview_timing);
       if (formData.resume) {
         submitData.append('resume', formData.resume);
       }
@@ -266,8 +266,8 @@ export default function EditCandidate() {
                   </label>
                   <input
                     type="time"
-                    name="interview_time"
-                    value={formData.interview_time}
+                    name="interview_timing"
+                    value={formData.interview_timing}
                     onChange={handleChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                   />

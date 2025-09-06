@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     const candidate_id = fields.candidate_id?.[0];
     const contact_number = fields.contact_number?.[0];
     const interview_date = fields.interview_date?.[0];
-    const interview_time = fields.interview_time?.[0];
+    const interview_timing = fields.interview_timing?.[0];
 
     if (!candidate_id) {
       return res.status(400).json({ error: 'Candidate ID is required' });
@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     const updateData = {};
     if (contact_number) updateData.contact_number = contact_number;
     if (interview_date) updateData.interview_date = new Date(interview_date);
-    if (interview_time) updateData.interview_time = interview_time;
+    if (interview_timing) updateData.interview_timing = interview_timing;
 
     // Handle resume file upload
     if (files.resume && files.resume[0]) {

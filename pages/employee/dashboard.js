@@ -248,23 +248,31 @@ export default function EmployeeDashboard() {
               <div className="p-6">
                 <div className="flex items-start space-x-6">
                   <div className="flex-shrink-0">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center border-4 border-indigo-200 overflow-hidden">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center border-4 border-indigo-200 overflow-hidden">
                       {user?.profile_photo ? (
-                        <Image
-                          src={user.profile_photo}
-                          alt="Profile"
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <div className={`w-full h-full flex items-center justify-center ${user?.profile_photo ? 'hidden' : ''}`}>
-                        <User className="w-8 h-8 text-white" />
-                      </div>
+                        <>
+                          <Image
+                            src={user.profile_photo}
+                            alt="Profile"
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center">
+                            <span className="text-white font-bold text-2xl">
+                              {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-white font-bold text-2xl">
+                          {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex-1 space-y-4">

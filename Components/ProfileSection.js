@@ -92,24 +92,34 @@ export default function ProfileSection({ user }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">My Profile</h2>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center relative">
             {user?.profile_photo ? (
-              <Image
-                src={user.profile_photo}
-                alt={user?.name || "Profile"}
-                width={64}
-                height={64}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-              />
+              <>
+                <Image
+                  src={user.profile_photo}
+                  alt={user?.name || "Profile"}
+                  width={64}
+                  height={64}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="hidden w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center">
+                  <span className="text-white font-bold text-xl">
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </span>
+                </div>
+              </>
             ) : (
-              <User className="w-8 h-8 text-gray-400" />
+              <span className="text-white font-bold text-xl">
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </span>
             )}
           </div>
           <div>
@@ -120,16 +130,16 @@ export default function ProfileSection({ user }) {
             )}
           </div>
         </div>
-        <div className="flex flex-col items-center space-y-2">
+        <div className="flex flex-col items-center lg:items-end space-y-2">
           {statusLoading ? (
-            <div className="flex items-center justify-center w-40 sm:w-44 h-12">
+            <div className="flex items-center justify-center w-32 sm:w-36 lg:w-40 h-12">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
             </div>
           ) : (
             <>
-              <div className="flex items-center space-x-2">
-                <Clock className={`w-4 h-4 ${isWorking ? 'text-green-600' : 'text-gray-500'}`} />
-                <span className={`text-sm font-medium ${isWorking ? 'text-green-600' : 'text-gray-600'}`}>
+              <div className="flex items-center space-x-2 text-center">
+                <Clock className={`w-4 h-4 text-center ${isWorking ? 'text-green-600' : 'text-gray-500'}`} />
+                <span className={`text-xs sm:text-sm font-medium text-center ${isWorking ? 'text-green-600' : 'text-gray-600'}`}>
                   {isWorking ? "Currently Working" : "Not Working"}
                 </span>
               </div>
@@ -141,8 +151,8 @@ export default function ProfileSection({ user }) {
                   onChange={handleToggleWork}
                   disabled={isLoading || !user?.empid}
                 />
-                <div className={`w-40 sm:w-44 h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full peer-checked:from-green-400 peer-checked:to-green-600 transition-all duration-500 shadow-inner relative overflow-hidden ${isLoading ? 'opacity-50' : ''}`}>
-                  <div className="absolute inset-0 flex items-center justify-between px-4 text-xs sm:text-sm font-medium">
+                <div className={`w-32 sm:w-36 lg:w-40 h-10 sm:h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full peer-checked:from-green-400 peer-checked:to-green-600 transition-all duration-500 shadow-inner relative overflow-hidden ${isLoading ? 'opacity-50' : ''}`}>
+                  <div className="absolute inset-0 flex items-center justify-between px-2 sm:px-4 text-xs font-medium">
                     <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
                       Check In
                     </span>
@@ -151,7 +161,7 @@ export default function ProfileSection({ user }) {
                     </span>
                   </div>
                 </div>
-                <div className="absolute left-1 top-1 w-16 sm:w-20 h-10 bg-white rounded-full shadow-lg transform peer-checked:translate-x-20 sm:peer-checked:translate-x-20 transition-all duration-500 flex items-center justify-center">
+                <div className="absolute left-1 top-1 w-14 sm:w-16 lg:w-18 h-8 sm:h-10 bg-white rounded-full shadow-lg transform peer-checked:translate-x-16 sm:peer-checked:translate-x-18 lg:peer-checked:translate-x-20 transition-all duration-500 flex items-center justify-center">
                   <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
                     {isWorking ? 'Check Out' : 'Check In'}
                   </span>
@@ -162,7 +172,7 @@ export default function ProfileSection({ user }) {
           {!statusLoading && isWorking && (
             <div className="flex items-center mt-1">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
-              <span className="text-sm font-mono font-bold text-green-600">{elapsedTime}</span>
+              <span className="text-xs sm:text-sm font-mono font-bold text-green-600">{elapsedTime}</span>
             </div>
           )}
           {isLoading && (

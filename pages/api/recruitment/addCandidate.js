@@ -133,7 +133,7 @@ export default async function handler(req, res) {
             email: email,
             contact_number: contact_number,
             interview_date: new Date(interviewDate),
-            interview_time: interviewTime,
+            interview_timing: interviewTime,
             resume: resumePath,
             form_link: null,
             status: "Pending"
