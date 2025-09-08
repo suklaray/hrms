@@ -64,7 +64,8 @@ export default async function handler(req, res) {
           if (!file) return null;
           const fileName = `${Date.now()}-${file.originalFilename}`;
           const finalPath = path.join(uploadsDir, fileName);
-          fs.renameSync(file.filepath, finalPath);
+          fs.copyFileSync(file.filepath, finalPath);
+          fs.unlinkSync(file.filepath);
           return `/uploads/${fileName}`;
         };
 
