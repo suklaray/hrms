@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
-import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye } from "lucide-react";
+import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function GeneratePayrollPage() {
   const [employees, setEmployees] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, generated: 0, pending: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -123,6 +125,20 @@ export default function GeneratePayrollPage() {
                 <DollarSign className="w-5 h-5 mr-2" />
                 Employee Payroll Status
               </h2>
+              {employees.length > 0 && (() => {
+                const totalPages = Math.ceil(employees.length / itemsPerPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const paginatedEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
+                
+                return (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Showing {paginatedEmployees.length} of {employees.length} employees
+                    {totalPages > 1 && (
+                      <span> (Page {currentPage} of {totalPages})</span>
+                    )}
+                  </p>
+                );
+              })()}
             </div>
 
             {isLoading ? (
@@ -144,7 +160,12 @@ export default function GeneratePayrollPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {employees.map((emp) => (
+                    {(() => {
+                      const totalPages = Math.ceil(employees.length / itemsPerPage);
+                      const startIndex = (currentPage - 1) * itemsPerPage;
+                      const paginatedEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
+                      
+                      return paginatedEmployees.map((emp) => (
                       <tr key={emp.empid} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center">
@@ -208,11 +229,68 @@ export default function GeneratePayrollPage() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
             )}
+            
+            {/* Pagination */}
+            {!isLoading && (() => {
+              const totalPages = Math.ceil(employees.length / itemsPerPage);
+              
+              const handlePageChange = (page) => {
+                setCurrentPage(page);
+              };
+              
+              return totalPages > 1 ? (
+                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Showing page {currentPage} of {totalPages} ({employees.length} total employees)
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          page === currentPage
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
       </div>

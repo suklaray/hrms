@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
-import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download } from 'lucide-react';
+import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function LeaveRequest() {
   const [form, setForm] = useState({
@@ -21,6 +21,8 @@ export default function LeaveRequest() {
   const [selectedLeaveType, setSelectedLeaveType] = useState(null);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));
@@ -376,8 +378,32 @@ export default function LeaveRequest() {
                 </h3>
                 <p className="text-sm text-gray-600">Track all your leave requests and their status</p>
               </div>
-              <div className="overflow-x-auto">
-                {leaveStatusList.length > 0 ? (
+              {/* Pagination logic */}
+              {(() => {
+                const totalPages = Math.ceil(leaveStatusList.length / itemsPerPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const paginatedLeaves = leaveStatusList.slice(startIndex, startIndex + itemsPerPage);
+                
+                const handlePageChange = (page) => {
+                  setCurrentPage(page);
+                };
+
+                return (
+                  <>
+                    {/* Results Summary */}
+                    {leaveStatusList.length > 0 && (
+                      <div className="px-6 py-3 border-b border-gray-100">
+                        <p className="text-sm text-gray-600">
+                          Showing {paginatedLeaves.length} of {leaveStatusList.length} leave requests
+                          {totalPages > 1 && (
+                            <span> (Page {currentPage} of {totalPages})</span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="overflow-x-auto">
+                      {leaveStatusList.length > 0 ? (
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
@@ -392,7 +418,7 @@ export default function LeaveRequest() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {leaveStatusList.map((leave, index) => {
+                      {paginatedLeaves.map((leave, index) => {
                         const fromDate = new Date(leave.from_date);
                         const toDate = new Date(leave.to_date);
                         const today = new Date();
@@ -509,6 +535,57 @@ export default function LeaveRequest() {
                   </div>
                 )}
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Showing page {currentPage} of {totalPages} ({leaveStatusList.length} total requests)
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          page === currentPage
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+                );
+              })()}
             </div>
           )}
         </div>

@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import Sidebar from "@/Components/empSidebar";
-import { FileText, Download, Calendar, AlertCircle, Eye } from "lucide-react";
+import { FileText, Download, Calendar, AlertCircle, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function EmpPayslip() {
   const [user, setUser] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [message, setMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+  const itemsPerPage = 5;
 
   useEffect(() => {
     async function fetchUserAndDocuments() {
@@ -67,6 +69,20 @@ export default function EmpPayslip() {
                 Your Payslips
               </h3>
               <p className="text-sm text-gray-600">Download your monthly salary statements</p>
+              {documents.length > 0 && (() => {
+                const totalPages = Math.ceil(documents.length / itemsPerPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const paginatedDocuments = documents.slice(startIndex, startIndex + itemsPerPage);
+                
+                return (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Showing {paginatedDocuments.length} of {documents.length} payslips
+                    {totalPages > 1 && (
+                      <span> (Page {currentPage} of {totalPages})</span>
+                    )}
+                  </p>
+                );
+              })()}
             </div>
 
             <div className="p-6">
@@ -104,10 +120,15 @@ export default function EmpPayslip() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {documents.map((doc, index) => (
+                        {(() => {
+                          const totalPages = Math.ceil(documents.length / itemsPerPage);
+                          const startIndex = (currentPage - 1) * itemsPerPage;
+                          const paginatedDocuments = documents.slice(startIndex, startIndex + itemsPerPage);
+                          
+                          return paginatedDocuments.map((doc, index) => (
                           <tr key={index} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {index + 1}
+                              {startIndex + index + 1}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900 capitalize">
@@ -141,10 +162,67 @@ export default function EmpPayslip() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          ));
+                        })()}
                       </tbody>
                     </table>
                   </div>
+                  
+                  {/* Pagination */}
+                  {(() => {
+                    const totalPages = Math.ceil(documents.length / itemsPerPage);
+                    
+                    const handlePageChange = (page) => {
+                      setCurrentPage(page);
+                    };
+                    
+                    return totalPages > 1 ? (
+                      <div className="mt-6 flex items-center justify-between">
+                        <div className="text-sm text-gray-700">
+                          Showing page {currentPage} of {totalPages} ({documents.length} total payslips)
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === 1
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <button
+                              key={page}
+                              onClick={() => handlePageChange(page)}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                page === currentPage
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                          
+                          <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === totalPages
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               )}
             </div>

@@ -17,7 +17,9 @@ import {
   Search,
   Filter,
   Download,
-  UserPlus
+  UserPlus,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 
 export default function Candidates(user) {
@@ -29,6 +31,8 @@ export default function Candidates(user) {
   const [mounted, setMounted] = useState(false);
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
 
   const fetchCandidates = async () => {
@@ -144,6 +148,20 @@ export default function Candidates(user) {
     
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCandidates = filteredCandidates.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleFilterChange = (newFilter) => {
+    setStatusFilter(newFilter);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -296,7 +314,7 @@ export default function Candidates(user) {
                 <Filter className="w-4 h-4 text-gray-400" />
                 <select
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  onChange={(e) => handleFilterChange(e.target.value)}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                 >
                   <option value="all">All Status</option>
@@ -310,6 +328,19 @@ export default function Candidates(user) {
                 </select>
               </div>
             </div>
+          </div>
+
+          {/* Results Summary */}
+          <div className="mb-4">
+            <p className="text-gray-600">
+              Showing <span className="font-semibold">{paginatedCandidates.length}</span> of <span className="font-semibold">{filteredCandidates.length}</span> candidates
+              {searchTerm && (
+                <span> matching &quot;<span className="font-semibold">{searchTerm}</span>&quot;</span>
+              )}
+              {totalPages > 1 && (
+                <span> (Page {currentPage} of {totalPages})</span>
+              )}
+            </p>
           </div>
 
           {/* Candidates Table */}
@@ -357,7 +388,7 @@ export default function Candidates(user) {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredCandidates.map((candidate) => (
+                    {paginatedCandidates.map((candidate) => (
                       <tr key={candidate.candidate_id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <input
@@ -475,7 +506,7 @@ export default function Candidates(user) {
                         </td>
                       </tr>
                     ))}
-                    {filteredCandidates.length === 0 && (
+                    {paginatedCandidates.length === 0 && (
                       <tr>
                         <td colSpan="8" className="px-6 py-12 text-center">
                           <div className="text-gray-500">
@@ -491,6 +522,54 @@ export default function Candidates(user) {
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Showing page {currentPage} of {totalPages} ({filteredCandidates.length} total candidates)
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      page === currentPage
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === totalPages
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
