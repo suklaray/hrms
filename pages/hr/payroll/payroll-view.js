@@ -49,11 +49,10 @@ export default function PayrollView() {
 
     // Filter by tab
     if (activeTab === 'recent') {
-      const currentMonth = new Date().getMonth();
+      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
       const currentYear = new Date().getFullYear();
       filtered = filtered.filter(item => {
-        const monthIndex = new Date(Date.parse(item.month + " 1, 2000")).getMonth();
-        return monthIndex === currentMonth && item.year === currentYear;
+        return item.month === currentMonth && item.year === currentYear;
       });
     }
 
@@ -197,7 +196,7 @@ export default function PayrollView() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="">All Years</option>
-                {[2024, 2023, 2022, 2021, 2020].map((year) => (
+                {[new Date().getFullYear(), 2024, 2023, 2022, 2021, 2020].filter((year, index, arr) => arr.indexOf(year) === index).map((year) => (
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
