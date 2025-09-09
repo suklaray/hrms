@@ -62,6 +62,7 @@ export default function Sidebar({ handleLogout, user }) {
   const attendanceSubItems = [
     { name: "Attendance", path: "/hr/attendance" },
     { name: "Leave Management", path: "/hr/view-leave-requests" },
+    ...(role === 'hr' ? [{ name: "My Leave Requests", path: "/hr/leave-request" }] : []),
     { name: "Attendance Analytics", path: "/attendance/analytics" },
   ];
 
