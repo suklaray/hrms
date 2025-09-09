@@ -328,13 +328,9 @@ export default function EmployeeDocumentForm() {
     if (type === "file") {
       const file = files[0];
       if (file) {
-        // Validate file size (5KB minimum, 10MB maximum)
-        if (file.size <= 5 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be greater than 5KB' }));
-          return;
-        }
-        if (file.size >= 10 * 1024 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 10MB' }));
+        // Validate file size (maximum 5KB)
+        if (file.size > 5 * 1024) {
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 5KB' }));
           return;
         }
         // Validate file type
@@ -729,7 +725,7 @@ export default function EmployeeDocumentForm() {
                       {errors.aadhar_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -778,7 +774,7 @@ export default function EmployeeDocumentForm() {
                       {errors.pan_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -857,7 +853,7 @@ export default function EmployeeDocumentForm() {
                       {errors.education_certificates}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -877,7 +873,7 @@ export default function EmployeeDocumentForm() {
                       {errors.resume}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -898,7 +894,7 @@ export default function EmployeeDocumentForm() {
                       {errors.profile_photo}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/JPEG only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/JPEG only.</p>
                 </div>
                 
                 <div className="md:col-span-2">
@@ -916,7 +912,7 @@ export default function EmployeeDocumentForm() {
                       {errors.experience_certificate}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
                   <p className="text-blue-600 text-sm mt-1">ⓘ This field is optional. Upload only if you have work experience.</p>
                 </div>
               </div>
@@ -1064,7 +1060,7 @@ export default function EmployeeDocumentForm() {
                       {errors.bank_details}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
                 </div>
               </div>
             </div>

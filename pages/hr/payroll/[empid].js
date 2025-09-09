@@ -3,13 +3,15 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { FaEye } from 'react-icons/fa';
+import { FaEye, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
 export default function EmployeePayroll() {
   const router = useRouter();
   const { empid } = router.query;
   const [records, setRecords] = useState([]);
   const [employee, setEmployee] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     if (empid) {
@@ -95,9 +97,23 @@ export default function EmployeePayroll() {
         )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-4 sm:px-8 py-6 border-b border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900 uppercase">Payroll History</h3>
-            <p className="text-gray-600 mt-1 uppercase">Complete salary records and payments</p>
+          <div className="px-8 py-6 border-b border-gray-100">
+            <h3 className="text-xl font-bold text-gray-900">Payroll History</h3>
+            <p className="text-gray-600 mt-1">Complete salary records and payments</p>
+            {records.length > 0 && (() => {
+              const totalPages = Math.ceil(records.length / itemsPerPage);
+              const startIndex = (currentPage - 1) * itemsPerPage;
+              const paginatedRecords = records.slice(startIndex, startIndex + itemsPerPage);
+              
+              return (
+                <p className="text-sm text-gray-600 mt-2">
+                  Showing {paginatedRecords.length} of {records.length} records
+                  {totalPages > 1 && (
+                    <span> (Page {currentPage} of {totalPages})</span>
+                  )}
+                </p>
+              );
+            })()}
           </div>
           
           <div className="overflow-x-auto">
@@ -115,8 +131,12 @@ export default function EmployeePayroll() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {records.length > 0 ? (
-                  records.map((row, index) => (
+                {records.length > 0 ? (() => {
+                  const totalPages = Math.ceil(records.length / itemsPerPage);
+                  const startIndex = (currentPage - 1) * itemsPerPage;
+                  const paginatedRecords = records.slice(startIndex, startIndex + itemsPerPage);
+                  
+                  return paginatedRecords.map((row, index) => (
                     <tr key={index} className="hover:bg-blue-50/50 transition-colors">
                       <td className="py-3 sm:py-4 px-3 sm:px-6">
                         <div className="font-medium text-gray-900 text-xs sm:text-sm uppercase">{row.month} {row.year}</div>
@@ -142,8 +162,8 @@ export default function EmployeePayroll() {
                         </a>
                       </td>
                     </tr>
-                  ))
-                ) : (
+                  ));
+                })() : (
                   <tr>
                     <td colSpan="8" className="py-8 sm:py-12 px-4 sm:px-6 text-center">
                       <div className="flex flex-col items-center">
@@ -161,6 +181,62 @@ export default function EmployeePayroll() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination */}
+          {records.length > 0 && (() => {
+            const totalPages = Math.ceil(records.length / itemsPerPage);
+            
+            const handlePageChange = (page) => {
+              setCurrentPage(page);
+            };
+            
+            return totalPages > 1 ? (
+              <div className="px-8 py-4 border-t border-gray-100 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing page {currentPage} of {totalPages} ({records.length} total records)
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <FaChevronLeft className="w-4 h-4" />
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        page === currentPage
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === totalPages
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <FaChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : null;
+          })()}
         </div>
       </main>
     </div>

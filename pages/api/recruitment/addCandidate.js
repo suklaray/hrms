@@ -116,7 +116,8 @@ export default async function handler(req, res) {
           const finalPath = path.join(uploadsDir, fileName);
           
           // Move file to uploads directory
-          fs.renameSync(file.filepath, finalPath);
+          fs.copyFileSync(file.filepath, finalPath);
+          fs.unlinkSync(file.filepath);
           resumePath = `/uploads/${fileName}`;
         }
 

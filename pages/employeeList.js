@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
-import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown } from "react-icons/fa";
+import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
 
@@ -57,7 +57,9 @@ export default function EmployeeListPage({ user }) {
   const [employees, setEmployees] = useState([]);
   const [filter, setFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -112,6 +114,15 @@ export default function EmployeeListPage({ user }) {
   const countByRole = (roleName) =>
     employees.filter(emp => emp.role?.toLowerCase() === roleName.toLowerCase()).length;
 
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
   const canViewRole = (targetRole) => {
     const role = user.role.toLowerCase();
     const target = targetRole.toLowerCase();
@@ -134,6 +145,11 @@ export default function EmployeeListPage({ user }) {
     }
     return emp.role?.toLowerCase() === filter.toLowerCase() && canViewRole(target) && matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
 
   const roles = [
     { label: "All", icon: FaUsers, color: "bg-blue-500" },
@@ -185,7 +201,7 @@ export default function EmployeeListPage({ user }) {
             return (
               <button
                 key={label}
-                onClick={() => setFilter(label)}
+                onClick={() => handleFilterChange(label)}
                 className={`p-4 rounded-xl transition-all hover:scale-105 cursor-pointer ${
                   filter === label 
                     ? 'bg-indigo-600 text-white shadow-lg' 
@@ -205,9 +221,12 @@ export default function EmployeeListPage({ user }) {
         {/* Results Summary */}
         <div className="mb-4">
           <p className="text-gray-600">
-            Showing <span className="font-semibold">{filteredEmployees.length}</span> of <span className="font-semibold">{employees.length}</span> employees
+            Showing <span className="font-semibold">{paginatedEmployees.length}</span> of <span className="font-semibold">{filteredEmployees.length}</span> employees
             {searchTerm && (
               <span> matching &quot;<span className="font-semibold">{searchTerm}</span>&quot;</span>
+            )}
+            {totalPages > 1 && (
+              <span> (Page {currentPage} of {totalPages})</span>
             )}
           </p>
         </div>
@@ -227,7 +246,7 @@ export default function EmployeeListPage({ user }) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredEmployees.map((emp) => (
+                {paginatedEmployees.map((emp) => (
                   <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -295,7 +314,7 @@ export default function EmployeeListPage({ user }) {
                     </td>
                   </tr>
                 ))}
-                {filteredEmployees.length === 0 && (
+                {paginatedEmployees.length === 0 && (
                   <tr>
                     <td colSpan="6" className="px-6 py-12 text-center">
                       <div className="text-gray-500">
@@ -312,6 +331,54 @@ export default function EmployeeListPage({ user }) {
             </table>
           </div>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Showing page {currentPage} of {totalPages} ({filteredEmployees.length} total employees)
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentPage === 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <FaChevronLeft className="w-4 h-4" />
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => handlePageChange(page)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    page === currentPage
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentPage === totalPages
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <FaChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
     </>

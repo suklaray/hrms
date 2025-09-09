@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import Head from 'next/head';
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import SideBar from "@/Components/SideBar";
 
 export default function CustomerConnect() {
@@ -8,6 +8,8 @@ export default function CustomerConnect() {
     const [selected, setSelected] = useState([]);
     const [selectAll, setSelectAll] = useState(false);
     const [activeMessageId, setActiveMessageId] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 5;
     const togglePopup = (id) => {
     setActiveMessageId((prev) => (prev === id ? null : id));
     };
@@ -94,6 +96,23 @@ export default function CustomerConnect() {
           </div>
 
           <div className="p-6">
+            {/* Results Summary */}
+            {messages.length > 0 && (() => {
+              const totalPages = Math.ceil(messages.length / itemsPerPage);
+              const startIndex = (currentPage - 1) * itemsPerPage;
+              const paginatedMessages = messages.slice(startIndex, startIndex + itemsPerPage);
+              
+              return (
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">
+                    Showing {paginatedMessages.length} of {messages.length} messages
+                    {totalPages > 1 && (
+                      <span> (Page {currentPage} of {totalPages})</span>
+                    )}
+                  </p>
+                </div>
+              );
+            })()}
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
@@ -115,7 +134,12 @@ export default function CustomerConnect() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {messages.map((msg, index) => (
+                    {(() => {
+                      const totalPages = Math.ceil(messages.length / itemsPerPage);
+                      const startIndex = (currentPage - 1) * itemsPerPage;
+                      const paginatedMessages = messages.slice(startIndex, startIndex + itemsPerPage);
+                      
+                      return paginatedMessages.map((msg, index) => (
                       <tr
                         key={msg.id}
                         className={`hover:bg-gray-50 transition-colors ${
@@ -176,7 +200,8 @@ export default function CustomerConnect() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      ));
+                    })()}
                     {messages.length === 0 && (
                       <tr>
                         <td colSpan="5" className="px-6 py-12 text-center">
@@ -191,6 +216,62 @@ export default function CustomerConnect() {
                   </tbody>
                 </table>
               </div>
+              
+              {/* Pagination */}
+              {messages.length > 0 && (() => {
+                const totalPages = Math.ceil(messages.length / itemsPerPage);
+                
+                const handlePageChange = (page) => {
+                  setCurrentPage(page);
+                };
+                
+                return totalPages > 1 ? (
+                  <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing page {currentPage} of {totalPages} ({messages.length} total messages)
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === 1
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            page === currentPage
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === totalPages
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
           </div>
         </div>

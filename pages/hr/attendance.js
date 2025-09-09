@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { Clock, Users, Search, Calendar, TrendingUp, Eye } from "lucide-react";
+import { Clock, Users, Search, Calendar, TrendingUp, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/router";
 
 // Live Timer Component
@@ -50,8 +50,8 @@ export default function AttendanceList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
   const router = useRouter();
+  const itemsPerPage = 5;
 
   useEffect(() => {
     fetch("/api/hr/attendance")
@@ -79,7 +79,16 @@ export default function AttendanceList() {
       setFilteredData(filtered);
     }
     setCurrentPage(1);
-  }, [searchTerm, data, itemsPerPage]);
+  }, [searchTerm, data]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
   const handleLogout = () => {
     router.push("/login");
@@ -202,21 +211,11 @@ export default function AttendanceList() {
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-            <div className="mt-2 flex justify-between items-center text-sm text-gray-600">
-              <span>Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredData.length)} of {filteredData.length} employees</span>
-              <select 
-                value={itemsPerPage} 
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value={10}>10 per page</option>
-                <option value={25}>25 per page</option>
-                <option value={50}>50 per page</option>
-                <option value={100}>100 per page</option>
-              </select>
+            <div className="mt-2 text-sm text-gray-600">
+              Showing {paginatedData.length} of {filteredData.length} employees
+              {totalPages > 1 && (
+                <span> (Page {currentPage} of {totalPages})</span>
+              )}
             </div>
           </div>
 
@@ -237,8 +236,8 @@ export default function AttendanceList() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {Array.isArray(currentItems) && currentItems.length > 0 ? (
-                    currentItems.map((user, index) => (
+                  {Array.isArray(paginatedData) && paginatedData.length > 0 ? (
+                    paginatedData.map((user, index) => (
                       <tr key={user.empid} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -378,6 +377,54 @@ export default function AttendanceList() {
               </div>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-700">
+                Showing page {currentPage} of {totalPages} ({filteredData.length} total employees)
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      page === currentPage
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    currentPage === totalPages
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

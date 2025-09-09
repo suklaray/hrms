@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { Search, Calendar, Users, Eye, Download, Filter, DollarSign } from 'lucide-react';
+import { Search, Calendar, Users, Eye, Download, Filter, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function PayrollView() {
   const [payrolls, setPayrolls] = useState([]);
@@ -11,6 +11,8 @@ export default function PayrollView() {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState({ month: '', year: '' });
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const fetchPayrolls = async () => {
@@ -57,7 +59,17 @@ export default function PayrollView() {
     }
 
     setFilteredPayrolls(filtered);
+    setCurrentPage(1);
   }, [payrolls, searchTerm, dateFilter, activeTab]);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredPayrolls.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPayrolls = filteredPayrolls.slice(startIndex, startIndex + itemsPerPage);
 
   const getStats = () => {
     const total = payrolls.length;
@@ -202,7 +214,10 @@ export default function PayrollView() {
               </select>
 
               <div className="ml-auto text-sm text-gray-600">
-                Showing {filteredPayrolls.length} of {payrolls.length} records
+                Showing {paginatedPayrolls.length} of {filteredPayrolls.length} records
+                {totalPages > 1 && (
+                  <span> (Page {currentPage} of {totalPages})</span>
+                )}
               </div>
             </div>
           </div>
@@ -228,7 +243,7 @@ export default function PayrollView() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredPayrolls.map((item, index) => (
+                    {paginatedPayrolls.map((item, index) => (
                       <tr key={index} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -264,7 +279,7 @@ export default function PayrollView() {
                         </td>
                       </tr>
                     ))}
-                    {filteredPayrolls.length === 0 && (
+                    {paginatedPayrolls.length === 0 && (
                       <tr>
                         <td colSpan="6" className="text-center text-gray-500 py-8">
                           {searchTerm || dateFilter.month || dateFilter.year ? 'No payrolls match your filters.' : 'No payroll records found.'}
@@ -273,6 +288,54 @@ export default function PayrollView() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+            
+            {/* Pagination */}
+            {!loading && totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing page {currentPage} of {totalPages} ({filteredPayrolls.length} total records)
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        page === currentPage
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === totalPages
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>

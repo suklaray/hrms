@@ -3,7 +3,7 @@ import moment from 'moment';
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from 'next/router';
-import { Eye, Calendar, User, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, Settings } from 'lucide-react';
+import { Eye, Calendar, User, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ViewLeaveRequests() {
   const router = useRouter();
@@ -13,6 +13,8 @@ export default function ViewLeaveRequests() {
   const [showLeaveTypeModal, setShowLeaveTypeModal] = useState(false);
   const [leaveTypeForm, setLeaveTypeForm] = useState({ type_name: '', max_days: '', paid: true });
   const [editingLeaveType, setEditingLeaveType] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
 
   useEffect(() => {
@@ -244,6 +246,20 @@ export default function ViewLeaveRequests() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-gray-900">Employee Leave Requests</h2>
+              {leaveData.length > 0 && (() => {
+                const totalPages = Math.ceil(leaveData.length / itemsPerPage);
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const paginatedData = leaveData.slice(startIndex, startIndex + itemsPerPage);
+                
+                return (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Showing {paginatedData.length} of {leaveData.length} leave requests
+                    {totalPages > 1 && (
+                      <span> (Page {currentPage} of {totalPages})</span>
+                    )}
+                  </p>
+                );
+              })()}
             </div>
             
             <div className="overflow-x-auto">
@@ -259,65 +275,73 @@ export default function ViewLeaveRequests() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {leaveData.map((leave) => {
-                    const currentStatus = getLeaveStatus(leave);
-                    return (
-                      <tr key={leave.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                              <User className="w-5 h-5 text-indigo-600" />
+                  {(() => {
+                    if (leaveData.length === 0) return null;
+                    
+                    const totalPages = Math.ceil(leaveData.length / itemsPerPage);
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const paginatedData = leaveData.slice(startIndex, startIndex + itemsPerPage);
+                    
+                    return paginatedData.map((leave) => {
+                      const currentStatus = getLeaveStatus(leave);
+                      return (
+                        <tr key={leave.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <User className="w-5 h-5 text-indigo-600" />
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{leave.name}</div>
+                                <div className="text-sm text-gray-500">ID: {leave.empid}</div>
+                              </div>
                             </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{leave.name}</div>
-                              <div className="text-sm text-gray-500">ID: {leave.empid}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-sm text-gray-900 font-medium">{leave.leave_type}</div>
+                            <div className="text-sm text-gray-500">{leave.reason}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center text-sm text-gray-900">
+                              <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                              <div>
+                                <div>{formatDate(leave.from_date)}</div>
+                                <div className="text-gray-500">to {formatDate(leave.to_date)}</div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900 font-medium">{leave.leave_type}</div>
-                          <div className="text-sm text-gray-500">{leave.reason}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center text-sm text-gray-900">
-                            <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                            <div>
-                              <div>{formatDate(leave.from_date)}</div>
-                              <div className="text-gray-500">to {formatDate(leave.to_date)}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(currentStatus)}`}>
-                            {currentStatus === 'Approved' && <CheckCircle className="w-3 h-3 mr-1" />}
-                            {currentStatus === 'Rejected' && <XCircle className="w-3 h-3 mr-1" />}
-                            {currentStatus === 'Pending' && <AlertCircle className="w-3 h-3 mr-1" />}
-                            {currentStatus === 'On Leave' && <Clock className="w-3 h-3 mr-1" />}
-                            {currentStatus}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleViewEmployee(leave.empid)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
-                          >
-                            <Eye className="w-5 h-5" />
-                          </button>
-                        </td>
-                        <td className="px-6 py-4">
-                          <select
-                            value={leave.status}
-                            onChange={(e) => handleStatusChange(leave.id, e.target.value)}
-                            className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                          >
-                            <option value="Pending">Pending</option>
-                            <option value="Approved">Approved</option>
-                            <option value="Rejected">Rejected</option>
-                          </select>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(currentStatus)}`}>
+                              {currentStatus === 'Approved' && <CheckCircle className="w-3 h-3 mr-1" />}
+                              {currentStatus === 'Rejected' && <XCircle className="w-3 h-3 mr-1" />}
+                              {currentStatus === 'Pending' && <AlertCircle className="w-3 h-3 mr-1" />}
+                              {currentStatus === 'On Leave' && <Clock className="w-3 h-3 mr-1" />}
+                              {currentStatus}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button
+                              onClick={() => handleViewEmployee(leave.empid)}
+                              className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
+                          </td>
+                          <td className="px-6 py-4">
+                            <select
+                              value={leave.status}
+                              onChange={(e) => handleStatusChange(leave.id, e.target.value)}
+                              className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Approved">Approved</option>
+                              <option value="Rejected">Rejected</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                   {leaveData.length === 0 && (
                     <tr>
                       <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
@@ -331,6 +355,62 @@ export default function ViewLeaveRequests() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination */}
+            {(() => {
+              const totalPages = Math.ceil(leaveData.length / itemsPerPage);
+              
+              const handlePageChange = (page) => {
+                setCurrentPage(page);
+              };
+              
+              return totalPages > 1 ? (
+                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Showing page {currentPage} of {totalPages} ({leaveData.length} total requests)
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          page === currentPage
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
 
