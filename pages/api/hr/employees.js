@@ -45,11 +45,22 @@ export default async function handler(req, res) {
         const currentMonth = new Date().toLocaleString('default', { month: 'long' });
         const currentYear = new Date().getFullYear();
         
-        const payroll = await prisma.payroll.findFirst({
+        // Check current month payroll
+        const currentPayroll = await prisma.payroll.findFirst({
           where: {
             empid: emp.empid,
             month: currentMonth,
             year: currentYear
+          }
+        });
+
+        // Get most recent payroll for last payment date
+        const lastPayroll = await prisma.payroll.findFirst({
+          where: {
+            empid: emp.empid
+          },
+          orderBy: {
+            generated_on: 'desc'
           },
           select: {
             generated_on: true
@@ -58,8 +69,8 @@ export default async function handler(req, res) {
 
         return {
           ...emp,
-          payrollGenerated: !!payroll,
-          lastPaymentDate: payroll?.generated_on || null,
+          payrollGenerated: !!currentPayroll,
+          lastPaymentDate: lastPayroll?.generated_on || null,
           phone: emp.contact_number
         };
       })

@@ -68,13 +68,8 @@ export default async function handler(req, res) {
         const day = String(today.getDate()).padStart(2, "0");
         const datePrefix = `${year}${month}${day}`;
 
-        // Find the highest candidate ID for today's date
+        // Find the highest candidate ID across all dates to maintain continuous sequence
         const lastCandidate = await prisma.candidates.findFirst({
-          where: {
-            candidate_id: {
-              startsWith: datePrefix
-            }
-          },
           orderBy: {
             candidate_id: 'desc'
           }

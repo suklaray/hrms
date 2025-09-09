@@ -49,6 +49,8 @@ export default function AttendanceList() {
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const router = useRouter();
 
   useEffect(() => {
@@ -76,7 +78,8 @@ export default function AttendanceList() {
       );
       setFilteredData(filtered);
     }
-  }, [searchTerm, data]);
+    setCurrentPage(1);
+  }, [searchTerm, data, itemsPerPage]);
 
   const handleLogout = () => {
     router.push("/login");
@@ -85,6 +88,12 @@ export default function AttendanceList() {
   const handleViewClick = (empid) => {
     router.push(`/hr/attendance/${empid}`);
   };
+
+  // Pagination calculations
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const stats = {
     total: data.length,
@@ -193,11 +202,22 @@ export default function AttendanceList() {
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
-            {searchTerm && (
-              <div className="mt-2 text-sm text-gray-600">
-                Showing {filteredData.length} of {data.length} employees
-              </div>
-            )}
+            <div className="mt-2 flex justify-between items-center text-sm text-gray-600">
+              <span>Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredData.length)} of {filteredData.length} employees</span>
+              <select 
+                value={itemsPerPage} 
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              >
+                <option value={10}>10 per page</option>
+                <option value={25}>25 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
+            </div>
           </div>
 
           {/* Attendance Table */}
@@ -217,8 +237,8 @@ export default function AttendanceList() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {Array.isArray(filteredData) && filteredData.length > 0 ? (
-                    filteredData.map((user, index) => (
+                  {Array.isArray(currentItems) && currentItems.length > 0 ? (
+                    currentItems.map((user, index) => (
                       <tr key={user.empid} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -292,6 +312,71 @@ export default function AttendanceList() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Previous
+                  </button>
+                  
+                  {(() => {
+                    const maxVisible = totalPages > 100 ? 3 : 5;
+                    const startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                    const endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                    const pages = [];
+                    
+                    if (startPage > 1) {
+                      pages.push(
+                        <button key={1} onClick={() => setCurrentPage(1)} className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">1</button>
+                      );
+                      if (startPage > 2) pages.push(<span key="start-ellipsis" className="px-2 text-gray-500">...</span>);
+                    }
+                    
+                    for (let i = startPage; i <= endPage; i++) {
+                      pages.push(
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPage(i)}
+                          className={`px-3 py-1 border rounded text-sm ${
+                            currentPage === i
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {i}
+                        </button>
+                      );
+                    }
+                    
+                    if (endPage < totalPages) {
+                      if (endPage < totalPages - 1) pages.push(<span key="end-ellipsis" className="px-2 text-gray-500">...</span>);
+                      pages.push(
+                        <button key={totalPages} onClick={() => setCurrentPage(totalPages)} className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">{totalPages}</button>
+                      );
+                    }
+                    
+                    return pages;
+                  })()}
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

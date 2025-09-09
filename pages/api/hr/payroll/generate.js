@@ -30,6 +30,19 @@ export default async function handler(req, res) {
       esic_include
     } = req.body;
 
+    // Check if payroll already exists
+    const existingPayroll = await prisma.payroll.findFirst({
+      where: {
+        empid,
+        month,
+        year: Number(year)
+      }
+    });
+
+    if (existingPayroll) {
+      return res.status(400).json({ error: `Payroll for ${month} ${year} already exists for this employee` });
+    }
+
     const bs = Number(basic_salary) || 0;
     const h = Number(hra) || 0;
     const d_a = Number(da) || 0;
@@ -40,7 +53,7 @@ export default async function handler(req, res) {
     const pt_ded = Number(ptax) || 0;
     const es_ded = Number(esic) || 0;
 
-    const calculated_net_pay = bs + h + d_a + all + bon - (ded + pf_ded + pt_ded + es_ded);
+    const calculated_net_pay = bs + all + bon - ded;
 
     const paymentDate = new Date();
 

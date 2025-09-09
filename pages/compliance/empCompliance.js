@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Eye, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, X, Filter, Users, Shield } from "lucide-react";
 
@@ -199,7 +200,11 @@ export default function ComplianceDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Employee Compliance - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar />
 
       <div className="flex-1 overflow-auto">
@@ -505,5 +510,6 @@ export default function ComplianceDashboard() {
 
       </div>
     </div>
+    </>
   );
 }

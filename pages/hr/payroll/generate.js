@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
 import toast from "react-hot-toast";
@@ -64,7 +65,11 @@ export default function GeneratePayrollPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Generate Payroll - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar handleLogout={() => {}} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -217,5 +222,6 @@ export default function GeneratePayrollPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

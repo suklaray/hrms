@@ -15,15 +15,15 @@ export default function PayrollForm() {
     basic_salary: '',
     hra_percent: 40,
     da_percent: 10,
-    allowances: [{ name: '', percent: 20, include: true }],
-    deductions: [{ name: '', percent: 5, include: true }],
+    allowances: [],
+    deductions: [],
     bonus: '',
     month: '',
     year: new Date().getFullYear(),
     hra_include: true,
     da_include: true,
     pf_percent: 10,
-    ptax_percent: 200,
+    ptax_percent: 10,
     esic_percent: 0.75,
     pf_include: true,
     ptax_include: true,
@@ -53,17 +53,47 @@ export default function PayrollForm() {
           // Get the most recent payroll
           const lastPayroll = payrolls[payrolls.length - 1];
           
+          // Parse allowance and deduction details
+          const allowanceDetails = lastPayroll.allowance_details ? JSON.parse(lastPayroll.allowance_details) : [];
+          const deductionDetails = lastPayroll.deduction_details ? JSON.parse(lastPayroll.deduction_details) : [];
+          
+          // Filter out fixed allowances and deductions to get custom ones
+          const customAllowances = allowanceDetails.filter(item => 
+            !['House Rent Allowance (HRA)', 'Dearness Allowance (DA)'].includes(item.name)
+          ).map(item => ({ name: item.name, percent: item.percent || 0, include: true }));
+          
+          const customDeductions = deductionDetails.filter(item => 
+            !['Provident Fund (PF)', 'Professional Tax (PTAX)', 'Employee State Insurance (ESIC)'].includes(item.name)
+          ).map(item => ({ name: item.name, percent: item.percent || 0, include: true }));
+          
+          // Calculate percentages from amounts
+          const basicSalary = Number(lastPayroll.basic_salary) || 0;
+          const hraPercent = basicSalary > 0 ? ((Number(lastPayroll.hra) || 0) / basicSalary * 100) : 40;
+          const daPercent = basicSalary > 0 ? ((Number(lastPayroll.da) || 0) / basicSalary * 100) : 10;
+          const pfPercent = basicSalary > 0 ? ((Number(lastPayroll.pf) || 0) / basicSalary * 100) : 10;
+          const ptaxPercent = basicSalary > 0 ? ((Number(lastPayroll.ptax) || 0) / basicSalary * 100) : 10;
+          const esicPercent = basicSalary > 0 ? ((Number(lastPayroll.esic) || 0) / basicSalary * 100) : 0.75;
+          
           // Pre-fill form with previous data
           setFormData(prev => ({
             ...prev,
             basic_salary: lastPayroll.basic_salary || '',
             bonus: lastPayroll.bonus || '',
-            hra_percent: 40, // Keep default or calculate from last payroll
-            da_percent: 10,
-            pf_percent: 10,
-            ptax_percent: 200,
-            esic_percent: 0.75
+            hra_percent: Math.round(hraPercent * 100) / 100,
+            da_percent: Math.round(daPercent * 100) / 100,
+            pf_percent: Math.round(pfPercent * 100) / 100,
+            ptax_percent: Math.round(ptaxPercent * 100) / 100,
+            esic_percent: Math.round(esicPercent * 100) / 100,
+            allowances: customAllowances,
+            deductions: customDeductions,
+            hra_include: Number(lastPayroll.hra) > 0,
+            da_include: Number(lastPayroll.da) > 0,
+            pf_include: Number(lastPayroll.pf) > 0,
+            ptax_include: Number(lastPayroll.ptax) > 0,
+            esic_include: Number(lastPayroll.esic) > 0
           }));
+          
+          setMessage(`Last payroll generated on: ${new Date(lastPayroll.generated_on).toLocaleString()}`);
         }
       })
       .catch((err) => {
@@ -76,95 +106,122 @@ export default function PayrollForm() {
   };
   
   const handleChange = (e) => {
-    const value = e.target.type === 'number' ? (e.target.value === '' ? '' : parseFloat(e.target.value)) : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const { name, value, type } = e.target;
+    let newValue = value;
+    if (type === 'number') {
+      if (value === '') {
+        newValue = '';
+      } else {
+        const numValue = parseFloat(value);
+        newValue = numValue < 0 ? 0 : value;
+      }
+    }
+    setFormData(prev => ({ ...prev, [name]: newValue }));
   };
 
   const handleAllowanceChange = (index, e) => {
     const updatedAllowances = [...formData.allowances];
     if(e.target.name === 'percent'){
-      updatedAllowances[index][e.target.name] = e.target.value === '' ? '' : parseFloat(e.target.value);
+      if (e.target.value === '') {
+        updatedAllowances[index][e.target.name] = '';
+      } else {
+        const numValue = parseFloat(e.target.value);
+        updatedAllowances[index][e.target.name] = numValue < 0 ? 0 : e.target.value;
+      }
     } else {
       updatedAllowances[index][e.target.name] = e.target.value;
     }
-    setFormData({ ...formData, allowances: updatedAllowances });
+    setFormData(prev => ({ ...prev, allowances: updatedAllowances }));
   };
 
   const handleDeductionChange = (index, e) => {
     const updatedDeductions = [...formData.deductions];
     if(e.target.name === 'percent'){
-      updatedDeductions[index][e.target.name] = e.target.value === '' ? '' : parseFloat(e.target.value);
+      if (e.target.value === '') {
+        updatedDeductions[index][e.target.name] = '';
+      } else {
+        const numValue = parseFloat(e.target.value);
+        updatedDeductions[index][e.target.name] = numValue < 0 ? 0 : e.target.value;
+      }
     } else {
       updatedDeductions[index][e.target.name] = e.target.value;
     }
-    setFormData({ ...formData, deductions: updatedDeductions });
+    setFormData(prev => ({ ...prev, deductions: updatedDeductions }));
   };
 
   const handleAddAllowance = () => {
-    setFormData({
-      ...formData,
-      allowances: [...formData.allowances, { name: '', percent: 0, include: true }],
-    });
+    setFormData(prev => ({
+      ...prev,
+      allowances: [...prev.allowances, { name: '', percent: 0, include: true }],
+    }));
   };
 
   const handleAddDeduction = () => {
-    setFormData({
-      ...formData,
-      deductions: [...formData.deductions, { name: '', percent: 0, include: true }],
-    });
+    setFormData(prev => ({
+      ...prev,
+      deductions: [...prev.deductions, { name: '', percent: 0, include: true }],
+    }));
   };
 
   const handleRemoveAllowance = (index) => {
-    const updatedAllowances = [...formData.allowances];
-    updatedAllowances.splice(index, 1);
-    setFormData({ ...formData, allowances: updatedAllowances });
+    setFormData(prev => {
+      const updatedAllowances = [...prev.allowances];
+      updatedAllowances.splice(index, 1);
+      return { ...prev, allowances: updatedAllowances };
+    });
   };
 
   const handleRemoveDeduction = (index) => {
-    const updatedDeductions = [...formData.deductions];
-    updatedDeductions.splice(index, 1);
-    setFormData({ ...formData, deductions: updatedDeductions });
+    setFormData(prev => {
+      const updatedDeductions = [...prev.deductions];
+      updatedDeductions.splice(index, 1);
+      return { ...prev, deductions: updatedDeductions };
+    });
   };
 
   const calculateNetPay = () => {
     const hra = formData.hra_include ? calculateAmount(formData.hra_percent) : 0;
     const da = formData.da_include ? calculateAmount(formData.da_percent) : 0;
     const pf = formData.pf_include ? calculateAmount(formData.pf_percent) : 0;
-    const ptax = formData.ptax_include ? 200 : 0;
+    const ptax = formData.ptax_include ? calculateAmount(formData.ptax_percent) : 0;
     const esic = formData.esic_include ? calculateAmount(formData.esic_percent) : 0;
 
-    const allowances = formData.allowances
+    const customAllowances = formData.allowances
       .filter((allowance) => allowance.include)
       .reduce((total, allowance) => total + calculateAmount(parseFloat(allowance.percent || 0)), 0);
 
-    const deductions = formData.deductions
+    const customDeductions = formData.deductions
       .filter((deduction) => deduction.include)
       .reduce((total, deduction) => total + calculateAmount(parseFloat(deduction.percent || 0)), 0);
 
-    const totalDeductions = deductions + pf + ptax + esic;
+    const totalAllowances = hra + da + customAllowances;
+    const totalDeductions = customDeductions + pf + ptax + esic;
 
-    return parseFloat(formData.basic_salary || 0) + hra + da + allowances + parseFloat(formData.bonus || 0) - totalDeductions;
+    return parseFloat(formData.basic_salary || 0) + totalAllowances + parseFloat(formData.bonus || 0) - totalDeductions;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
 
     const hra = formData.hra_include ? calculateAmount(formData.hra_percent) : 0;
     const da = formData.da_include ? calculateAmount(formData.da_percent) : 0;
     const pf = formData.pf_include ? calculateAmount(formData.pf_percent) : 0;
-    const ptax = formData.ptax_include ? 200 : 0;
+    const ptax = formData.ptax_include ? calculateAmount(formData.ptax_percent) : 0;
     const esic = formData.esic_include ? calculateAmount(formData.esic_percent) : 0;
 
-    const allowances = formData.allowances
+    const customAllowances = formData.allowances
       .filter((allowance) => allowance.include)
       .reduce((total, allowance) => total + calculateAmount(parseFloat(allowance.percent || 0)), 0);
 
-    const deductions = formData.deductions
+    const totalAllowances = hra + da + customAllowances;
+
+    const customDeductions = formData.deductions
       .filter((deduction) => deduction.include)
       .reduce((total, deduction) => total + calculateAmount(parseFloat(deduction.percent || 0)), 0);
 
-    const totalDeductions = deductions + pf + ptax + esic;
+    const totalDeductions = customDeductions + pf + ptax + esic;
     const net_pay = calculateNetPay();
 
     // Generate payslip PDF path
@@ -179,7 +236,7 @@ export default function PayrollForm() {
           basic_salary: formData.basic_salary,
           hra,
           da,
-          allowances,
+          allowances: totalAllowances,
           deductions: totalDeductions,
           pf,
           ptax,
@@ -196,7 +253,7 @@ export default function PayrollForm() {
           ],
           deduction_details: [
             ...(formData.pf_include ? [{ name: 'Provident Fund (PF)', percent: formData.pf_percent, amount: calculateAmount(formData.pf_percent) }] : []),
-            ...(formData.ptax_include ? [{ name: 'Professional Tax (PTAX)', amount: 200, fixed: true }] : []),
+            ...(formData.ptax_include ? [{ name: 'Professional Tax (PTAX)', percent: formData.ptax_percent, amount: calculateAmount(formData.ptax_percent) }] : []),
             ...(formData.esic_include ? [{ name: 'Employee State Insurance (ESIC)', percent: formData.esic_percent, amount: calculateAmount(formData.esic_percent) }] : []),
             ...formData.deductions.filter(d => d.include && d.name).map(d => ({ ...d, amount: calculateAmount(parseFloat(d.percent || 0)) }))
           ],
@@ -217,6 +274,8 @@ export default function PayrollForm() {
           year: result.year,
           payslipUrl: `/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`
         });
+        // Reset form after successful submission
+        setFormData(prev => ({ ...prev, month: '', year: new Date().getFullYear() }));
       } else {
         const error = await res.json();
         setMessage('Error generating payroll: ' + (error.error || 'Unknown error'));
@@ -315,7 +374,15 @@ export default function PayrollForm() {
                 <User className="w-5 h-5 text-indigo-600" />
                 Employee Information
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Last Generated Message */}
+              {message && message.includes('Last payroll generated') && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800 font-medium">{message}</p>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                   <User className="w-5 h-5 text-gray-500" />
                   <div>
@@ -341,10 +408,57 @@ export default function PayrollForm() {
                   <Phone className="w-5 h-5 text-gray-500" />
                   <div>
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Contact Number</p>
-                    <p className="font-medium text-gray-900">{employee.contact_no || 'Not provided'}</p>
+                    <p className="font-medium text-gray-900">{employee.contact_number || 'Not provided'}</p>
                   </div>
                 </div>
               </div>
+              
+              {/* Bank Details */}
+              {employee.bankDetails && (
+                <div>
+                  <h3 className="text-md font-semibold text-gray-900 mb-3">Bank Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Account Holder</p>
+                        <p className="font-medium text-gray-900">{employee.bankDetails.account_holder_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</p>
+                        <p className="font-medium text-gray-900">{employee.bankDetails.bank_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Account Number</p>
+                        <p className="font-medium text-gray-900">{employee.bankDetails.account_number}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">IFSC Code</p>
+                        <p className="font-medium text-gray-900">{employee.bankDetails.ifsc_code}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Branch</p>
+                        <p className="font-medium text-gray-900">{employee.bankDetails.branch_name || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    {employee.bankDetails.checkbook_document && (
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Document</p>
+                          <a href={employee.bankDetails.checkbook_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm font-medium">View Document</a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Payroll Form */}
@@ -401,6 +515,8 @@ export default function PayrollForm() {
                         onChange={handleChange}
                         className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         placeholder="Enter basic salary"
+                        step="0.01"
+                        min="0"
                         required
                       />
                     </div>
@@ -417,8 +533,14 @@ export default function PayrollForm() {
                 
                 {/* Fixed Allowances */}
                 <div className="space-y-4 mb-6">
+                  <div className="hidden md:grid grid-cols-4 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide px-4">
+                    <div></div>
+                    <div className="text-center">Name</div>
+                    <div className="text-center">Percentage</div>
+                    <div className="text-center">Amount</div>
+                  </div>
                   {['hra', 'da'].map((key) => (
-                    <div key={key} className="flex items-center gap-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div key={key} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-green-50 rounded-lg border border-green-200">
                       <input
                         type="checkbox"
                         checked={formData[`${key}_include`]}
@@ -428,25 +550,33 @@ export default function PayrollForm() {
                             [`${key}_include`]: !prev[`${key}_include`],
                           }));
                         }}
-                        className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                        className="w-4 h-4 text-green-600 rounded focus:ring-green-500 mt-1 md:mt-0"
                       />
-                      <div className="flex-1 grid grid-cols-3 gap-4 items-center">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                        <div className="md:hidden">
+                          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                        </div>
                         <div>
-                          <p className="font-medium text-gray-900 uppercase">
+                          <p className="font-medium text-gray-900 text-sm md:text-base">
                             {key === 'hra' ? 'House Rent Allowance (HRA)' : 'Dearness Allowance (DA)'}
                           </p>
                         </div>
                         <div>
-                          <input
-                            type="number"
-                            name={`${key}_percent`}
-                            value={formData[`${key}_percent`]}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                            placeholder="Percentage"
-                          />
+                          <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              name={`${key}_percent`}
+                              value={formData[`${key}_percent`]}
+                              onChange={handleChange}
+                              className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                              placeholder="0"
+                            />
+                            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                          </div>
                         </div>
                         <div>
+                          <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                           <input
                             value={`₹ ${calculateAmount(formData[`${key}_percent`]).toFixed(2)}`}
                             readOnly
@@ -459,52 +589,75 @@ export default function PayrollForm() {
                 </div>
 
                 {/* Custom Allowances */}
-                <div className="space-y-4">
-                  {formData.allowances.map((allowance, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <input
-                        type="checkbox"
-                        checked={allowance.include}
-                        onChange={() => {
-                          const updatedAllowances = [...formData.allowances];
-                          updatedAllowances[index].include = !updatedAllowances[index].include;
-                          setFormData({ ...formData, allowances: updatedAllowances });
-                        }}
-                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                      />
-                      <div className="flex-1 grid grid-cols-3 gap-4 items-center">
-                        <input
-                          type="text"
-                          name="name"
-                          value={allowance.name}
-                          onChange={(e) => handleAllowanceChange(index, e)}
-                          placeholder="Allowance Name (e.g., Transport, Medical)"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <input
-                          type="number"
-                          name="percent"
-                          value={allowance.percent}
-                          onChange={(e) => handleAllowanceChange(index, e)}
-                          placeholder="Percentage"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <input
-                          value={`₹ ${calculateAmount(parseFloat(allowance.percent || 0)).toFixed(2)}`}
-                          readOnly
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAllowance(index)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
+                {formData.allowances.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="hidden md:grid grid-cols-5 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide px-4">
+                      <div></div>
+                      <div className="text-center">Name</div>
+                      <div className="text-center">Percentage</div>
+                      <div className="text-center">Amount</div>
+                      <div></div>
                     </div>
-                  ))}
-                </div>
+                    {formData.allowances.map((allowance, index) => (
+                      <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={allowance.include}
+                          onChange={() => {
+                            setFormData(prev => {
+                              const updatedAllowances = [...prev.allowances];
+                              updatedAllowances[index].include = !updatedAllowances[index].include;
+                              return { ...prev, allowances: updatedAllowances };
+                            });
+                          }}
+                          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 mt-1 md:mt-0"
+                        />
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                          <div>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                            <input
+                              type="text"
+                              name="name"
+                              value={allowance.name}
+                              onChange={(e) => handleAllowanceChange(index, e)}
+                              placeholder="Allowance Name (e.g., Transport, Medical)"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                name="percent"
+                                value={allowance.percent}
+                                onChange={(e) => handleAllowanceChange(index, e)}
+                                placeholder="0"
+                                className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              />
+                              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                            <input
+                              value={`₹ ${calculateAmount(parseFloat(allowance.percent || 0)).toFixed(2)}`}
+                              readOnly
+                              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAllowance(index)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors self-start md:self-center"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 
                 <button
                   type="button"
@@ -525,8 +678,15 @@ export default function PayrollForm() {
                 
                 {/* Fixed Deductions */}
                 <div className="space-y-4 mb-6">
-                    {/* PF - Editable */}
-                  <div className="flex items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                  <div className="hidden md:grid grid-cols-4 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide px-4">
+                    <div></div>
+                    <div className="text-center">Name</div>
+                    <div className="text-center">Percentage</div>
+                    <div className="text-center">Amount</div>
+                  </div>
+                  
+                  {/* PF - Editable */}
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
                     <input
                       type="checkbox"
                       checked={formData.pf_include}
@@ -536,23 +696,29 @@ export default function PayrollForm() {
                           pf_include: !prev.pf_include,
                         }));
                       }}
-                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500 mt-1 md:mt-0"
                     />
-                    <div className="flex-1 grid grid-cols-3 gap-4 items-center">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                       <div>
-                        <p className="font-medium text-gray-900">Provident Fund (PF)</p>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                        <p className="font-medium text-gray-900 text-sm md:text-base">Provident Fund (PF)</p>
                       </div>
                       <div>
-                        <input
-                          type="number"
-                          name="pf_percent"
-                          value={formData.pf_percent}
-                          onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                          placeholder="Percentage"
-                        />
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            name="pf_percent"
+                            value={formData.pf_percent}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                            placeholder="0"
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                        </div>
                       </div>
                       <div>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                         <input
                           value={`₹ ${calculateAmount(formData.pf_percent).toFixed(2)}`}
                           readOnly
@@ -562,8 +728,8 @@ export default function PayrollForm() {
                     </div>
                   </div>
                   
-                  {/* PTAX - Fixed */}
-                  <div className="flex items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                  {/* PTAX - Editable */}
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
                     <input
                       type="checkbox"
                       checked={formData.ptax_include}
@@ -573,24 +739,31 @@ export default function PayrollForm() {
                           ptax_include: !prev.ptax_include,
                         }));
                       }}
-                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500 mt-1 md:mt-0"
                     />
-                    <div className="flex-1 grid grid-cols-3 gap-4 items-center">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                       <div>
-                        <p className="font-medium text-gray-900">Professional Tax (PTAX)</p>
-                        <p className="text-xs text-gray-500">Fixed Amount</p>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                        <p className="font-medium text-gray-900 text-sm md:text-base">Professional Tax (PTAX)</p>
                       </div>
                       <div>
-                        <input
-                          type="text"
-                          value="₹200"
-                          readOnly
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 font-medium"
-                        />
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            name="ptax_percent"
+                            value={formData.ptax_percent}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                            placeholder="0"
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                        </div>
                       </div>
                       <div>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                         <input
-                          value={`₹ ${formData.ptax_include ? '200.00' : '0.00'}`}
+                          value={`₹ ${calculateAmount(formData.ptax_percent).toFixed(2)}`}
                           readOnly
                           className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
                         />
@@ -598,8 +771,8 @@ export default function PayrollForm() {
                     </div>
                   </div>
                   
-                  {/* ESIC - Fixed */}
-                  <div className="flex items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
+                  {/* ESIC - Editable */}
+                  <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
                     <input
                       type="checkbox"
                       checked={formData.esic_include}
@@ -609,22 +782,29 @@ export default function PayrollForm() {
                           esic_include: !prev.esic_include,
                         }));
                       }}
-                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                      className="w-4 h-4 text-red-600 rounded focus:ring-red-500 mt-1 md:mt-0"
                     />
-                    <div className="flex-1 grid grid-cols-3 gap-4 items-center">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                       <div>
-                        <p className="font-medium text-gray-900">Employee State Insurance (ESIC)</p>
-                        <p className="text-xs text-gray-500">Fixed Rate: 0.75%</p>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                        <p className="font-medium text-gray-900 text-sm md:text-base">Employee State Insurance (ESIC)</p>
                       </div>
                       <div>
-                        <input
-                          type="text"
-                          value="0.75%"
-                          readOnly
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 font-medium"
-                        />
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            name="esic_percent"
+                            value={formData.esic_percent}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                            placeholder="0"
+                          />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                        </div>
                       </div>
                       <div>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                         <input
                           value={`₹ ${calculateAmount(formData.esic_percent).toFixed(2)}`}
                           readOnly
@@ -636,52 +816,75 @@ export default function PayrollForm() {
                 </div>
 
                 {/* Custom Deductions */}
-                <div className="space-y-4">
-                  {formData.deductions.map((deduction, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <input
-                        type="checkbox"
-                        checked={deduction.include}
-                        onChange={() => {
-                          const updatedDeductions = [...formData.deductions];
-                          updatedDeductions[index].include = !updatedDeductions[index].include;
-                          setFormData({ ...formData, deductions: updatedDeductions });
-                        }}
-                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                      />
-                      <div className="flex-1 grid grid-cols-3 gap-4 items-center">
-                        <input
-                          type="text"
-                          name="name"
-                          value={deduction.name}
-                          onChange={(e) => handleDeductionChange(index, e)}
-                          placeholder="Deduction Name (e.g., Loan, Advance)"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <input
-                          type="number"
-                          name="percent"
-                          value={deduction.percent}
-                          onChange={(e) => handleDeductionChange(index, e)}
-                          placeholder="Percentage"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <input
-                          value={`₹ ${calculateAmount(parseFloat(deduction.percent || 0)).toFixed(2)}`}
-                          readOnly
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDeduction(index)}
-                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
+                {formData.deductions.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="hidden md:grid grid-cols-5 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide px-4">
+                      <div></div>
+                      <div className="text-center">Name</div>
+                      <div className="text-center">Percentage</div>
+                      <div className="text-center">Amount</div>
+                      <div></div>
                     </div>
-                  ))}
-                </div>
+                    {formData.deductions.map((deduction, index) => (
+                      <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={deduction.include}
+                          onChange={() => {
+                            setFormData(prev => {
+                              const updatedDeductions = [...prev.deductions];
+                              updatedDeductions[index].include = !updatedDeductions[index].include;
+                              return { ...prev, deductions: updatedDeductions };
+                            });
+                          }}
+                          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 mt-1 md:mt-0"
+                        />
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+                          <div>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                            <input
+                              type="text"
+                              name="name"
+                              value={deduction.name}
+                              onChange={(e) => handleDeductionChange(index, e)}
+                              placeholder="Deduction Name (e.g., Loan, Advance)"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                name="percent"
+                                value={deduction.percent}
+                                onChange={(e) => handleDeductionChange(index, e)}
+                                placeholder="0"
+                                className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              />
+                              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                            <input
+                              value={`₹ ${calculateAmount(parseFloat(deduction.percent || 0)).toFixed(2)}`}
+                              readOnly
+                              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDeduction(index)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors self-start md:self-center"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 
                 <button
                   type="button"
@@ -752,7 +955,7 @@ export default function PayrollForm() {
                     {employeeData?.payslipUrl && (
                       <button
                         onClick={() => window.open(employeeData.payslipUrl, '_blank')}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                         View Payslip
@@ -767,14 +970,14 @@ export default function PayrollForm() {
                 <button
                   type="button"
                   onClick={() => router.back()}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
                 >
                   {submitting ? (
                     <>

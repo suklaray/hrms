@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Search, Calendar, Users, Eye, Download, Filter, DollarSign } from 'lucide-react';
 
@@ -73,7 +74,11 @@ export default function PayrollView() {
   const stats = getStats();
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <title>Payroll Management - HRMS</title>
+      </Head>
+      <div className="flex min-h-screen bg-gray-50">
       <SideBar />
       
       <div className="flex-1 overflow-auto">
@@ -275,5 +280,6 @@ export default function PayrollView() {
         </div>
       </div>
     </div>
+    </>
   );
 }

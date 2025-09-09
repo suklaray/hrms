@@ -52,32 +52,32 @@ export default function EmployeePayroll() {
         </div>
 
         {employee ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Employee Information</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="text-gray-500">Employee ID:</span>
-                <span className="ml-2 font-medium">{empid}</span>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3 uppercase">Employee Information</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center">
+                <span className="text-gray-500 uppercase font-medium">Employee ID:</span>
+                <span className="sm:ml-2 font-medium uppercase">{empid}</span>
               </div>
-              <div>
-                <span className="text-gray-500">Name:</span>
-                <span className="ml-2 font-medium">{employee.name}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center">
+                <span className="text-gray-500 uppercase font-medium">Name:</span>
+                <span className="sm:ml-2 font-medium uppercase">{employee.name}</span>
               </div>
-              <div>
-                <span className="text-gray-500">Email:</span>
-                <span className="ml-2 font-medium">{employee.email}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center">
+                <span className="text-gray-500 uppercase font-medium">Email:</span>
+                <span className="sm:ml-2 font-medium break-all">{employee.email}</span>
               </div>
-              <div>
-                <span className="text-gray-500">Contact:</span>
-                <span className="ml-2 font-medium">{employee.contact_number || 'Not provided'}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center">
+                <span className="text-gray-500 uppercase font-medium">Contact:</span>
+                <span className="sm:ml-2 font-medium uppercase">{employee.contact_number || 'NOT PROVIDED'}</span>
               </div>
-              <div>
-                <span className="text-gray-500">Role:</span>
-                <span className="ml-2 font-medium">{employee.role}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center">
+                <span className="text-gray-500 uppercase font-medium">Role:</span>
+                <span className="sm:ml-2 font-medium uppercase">{employee.role}</span>
               </div>
-              <div>
-                <span className="text-gray-500">Position:</span>
-                <span className="ml-2 font-medium">{employee.position || 'Not specified'}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center">
+                <span className="text-gray-500 uppercase font-medium">Position:</span>
+                <span className="sm:ml-2 font-medium uppercase">{employee.position || 'NOT SPECIFIED'}</span>
               </div>
             </div>
           </div>
@@ -95,64 +95,65 @@ export default function EmployeePayroll() {
         )}
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="px-8 py-6 border-b border-gray-100">
-            <h3 className="text-xl font-bold text-gray-900">Payroll History</h3>
-            <p className="text-gray-600 mt-1">Complete salary records and payments</p>
+          <div className="px-4 sm:px-8 py-6 border-b border-gray-100">
+            <h3 className="text-xl font-bold text-gray-900 uppercase">Payroll History</h3>
+            <p className="text-gray-600 mt-1 uppercase">Complete salary records and payments</p>
           </div>
           
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Period</th>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Basic Salary</th>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">HRA</th>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">DA</th>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Allowances</th>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Deductions</th>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Net Pay</th>
-                  <th className="py-4 px-6 text-left text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">Period</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">Basic Salary</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">HRA</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">DA</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">Allowances</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">Deductions</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">Net Pay</th>
+                  <th className="py-3 sm:py-4 px-3 sm:px-6 text-left text-xs sm:text-sm font-semibold text-gray-700 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {records.length > 0 ? (
                   records.map((row, index) => (
                     <tr key={index} className="hover:bg-blue-50/50 transition-colors">
-                      <td className="py-4 px-6">
-                        <div className="font-medium text-gray-900">{row.month} {row.year}</div>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6">
+                        <div className="font-medium text-gray-900 text-xs sm:text-sm uppercase">{row.month} {row.year}</div>
                       </td>
-                      <td className="py-4 px-6 text-gray-700 font-medium">₹{row.basic_salary}</td>
-                      <td className="py-4 px-6 text-gray-700">₹{row.hra}</td>
-                      <td className="py-4 px-6 text-gray-700">₹{row.da}</td>
-                      <td className="py-4 px-6 text-green-600 font-medium">₹{row.allowances}</td>
-                      <td className="py-4 px-6 text-red-600 font-medium">₹{row.deductions}</td>
-                      <td className="py-4 px-6">
-                        <span className="text-lg font-bold text-blue-600">₹{row.net_pay}</span>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 font-medium text-xs sm:text-sm">₹{row.basic_salary}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 text-xs sm:text-sm">₹{row.hra}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 text-xs sm:text-sm">₹{row.da}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-green-600 font-medium text-xs sm:text-sm">₹{row.allowances}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-red-600 font-medium text-xs sm:text-sm">₹{row.deductions}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6">
+                        <span className="text-sm sm:text-lg font-bold text-blue-600">₹{row.net_pay}</span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 sm:py-4 px-3 sm:px-6">
                         <a
                           href={`/hr/payroll/payslip-preview/${empid}?month=${row.month}&year=${row.year}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                          className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium uppercase"
                         >
-                          <FaEye className="mr-2" />
-                          View Payslip
+                          <FaEye className="mr-1 sm:mr-2 text-xs sm:text-sm" />
+                          <span className="hidden sm:inline">View Payslip</span>
+                          <span className="sm:hidden">View</span>
                         </a>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="py-12 px-6 text-center">
+                    <td colSpan="8" className="py-8 sm:py-12 px-4 sm:px-6 text-center">
                       <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-12 sm:w-16 h-12 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                          <svg className="w-6 sm:w-8 h-6 sm:h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </div>
-                        <p className="text-gray-500 font-medium">No payroll records found</p>
-                        <p className="text-gray-400 text-sm mt-1">Payroll records will appear here once generated</p>
+                        <p className="text-gray-500 font-medium text-sm sm:text-base uppercase">No payroll records found</p>
+                        <p className="text-gray-400 text-xs sm:text-sm mt-1 uppercase">Payroll records will appear here once generated</p>
                       </div>
                     </td>
                   </tr>

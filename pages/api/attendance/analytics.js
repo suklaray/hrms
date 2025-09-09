@@ -15,38 +15,39 @@ export default async function handler(req, res) {
   const user = getUserFromToken(token);
   if (!user) return res.status(401).json({ error: "Invalid token" });
 
-  const { period = 'month' } = req.query;
+  const { period = 'today' } = req.query;
 
   try {
     const now = new Date();
     let startDate, endDate;
 
     // Calculate date range based on period
-    switch (period) {
-      case 'quarter':
-        const quarter = Math.floor(now.getMonth() / 3);
-        startDate = new Date(now.getFullYear(), quarter * 3, 1);
-        endDate = new Date(now.getFullYear(), quarter * 3 + 3, 0);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
-        break;
-      default: // month
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    if (period === 'year') {
+      startDate = new Date(now.getFullYear(), 0, 1);
+      endDate = new Date(now.getFullYear(), 11, 31);
+    } else if (period === 'month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else { // today
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
 
     // Calculate working days (excluding weekends)
-    const workingDays = calculateWorkingDays(startDate, endDate);
+    const workingDays = period === 'today' ? 1 : calculateWorkingDays(startDate, endDate);
 
     // Get total employees based on role permissions
-    const totalEmployees = await prisma.users.count({
+    let totalEmployees = await prisma.users.count({
       where: { 
         status: 'Active',
         role: { in: getAccessibleRoles(user.role) }
       }
     });
+    
+    // Fallback if no employees found
+    if (totalEmployees === 0) {
+      totalEmployees = await prisma.users.count();
+    }
 
     // Get attendance data for the period
     const attendanceData = await prisma.attendance.findMany({
@@ -95,62 +96,14 @@ export default async function handler(req, res) {
 
     const leaveUtilization = totalEmployees > 0 ? Math.round((totalLeaveDays / (totalEmployees * workingDays)) * 100) : 0;
 
-    // Generate trend data
-    const trendData = generateTrendData(period, startDate, endDate);
+    // Generate real trend data based on actual attendance
+    const trendData = await generateRealTrendData(period, startDate, endDate, prisma);
 
-    // Filter roles based on user permissions
-    const allowedRoles = getAccessibleRoles(user.role);
+    // Get department-wise attendance data
+    const departmentData = await getDepartmentAttendance(startDate, endDate, prisma);
 
-    // Get users based on permissions
-    const users = await prisma.users.findMany({
-      where: { 
-        status: 'Active',
-        role: { in: allowedRoles }
-      },
-      select: { empid: true, role: true }
-    });
-
-    const roleStats = {};
-    allowedRoles.forEach(role => {
-      roleStats[role] = { present: 0, total: 0 };
-    });
-    
-    for (const user of users) {
-      const userAttendance = attendanceData.filter(a => a.empid === user.empid);
-      const presentCount = userAttendance.filter(a => a.attendance_status === 'Present').length;
-      const totalCount = userAttendance.length;
-      
-      if (totalCount > 0) {
-        roleStats[user.role].present += presentCount;
-        roleStats[user.role].total += totalCount;
-      }
-    }
-
-    const departmentData = Object.entries(roleStats)
-      .filter(([role, stats]) => stats.total > 0)
-      .map(([role, stats]) => ({
-        department: role.toUpperCase(),
-        attendance: Math.round((stats.present / stats.total) * 100)
-      }));
-
-    console.log('Department Data:', departmentData);
-    console.log('Role Stats:', roleStats);
-    console.log('Users found:', users.length);
-    console.log('Attendance records:', attendanceData.length);
-
-    // Generate weekly pattern
-    const weeklyPattern = [
-      { day: 'Monday', attendance: 75 },
-      { day: 'Tuesday', attendance: 90 },
-      { day: 'Wednesday', attendance: 92 },
-      { day: 'Thursday', attendance: 88 },
-      { day: 'Friday', attendance: 80 },
-      { day: 'Saturday', attendance: 65 },
-      { day: 'Sunday', attendance: 45 }
-    ];
-
-    // Generate yearly pie chart data
-    const yearlyPieData = [
+    // Generate pie chart data based on period
+    const pieData = [
       { name: 'Present', value: avgAttendance },
       { name: 'Absent', value: absenteeismRate },
       { name: 'Late', value: Math.max(0, 100 - avgAttendance - absenteeismRate) }
@@ -173,8 +126,7 @@ export default async function handler(req, res) {
       latePercent: Math.max(0, 100 - avgAttendance - absenteeismRate),
       trendData,
       departmentData,
-      weeklyPattern,
-      yearlyPieData
+      yearlyPieData: pieData
     };
 
     res.status(200).json(analytics);
@@ -200,47 +152,127 @@ function calculateWorkingDays(startDate, endDate) {
 }
 
 function calculateAverageTime(times) {
-  if (!times.length) return '--:--';
+  if (!times.length) return null;
   
-  const totalMinutes = times.reduce((sum, time) => {
-    if (!time) return sum;
+  const validTimes = times.filter(time => time && time !== null);
+  if (!validTimes.length) return null;
+  
+  const totalMinutes = validTimes.reduce((sum, time) => {
     const date = new Date(time);
+    if (isNaN(date.getTime())) return sum;
     return sum + (date.getHours() * 60 + date.getMinutes());
   }, 0);
   
-  const avgMinutes = Math.round(totalMinutes / times.length);
+  const avgMinutes = Math.round(totalMinutes / validTimes.length);
   const hours = Math.floor(avgMinutes / 60);
   const minutes = avgMinutes % 60;
   
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
-function generateTrendData(period, startDate, endDate) {
+async function generateRealTrendData(period, startDate, endDate, prisma) {
   const data = [];
-  const current = new Date(startDate);
   
-  while (current <= endDate) {
-    let label;
-    if (period === 'year') {
-      label = current.toLocaleDateString('en-US', { month: 'short' });
+  if (period === 'year') {
+    // Monthly data for year view
+    const current = new Date(startDate);
+    while (current <= endDate) {
+      const periodStart = new Date(current.getFullYear(), current.getMonth(), 1);
+      const periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+      const label = current.toLocaleDateString('en-US', { month: 'short' });
+      
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: { date: { gte: periodStart, lte: periodEnd } }
+      });
+      
+      const presentCount = attendanceRecords.filter(a => a.attendance_status === 'Present').length;
+      const totalCount = attendanceRecords.length;
+      const attendance = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+      
+      data.push({ period: label, attendance });
       current.setMonth(current.getMonth() + 1);
-    } else if (period === 'quarter') {
-      label = `Week ${Math.ceil(current.getDate() / 7)}`;
-      current.setDate(current.getDate() + 7);
-    } else {
-      label = current.getDate().toString();
-      current.setDate(current.getDate() + 1);
+      if (data.length >= 12) break;
     }
+  } else if (period === 'month') {
+    // Weekly data for month view
+    const current = new Date(startDate);
+    let weekNum = 1;
     
-    // Generate mock trend data with some variation
-    const baseAttendance = 85;
-    const variation = Math.random() * 20 - 10; // ±10%
-    const attendance = Math.max(60, Math.min(100, Math.round(baseAttendance + variation)));
+    while (current <= endDate) {
+      const weekStart = new Date(current);
+      const weekEnd = new Date(current);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      if (weekEnd > endDate) weekEnd.setTime(endDate.getTime());
+      
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: { date: { gte: weekStart, lte: weekEnd } }
+      });
+      
+      const presentCount = attendanceRecords.filter(a => a.attendance_status === 'Present').length;
+      const totalCount = attendanceRecords.length;
+      const attendance = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
+      
+      data.push({ period: `Week ${weekNum}`, attendance });
+      current.setDate(current.getDate() + 7);
+      weekNum++;
+      if (weekNum > 5) break;
+    }
+  } else {
+    // Hourly data for today view
+    const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
     
-    data.push({ period: label, attendance });
-    
-    if (data.length >= 12) break; // Limit data points
+    for (const hour of hours) {
+      const hourStart = new Date(startDate);
+      hourStart.setHours(hour, 0, 0, 0);
+      const hourEnd = new Date(startDate);
+      hourEnd.setHours(hour, 59, 59, 999);
+      
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: {
+          date: { gte: startDate, lte: endDate },
+          check_in: { gte: hourStart, lte: hourEnd }
+        }
+      });
+      
+      const checkedInCount = attendanceRecords.length;
+      const label = hour > 12 ? `${hour - 12} PM` : `${hour} ${hour === 12 ? 'PM' : 'AM'}`;
+      
+      data.push({ period: label, attendance: checkedInCount });
+    }
   }
   
   return data;
+}
+
+async function getDepartmentAttendance(startDate, endDate, prisma) {
+  const users = await prisma.users.findMany({
+    where: { status: 'Active' },
+    select: { empid: true, role: true }
+  });
+
+  const roleStats = {};
+  
+  for (const user of users) {
+    if (!roleStats[user.role]) {
+      roleStats[user.role] = { present: 0, total: 0 };
+    }
+    
+    const userAttendance = await prisma.attendance.findMany({
+      where: {
+        empid: user.empid,
+        date: { gte: startDate, lte: endDate }
+      }
+    });
+    
+    const presentCount = userAttendance.filter(a => a.attendance_status === 'Present').length;
+    roleStats[user.role].present += presentCount;
+    roleStats[user.role].total += userAttendance.length;
+  }
+
+  return Object.entries(roleStats)
+    .filter(([role, stats]) => stats.total > 0)
+    .map(([role, stats]) => ({
+      department: role.toUpperCase(),
+      attendance: Math.round((stats.present / stats.total) * 100)
+    }));
 }

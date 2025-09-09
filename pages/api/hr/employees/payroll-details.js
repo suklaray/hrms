@@ -41,6 +41,7 @@ export default async function handler(req, res) {
         empid: true,
         name: true,
         email: true,
+        contact_number: true,
         role: true,
         position: true,
         status: true,
@@ -61,14 +62,8 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied to this employee data' });
     }
 
-    const employeeData = await prisma.employees.findFirst({
-      where: { email: user.email },
-      select: { contact_no: true },
-    });
-
     const employee = {
       ...user,
-      contact_number: employeeData?.contact_no || null,
     };
 
     res.status(200).json(employee);
