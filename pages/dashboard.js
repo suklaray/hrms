@@ -56,9 +56,9 @@ export async function getServerSideProps(context) {
     },
   };
 }
-// const loaderProp =({ src }) => {
-//     return src;
-// }
+ const loaderProp =({ src }) => {
+     return src;
+}
 export default function Dashboard({ user }) {
   const router = useRouter();
   const [stats, setStats] = useState(null);
@@ -282,7 +282,7 @@ export default function Dashboard({ user }) {
                                   e.target.style.display = 'none';
                                   e.target.nextSibling.style.display = 'flex';
                                 }}
-                                // loader={loaderProp}
+                                loader={loaderProp}
                               />
                               <div className="hidden w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center">
                                 <span className="text-white font-medium text-sm">
