@@ -167,7 +167,8 @@ const ViewAttendance = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {attendanceData.length > 0 ? (
-                    attendanceData.map((attendance, index) => (
+                    attendanceData.sort((a, b) => new Date(b.date) - new Date(a.date))
+                    .map((attendance) => (
                       <tr key={attendance.date} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">

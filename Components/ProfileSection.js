@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { User, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
-
+import { Calendar } from "lucide-react";
 export default function ProfileSection({ user }) {
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
@@ -62,7 +62,6 @@ export default function ProfileSection({ user }) {
       });
       
       const data = await res.json();
-      
       if (!res.ok) {
         console.error(`API Error: ${res.status} - ${data.error || 'Unknown error'}`);
         alert(data.error || `Failed to ${endpoint}. Please try again.`);
@@ -91,9 +90,26 @@ export default function ProfileSection({ user }) {
     }
   };
 
+  // Get current date in the format: Thursday, September 11, 2025
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">My Profile</h2>
+      <div className="flex items-center justify-between mb-4">
+  <h2 className="text-lg font-semibold text-gray-900">My Profile</h2>
+<div className="flex items-center text-sm font-medium text-gray-700">
+  <Calendar className="w-4 h-4 mr-2" />
+  {getCurrentDate()}
+</div>
+</div>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
         <div className="flex items-center space-x-4">
           <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center relative">
@@ -105,6 +121,7 @@ export default function ProfileSection({ user }) {
                   width={64}
                   height={64}
                   className="w-full h-full object-cover"
+                  unoptimized={true} 
                   onError={(e) => {
                     e.target.style.display = 'none';
                     e.target.nextSibling.style.display = 'flex';
@@ -130,6 +147,7 @@ export default function ProfileSection({ user }) {
             )}
           </div>
         </div>
+        
         <div className="flex flex-col items-center lg:items-end space-y-2">
           {statusLoading ? (
             <div className="flex items-center justify-center w-32 sm:w-36 lg:w-40 h-12">
@@ -137,12 +155,6 @@ export default function ProfileSection({ user }) {
             </div>
           ) : (
             <>
-              <div className="flex items-center space-x-2 text-center">
-                <Clock className={`w-4 h-4 text-center ${isWorking ? 'text-green-600' : 'text-gray-500'}`} />
-                <span className={`text-xs sm:text-sm font-medium text-center ${isWorking ? 'text-green-600' : 'text-gray-600'}`}>
-                  {isWorking ? "Currently Working" : "Not Working"}
-                </span>
-              </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
