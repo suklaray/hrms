@@ -112,14 +112,20 @@ export default async function handler(req, res) {
       }
     });
 
-    // fallback datas for holidays
-    const holidays = [
-      { date: `${targetYear}-01-01`, name: "New Year's Day" },
-      { date: `${targetYear}-01-26`, name: "Republic Day" },
-      { date: `${targetYear}-08-15`, name: "Independence Day" },
-      { date: `${targetYear}-10-02`, name: "Gandhi Jayanti" },
-      { date: `${targetYear}-12-25`, name: "Christmas Day" }
-    ];
+
+    // Process calendar events
+    calendarEvents.forEach(event => {
+      events.push({
+        id: `event-${event.id}`,
+        type: "event",
+        date: event.event_date.toISOString().split('T')[0],
+        title: event.title,
+        description: event.description,
+        event_type: event.event_type,
+        color: "#8b5cf6"
+      });
+    });
+
 
     holidays.forEach(holiday => {
       const holidayDate = new Date(holiday.date);

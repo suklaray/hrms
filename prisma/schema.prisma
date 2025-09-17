@@ -272,6 +272,11 @@ model calendar_events {
   updated_at  DateTime @updatedAt
 }
 
+enum EventType {
+  holiday
+  event
+}
+
 
 model contact_submissions {
   id         Int       @id @default(autoincrement())
@@ -327,3 +332,5 @@ enum employees_employee_type {
   Intern
   Contractor
 }
+
+

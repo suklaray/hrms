@@ -7,7 +7,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check authentication
     const token = req.cookies.token;
     if (!token) {
       return res.status(401).json({ message: "Access denied" });
@@ -19,53 +18,52 @@ export default async function handler(req, res) {
     }
 
     const { month, year } = req.query;
-
-    // Use query params or default to current month/year
     const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
     const targetYear = year ? parseInt(year) : new Date().getFullYear();
 
-
-    // Get birthdays from employees table using dob
+    // Get birthdays from employees table
     const birthdays = await prisma.employees.findMany({
-      where: {
-        dob: { not: null }
-      },
-      select: {
-        empid: true,
-        name: true,
-        dob: true
-      }
+      where: { dob: { not: null } },
+      select: { empid: true, name: true, dob: true }
     });
 
     // Get approved leaves for the month
     const approvedLeaves = await prisma.leave_requests.findMany({
       where: {
         status: "Approved",
-        OR: [
-          {
-            AND: [
-              { from_date: { lte: new Date(targetYear, targetMonth, 0) } },
-              { to_date: { gte: new Date(targetYear, targetMonth - 1, 1) } }
-            ]
-          }
-        ]
+        OR: [{
+          AND: [
+            { from_date: { lte: new Date(targetYear, targetMonth, 0) } },
+            { to_date: { gte: new Date(targetYear, targetMonth - 1, 1) } }
+          ]
+        }]
       },
       select: {
-        empid: true,
-        name: true,
-        from_date: true,
-        to_date: true,
-        leave_type: true,
-        reason: true
+        empid: true, name: true, from_date: true, to_date: true,
+        leave_type: true, reason: true
+      }
+    });
+
+    // Get calendar events for the month
+    const calendarEvents = await prisma.calendar_events.findMany({
+      where: {
+        event_date: {
+          gte: new Date(targetYear, targetMonth - 1, 1),
+          lt: new Date(targetYear, targetMonth, 1)
+        }
+      },
+      select: {
+        id: true, title: true, description: true,
+        event_date: true, event_type: true
       }
     });
 
     const events = [];
+
     // Process birthdays
     birthdays.forEach(employee => {
       if (employee.dob) {
         const dob = new Date(employee.dob);
-        // Use target year with DOB month and day
         const birthdayThisYear = new Date(targetYear, dob.getMonth(), dob.getDate());
         
         if (birthdayThisYear.getMonth() + 1 === targetMonth) {
@@ -74,16 +72,11 @@ export default async function handler(req, res) {
             type: "birthday",
             date: birthdayThisYear.toISOString().split('T')[0],
             employee: employee.name,
-            title: `${employee.name}'s Birthday`,
-            color: "#f59e0b"
+            title: `🎂 ${employee.name}'s Birthday`
           });
         }
       }
     });
-
-
-
-
 
     // Process approved leaves
     approvedLeaves.forEach(leave => {
@@ -100,46 +93,30 @@ export default async function handler(req, res) {
             employee: leave.name,
             leave_type: leave.leave_type,
             reason: leave.reason,
-            title: ` ${leave.name} - ${leave.leave_type}`,
-            color: "#ef4444"
+            title: `${leave.name} - ${leave.leave_type}`
           });
         }
         currentDate.setDate(currentDate.getDate() + 1);
       }
     });
 
-    // Get events from database for the month
-const calendarEvents = await prisma.events.findMany({
-  where: {
-    event_date: {
-      gte: new Date(targetYear, targetMonth - 1, 1),
-      lt: new Date(targetYear, targetMonth, 1)
-    }
-  },
-  select: {
-    id: true,
-    title: true,
-    description: true,
-    event_date: true,
-    event_type: true
-  }
-});
-
-// Process calendar events
-calendarEvents.forEach(event => {
-  events.push({
-    id: `event-${event.id}`,
-    type: "event",
-    date: event.event_date.toISOString().split('T')[0],
-    title: event.title,
-    description: event.description,
-    event_type: event.event_type,
-    color: "#8b5cf6"
-  });
-});
-
-
-    // Sort events by date
+    //calendar events processing
+    calendarEvents.forEach(event => {
+      const eventDate = new Date(event.event_date);
+      const dateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+      
+      const eventType = event.event_type === 'holiday' ? 'holiday' : 'event';
+      const icon = event.event_type === 'holiday' ? '🎉' : '📅';
+      
+      events.push({
+        id: `calendar-${event.id}`,
+        type: eventType,
+        date: dateStr,
+        title: `${icon} ${event.title}`,
+        description: event.description,
+        event_type: event.event_type
+      });
+    });
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     res.status(200).json({

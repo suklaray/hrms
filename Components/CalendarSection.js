@@ -79,6 +79,7 @@ export default function CalendarSection() {
       case 'birthday': return <FaGift className="w-3 h-3" />;
       case 'leave': return <FaPlane className="w-3 h-3" />;
       case 'holiday': return <FaStar className="w-3 h-3" />;
+      case 'event': return <FaCalendarAlt className="w-3 h-3" />;
       default: return null;
     }
   };
@@ -95,6 +96,7 @@ const legendItems = [
   { type: 'birthday', label: 'Birthday' },
   { type: 'leave', label: 'Leave' },
   { type: 'holiday', label: 'Holiday' },
+  { type: 'event', label: 'Event' },
   { type: 'dayoff', label: 'Day Off' },
 ];
 
@@ -103,6 +105,7 @@ const getDotColor = (type) => {
     case 'birthday': return 'bg-indigo-400';
     case 'leave': return 'bg-orange-500';
     case 'holiday': return 'bg-purple-500';
+    case 'event': return 'bg-green-500'; 
     case 'dayoff': return 'bg-gray-300';
     default: return 'bg-gray-500';
   }
@@ -220,9 +223,10 @@ const getDotColor = (type) => {
                                 <span>
                                   {event.type === 'birthday' && `${event.employee}'s Birthday`}
                                   {event.type === 'leave' && `${event.employee} - ${event.leave_type}${event.reason ? ` (${event.reason})` : ''}`}
-                                  {event.type === 'holiday' && `${event.name}`}
+                                  {event.type === 'holiday' && `${event.title.replace('🎉 ', '')}`}
+                                  {event.type === 'event' && `${event.title.replace('📅 ', '')}`}
                                 </span>
-                              </div>
+                                </div>
                             ))}
                           </div>
                         ) : null}
