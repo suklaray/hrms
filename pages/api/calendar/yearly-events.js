@@ -7,7 +7,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check authentication
     const token = req.cookies.token;
     if (!token) {
       return res.status(401).json({ message: "Access denied" });
@@ -18,12 +17,8 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: "Invalid token" });
     }
 
-    const { month, year } = req.query;
-
-    // Use query params or default to current month/year
-    const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+    const { year } = req.query;
     const targetYear = year ? parseInt(year) : new Date().getFullYear();
-
 
     // Get birthdays from employees table using dob
     const birthdays = await prisma.employees.findMany({
@@ -37,15 +32,22 @@ export default async function handler(req, res) {
       }
     });
 
-    // Get approved leaves for the month
+
+    // Get approved leaves for the year
     const approvedLeaves = await prisma.leave_requests.findMany({
       where: {
         status: "Approved",
         OR: [
           {
             AND: [
-              { from_date: { lte: new Date(targetYear, targetMonth, 0) } },
-              { to_date: { gte: new Date(targetYear, targetMonth - 1, 1) } }
+              { from_date: { gte: new Date(targetYear, 0, 1) } },
+              { from_date: { lt: new Date(targetYear + 1, 0, 1) } }
+            ]
+          },
+          {
+            AND: [
+              { to_date: { gte: new Date(targetYear, 0, 1) } },
+              { to_date: { lt: new Date(targetYear + 1, 0, 1) } }
             ]
           }
         ]
@@ -60,28 +62,27 @@ export default async function handler(req, res) {
       }
     });
 
-    const events = [];
+    const yearEvents = {};
+
     // Process birthdays
     birthdays.forEach(employee => {
       if (employee.dob) {
         const dob = new Date(employee.dob);
         // Use target year with DOB month and day
         const birthdayThisYear = new Date(targetYear, dob.getMonth(), dob.getDate());
+        const month = birthdayThisYear.getMonth() + 1;
         
-        if (birthdayThisYear.getMonth() + 1 === targetMonth) {
-          events.push({
-            id: `birthday-${employee.empid}`,
-            type: "birthday",
-            date: birthdayThisYear.toISOString().split('T')[0],
-            employee: employee.name,
-            title: `${employee.name}'s Birthday`,
-            color: "#f59e0b"
-          });
-        }
+        if (!yearEvents[month]) yearEvents[month] = [];
+        yearEvents[month].push({
+          id: `birthday-${employee.empid}`,
+          type: "birthday",
+          date: birthdayThisYear.toISOString().split('T')[0],
+          employee: employee.name,
+          title: `${employee.name}'s Birthday`,
+          color: "#f59e0b"
+        });
       }
     });
-
-
 
 
 
@@ -92,15 +93,18 @@ export default async function handler(req, res) {
       
       const currentDate = new Date(fromDate);
       while (currentDate <= toDate) {
-        if (currentDate.getMonth() + 1 === targetMonth && currentDate.getFullYear() === targetYear) {
-          events.push({
+        if (currentDate.getFullYear() === targetYear) {
+          const month = currentDate.getMonth() + 1;
+          if (!yearEvents[month]) yearEvents[month] = [];
+          
+          yearEvents[month].push({
             id: `leave-${leave.empid}-${currentDate.toISOString().split('T')[0]}`,
             type: "leave",
             date: currentDate.toISOString().split('T')[0],
             employee: leave.name,
             leave_type: leave.leave_type,
             reason: leave.reason,
-            title: ` ${leave.name} - ${leave.leave_type}`,
+            title: `${leave.name} - ${leave.leave_type}`,
             color: "#ef4444"
           });
         }
@@ -108,50 +112,38 @@ export default async function handler(req, res) {
       }
     });
 
-    // Get events from database for the month
-const calendarEvents = await prisma.events.findMany({
-  where: {
-    event_date: {
-      gte: new Date(targetYear, targetMonth - 1, 1),
-      lt: new Date(targetYear, targetMonth, 1)
-    }
-  },
-  select: {
-    id: true,
-    title: true,
-    description: true,
-    event_date: true,
-    event_type: true
-  }
-});
+    // fallback datas for holidays
+    const holidays = [
+      { date: `${targetYear}-01-01`, name: "New Year's Day" },
+      { date: `${targetYear}-01-26`, name: "Republic Day" },
+      { date: `${targetYear}-08-15`, name: "Independence Day" },
+      { date: `${targetYear}-10-02`, name: "Gandhi Jayanti" },
+      { date: `${targetYear}-12-25`, name: "Christmas Day" }
+    ];
 
-// Process calendar events
-calendarEvents.forEach(event => {
-  events.push({
-    id: `event-${event.id}`,
-    type: "event",
-    date: event.event_date.toISOString().split('T')[0],
-    title: event.title,
-    description: event.description,
-    event_type: event.event_type,
-    color: "#8b5cf6"
-  });
-});
-
-
-    // Sort events by date
-    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    holidays.forEach(holiday => {
+      const holidayDate = new Date(holiday.date);
+      const month = holidayDate.getMonth() + 1;
+      
+      if (!yearEvents[month]) yearEvents[month] = [];
+      yearEvents[month].push({
+        id: `holiday-${holiday.date}`,
+        type: "holiday",
+        date: holiday.date,
+        name: holiday.name,
+        title: `${holiday.name}`,
+        color: "#10b981"
+      });
+    });
 
     res.status(200).json({
       success: true,
-      events,
-      month: targetMonth,
-      year: targetYear,
-      total: events.length
+      events: yearEvents,
+      year: targetYear
     });
 
   } catch (error) {
-    console.error("Calendar events API error:", error);
+    console.error("Yearly calendar events API error:", error);
     res.status(500).json({ 
       success: false,
       message: "Internal server error",

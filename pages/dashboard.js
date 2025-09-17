@@ -103,7 +103,7 @@ export default function Dashboard({ user }) {
         <title>Dashboard - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <SideBar handleLogout={handleLogout} user={user} />
+      <SideBar/>
       <div className="flex-1 overflow-auto">
       
         <div className="p-6">

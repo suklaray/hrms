@@ -1,14 +1,37 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import {ChevronDown,ChevronUp,Menu,X,LayoutDashboard,UserPlus,Users,UserCheck,Clock,DollarSign,Shield,TrendingUp,Phone,Settings,LogOut,} from "lucide-react";
 
-import {
-  ChevronDown,ChevronUp,Menu,X,LayoutDashboard,UserPlus,Users,UserCheck,Clock,DollarSign,Shield,TrendingUp,Phone,Settings,LogOut,} from "lucide-react";
-
-export default function Sidebar({ handleLogout, user }) {
+export default function Sidebar() {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+   const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout");
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   useEffect(() => {
     const checkScreenSize = () => {
