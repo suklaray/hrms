@@ -81,6 +81,18 @@ export default function AttendanceList() {
     setCurrentPage(1);
   }, [searchTerm, data]);
 
+  const formatTime = (timeString) => {
+  if (!timeString) return '--';
+  return new Date(timeString).toLocaleString('en-US', {
+    month: '2-digit',
+    day: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  };
+
   // Pagination logic
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -250,10 +262,10 @@ export default function AttendanceList() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.last_login || "—"}
+                           {formatTime(user.last_login)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {user.last_logout || "—"}
+                          {formatTime(user.last_logout)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -311,70 +323,7 @@ export default function AttendanceList() {
               </table>
             </div>
             
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Page {currentPage} of {totalPages}
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Previous
-                  </button>
-                  
-                  {(() => {
-                    const maxVisible = totalPages > 100 ? 3 : 5;
-                    const startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                    const endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                    const pages = [];
-                    
-                    if (startPage > 1) {
-                      pages.push(
-                        <button key={1} onClick={() => setCurrentPage(1)} className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">1</button>
-                      );
-                      if (startPage > 2) pages.push(<span key="start-ellipsis" className="px-2 text-gray-500">...</span>);
-                    }
-                    
-                    for (let i = startPage; i <= endPage; i++) {
-                      pages.push(
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(i)}
-                          className={`px-3 py-1 border rounded text-sm ${
-                            currentPage === i
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          {i}
-                        </button>
-                      );
-                    }
-                    
-                    if (endPage < totalPages) {
-                      if (endPage < totalPages - 1) pages.push(<span key="end-ellipsis" className="px-2 text-gray-500">...</span>);
-                      pages.push(
-                        <button key={totalPages} onClick={() => setCurrentPage(totalPages)} className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50">{totalPages}</button>
-                      );
-                    }
-                    
-                    return pages;
-                  })()}
-                  
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+            
           </div>
 
           {/* Pagination */}

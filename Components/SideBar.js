@@ -3,22 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
 import {
-  ChevronDown,
-  ChevronUp,
-  Menu,
-  X,
-  LayoutDashboard,
-  UserPlus,
-  Users,
-  UserCheck,
-  Clock,
-  DollarSign,
-  Shield,
-  TrendingUp,
-  Phone,
-  Settings,
-  LogOut,
-} from "lucide-react";
+  ChevronDown,ChevronUp,Menu,X,LayoutDashboard,UserPlus,Users,UserCheck,Clock,DollarSign,Shield,TrendingUp,Phone,Settings,LogOut,} from "lucide-react";
 
 export default function Sidebar({ handleLogout, user }) {
   const router = useRouter();
@@ -76,9 +61,9 @@ export default function Sidebar({ handleLogout, user }) {
   const attendanceSubItems = [
     { name: "Attendance", path: "/hr/attendance" },
     { name: "Leave Management", path: "/hr/view-leave-requests" },
-    ...(role === "hr"
-      ? [{ name: "My Leave Requests", path: "/hr/leave-request" }]
-      : []),
+    //...(role === "hr"
+    //  ? [{ name: "My Leave Requests", path: "/hr/leave-request" }]
+    //  : []),
     { name: "Attendance Analytics", path: "/attendance/analytics" },
   ];
 
@@ -385,7 +370,7 @@ export default function Sidebar({ handleLogout, user }) {
               <div className="flex items-center gap-3">
                 <Settings size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
-                  <span className="text-sm font-medium">Settings</span>
+                  <span className="text-sm font-medium">Accounts & Settings</span>
                 )}
               </div>
               {!isCollapsed &&
@@ -400,7 +385,22 @@ export default function Sidebar({ handleLogout, user }) {
                 <li>
                   <Link href="/settings/profile">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                      Profile
+                      Profile Management
+                    </span>
+                  </Link>
+                </li>
+                
+                <li>
+                  <Link href="/hr/leave-requests">
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      Leave Requests
+                    </span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/">
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      Payslip & Documents
                     </span>
                   </Link>
                 </li>

@@ -264,13 +264,13 @@ export default function PayrollView() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-2">
                             <Link href={`/hr/payroll/${item.empid}`}>
-                              <button className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                              <button className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer">
                                 <Eye className="w-4 h-4" />
                                 View
                               </button>
                             </Link>
                             <Link href={`/hr/payroll/payslip-preview/${item.empid}?month=${item.month}&year=${item.year}`}>
-                              <button className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                              <button className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
                                 <Download className="w-4 h-4" />
                                 Download
                               </button>

@@ -260,6 +260,18 @@ model employees_backup {
   created_at             DateTime? @default(now()) @db.Timestamp(0)
 }
 
+model calendar_events {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  event_date  DateTime
+  event_type  String   // 'company', 'meeting', 'training', etc.
+  created_by  String   // empid of creator
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+
 model contact_submissions {
   id         Int       @id @default(autoincrement())
   name       String

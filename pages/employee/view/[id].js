@@ -22,26 +22,26 @@ export default function ViewEmployee() {
 useEffect(() => {
   const fetchEverything = async () => {
     try {
-      // ✅ Fetch currently logged-in user
+      //  Fetch currently logged-in user
       const roleRes = await fetch("/api/auth/me", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // ✅ required for cookie-based JWT
+        credentials: "include", //  required for cookie-based JWT
       });
 
       if (roleRes.ok) {
         const userData = await roleRes.json();
 
-        // ✅ Handle both possible response structures
+        // Handle both possible response structures
         const user = userData?.user || userData;
         setRole(user.role); // <-- this is what you're using
       } else {
         console.error("User not authenticated");
       }
 
-      // ✅ Fetch employee details only if ID is present
+      //  Fetch employee details only if ID is present
       if (id) {
         const empRes = await axios.get(`/api/auth/employee/view/${id}`);
         setData(empRes.data);
@@ -50,7 +50,7 @@ useEffect(() => {
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
-      setLoading(false); // ✅ Always stop loading
+      setLoading(false); 
     }
   };
 
@@ -273,6 +273,7 @@ useEffect(() => {
                       alt="Profile"
                       width={96}
                       height={96}
+                      unoptimized={true}
                       className="w-24 h-24 rounded-full object-cover border-4 border-blue-200"
                     />
                   ) : (
