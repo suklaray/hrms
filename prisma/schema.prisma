@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -67,7 +66,6 @@ model candidates {
   email                 String
   contact_number        String?
   interview_date        DateTime?
-  interview_timing      String?
   resume                String?
   form_link             String?
   created_at            DateTime?          @default(now())
@@ -77,6 +75,7 @@ model candidates {
   status                candidates_status? @default(Pending)
   verification          Boolean?           @default(false)
   form_submitted        Boolean            @default(false)
+  interview_timing      String?
 }
 
 model compliance_documents {
@@ -107,7 +106,6 @@ model employees {
   password                                      String?
   gender                                        String?
   dob                                           DateTime?
-  highest_qualification                         String?
   aadhar_card                                   String?
   pan_card                                      String?
   education_certificates                        String?
@@ -119,6 +117,7 @@ model employees {
   experience_months                             Int?                   @default(0)
   aadhar_number                                 String?
   pan_number                                    String?
+  highest_qualification                         String?
   addresses                                     addresses[]
   audit_logs_audit_logs_empidToemployees        audit_logs[]           @relation("audit_logs_empidToemployees")
   audit_logs_audit_logs_performed_byToemployees audit_logs[]           @relation("audit_logs_performed_byToemployees")
@@ -156,10 +155,10 @@ model main_employee {
 }
 
 model leave_types {
-  id             Int                   @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   max_days       Int
+  paid           Boolean?         @default(true)
   type_name      String
-  paid           Boolean?              @default(true)
   leave_balances leave_balances[]
 }
 
@@ -217,25 +216,25 @@ model users {
 }
 
 model payroll {
-  id                 Int       @id @default(autoincrement())
-  empid              String?
-  month              String?
-  year               Int?
-  basic_salary       Decimal?
-  hra                Decimal?
-  bonus              Decimal?  @default(0.00)
-  da                 Decimal?
-  allowances         Decimal?
-  deductions         Decimal?
-  net_pay            Decimal?
-  generated_on       DateTime? @default(now())
-  payslip_pdf        String?
-  pf                 Decimal?  @default(0.00)
-  ptax               Decimal?  @default(0.00)
-  esic               Decimal?  @default(0.00)
-  allowance_details  String?   @db.Text
-  deduction_details  String?   @db.Text
-  users              users?    @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+  id                Int       @id @default(autoincrement())
+  empid             String?
+  month             String?
+  year              Int?
+  basic_salary      Decimal?
+  hra               Decimal?
+  bonus             Decimal?  @default(0.00)
+  da                Decimal?
+  allowances        Decimal?
+  deductions        Decimal?
+  net_pay           Decimal?
+  generated_on      DateTime? @default(now())
+  payslip_pdf       String?
+  pf                Decimal?  @default(0.00)
+  ptax              Decimal?  @default(0.00)
+  esic              Decimal?  @default(0.00)
+  allowance_details String?
+  deduction_details String?
+  users             users?    @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([empid])
 }
@@ -270,12 +269,22 @@ model contact_submissions {
   created_at DateTime? @default(now()) @db.Timestamp(6)
 }
 
+model calendar_events {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  event_date  DateTime
+  event_type  String
+  created_by  String
+  created_at  DateTime @default(now())
+  updated_at  DateTime
+}
+
 enum compliance_status_overall_status {
   Compliant
   Expiring_Soon @map("Expiring Soon")
   Non_compliant @map("Non-compliant")
 }
-
 
 enum leave_requests_status {
   Pending
