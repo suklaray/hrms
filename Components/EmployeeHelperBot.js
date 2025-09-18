@@ -137,13 +137,20 @@ export default function EmployeeHelperBot() {
         }
       }
       
-      // Check for weekend holiday tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowDay = tomorrow.getDay(); // 0 = Sunday, 6 = Saturday
+      // Check for holiday notifications
+      const holidayRes = await fetch('/api/assistant/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: 'is tomorrow holiday?' }),
+      });
+      const holidayData = await holidayRes.json();
       
-      if (tomorrowDay === 0 || tomorrowDay === 6) {
-        const dayName = tomorrowDay === 0 ? 'Sunday' : 'Saturday';
+      if (holidayData.answer && holidayData.answer.includes('🎉 Yes!')) {
+        // Extract holiday name from response
+        const holidayMatch = holidayData.answer.match(/Tomorrow.*is (.+?)\n/);
+        const holidayName = holidayMatch ? holidayMatch[1] : 'a holiday';
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowDate = tomorrow.toLocaleDateString('en-US', { 
           weekday: 'long', 
           month: 'long', 
@@ -151,14 +158,69 @@ export default function EmployeeHelperBot() {
         });
         
         newNotifications.push({
-          id: 'weekend-holiday',
+          id: 'holiday-tomorrow',
           type: 'holiday',
           status: 'info',
-          title: 'Weekend Holiday Tomorrow!',
-          message: `🎉 Tomorrow is ${dayName} (${tomorrowDate})\n\n🏖️ Enjoy your weekend break!\n\n💡 Office will be closed tomorrow.`,
+          title: 'Holiday Tomorrow!',
+          message: `🎉 Tomorrow (${tomorrowDate}) is ${holidayName}\n\n🏖️ Enjoy your holiday break!\n\n💡 Office will be closed tomorrow.`,
           bgColor: 'bg-gradient-to-br from-purple-400 via-pink-500 to-red-500',
           borderColor: 'border-yellow-300/80'
         });
+      } else {
+        // Check for weekend holiday tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowDay = tomorrow.getDay(); // 0 = Sunday, 6 = Saturday
+        
+        if (tomorrowDay === 0 || tomorrowDay === 6) {
+          const dayName = tomorrowDay === 0 ? 'Sunday' : 'Saturday';
+          const tomorrowDate = tomorrow.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'long', 
+            day: 'numeric' 
+          });
+          
+          newNotifications.push({
+            id: 'weekend-holiday',
+            type: 'holiday',
+            status: 'info',
+            title: 'Weekend Holiday Tomorrow!',
+            message: `🎉 Tomorrow is ${dayName} (${tomorrowDate})\n\n🏖️ Enjoy your weekend break!\n\n💡 Office will be closed tomorrow.`,
+            bgColor: 'bg-gradient-to-br from-purple-400 via-pink-500 to-red-500',
+            borderColor: 'border-yellow-300/80'
+          });
+        }
+      }
+      
+      // Check for upcoming holidays in next 3 days
+      const upcomingHolidayRes = await fetch('/api/assistant/answer', {
+        method: 'POST',
+        headers: { 'Content-type': 'application/json' },
+        body: JSON.stringify({ question: 'next holiday' }),
+      });
+      const upcomingHolidayData = await upcomingHolidayRes.json();
+      
+      if (upcomingHolidayData.answer && upcomingHolidayData.answer.includes('Next Holiday:')) {
+        const daysMatch = upcomingHolidayData.answer.match(/Days remaining: (\d+) days/);
+        const holidayNameMatch = upcomingHolidayData.answer.match(/Next Holiday: (.+?)\n/);
+        
+        if (daysMatch && holidayNameMatch) {
+          const daysRemaining = parseInt(daysMatch[1]);
+          const holidayName = holidayNameMatch[1];
+          
+          // Show notification if holiday is within next 3 days (but not tomorrow, already handled above)
+          if (daysRemaining > 1 && daysRemaining <= 3) {
+            newNotifications.push({
+              id: 'upcoming-holiday',
+              type: 'holiday',
+              status: 'info',
+              title: 'Upcoming Holiday!',
+              message: `🗓️ ${holidayName} is coming up in ${daysRemaining} days\n\n📅 Plan your work accordingly\n\n💡 Don't forget to complete pending tasks!`,
+              bgColor: 'bg-gradient-to-br from-orange-400 via-amber-500 to-yellow-500',
+              borderColor: 'border-orange-300/80'
+            });
+          }
+        }
       }
       
       console.log('Found notifications:', newNotifications.length);
@@ -208,7 +270,7 @@ export default function EmployeeHelperBot() {
           // User just checked out from attendance - clear all notification localStorage
           console.log('User checked out from attendance, clearing notifications');
           localStorage.removeItem('lastNotificationShown');
-          localStorage.removeItem('lastGreetingShown');
+          // Keep greeting date-based, don't remove on checkout
           localStorage.removeItem('wasWorking');
           setNotifications([]);
         } else if (statusData.isWorking && wasWorking !== 'true') {
@@ -226,36 +288,24 @@ export default function EmployeeHelperBot() {
   }, []);
   
   useEffect(() => {
-    // Show greeting after notification check is complete
-    const greetingTimer = setTimeout(async () => {
-      try {
-        // Check if user is checked in before showing greeting
-        const checkInStatus = await fetch('/api/employee/work-status');
-        if (!checkInStatus.ok) return;
+    // Show greeting on site visit/login
+    const greetingTimer = setTimeout(() => {
+      const today = new Date().toDateString();
+      const lastGreetingDate = localStorage.getItem('lastGreetingDate');
+      
+      // Show greeting once per day or if no greeting shown today
+      if (notifications.length === 0 && lastGreetingDate !== today) {
+        setGreetingMessage(getGreetingMessage());
+        setShowGreeting(true);
+        setIsAnimating(true);
+        localStorage.setItem('lastGreetingDate', today);
         
-        const statusData = await checkInStatus.json();
-        
-        if (!statusData.isWorking) {
-          return;
-        }
-        
-        const lastGreetingShown = localStorage.getItem('lastGreetingShown');
-        
-        if (notifications.length === 0 && !lastGreetingShown) {
-          setGreetingMessage(getGreetingMessage());
-          setShowGreeting(true);
-          setIsAnimating(true);
-          localStorage.setItem('lastGreetingShown', 'true');
-          
-          // Auto-hide greeting after 8 seconds
-          setTimeout(() => {
-            setShowGreeting(false);
-          }, 8000);
-        }
-      } catch (error) {
-        console.error('Error checking status for greeting:', error);
+        // Auto-hide greeting after 8 seconds
+        setTimeout(() => {
+          setShowGreeting(false);
+        }, 8000);
       }
-    }, 2000);
+    }, 1000);
     
     return () => {
       clearTimeout(greetingTimer);
