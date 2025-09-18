@@ -281,16 +281,6 @@ model contact_submissions {
   created_at DateTime? @default(now()) @db.Timestamp(6)
 }
 
-model calendar_events {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String?
-  event_date  DateTime
-  event_type  String
-  created_by  String
-  created_at  DateTime @default(now())
-  updated_at  DateTime
-}
 
 enum compliance_status_overall_status {
   Compliant
@@ -335,4 +325,19 @@ enum employees_employee_type {
   Full_time  @map("Full-time")
   Intern
   Contractor
+}
+model assistant_learning {
+  id               Int      @id @default(autoincrement())
+  question         String   @db.Text
+  response         String   @db.Text
+  user_id          String?  @db.VarChar(255)
+  intent_category  String?  @db.VarChar(100)
+  intent_labels    String?  @db.Text
+  confidence_score Decimal? @db.Decimal(3,2)
+  frequency        Int      @default(1)
+  created_at       DateTime @default(now())
+  last_asked       DateTime @default(now())
+
+  // @@unique([question(length: 255)])
+  // @@map("assistant_learning")
 }
