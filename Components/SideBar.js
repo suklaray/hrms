@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import {ChevronDown,ChevronUp,Menu,X,LayoutDashboard,UserPlus,Users,UserCheck,Clock,DollarSign,Shield,TrendingUp,Phone,Settings,LogOut,} from "lucide-react";
+import {ChevronDown,ChevronUp,Menu,X,LayoutDashboard,UserPlus,Users,UserCheck,Clock,DollarSign,Shield,TrendingUp,Phone,Settings,LogOut,ListChecks,ListCheck} from "lucide-react";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -95,10 +95,6 @@ export default function Sidebar() {
     { name: "Generate Payroll", path: "/hr/payroll/generate" },
   ];
 
-  /*const performanceSubItems = [
-    { name: "Goal Setting", path: "/hr/performance/goals" },
-    { name: "Report Apraisal", path: "/hr/performance/reports" },
-  ];*/
 
   const complianceSubItems = [
     { name: "Employee Compliance", path: "/compliance/empCompliance" },
@@ -333,36 +329,21 @@ export default function Sidebar() {
             )}
           </li>
 
-          {/* {/* Performance Dropdown 
-        <li>
-          <button
-            onClick={isCollapsed ? () => router.push('/hr/performance/goals') : togglePerformanceMenu}
-            className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
-            title={isCollapsed ? 'Performance Management' : ''}
-          >
-            <div className="flex items-center gap-3">
-              <TrendingUp size={18} className="flex-shrink-0" />
-              {!isCollapsed && <span className="text-sm font-medium">Performance</span>}
-            </div>
-            {!isCollapsed && (performanceOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
-          </button>
-          {!isCollapsed && performanceOpen && (
-            <ul className="pl-6 pt-2 space-y-2">
-              {performanceSubItems.map((subItem) => (
-                <li key={subItem.name}>
-                  <Link href={subItem.path}>
-                    <span
-                      className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace("600", "500")} transition cursor-pointer`}
-                    >
-                      {subItem.name}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </li>
-        */}
+
+          {/* Task Management */}
+          <li>
+            <Link href="/task-management/task-management">
+              <div
+                className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                title={isCollapsed ? "Task Management" : ""}
+              >
+                <ListChecks size={19} className="flex-shrink-0" />
+                {!isCollapsed && (
+                  <span className="text-sm font-medium">Task Management</span>
+                )}
+              </div>
+            </Link>
+          </li>
 
           {/* Customer Connect */}
           <li>
@@ -414,14 +395,14 @@ export default function Sidebar() {
                 </li>
                 
                 <li>
-                  <Link href="/hr/leave-requests">
+                  <Link href="/leave-request/leave-request">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
                       Leave Requests
                     </span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/">
+                  <Link href="/payslip/payslip-lists">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
                       Payslip & Documents
                     </span>
