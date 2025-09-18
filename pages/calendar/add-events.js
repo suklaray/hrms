@@ -9,7 +9,7 @@ export default function AddEvent() {
     title: '',
     description: '',
     event_date: '',
-    event_type: 'company'
+    event_type: 'event'
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -30,7 +30,7 @@ export default function AddEvent() {
       
       if (res.ok) {
         setMessage('Event added successfully!');
-        setFormData({ title: '', description: '', event_date: '', event_type: 'company' });
+        setFormData({ title: '', description: '', event_date: '', event_type: 'event' });
       } else {
         setMessage(data.message || 'Failed to add event');
       }
@@ -130,12 +130,8 @@ export default function AddEvent() {
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="company">Company Event</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="training">Training</option>
-                      <option value="celebration">Celebration</option>
+                      <option value="event">Event</option>
                       <option value="holiday">Holiday</option>
-                      <option value="other">Other</option>
                     </select>
                   </div>
 

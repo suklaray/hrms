@@ -32,7 +32,6 @@ export default async function handler(req, res) {
       }
     });
 
-
     // Get approved leaves for the year
     const approvedLeaves = await prisma.leave_requests.findMany({
       where: {
@@ -62,83 +61,95 @@ export default async function handler(req, res) {
       }
     });
 
+    // Get calendar events for the year
+    const calendarEvents = await prisma.calendar_events.findMany({
+      where: {
+        event_date: {
+          gte: new Date(targetYear, 0, 1),
+          lt: new Date(targetYear + 1, 0, 1)
+        }
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        event_date: true,
+        event_type: true
+      }
+    });
+
     const yearEvents = {};
 
-    // Process birthdays
-    birthdays.forEach(employee => {
-      if (employee.dob) {
-        const dob = new Date(employee.dob);
-        // Use target year with DOB month and day
-        const birthdayThisYear = new Date(targetYear, dob.getMonth(), dob.getDate());
-        const month = birthdayThisYear.getMonth() + 1;
-        
-        if (!yearEvents[month]) yearEvents[month] = [];
-        yearEvents[month].push({
-          id: `birthday-${employee.empid}`,
-          type: "birthday",
-          date: birthdayThisYear.toISOString().split('T')[0],
-          employee: employee.name,
-          title: `${employee.name}'s Birthday`,
-          color: "#f59e0b"
-        });
-      }
+// Helper: format date as YYYY-MM-DD in local time
+const formatDateLocal = (date) => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+// Process birthdays
+birthdays.forEach(employee => {
+  if (employee.dob) {
+    const dob = new Date(employee.dob);
+    const birthdayThisYear = new Date(targetYear, dob.getMonth(), dob.getDate());
+    const month = birthdayThisYear.getMonth() + 1;
+    
+    if (!yearEvents[month]) yearEvents[month] = [];
+    yearEvents[month].push({
+      id: `birthday-${employee.empid}`,
+      type: "birthday",
+      date: formatDateLocal(birthdayThisYear),   // ✅ FIXED
+      employee: employee.name,
+      title: `${employee.name}'s Birthday`,
+      color: "#f59e0b"
     });
+  }
+});
 
-
-
-    // Process approved leaves
-    approvedLeaves.forEach(leave => {
-      const fromDate = new Date(leave.from_date);
-      const toDate = new Date(leave.to_date);
+// Process approved leaves
+approvedLeaves.forEach(leave => {
+  const fromDate = new Date(leave.from_date);
+  const toDate = new Date(leave.to_date);
+  
+  const currentDate = new Date(fromDate);
+  while (currentDate <= toDate) {
+    if (currentDate.getFullYear() === targetYear) {
+      const month = currentDate.getMonth() + 1;
+      if (!yearEvents[month]) yearEvents[month] = [];
       
-      const currentDate = new Date(fromDate);
-      while (currentDate <= toDate) {
-        if (currentDate.getFullYear() === targetYear) {
-          const month = currentDate.getMonth() + 1;
-          if (!yearEvents[month]) yearEvents[month] = [];
-          
-          yearEvents[month].push({
-            id: `leave-${leave.empid}-${currentDate.toISOString().split('T')[0]}`,
-            type: "leave",
-            date: currentDate.toISOString().split('T')[0],
-            employee: leave.name,
-            leave_type: leave.leave_type,
-            reason: leave.reason,
-            title: `${leave.name} - ${leave.leave_type}`,
-            color: "#ef4444"
-          });
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    });
+      yearEvents[month].push({
+        id: `leave-${leave.empid}-${formatDateLocal(currentDate)}`, // ✅ FIXED
+        type: "leave",
+        date: formatDateLocal(currentDate),  // ✅ FIXED
+        employee: leave.name,
+        leave_type: leave.leave_type,
+        reason: leave.reason,
+        title: `${leave.name} - ${leave.leave_type}`,
+        color: "#ef4444"
+      });
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+});
 
 
     // Process calendar events
     calendarEvents.forEach(event => {
-      events.push({
-        id: `event-${event.id}`,
-        type: "event",
-        date: event.event_date.toISOString().split('T')[0],
+      const eventDate = new Date(event.event_date);
+      const dateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
+      const month = eventDate.getMonth() + 1;
+      
+      if (!yearEvents[month]) yearEvents[month] = [];
+      
+      const eventType = event.event_type === 'holiday' ? 'holiday' : 'event';
+      const color = event.event_type === 'holiday' ? '#10b981' : '#8b5cf6';
+      
+      yearEvents[month].push({
+        id: `calendar-${event.id}`,
+        type: eventType,
+        date: dateStr,
         title: event.title,
         description: event.description,
         event_type: event.event_type,
-        color: "#8b5cf6"
-      });
-    });
-
-
-    holidays.forEach(holiday => {
-      const holidayDate = new Date(holiday.date);
-      const month = holidayDate.getMonth() + 1;
-      
-      if (!yearEvents[month]) yearEvents[month] = [];
-      yearEvents[month].push({
-        id: `holiday-${holiday.date}`,
-        type: "holiday",
-        date: holiday.date,
-        name: holiday.name,
-        title: `${holiday.name}`,
-        color: "#10b981"
+        color: color
       });
     });
 

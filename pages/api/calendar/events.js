@@ -60,63 +60,70 @@ export default async function handler(req, res) {
 
     const events = [];
 
-    // Process birthdays
-    birthdays.forEach(employee => {
-      if (employee.dob) {
-        const dob = new Date(employee.dob);
-        const birthdayThisYear = new Date(targetYear, dob.getMonth(), dob.getDate());
-        
-        if (birthdayThisYear.getMonth() + 1 === targetMonth) {
-          events.push({
-            id: `birthday-${employee.empid}`,
-            type: "birthday",
-            date: birthdayThisYear.toISOString().split('T')[0],
-            employee: employee.name,
-            title: `🎂 ${employee.name}'s Birthday`
-          });
-        }
-      }
-    });
+// Helper: format date as YYYY-MM-DD in local time
+const formatDateLocal = (date) => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
 
-    // Process approved leaves
-    approvedLeaves.forEach(leave => {
-      const fromDate = new Date(leave.from_date);
-      const toDate = new Date(leave.to_date);
-      
-      const currentDate = new Date(fromDate);
-      while (currentDate <= toDate) {
-        if (currentDate.getMonth() + 1 === targetMonth && currentDate.getFullYear() === targetYear) {
-          events.push({
-            id: `leave-${leave.empid}-${currentDate.toISOString().split('T')[0]}`,
-            type: "leave",
-            date: currentDate.toISOString().split('T')[0],
-            employee: leave.name,
-            leave_type: leave.leave_type,
-            reason: leave.reason,
-            title: `${leave.name} - ${leave.leave_type}`
-          });
-        }
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-    });
-
-    //calendar events processing
-    calendarEvents.forEach(event => {
-      const eventDate = new Date(event.event_date);
-      const dateStr = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`;
-      
-      const eventType = event.event_type === 'holiday' ? 'holiday' : 'event';
-      const icon = event.event_type === 'holiday' ? '🎉' : '📅';
-      
+// Process birthdays
+birthdays.forEach(employee => {
+  if (employee.dob) {
+    const dob = new Date(employee.dob);
+    const birthdayThisYear = new Date(targetYear, dob.getMonth(), dob.getDate());
+    
+    if (birthdayThisYear.getMonth() + 1 === targetMonth) {
       events.push({
-        id: `calendar-${event.id}`,
-        type: eventType,
-        date: dateStr,
-        title: `${icon} ${event.title}`,
-        description: event.description,
-        event_type: event.event_type
+        id: `birthday-${employee.empid}`,
+        type: "birthday",
+        date: formatDateLocal(birthdayThisYear),   
+        employee: employee.name,
+        title: `${employee.name}'s Birthday`
       });
-    });
+    }
+  }
+});
+
+// Process approved leaves
+approvedLeaves.forEach(leave => {
+  const fromDate = new Date(leave.from_date);
+  const toDate = new Date(leave.to_date);
+  
+  const currentDate = new Date(fromDate);
+  while (currentDate <= toDate) {
+    if (currentDate.getMonth() + 1 === targetMonth && currentDate.getFullYear() === targetYear) {
+      events.push({
+        id: `leave-${leave.empid}-${formatDateLocal(currentDate)}`, // Unique ID per day
+        type: "leave",
+        date: formatDateLocal(currentDate),  
+        employee: leave.name,
+        leave_type: leave.leave_type,
+        reason: leave.reason,
+        title: `${leave.name} - ${leave.leave_type}`
+      });
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+});
+
+// Process calendar events
+calendarEvents.forEach(event => {
+  const eventDate = new Date(event.event_date);
+  const dateStr = formatDateLocal(eventDate);  
+  
+  const eventType = event.event_type === 'holiday' ? 'holiday' : 'event';
+  const icon = event.event_type === 'holiday' ? '🎉' : '📅';
+  
+  events.push({
+    id: `calendar-${event.id}`,
+    type: eventType,
+    date: dateStr,
+    title: `${icon} ${event.title}`,
+    description: event.description,
+    event_type: event.event_type
+  });
+});
+
+
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     res.status(200).json({

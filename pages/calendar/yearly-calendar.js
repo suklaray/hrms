@@ -48,16 +48,21 @@ export default function YearlyCalendar() {
     return day === 0 || day === 6;
   };
 
-  const getEventsForDate = (year, month, day) => {
-    const dateStr = new Date(year, month - 1, day).toISOString().split("T")[0];
-    return Array.isArray(events[month]) ? events[month].filter((e) => e.date === dateStr) : [];
-  };
+  const formatDateLocal = (date) => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
 
-    const getEventIcon = (type) => {
+const getEventsForDate = (year, month, day) => {
+  const dateStr = formatDateLocal(new Date(year, month - 1, day));
+  return Array.isArray(events[month]) ? events[month].filter((e) => e.date === dateStr) : [];
+};
+
+  const getEventIcon = (type) => {
     switch (type) {
       case 'birthday': return <FaGift className="w-3 h-3" />;
       case 'leave': return <FaPlane className="w-3 h-3" />;
       case 'holiday': return <FaStar className="w-3 h-3" />;
+      case 'event': return <FaCalendarAlt className="w-3 h-3" />;
       default: return null;
     }
   };
@@ -69,14 +74,15 @@ export default function YearlyCalendar() {
   };
 
   const getDotColor = (type) => {
-    switch (type) {
-      case 'birthday': return 'bg-indigo-400';
-      case 'leave': return 'bg-orange-500';
-      case 'holiday': return 'bg-purple-500';
-      case 'dayoff': return 'bg-gray-300';
-      default: return 'bg-gray-500';
-    }
-  };
+  switch (type) {
+    case 'birthday': return 'bg-indigo-400';
+    case 'leave': return 'bg-orange-500';
+    case 'holiday': return 'bg-purple-500';
+    case 'event': return 'bg-green-500';
+    case 'dayoff': return 'bg-gray-300';
+    default: return 'bg-gray-500';
+  }
+};
 
   const renderMonth = (monthIndex) => {
     const month = monthIndex + 1;
@@ -134,7 +140,7 @@ export default function YearlyCalendar() {
                 monthIndex === new Date().getMonth() &&
                 day === new Date().getDate();
               
-              const dayEvents = day ? getEventsForDate(currentYear, monthIndex, day) : [];
+              const dayEvents = day ? getEventsForDate(currentYear, monthIndex + 1, day) : [];
               const uniqueEventTypes = getUniqueEventTypes(dayEvents);
               const isDayOff = day && isWeekend(day, monthIndex + 1, currentYear);
               
@@ -170,26 +176,39 @@ export default function YearlyCalendar() {
                       
                       {/* Hover Tooltip */}
                       {hoveredDay === `${currentYear}-${monthIndex}-${day}` && (
-                        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg min-w-max max-w-xs">
-                          {isDayOff ? (
-                            <div>Day Off (Weekend)</div>
-                          ) : dayEvents.length > 0 ? (
-                            <div className="space-y-1">
-                              {dayEvents.map((event, i) => (
-                                <div key={i} className="flex items-center space-x-2">
-                                  {getEventIcon(event.type)}
-                                  <span>
-                                    {event.type === 'birthday' && `${event.employee}'s Birthday`}
-                                    {event.type === 'leave' && `${event.employee} - ${event.leave_type}${event.reason ? ` (${event.reason})` : ''}`}
-                                    {event.type === 'holiday' && `${event.name}`}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                        </div>
-                      )}
+              <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg min-w-max max-w-xs">
+                
+                {/* Show Day Off if weekend */}
+                {isDayOff && (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-gray-400" />
+                    <span>Day Off (Weekend)</span>
+                  </div>
+                )}
+
+                {/* Show Events (with dots) */}
+                {dayEvents.length > 0 && (
+                  <div className="space-y-1 mt-1">
+                    {dayEvents.map((event, i) => (
+                      <div key={i} className="flex items-center space-x-2">
+                        {/* colored dot instead of icon */}
+                        <div className={`w-2 h-2 rounded-full ${getDotColor(event.type)}`} />
+                        <span>
+                          {event.type === 'birthday' && `${event.employee}'s Birthday`}
+                          {event.type === 'leave' && `${event.employee} - ${event.leave_type}${event.reason ? ` (${event.reason})` : ''}`}
+                          {event.type === 'holiday' && `${event.title}`}
+                          {event.type === 'event' && `${event.title}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                  {/* Tooltip arrow */}
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                </div>
+              )}
+
                     </>
                   )}
                 </div>
@@ -264,6 +283,10 @@ export default function YearlyCalendar() {
                     <div className="w-3 h-3 rounded-full bg-purple-500"></div>
                     <span className="text-gray-600">Holiday</span>
                   </div>
+                  <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-gray-600">Event</span>
+                </div>
                   <div className="flex items-center space-x-2">
                     <div className="w-3 h-3 rounded-full bg-gray-300"></div>
                     <span className="text-gray-600">Day Off</span>
