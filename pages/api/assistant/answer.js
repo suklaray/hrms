@@ -761,6 +761,49 @@ async function generateRegularAnswer(question, user, intent) {
         return `No upcoming holidays found in our calendar.`;
       }
     }
+    const dateMatch = question.match(/\d{1,2}[-/]\d{1,2}[-/]\d{2,4}/);
+    if (dateMatch) {
+      const dateStr = dateMatch[0];
+      const parts = dateStr.split(/[-/]/);
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        const year =
+          parts[2].length === 2
+            ? 2000 + parseInt(parts[2])
+            : parseInt(parts[2]);
+        const targetDate = new Date(year, month - 1, day);
+
+        // Search for holiday on this date
+        const startOfDay = new Date(year, month - 1, day);
+        const endOfDay = new Date(year, month - 1, day + 1);
+
+        const holidayOnDate = await prisma.calendar_events.findFirst({
+          where: {
+            event_type: "holiday",
+            event_date: {
+              gte: startOfDay,
+              lt: endOfDay,
+            },
+          },
+        });
+
+        if (holidayOnDate) {
+          return `🎉 Holiday on ${targetDate.toLocaleDateString()}:\n${
+            holidayOnDate.title
+          }\n${holidayOnDate.description || ""}`;
+        } else {
+          // Check for weekend
+          const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 6 = Saturday
+          if (dayOfWeek === 0 || dayOfWeek === 6) {
+            return `🛌 ${targetDate.toLocaleDateString()} is a regular weekly off (${
+              dayOfWeek === 0 ? "Sunday" : "Saturday"
+            }). Enjoy your weekend!`;
+          }
+          return `No holiday found on ${targetDate.toLocaleDateString()}.`;
+        }
+      }
+    }
 
     if (question.includes("today") || question.includes("is today")) {
       const today = new Date();
@@ -782,12 +825,20 @@ Enjoy your holiday! 🎊`;
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowHoliday = await isHoliday(tomorrow);
+
       if (tomorrowHoliday) {
         return `🎉 Yes! Tomorrow (${tomorrow.toLocaleDateString()}) is ${
           tomorrowHoliday.title
         }
 You can enjoy your day off! 🎊`;
       } else {
+        // ADD THIS WEEKEND CHECK
+        const dayOfWeek = tomorrow.getDay(); // 0 = Sunday, 6 = Saturday
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          return `🛌 Yes! Tomorrow (${tomorrow.toLocaleDateString()}) is a regular weekly off (${
+            dayOfWeek === 0 ? "Sunday" : "Saturday"
+          }). Enjoy your weekend!`;
+        }
         return `📅 Tomorrow (${tomorrow.toLocaleDateString()}) is not a holiday. It's a regular working day.
 ⏰ Office hours: 12:00 PM - 9:00 PM
 💡 Check upcoming holidays by asking "What's the next holiday?"`;
