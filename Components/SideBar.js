@@ -332,7 +332,7 @@ export default function Sidebar() {
 
           {/* Task Management */}
           <li>
-            <Link href="/task-management/task-management">
+            <Link href="/task-management/manage-tasks">
               <div
                 className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
                 title={isCollapsed ? "Task Management" : ""}
