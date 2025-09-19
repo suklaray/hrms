@@ -1,6 +1,7 @@
 import "@/styles/globals.css";
 import Footer from "@/Components/Footer";
 import Header from "@/Components/Header";
+//import EmployeeHelperBot from "@/components/EmployeeHelperBot";
 import { useRouter } from "next/router";
 
 export default function App({ Component, pageProps }) {
@@ -19,6 +20,7 @@ export default function App({ Component, pageProps }) {
         <Component {...pageProps} />
       </main>
       {!hideLayout && <Footer />}
+      {!hideLayout && <EmployeeHelperBot />}
     </div>
   );
 }
