@@ -318,7 +318,7 @@ export default function LeaveRequest({ user }) {
                     <div className="text-center py-8">
                       <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">No Leave Requests</h3>
-                      <p className="text-gray-500">You haven't submitted any leave requests yet.</p>
+                      <p className="text-gray-500">You don&apos;t have any leave requests yet.</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">

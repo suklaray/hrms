@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback  } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
@@ -54,28 +54,30 @@ export default function PayslipLists({ user }) {
   const router = useRouter();
   const itemsPerPage = 5;
 
-  useEffect(() => {
-    fetchPayslips();
-  }, []);
-
-    const fetchPayslips = async () => {
-    try {
-        const response = await fetch(`/api/payslip/payslip-lists?empid=${user.empid}`, {
-        credentials: "include",
-        });
-
-        if (response.ok) {
-        const data = await response.json();
-        setPayslips(data.payslips || []);
-        } else {
-        setMessage("Failed to fetch payslips.");
-        }
-    } catch (error) {
-        console.error(error);
-        setMessage("Failed to fetch payslips.");
+// Wrap fetchPayslips with useCallback
+const fetchPayslips = useCallback(async () => {
+  try {
+    setLoading(true);
+    const response = await fetch(`/api/payslip/payslip-lists?page=${currentPage}&limit=${itemsPerPage}`, {
+      credentials: "include",
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      setPayslips(data.payslips || []);
+      setTotalPages(data.totalPages || 1);
     }
-    };
+  } catch (error) {
+    console.error("Error fetching payslips:", error);
+  } finally {
+    setLoading(false);
+  }
+}, [currentPage, itemsPerPage]);
 
+// Update useEffect
+useEffect(() => {
+  fetchPayslips();
+}, [fetchPayslips]);
 
   const handleViewPayslip = (month, year) => {
     window.open(`/payslip/payslip-preview?month=${month}&year=${year}&empid=${user.empid}`, '_blank');

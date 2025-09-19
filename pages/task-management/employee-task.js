@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
@@ -12,19 +12,15 @@ export default function EmployeeTasks() {
   const router = useRouter();
   const { employeeId } = router.query;
 
-  useEffect(() => {
-    if (employeeId) {
-      fetchEmployeeTasks();
-    }
-  }, [employeeId]);
-
-  const fetchEmployeeTasks = async () => {
+ 
+ const fetchEmployeeTasks = useCallback(async () => {
+    if (!employeeId) return;
+    
     try {
       const response = await fetch(`/api/task-management/employee-tasks?employeeId=${employeeId}`, {
         credentials: "include",
       });
-
-      if (response.ok) {
+    if (response.ok) {
         const data = await response.json();
         setTasks(data.tasks || []);
       }
@@ -33,7 +29,13 @@ export default function EmployeeTasks() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeId]); 
+
+  // Include fetchEmployeeTasks in dependency array
+  useEffect(() => {
+    fetchEmployeeTasks();
+  }, [fetchEmployeeTasks]);
+
 
   const getPriorityColor = (priority) => {
     switch (priority) {
