@@ -408,7 +408,14 @@ export default function EmployeeHelperBot() {
         } ${notifications.length > 0 ? 'animate-pulse ring-8 ring-green-400/50' : ''}`}
         title="Ask Employee Assistant"
       >
-        <Image src="/images/robo.png" alt="Assistant" className="w-16 h-16 group-hover:scale-125 transition-transform duration-300 drop-shadow-lg" />
+      <Image 
+        src="/images/robo.png" 
+        alt="Assistant" 
+        width={64}
+        height={64}
+        unoptimized
+        className="w-16 h-16 group-hover:scale-125 transition-transform duration-300 drop-shadow-lg" 
+      />
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 animate-ping opacity-30"></div>
         {notifications.length > 0 && (
           <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-3 border-white animate-bounce shadow-lg">
