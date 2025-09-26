@@ -21,7 +21,7 @@ export default function Sidebar({ user }) {
         method: "POST",
         credentials: "include",
       });
-      router.push("/employee/login");
+      router.push("/");
     } catch (err) {
       console.error("Logout failed", err);
     }

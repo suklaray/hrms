@@ -452,7 +452,7 @@ export default function PayrollForm() {
                       <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Document</p>
-                          <a href={employee.bankDetails.checkbook_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm font-medium">View Document</a>
+                          <a href={employee.bankDetails.checkbook_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View Document</a>
                         </div>
                       </div>
                     )}

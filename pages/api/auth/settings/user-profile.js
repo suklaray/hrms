@@ -22,18 +22,34 @@ export default async function handler(req, res) {
     const user = await prisma.users.findUnique({
       where: { empid: decoded.empid },
       select: {
+        empid: true,
         name: true,
         email: true,
-        profile_photo: true,
+        profile_photo: true, // Get profile photo from users table
+        role: true,
       },
     });
 
     if (!user) return res.status(404).json({ error: "User not found" });
 
+    // For admin/hr users, use profile_photo from users table
+    // For regular employees, try to get from employees table as fallback
+    let profilePic = user.profile_photo;
+    
+    if (!profilePic && (user.role === 'employee')) {
+      const employee = await prisma.employees.findFirst({
+        where: { email: user.email },
+        select: { profile_photo: true }
+      });
+      profilePic = employee?.profile_photo;
+    }
+
     res.status(200).json({
+      empid: user.empid,
       name: user.name,
       email: user.email,
-      profilePic: user.profile_photo || null,
+      role: user.role,
+      profilePic: profilePic || null,
     });
   } catch (error) {
     console.error("Database error:", error);

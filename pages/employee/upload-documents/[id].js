@@ -329,8 +329,19 @@ export default function EmployeeDocumentForm() {
       const file = files[0];
       if (file) {
         // Validate file size (maximum 5KB)
-        if (file.size > 5 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 5KB' }));
+        // if (file.size > 5 * 1024) {
+        //   setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 5KB' }));
+        //   return;
+        // }
+        // Validate file size (5KB to 20MB)
+        const minSize = 5 * 1024; // 5KB
+        const maxSize = 20 * 1024 * 1024; // 20MB
+        if (file.size < minSize) {
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be at least 5KB' }));
+          return;
+        }
+        if (file.size > maxSize) {
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 20MB' }));
           return;
         }
         // Validate file type

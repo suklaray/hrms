@@ -262,7 +262,7 @@ export default function EmployeeDetails({ user }) {
                   const url = `/api/hr/view-document/${employee.empid}?type=${key}`;
                   window.open(url, '_blank');
                 }}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
               >
                 <Eye className="w-4 h-4 mr-1" />
                 View Document

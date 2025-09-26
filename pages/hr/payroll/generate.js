@@ -226,11 +226,11 @@ export default function GeneratePayrollPage() {
                               <span className="mr-1">₹</span>
                               Generate
                             </button>
-                            {emp.payrollGenerated && (
+                            {/*{emp.payrollGenerated && (
                               <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
                                 <Eye className="w-4 h-4" />
                               </button>
-                            )}
+                            )}*/}
                           </div>
                         </td>
                       </tr>

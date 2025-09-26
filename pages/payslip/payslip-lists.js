@@ -51,6 +51,8 @@ export default function PayslipLists({ user }) {
   const [payslips, setPayslips] = useState([]);
   const [message, setMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
   const router = useRouter();
   const itemsPerPage = 5;
 
@@ -90,9 +92,8 @@ useEffect(() => {
     link.click();
   };
 
-  const totalPages = Math.ceil(payslips.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedPayslips = payslips.slice(startIndex, startIndex + itemsPerPage);
+
+  const paginatedPayslips = payslips;
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -146,7 +147,12 @@ useEffect(() => {
                   </div>
                 )}
 
-                {payslips.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading payslips...</p>
+                  </div>
+                ) : payslips.length === 0 ? (
                   <div className="text-center py-12">
                     <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Payslips Available</h3>
@@ -179,7 +185,7 @@ useEffect(() => {
                           {paginatedPayslips.map((payslip, index) => (
                             <tr key={payslip.id} className="hover:bg-gray-50 transition-colors">
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {startIndex + index + 1}
+                                {(currentPage - 1) * itemsPerPage + index + 1}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900 capitalize">
@@ -220,7 +226,7 @@ useEffect(() => {
                     {totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between">
                         <div className="text-sm text-gray-700">
-                          Showing page {currentPage} of {totalPages} ({payslips.length} total payslips)
+                          Showing page {currentPage} of {totalPages}
                         </div>
                         <div className="flex items-center space-x-2">
                           <button

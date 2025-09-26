@@ -499,7 +499,7 @@ export default function LeaveRequest() {
                                   <>
                                     <button
                                       onClick={() => window.open(leave.attachment, '_blank')}
-                                      className="p-1 text-blue-600 hover:text-blue-800 transition-colors"
+                                      className="p-1 text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
                                       title="View Document"
                                     >
                                       <Eye className="w-4 h-4" />
