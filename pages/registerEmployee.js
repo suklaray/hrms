@@ -242,65 +242,71 @@ export default function RegisterEmployee() {
         validateField(field, value);
     };
 
-    const handleRegister = async () => {
-        if (!validateForm()) {
-            alert('Please fix all validation errors before submitting.');
+const handleRegister = async () => {
+    if (!validateForm()) {
+        alert('Please fix all validation errors before submitting.');
+        return;
+    }
+    
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+        const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: formData.name,
+                email: formData.email,
+                contact_number: formData.contact_number,
+                position: formData.position,
+                date_of_joining: formData.dateOfJoining,
+                status: formData.status,
+                experience: formData.experience,
+                employee_type: formData.employeeType,
+                role: formData.role
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            setMessage(data.message || "Failed to register employee.");
             return;
         }
+
+        setGeneratedPassword(data.password);
+        setGeneratedUsername(data.empid || data.username || formData.email);
+        setMessage(data.message);
         
-        setIsLoading(true);
-        setMessage("");
-
-        try {
-            const res = await fetch("/api/auth/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: formData.name,
-                    email: formData.email,
-                    contact_number: formData.contact_number,
-                    position: formData.position,
-                    date_of_joining: formData.dateOfJoining,
-                    status: formData.status,
-                    experience: formData.experience,
-                    employee_type: formData.employeeType,
-                    role: formData.role
-                }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setMessage(data.message || "Failed to register employee.");
-                return;
-            }
-
-            setGeneratedPassword(data.password);
-            setGeneratedUsername(data.empid || data.username || formData.email);
-            setMessage(data.message);
-            
-
-            
-            setFormData({
-                name: "",
-                email: "",
-                contact_number: "",
-                position: "",
-                dateOfJoining: "",
-                status: "Active",
-                experience: "",
-                employeeType: "",
-                role: "employee"
-            });
-            setErrors({});
-            setIsFormValid(false);
-            setEmailChecking(false);
-        } catch (error) {
-            setMessage("Network error. Please try again.");
-        } finally {
-            setIsLoading(false);
+        // Clear email timeout to prevent async validation
+        if (emailTimeout) {
+            clearTimeout(emailTimeout);
+            setEmailTimeout(null);
         }
-    };
+        
+        // Reset all form states
+        setFormData({
+            name: "",
+            email: "",
+            contact_number: "",
+            position: "",
+            dateOfJoining: "",
+            status: "Active",
+            experience: "",
+            employeeType: "",
+            role: "employee"
+        });
+        setErrors({});
+        setIsFormValid(false);
+        setEmailChecking(false);
+    } catch (error) {
+        setMessage("Network error. Please try again.");
+    } finally {
+        setIsLoading(false);
+    }
+};
+
 
     const copyPassword = async () => {
         try {
@@ -640,7 +646,7 @@ export default function RegisterEmployee() {
                                             <option value="employee">Employee</option>
                                             <option value="hr">HR</option>
                                             <option value="admin">Admin</option>
-                                            <option value="ceo">CEO</option>
+                                            {/*<option value="ceo">CEO</option>*/}
                                             <option value="superadmin">Super Admin</option>
                                         </select>
                                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">

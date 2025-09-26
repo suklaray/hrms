@@ -250,37 +250,34 @@ export default function TaskManagement({ user }) {
                             value={searchTerm}
                             onChange={(e) => {
                               setSearchTerm(e.target.value);
-                              setShowDropdown(true);
+                              setShowDropdown(e.target.value.trim() !== "");
                             }}
-                            onFocus={() => setShowDropdown(true)}
                             placeholder="Search by name, email or ID..."
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           
                           {showDropdown && filteredEmployees.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                              {searchTerm.trim() === '' && (
-                                <div className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100">
-                                  All active employees ({filteredEmployees.length})
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {filteredEmployees.map((emp) => (
+                              <div
+                                key={emp.empid}
+                                onClick={() => {
+                                  setSelectedEmployee(emp);
+                                  setSearchTerm(`${emp.name} (${emp.empid})`);
+                                  setFormData({ ...formData, assigned_to: emp.empid });
+                                  setShowDropdown(false);
+                                }}
+                                className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-gray-900">{emp.name}</div>
+                                <div className="text-sm text-gray-500">
+                                  {emp.email} • {emp.empid} • {emp.role}
                                 </div>
-                              )}
-                              {filteredEmployees.map((emp) => (
-                                <div
-                                  key={emp.empid}
-                                  onClick={() => {
-                                    setSelectedEmployee(emp);
-                                    setSearchTerm(`${emp.name} (${emp.empid})`);
-                                    setFormData({ ...formData, assigned_to: emp.empid });
-                                    setShowDropdown(false);
-                                  }}
-                                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                >
-                                  <div className="font-medium text-gray-900">{emp.name}</div>
-                                  <div className="text-sm text-gray-500">{emp.email} • {emp.empid} • {emp.role}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                           
                           {selectedEmployee && (
                             <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-between">

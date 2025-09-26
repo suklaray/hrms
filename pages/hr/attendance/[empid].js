@@ -8,6 +8,7 @@ const ViewAttendance = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [employeeData, setEmployeeData] = useState(null);
+  const [filter, setFilter] = useState('all');
   const router = useRouter();
   const { empid } = router.query;
 
@@ -33,6 +34,12 @@ const ViewAttendance = () => {
   const attendanceRate = employeeData?.totalDays > 0 
     ? ((employeeData?.daysPresent / employeeData?.totalDays) * 100).toFixed(1)
     : 0;
+
+  const filteredAttendanceData = attendanceData.filter(attendance => {
+    if (filter === 'present') return attendance.attendance_status === 'Present';
+    if (filter === 'absent') return attendance.attendance_status === 'Absent';
+    return true;
+  });
 
   if (loading) {
     return (
@@ -97,7 +104,12 @@ const ViewAttendance = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => setFilter('all')}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                filter === 'all' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-100'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Days</p>
@@ -109,7 +121,12 @@ const ViewAttendance = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => setFilter('present')}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                filter === 'present' ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-100'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Days Present</p>
@@ -121,7 +138,12 @@ const ViewAttendance = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => setFilter('absent')}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                filter === 'absent' ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-100'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Days Absent</p>
@@ -150,7 +172,10 @@ const ViewAttendance = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Daily Attendance Records</h3>
-              <p className="text-sm text-gray-600">Detailed login/logout times and status</p>
+              <p className="text-sm text-gray-600">
+                {filter === 'all' ? 'All attendance records' : 
+                 filter === 'present' ? 'Present days only' : 'Absent days only'}
+              </p>
             </div>
             
             <div className="overflow-x-auto">
@@ -166,8 +191,8 @@ const ViewAttendance = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {attendanceData.length > 0 ? (
-                    attendanceData.sort((a, b) => new Date(b.date) - new Date(a.date))
+                  {filteredAttendanceData.length > 0 ? (
+                    filteredAttendanceData.sort((a, b) => new Date(b.date) - new Date(a.date))
                     .map((attendance) => (
                       <tr key={attendance.date} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -216,7 +241,7 @@ const ViewAttendance = () => {
                       <td colSpan="6" className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                          <p>No attendance data available for this employee</p>
+                          <p>No attendance data available for this filter</p>
                         </div>
                       </td>
                     </tr>

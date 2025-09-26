@@ -117,6 +117,13 @@ export default function AddEvent() {
     setFormData({ ...formData, [name]: value });
   };
 
+  const initialFormState = {
+    title: '',
+    description: '',
+    event_date: '',
+    event_type: 'event',
+  };
+
   return (
     <>
       <Head>
@@ -244,12 +251,19 @@ export default function AddEvent() {
                     >
                       {loading ? 'Adding...' : 'Add Event'}
                     </button>
-                    <Link
-                      href="/calendar/yearly-calendar"
-                      className="w-full sm:w-auto px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors text-center"
-                    >
-                      Cancel
-                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(initialFormState); 
+                          setErrors({}); 
+                          setMessage(''); 
+                        }}
+                        className="w-full sm:w-auto px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+
+
                   </div>
                 </form>
               </div>

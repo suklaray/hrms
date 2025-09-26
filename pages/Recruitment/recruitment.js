@@ -423,20 +423,25 @@ export default function Candidates(user) {
                         </td>
                         <td className="px-6 py-4">
                           <div className="space-y-2">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                              <input
-                                type="date"
-                                value={candidate.interview_date ? candidate.interview_date.split("T")[0] : ""}
-                                onChange={(e) => handleDateChange(candidate.candidate_id, e.target.value)}
-                                className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              />
-                            </div>
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                              <span>{candidate.interview_timing || 'Time not set'}</span>
-                            </div>
+                          {/* Date row */}
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                            <span className="text-sm sm:text-base px-2 py-1 whitespace-nowrap">
+                              {candidate.interview_date
+                                ? candidate.interview_date.split("T")[0]
+                                : "Not Set"}
+                            </span>
                           </div>
+
+                          {/* Time row */}
+                          <div className="flex items-center text-sm sm:text-base text-gray-600">
+                            <Clock className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                            <span className="whitespace-nowrap">
+                              {candidate.interview_timing || "Time not set"}
+                            </span>
+                          </div>
+                        </div>
+
                         </td>
                         <td className="px-6 py-4">
                           <select
