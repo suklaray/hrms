@@ -14,6 +14,10 @@ export default function ComplianceDashboard() {
   const [candidates, setCandidates] = useState([]);
   const [interns, setInterns] = useState([]);
   const [activeTab, setActiveTab] = useState('employees');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  const [candidateCurrentPage, setCandidateCurrentPage] = useState(1);
+  const [internCurrentPage, setInternCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchCompliance = async () => {
@@ -135,6 +139,26 @@ export default function ComplianceDashboard() {
     setFiltered(data.sort((a, b) => a.name.localeCompare(b.name)));
   }, [filter, roleFilter, employees]);
 
+  // Add pagination calculations
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+  // Candidates pagination
+  const candidateTotalItems = candidates.length;
+  const candidateTotalPages = Math.ceil(candidateTotalItems / itemsPerPage);
+  const candidateStartIndex = (candidateCurrentPage - 1) * itemsPerPage;
+  const paginatedCandidates = candidates.slice(candidateStartIndex, candidateStartIndex + itemsPerPage);
+
+  // Interns pagination
+  const internTotalItems = interns.length;
+  const internTotalPages = Math.ceil(internTotalItems / itemsPerPage);
+  const internStartIndex = (internCurrentPage - 1) * itemsPerPage;
+  const paginatedInterns = interns.slice(internStartIndex, internStartIndex + itemsPerPage);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, roleFilter]);
 
 
   const getStatusIcon = (status) => {
@@ -262,16 +286,19 @@ export default function ComplianceDashboard() {
             <>
               {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Employees</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                </div>
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600" />
-                </div>
-              </div>
+            <div className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                filter === "All" ? "border-blue-300 bg-blue-50" : "border-gray-100"}`}
+                    onClick={() => setFilter("All")}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Employees</p>
+                        <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                      </div>
+                      <div className="p-3 bg-blue-100 rounded-lg">
+                        <Users className="w-6 h-6 text-blue-600" />
+                      </div>
+                    </div>
             </div>
 
             <div 
@@ -346,16 +373,6 @@ export default function ComplianceDashboard() {
                 <option value="superadmin">SuperAdmin</option>
               </select>
 
-              {filter !== "All" && (
-                <button
-                  onClick={() => setFilter("All")}
-                  className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors flex items-center gap-1"
-                >
-                  <X className="w-3 h-3" />
-                  Clear Status Filter
-                </button>
-              )}
-
               <div className="ml-auto text-sm text-gray-600">
                 Showing {filtered.length} of {employees.length} employees
               </div>
@@ -377,7 +394,7 @@ export default function ComplianceDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filtered.map((emp) => (
+                  {paginatedEmployees.map((emp) => (
                     <tr key={emp.empid} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -406,6 +423,42 @@ export default function ComplianceDashboard() {
                   ))}
                 </tbody>
               </table>
+              {/* Pagination for Employees */}
+              {totalPages > 1 && (
+                <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, totalItems)} of {totalItems} results
+                  </div>
+                  <div className="flex space-x-1">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    >
+                      {"<"}
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-1 text-sm border rounded ${
+                          currentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    >
+                      {">"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
             </>

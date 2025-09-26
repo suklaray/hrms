@@ -105,70 +105,83 @@ export default function Dashboard({ user }) {
       <div className="flex min-h-screen bg-gray-50">
       <SideBar/>
       <div className="flex-1 overflow-auto">
-      
         <div className="p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <ProfileSection user={user} />
           <div></div> {/* Empty div to maintain grid layout */}
         </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-blue-500 text-white">
-                  <Users className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-md font-medium text-gray-600">Total Employees</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {stats ? (stats.totalEmployees || 'No employees') : 'Loading...'}
-                  </p>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div 
+            className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => router.push('/employeeList')}
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-blue-500 text-white">
+                <Users className="w-6 h-6" />
               </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-green-500 text-white">
-                  <UserCheck className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-md font-medium text-gray-600">Currently Logged In</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {stats ? (stats.activeEmployees || 'None logged in') : 'Loading...'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-orange-500 text-gray">
-                  <Clock className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-md font-medium text-gray-600">Pending Leaves</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {stats ? (stats.pendingLeaves || 'No requests') : 'Loading...'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-purple-500 text-white">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-md font-medium text-gray-600">Total Candidates</p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {stats ? (stats.totalCandidates || 'No candidates') : 'Loading...'}
-                  </p>
-                </div>
+              <div className="ml-4">
+                <p className="text-md font-medium text-gray-600">Total Employees</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {stats ? (stats.totalEmployees || 'No employees') : 'Loading...'}
+                </p>
               </div>
             </div>
           </div>
+
+          <div 
+            className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => router.push('/hr/attendance')}
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-green-500 text-white">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <div className="ml-4">
+                <p className="text-md font-medium text-gray-600">Currently Logged In</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {stats ? (stats.activeEmployees || 'None logged in') : 'Loading...'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div 
+            className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => router.push('/hr/leave-management')}
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-orange-500 text-white">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div className="ml-4">
+                <p className="text-md font-medium text-gray-600">Pending Leaves</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {stats ? (stats.pendingLeaves || 'No requests') : 'Loading...'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div 
+            className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => router.push('/Recruitment/recruitment')}
+          >
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-purple-500 text-white">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div className="ml-4">
+                <p className="text-md font-medium text-gray-600">Total Candidates</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {stats ? (stats.totalCandidates || 'No candidates') : 'Loading...'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
 
           {/* Calendar and Quick Actions Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

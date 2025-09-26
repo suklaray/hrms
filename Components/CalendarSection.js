@@ -193,8 +193,8 @@ const getDotColor = (type) => {
                     'text-gray-700 hover:bg-gray-50'
                   }
                 `}
-                onMouseEnter={() => setHoveredDay(day ? `${currentDate.getFullYear()}-${currentDate.getMonth()}-${day}` : null)}
-                onMouseLeave={() => setHoveredDay(null)}
+                onMouseEnter={() => day && setHoveredDay(`${currentDate.getFullYear()}-${currentDate.getMonth()}-${day}`)}
+                onMouseLeave={() => day && setHoveredDay(null)}
               >
                 {day && (
                   <>
@@ -213,37 +213,38 @@ const getDotColor = (type) => {
                     )}
                     
                     {/* Hover Tooltip */}
-                    {hoveredDay === `${currentDate.getFullYear()}-${currentDate.getMonth()}-${day}` && (
-                    <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg min-w-max max-w-xs">
-                    
-                    {/* Show Day Off if weekend */}
-                            {isDayOff && (
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 rounded-full bg-gray-400" />
-                                <span>Day Off (Weekend)</span>
-                              </div>
-                            )}
-
+                      {hoveredDay === `${currentDate.getFullYear()}-${currentDate.getMonth()}-${day}` && (dayEvents.length > 0 || isDayOff) && (
+                        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg min-w-max max-w-xs">
                         
-                            {dayEvents.length > 0 && (
-                              <div className="space-y-1 mt-1">
-                                {dayEvents.map((event, i) => (
-                                  <div key={i} className="flex items-center space-x-2">
-                                    <div className={`w-2 h-2 rounded-full ${getDotColor(event.type)}`} />
-                                    <span>
-                                      {event.type === 'birthday' && `${event.employee}'s Birthday`}
-                                      {event.type === 'leave' && `${event.employee} - ${event.leave_type}${event.reason ? ` (${event.reason})` : ''}`}
-                                      {event.type === 'holiday' && `${event.title.replace('🎉 ', '')}`}
-                                      {event.type === 'event' && `${event.title.replace('📅 ', '')}`}
-                                    </span>
+                        {/* Show Day Off if weekend */}
+                                {isDayOff && (
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 rounded-full bg-gray-400" />
+                                    <span>Day Off (Weekend)</span>
                                   </div>
-                                ))}
-                              </div>
-                            )}
+                                )}
 
-                            {/* Tooltip arrow */}
-                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                          </div>
+                            
+                                {dayEvents.length > 0 && (
+                                  <div className="space-y-1 mt-1">
+                                    {dayEvents.map((event, i) => (
+                                      <div key={i} className="flex items-center space-x-2">
+                                        <div className={`w-2 h-2 rounded-full ${getDotColor(event.type)}`} />
+                                        <span>
+                                          {event.type === 'birthday' && `${event.employee}'s Birthday`}
+                                          {event.type === 'leave' && `${event.employee} - ${event.leave_type}${event.reason ? ` (${event.reason})` : ''}`}
+                                          {event.type === 'holiday' && `${event.title.replace('🎉 ', '')}`}
+                                          {event.type === 'event' && `${event.title.replace('📅 ', '')}`}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Tooltip arrow */}
+                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+
                         )}
                      </>
                   )}
@@ -260,9 +261,9 @@ const getDotColor = (type) => {
           </div>
         )}
 
-        {/* Legend */}
-<div className="mt-6 flex items-center justify-between">
-  <div className="flex flex-wrap gap-4 text-xs">
+{/* Legend */}
+<div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
     {legendItems.map((item) => (
       <div key={item.type} className="flex items-center space-x-2">
         <div className={`w-3 h-3 rounded-full ${getDotColor(item.type)}`}></div>
@@ -270,16 +271,15 @@ const getDotColor = (type) => {
       </div>
     ))}
   </div>
-  <button>
   {/* Link Button */}
   <Link
     href="/calendar/yearly-calendar"
-    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium rounded-lg transition-colors cursor-pointer"
+    className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
   >
     View Calendar
   </Link>
-</button>
 </div>
+
       </div>
     </div>
   );

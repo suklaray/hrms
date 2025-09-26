@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { useRouter } from 'next/router';
-import { 
-  FileText, XCircle, Eye, Calendar, Users, Search
-} from 'lucide-react';
+import { FileText, XCircle, Eye, Calendar, Users, Search } from 'lucide-react';
 import { getUserFromToken } from '@/lib/getUserFromToken';
 
 export async function getServerSideProps(context) {
@@ -40,11 +38,16 @@ export default function DocumentCenter({ user }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
 
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    }, [searchTerm, roleFilter]);
 
   const fetchEmployees = async () => {
     try {
@@ -82,6 +85,10 @@ export default function DocumentCenter({ user }) {
     const matchesRole = roleFilter === 'all' || emp.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+  const totalItems = filteredEmployees.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <>
@@ -103,6 +110,9 @@ export default function DocumentCenter({ user }) {
             </div>
           </div>
         </div>
+
+        
+
 
         {/* Content */}
         <div className="p-6">
@@ -170,7 +180,7 @@ export default function DocumentCenter({ user }) {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredEmployees.map((emp) => (
+                      {paginatedEmployees.map((emp) => (
                         <tr key={emp.empid} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
@@ -219,6 +229,41 @@ export default function DocumentCenter({ user }) {
                       ))}
                     </tbody>
                   </table>
+                  {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, totalItems)} of {totalItems} results
+            </div>
+            <div className="flex space-x-1">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              >
+                {"<"}
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-3 py-1 text-sm border rounded ${
+                    currentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+              >
+                {">"}
+              </button>
+            </div>
+          </div>
+        )}
                 </div>
               </div>
             </div>
