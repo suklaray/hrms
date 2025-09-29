@@ -111,6 +111,15 @@ export default function EmployeeListPage({ user }) {
     }
   };
 
+  const canViewRole = (targetRole) => {
+    const role = user.role.toLowerCase();
+    const target = targetRole.toLowerCase();
+    if (role === "superadmin") return target !== "superadmin";
+    if (role === "admin" && (target === "hr" || target === "employee")) return true;
+    if (role === "hr" && target === "employee") return true;
+    return false;
+  };
+
   const countByRole = (roleName) =>
     employees.filter(emp => emp.role?.toLowerCase() === roleName.toLowerCase()).length;
 
@@ -121,15 +130,6 @@ export default function EmployeeListPage({ user }) {
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-  };
-
-  const canViewRole = (targetRole) => {
-    const role = user.role.toLowerCase();
-    const target = targetRole.toLowerCase();
-    if (role === "superadmin") return true;
-    if (role === "admin" && (target === "hr" || target === "employee")) return true;
-    if (role === "hr" && target === "employee") return true;
-    return false;
   };
 
   const filteredEmployees = employees.filter((emp) => {
@@ -151,7 +151,7 @@ export default function EmployeeListPage({ user }) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
 
-  const roles = [
+  const allRoles = [
     { label: "All", icon: FaUsers, color: "bg-blue-500" },
     { label: "HR", icon: FaUserTie, color: "bg-green-500" },
     { label: "Admin", icon: FaUserShield, color: "bg-purple-500" },
@@ -159,12 +159,10 @@ export default function EmployeeListPage({ user }) {
     { label: "Employee", icon: FaUsers, color: "bg-indigo-500" },
   ];
 
-  // Show "All" button only if user can view more than one role
-  const allowedRolesForUser = roles
-    .map(({ label }) => label)
-    .filter(role => canViewRole(role));
-
-  const showAllButton = allowedRolesForUser.length > 1;
+  const roles = allRoles.filter(role => {
+    if (role.label === "All") return true;
+    return canViewRole(role.label);
+  });
 
   return (
     <>

@@ -148,8 +148,7 @@ export default function Dashboard({ user }) {
 
           <div 
             className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
-            onClick={() => router.push('/hr/leave-management')}
-          >
+            onClick={() => router.push('/hr/view-leave-requests')}>
             <div className="flex items-center">
               <div className="p-3 rounded-full bg-orange-500 text-white">
                 <Clock className="w-6 h-6" />

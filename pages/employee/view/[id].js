@@ -266,22 +266,29 @@ useEffect(() => {
             {/* Profile Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center space-x-6">
-                <div className="flex-shrink-0">
+               <div className="flex-shrink-0">
                   {employees?.profile_photo ? (
                     <Image
-                      src={employees.profile_photo}
+                      src={`/api/hr/view-document/${empid}?type=profile_photo`}
                       alt="Profile"
-                      width={96}
+                      width={96}   
                       height={96}
-                      unoptimized={true}
-                      className="w-24 h-24 rounded-full object-cover border-4 border-blue-200"
+                      className="rounded-full object-cover border-4 border-blue-200"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                      }}
                     />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-gray-200">
-                      <User className="w-8 h-8" />
-                    </div>
-                  )}
+                  ) : null}
+                  <div 
+                    className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-gray-200"
+                    style={{ display: employees?.profile_photo ? 'none' : 'flex' }}
+                  >
+                    <User className="w-8 h-8" />
+                  </div>
                 </div>
+
+
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
                   <p className="text-gray-600">{email}</p>

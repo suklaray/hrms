@@ -35,34 +35,40 @@ export default function EmployeeTasks() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "completed": return "bg-green-100 text-green-800";
-      case "in_progress": return "bg-yellow-100 text-yellow-800";
-      case "pending": return "bg-red-100 text-red-800";
+      case "Completed": return "bg-green-100 text-green-800";
+      case "In Progress": return "bg-yellow-100 text-yellow-800";
+      case "Pending": return "bg-red-100 text-red-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case "high": return "bg-red-100 text-red-800";
-      case "medium": return "bg-yellow-100 text-yellow-800";
-      case "low": return "bg-green-100 text-green-800";
+      case "High": return "bg-red-100 text-red-800";
+      case "Medium": return "bg-yellow-100 text-yellow-800";
+      case "Low": return "bg-green-100 text-green-800";
       default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  const isOverdue = (deadline) => new Date(deadline) < new Date();
-
-  // Select / Deselect tasks
   const toggleSelectTask = (taskId) => {
     setSelectedTasks(prev => 
       prev.includes(taskId) ? prev.filter(id => id !== taskId) : [...prev, taskId]
     );
   };
 
-  // Delete selected tasks
+  const selectAllTasks = () => {
+    if (selectedTasks.length === tasks.length) {
+      setSelectedTasks([]);
+    } else {
+      setSelectedTasks(tasks.map(task => task.id));
+    }
+  };
+
   const deleteSelectedTasks = async () => {
     if (selectedTasks.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${selectedTasks.length} task(s)?`)) return;
 
     try {
       const response = await fetch(`/api/task-management/delete-tasks`, {
@@ -80,7 +86,6 @@ export default function EmployeeTasks() {
     }
   };
 
-  // Update status in DB
   const updateTaskStatus = async (taskId, status) => {
     try {
       const response = await fetch(`/api/task-management/update-task-status`, {
@@ -107,7 +112,6 @@ export default function EmployeeTasks() {
       <div className="flex min-h-screen bg-gray-50">
         <SideBar />
         <div className="flex-1 overflow-auto">
-          {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-4">
               <Link
@@ -123,25 +127,35 @@ export default function EmployeeTasks() {
               </div>
             </div>
 
-            <button
-              onClick={deleteSelectedTasks}
-              disabled={selectedTasks.length === 0}
-              className={`inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors ${
-                selectedTasks.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete Selected
-            </button>
+            {selectedTasks.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">
+                  {selectedTasks.length} selected
+                </span>
+                <button
+                  onClick={deleteSelectedTasks}
+                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete ({selectedTasks.length})
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Task List */}
           <div className="p-6">
             <div className="bg-white rounded-lg shadow overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Select</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <input
+                        type="checkbox"
+                        checked={tasks.length > 0 && selectedTasks.length === tasks.length}
+                        onChange={selectAllTasks}
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded cursor-pointer"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -185,9 +199,9 @@ export default function EmployeeTasks() {
                             onChange={(e) => updateTaskStatus(task.id, e.target.value)}
                             className={`px-2 py-1 text-xs font-medium rounded-full cursor-pointer ${getStatusColor(task.status)}`}
                           >
-                            <option value="pending">Pending</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="completed">Completed</option>
+                            <option value="Pending">Pending</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Completed">Completed</option>
                           </select>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-500">{new Date(task.deadline).toLocaleString()}</td>

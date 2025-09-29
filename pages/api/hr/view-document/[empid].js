@@ -33,6 +33,7 @@ export default async function handler(req, res) {
         pan_card: true,
         education_certificates: true,
         experience_certificate: true,
+        profile_photo: true,
       },
     });
 
