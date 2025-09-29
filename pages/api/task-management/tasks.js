@@ -68,7 +68,7 @@ export default async function handler(req, res) {
       console.log('Role filter:', roleFilter);
 
       let whereClause = { 
-        status: { not: 'inactive' },
+        status: { not: 'Inactive' },
         OR: [
           { empid: user.empid },
           ...(roleFilter.length > 0 ? [{ role: { in: roleFilter } }] : [])
