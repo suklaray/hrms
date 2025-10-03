@@ -18,6 +18,7 @@ export default async function handler(req, res) {
         status: true,
         reason: true,
         attachment: true,
+        applied_at: true,
       },
       orderBy: {
         id: 'desc',

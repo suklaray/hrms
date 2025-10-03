@@ -61,6 +61,8 @@ export default function LeaveRequest() {
       const selectedType = leaveTypes.find(type => type.type_name.replace(/_/g, ' ') === value);
       setSelectedLeaveType(selectedType);
       setForm(prev => ({ ...prev, [name]: value, to_date: '' }));
+    } else if (name === 'from_date') {
+      setForm(prev => ({ ...prev, [name]: value, to_date: value })); // Auto-set to_date to same date
     } else if (name === 'reason') {
       if (value.length > 200) {
         setErrors(prev => ({ ...prev, reason: 'Reason cannot exceed 200 characters' }));
@@ -71,6 +73,7 @@ export default function LeaveRequest() {
       setForm(prev => ({ ...prev, [name]: value }));
     }
   };
+
 
   const validateForm = () => {
     const newErrors = {};
@@ -124,6 +127,7 @@ export default function LeaveRequest() {
         leave_type: '',
         from_date: '',
         to_date: '',
+        applied_at: '',
         reason: '',
         attachment: null,
       }));
@@ -246,7 +250,7 @@ export default function LeaveRequest() {
                         const displayName = type.type_name.replace(/_/g, ' ');
                         return (
                           <option key={type.id} value={displayName}>
-                            {displayName} ({type.max_days} days - {type.paid ? 'Paid' : 'Unpaid'})
+                            {displayName} ({type.paid ? 'Paid' : 'Unpaid'})
                           </option>
                         );
                       })}
@@ -285,21 +289,11 @@ export default function LeaveRequest() {
                       name="to_date"
                       value={form.to_date}
                       onChange={handleChange}
-                      min={form.from_date || getTodayDate()}
-                      max={getMaxToDate()}
-                      disabled={!form.from_date || !selectedLeaveType}
-                      className={`w-full p-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 shadow-sm ${
+                      min={form.from_date} 
+                      className={`w-full p-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm ${
                         errors.to_date ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 hover:border-blue-300'
-                      } ${
-                        !form.from_date || !selectedLeaveType ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
                       }`}
                     />
-                    {errors.to_date && <p className="text-red-500 text-sm mt-1 font-medium">{errors.to_date}</p>}
-                    {selectedLeaveType && form.from_date && (
-                      <p className="text-xs text-blue-600 mt-2 bg-blue-50 p-2 rounded-lg">
-                        📅 Maximum {selectedLeaveType.max_days} days allowed. Last selectable: {new Date(getMaxToDate()).toLocaleDateString()}
-                      </p>
-                    )}
                   </div>
                 </div>
 
@@ -472,10 +466,10 @@ export default function LeaveRequest() {
                               <div className="text-sm font-medium text-gray-900">{leave.leave_type}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{fromDate.toLocaleDateString()}</div>
+                              <div className="text-sm text-gray-900">{fromDate.toLocaleDateString('en-GB')}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">{toDate.toLocaleDateString()}</div>
+                              <div className="text-sm text-gray-900">{toDate.toLocaleDateString('en-GB')}</div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">{days} day{days > 1 ? 's' : ''}</div>
@@ -485,7 +479,7 @@ export default function LeaveRequest() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
-                                {new Date(leave.from_date).toLocaleDateString()}
+                                {leave.applied_at ? new Date(leave.applied_at).toLocaleDateString('en-GB') : 'N/A'}
                               </div>
                             </td>
                             <td className="px-6 py-4">
