@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+import cookie from "cookie";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
@@ -7,26 +9,58 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, message: "Method Not Allowed" });
   }
 
-  const {
-    name,
-    email,
-    contact_number,
-    position,
-    date_of_joining,
-    status,
-    experience,
-    employee_type,
-    role = "employee",
-  } = req.body;
-
-  if (!name || !email || !employee_type) {
-    return res.status(400).json({
-      success: false,
-      message: "Name, email, and employee type are required.",
-    });
-  }
-
   try {
+    // Get user from token
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const { token } = cookies;
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const currentUser = await prisma.users.findUnique({
+      where: { empid: decoded.empid || decoded.id },
+      select: { empid: true, role: true }
+    });
+
+    if (!currentUser || !['hr', 'admin', 'superadmin'].includes(currentUser.role)) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const {
+      name,
+      email,
+      contact_number,
+      position,
+      date_of_joining,
+      status,
+      experience,
+      employee_type,
+      role = "employee",
+    } = req.body;
+
+    // Role-based validation for role assignment
+    const allowedRoles = [];
+    if (currentUser.role === 'hr') {
+      allowedRoles.push('employee');
+    } else if (currentUser.role === 'admin') {
+      allowedRoles.push('hr', 'employee');
+    } else if (currentUser.role === 'superadmin') {
+      allowedRoles.push('admin', 'hr', 'employee');
+    }
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({
+        success: false,
+        message: `You are not authorized to create ${role} role. Allowed roles: ${allowedRoles.join(', ')}`
+      });
+    }
+
+    if (!name || !email || !employee_type) {
+      return res.status(400).json({
+        success: false,
+        message: "Name, email, and employee type are required.",
+      });
+    }
+
     const existingUser = await prisma.users.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({

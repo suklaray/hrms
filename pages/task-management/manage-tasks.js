@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { Plus, Users, Eye, Calendar, CheckCircle, AlertTriangle } from "lucide-react";
+import { Plus, Users, Eye, Calendar, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
 
@@ -55,6 +55,8 @@ export default function TaskManagement({ user }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(7);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -67,7 +69,7 @@ export default function TaskManagement({ user }) {
   const priorities = ["Low", "Medium", "High"];
 
   const filteredEmployees = searchTerm.trim() === '' 
-  ? employees // Show all active employees when empty
+  ? employees
   : employees.filter(emp => 
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.empid.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,6 +144,15 @@ export default function TaskManagement({ user }) {
 
   const handleViewTasks = (empid) => {
     router.push(`/task-management/employee-task?employeeId=${empid}`);
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(employees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -250,37 +261,34 @@ export default function TaskManagement({ user }) {
                             value={searchTerm}
                             onChange={(e) => {
                               setSearchTerm(e.target.value);
-                              setShowDropdown(true);
+                              setShowDropdown(e.target.value.trim() !== "");
                             }}
-                            onFocus={() => setShowDropdown(true)}
                             placeholder="Search by name, email or ID..."
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                           
                           {showDropdown && filteredEmployees.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                              {searchTerm.trim() === '' && (
-                                <div className="px-3 py-2 text-xs text-gray-500 border-b border-gray-100">
-                                  All active employees ({filteredEmployees.length})
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                            {filteredEmployees.map((emp) => (
+                              <div
+                                key={emp.empid}
+                                onClick={() => {
+                                  setSelectedEmployee(emp);
+                                  setSearchTerm(`${emp.name} (${emp.empid})`);
+                                  setFormData({ ...formData, assigned_to: emp.empid });
+                                  setShowDropdown(false);
+                                }}
+                                className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                              >
+                                <div className="font-medium text-gray-900">{emp.name}</div>
+                                <div className="text-sm text-gray-500">
+                                  {emp.email} • {emp.empid} • {emp.role}
                                 </div>
-                              )}
-                              {filteredEmployees.map((emp) => (
-                                <div
-                                  key={emp.empid}
-                                  onClick={() => {
-                                    setSelectedEmployee(emp);
-                                    setSearchTerm(`${emp.name} (${emp.empid})`);
-                                    setFormData({ ...formData, assigned_to: emp.empid });
-                                    setShowDropdown(false);
-                                  }}
-                                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                >
-                                  <div className="font-medium text-gray-900">{emp.name}</div>
-                                  <div className="text-sm text-gray-500">{emp.email} • {emp.empid} • {emp.role}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                           
                           {selectedEmployee && (
                             <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-between">
@@ -366,7 +374,12 @@ export default function TaskManagement({ user }) {
 
               {activeTab === "employees" && (
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Employee Task List</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Employee Task List</h3>
+                    <p className="text-sm text-gray-600">
+                      Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, employees.length)} of {employees.length} employees
+                    </p>
+                  </div>
                   
                   {employees.length === 0 ? (
                     <div className="text-center py-8">
@@ -375,48 +388,98 @@ export default function TaskManagement({ user }) {
                       <p className="text-gray-500">No employees available to assign tasks.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-200">
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee ID</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {employees.map((employee) => (
-                            <tr key={employee.empid} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {employee.empid}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {employee.name}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {employee.email}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
-                                  {employee.role}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <button
-                                  onClick={() => handleViewTasks(employee.empid)}
-                                  className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-                                >
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  View Tasks
-                                </button>
-                              </td>
+                    <>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gray-50 border-b border-gray-200">
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee ID</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {paginatedEmployees.map((employee) => (
+                              <tr key={employee.empid} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                  {employee.empid}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {employee.name}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                  {employee.email}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
+                                    {employee.role}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <button
+                                    onClick={() => handleViewTasks(employee.empid)}
+                                    className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    View Tasks
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                          <div className="text-sm text-gray-700">
+                            Page {currentPage} of {totalPages} ({employees.length} total employees)
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                currentPage === 1
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                              <button
+                                key={page}
+                                onClick={() => handlePageChange(page)}
+                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                  page === currentPage
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            ))}
+                            
+                            <button
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={currentPage === totalPages}
+                              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                currentPage === totalPages
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

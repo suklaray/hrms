@@ -3,6 +3,88 @@ import axios from "axios";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import Image from "next/image";
+import { FileText, CheckCircle } from "lucide-react";
+
+function DocumentUploadForm({ user }) {
+  const [uploadStatus, setUploadStatus] = useState('idle');
+  const [documentsSubmitted, setDocumentsSubmitted] = useState(false);
+
+  useEffect(() => {
+    // Check if documents are already submitted
+    if (user?.empid) {
+axios.get(`/api/employee/document-status`)
+        .then(res => {
+          setDocumentsSubmitted(res.data.submitted);
+          if (res.data.submitted) {
+            setUploadStatus('success');
+          }
+        })
+        .catch(() => {
+          setDocumentsSubmitted(false);
+        });
+    }
+  }, [user]);
+
+  const handleUpload = () => {
+  if (!user) return;
+  
+  console.log('User object:', user); // Debug line
+  
+  // For HR/admin users, use their email as identifier or create a unique ID
+  const empId = user.empid || user.id || user.email?.split('@')[0] || 'admin';
+  
+  const uploadUrl = `/employee/upload-documents/${empId}?name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`;
+  window.open(uploadUrl, '_blank');
+};
+
+  return (
+    <div className="space-y-4">
+      <div className={`flex items-center justify-between p-4 rounded-lg border ${
+        documentsSubmitted 
+          ? 'bg-green-50 border-green-200' 
+          : 'bg-red-50 border-red-200'
+      }`}>
+        <div className="flex items-center space-x-3">
+          <FileText className={`w-5 h-5 ${
+            documentsSubmitted ? 'text-green-600' : 'text-red-600'
+          }`} />
+          <div>
+            <p className={`font-medium ${
+              documentsSubmitted ? 'text-green-900' : 'text-red-900'
+            }`}>
+              Document Submission
+            </p>
+            <p className={`text-sm ${
+              documentsSubmitted 
+                ? 'text-green-600' 
+                : 'text-red-600'
+            }`}>
+              {documentsSubmitted 
+                ? 'Documents submitted successfully' 
+                : 'Required documents not submitted yet'
+              }
+            </p>
+          </div>
+        </div>
+        {!documentsSubmitted && (
+          <button
+            onClick={handleUpload}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium cursor-pointer"
+          >
+            Upload Documents
+          </button>
+        )}
+        {documentsSubmitted && (
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+            <span className="text-green-700 text-sm font-medium">Submitted</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -16,7 +98,10 @@ export default function Profile() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    axios.get("/api/auth/settings/user-profile").then((res) => setUser(res.data));
+    axios.get("/api/auth/settings/user-profile").then((res) => {
+      console.log('User data:', res.data); // Add this line to debug
+      setUser(res.data);
+    });
   }, []);
 
   const handleFileChange = async (e) => {
@@ -337,9 +422,22 @@ const loaderProp =({ src }) => {
                   {passwordValidation.loading ? 'Updating...' : 'Update Password'}
                 </button>
               </div>
+
             </div>
           </div>
         )}
+        {/* Document Upload Section */}
+          <div className="max-w-xl mx-auto mt-6 bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+              <h2 className="text-xl font-bold text-white">Upload Documents</h2>
+              <p className="text-indigo-100 text-sm">Submit your required documents</p>
+            </div>
+            
+            <div className="p-6">
+              <DocumentUploadForm user={user} />
+            </div>
+          </div>
+
       </div>
     </div>
     </>

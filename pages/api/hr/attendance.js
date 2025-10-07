@@ -1,4 +1,6 @@
 import prisma from "@/lib/prisma";
+import jwt from "jsonwebtoken";
+import cookie from "cookie";
 
 const formatDuration = (seconds) => {
   const hrs = Math.floor(seconds / 3600).toString().padStart(3, '0');
@@ -8,7 +10,36 @@ const formatDuration = (seconds) => {
 };
 
 export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
   try {
+    // Get user from token
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const { token } = cookies;
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const currentUser = await prisma.users.findUnique({
+      where: { empid: decoded.empid || decoded.id },
+      select: { empid: true, role: true }
+    });
+
+    if (!currentUser || !['hr', 'admin', 'superadmin'].includes(currentUser.role)) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Define role-based filtering
+    let roleFilter = [];
+    if (currentUser.role === 'hr') {
+      roleFilter = ['employee'];
+    } else if (currentUser.role === 'admin') {
+      roleFilter = ['hr', 'employee'];
+    } else if (currentUser.role === 'superadmin') {
+      roleFilter = ['admin', 'hr', 'employee'];
+    }
+
     const results = await prisma.$queryRawUnsafe(`
       SELECT 
         u.empid,
@@ -58,7 +89,7 @@ export default async function handler(req, res) {
       LEFT JOIN 
         attendance a ON u.empid = a.empid
       WHERE 
-        u.role IN ('employee', 'admin', 'hr', 'superadmin')
+        u.role IN (${roleFilter.map(role => `'${role}'`).join(', ')})
         AND u.status != 'Inactive'
       GROUP BY 
         u.empid, u.name, u.email, u.role, u.status

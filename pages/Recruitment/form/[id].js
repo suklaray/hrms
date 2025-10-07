@@ -251,8 +251,8 @@ export default function CandidateForm() {
         }
         break;
       case 'address_line_1':
-        if (value.length < 5) {
-          newErrors[name] = '❌ Address must be at least 5 characters';
+        if (value.length < 3) {
+          newErrors[name] = '❌ Address must be at least 3 characters';
         } else if (!/^[a-zA-Z0-9\s,.-/#]+$/.test(value)) {
           newErrors[name] = '❌ Invalid address format';
         } else {

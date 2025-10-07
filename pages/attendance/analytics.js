@@ -198,8 +198,8 @@ export default function AttendanceAnalytics({ user }) {
             />
             <MetricCard
               title="Leave Utilization"
-              value={`${data?.leaveUtilization || 0}%`}
-              subtitle="approved leave taken"
+              value={period === 'today' ? `${data?.totalLeaveDays || 0}` : `${data?.leaveUtilization || 0}`}
+              subtitle={period === 'today' ? 'employees on leave today' : 'approved leave taken'}
               icon="fas fa-calendar-check"
               color="bg-teal-100 text-teal-600"
             />

@@ -142,12 +142,12 @@ export default function EmpPayslip() {
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => window.open(`/employee/payslip-preview?month=${doc.month}&year=${doc.year}`, '_blank')}
-                                  className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                                  className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
                                   View
                                 </button>
-                                <button
+                                {/*<button
                                   onClick={() => {
                                     const link = document.createElement('a');
                                     link.href = `/employee/payslip-preview?month=${doc.month}&year=${doc.year}&download=true`;
@@ -158,7 +158,7 @@ export default function EmpPayslip() {
                                 >
                                   <Download className="w-4 h-4 mr-1" />
                                   Download
-                                </button>
+                                </button>*/}
                               </div>
                             </td>
                           </tr>

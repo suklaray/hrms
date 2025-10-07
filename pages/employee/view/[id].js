@@ -266,22 +266,29 @@ useEffect(() => {
             {/* Profile Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center space-x-6">
-                <div className="flex-shrink-0">
+               <div className="flex-shrink-0">
                   {employees?.profile_photo ? (
                     <Image
-                      src={employees.profile_photo}
+                      src={`/api/hr/view-document/${empid}?type=profile_photo`}
                       alt="Profile"
-                      width={96}
+                      width={96}   
                       height={96}
-                      unoptimized={true}
-                      className="w-24 h-24 rounded-full object-cover border-4 border-blue-200"
+                      className="rounded-full object-cover border-4 border-blue-200"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling.style.display = 'flex';
+                      }}
                     />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-gray-200">
-                      <User className="w-8 h-8" />
-                    </div>
-                  )}
+                  ) : null}
+                  <div 
+                    className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-gray-200"
+                    style={{ display: employees?.profile_photo ? 'none' : 'flex' }}
+                  >
+                    <User className="w-8 h-8" />
+                  </div>
                 </div>
+
+
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
                   <p className="text-gray-600">{email}</p>
@@ -353,8 +360,7 @@ useEffect(() => {
                         />
                         <button
                           onClick={handlePositionUpdate}
-                          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
+                          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
                           Update
                         </button>
                       </div>
@@ -560,7 +566,7 @@ function FileDetail({ label, file }) {
           href={file} 
           target="_blank" 
           rel="noopener noreferrer" 
-          className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium"
+          className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
         >
           <FileText className="w-4 h-4 mr-1" />
           View Document

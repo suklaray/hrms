@@ -50,6 +50,7 @@ export default function AttendanceList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeFilter, setActiveFilter] = useState("all");
   const router = useRouter();
   const itemsPerPage = 5;
 
@@ -68,18 +69,31 @@ export default function AttendanceList() {
   }, []);
 
   useEffect(() => {
-    if (!searchTerm) {
-      setFilteredData(data);
-    } else {
-      const filtered = data.filter((user) =>
+    let filtered = data;
+    
+    // Apply status filter
+    if (activeFilter === "present") {
+      filtered = filtered.filter(user => user.attendance_status === "Present");
+    } else if (activeFilter === "online") {
+      filtered = filtered.filter(user => user.status === "Logged In");
+    }
+    
+    // Apply search filter
+    if (searchTerm) {
+      filtered = filtered.filter((user) =>
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.empid.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredData(filtered);
     }
+    
+    setFilteredData(filtered);
     setCurrentPage(1);
-  }, [searchTerm, data]);
+  }, [searchTerm, data, activeFilter]);
+
+  const handleFilterClick = (filter) => {
+    setActiveFilter(filter);
+  };
 
   const formatTime = (timeString) => {
   if (!timeString) return '--';
@@ -161,7 +175,12 @@ export default function AttendanceList() {
         <div className="p-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => handleFilterClick("all")}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                activeFilter === "all" ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-100"
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Employees</p>
@@ -173,7 +192,12 @@ export default function AttendanceList() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => handleFilterClick("present")}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                activeFilter === "present" ? "border-green-500 ring-2 ring-green-200" : "border-gray-100"
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Present Today</p>
@@ -185,7 +209,12 @@ export default function AttendanceList() {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => handleFilterClick("online")}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                activeFilter === "online" ? "border-emerald-500 ring-2 ring-emerald-200" : "border-gray-100"
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Currently Online</p>
@@ -224,6 +253,11 @@ export default function AttendanceList() {
             </div>
             <div className="mt-2 text-sm text-gray-600">
               Showing {paginatedData.length} of {filteredData.length} employees
+              {activeFilter !== "all" && (
+                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                  Filter: {activeFilter === "present" ? "Present Today" : "Currently Online"}
+                </span>
+              )}
               {totalPages > 1 && (
                 <span> (Page {currentPage} of {totalPages})</span>
               )}

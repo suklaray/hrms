@@ -39,13 +39,11 @@ export default async function handler(req, res) {
     if (!file || !file.filepath) return res.status(400).json({ error: "No file uploaded" });
 
     try {
-      // Try to find user by email first
-      let user = await prisma.users.findUnique({ where: { email: decoded.email } });
-      
-      if (!user) {
-        // If not found by email, try by empid
-        user = await prisma.users.findUnique({ where: { empid: decoded.email } });
-      }
+      // Find user by empid from token
+      const user = await prisma.users.findUnique({ 
+        where: { empid: decoded.empid },
+        select: { id: true, empid: true, email: true, role: true }
+      });
       
       if (!user) {
         return res.status(404).json({ error: "User not found" });
@@ -58,12 +56,26 @@ export default async function handler(req, res) {
 
       const imageUrl = `/uploads/${fileName}`;
       
+      // Update profile photo in users table
       await prisma.users.update({
         where: { id: user.id },
         data: {
           profile_photo: imageUrl
         },
       });
+
+      // For regular employees, also update in employees table if record exists
+      if (user.role === 'employee') {
+        try {
+          await prisma.employees.updateMany({
+            where: { email: user.email },
+            data: { profile_photo: imageUrl }
+          });
+        } catch (employeeUpdateError) {
+          console.log("Employee record not found or update failed:", employeeUpdateError);
+          // This is not critical for admin users
+        }
+      }
       
       return res.status(200).json({ message: "Profile photo uploaded successfully" });
     } catch (error) {

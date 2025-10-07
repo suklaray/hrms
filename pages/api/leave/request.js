@@ -55,6 +55,7 @@ export default async function handler(req, res) {
           leave_type,
           from_date: new Date(from_date),
           to_date: new Date(to_date),
+          applied_at: new Date(),
           reason,
           attachment,
         },

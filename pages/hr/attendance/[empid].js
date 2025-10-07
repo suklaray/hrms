@@ -2,15 +2,18 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
+import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 
 const ViewAttendance = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [employeeData, setEmployeeData] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const router = useRouter();
   const { empid } = router.query;
-
+  
   useEffect(() => {
     if (empid) {
       const fetchAttendance = async () => {
@@ -33,6 +36,26 @@ const ViewAttendance = () => {
   const attendanceRate = employeeData?.totalDays > 0 
     ? ((employeeData?.daysPresent / employeeData?.totalDays) * 100).toFixed(1)
     : 0;
+
+  const filteredAttendanceData = attendanceData.filter(attendance => {
+    if (filter === 'present') return attendance.attendance_status === 'Present';
+    if (filter === 'absent') return attendance.attendance_status === 'Absent';
+    return true;
+  });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAttendanceData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredAttendanceData.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   if (loading) {
     return (
@@ -97,7 +120,12 @@ const ViewAttendance = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => setFilter('all')}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                filter === 'all' ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-100'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Days</p>
@@ -109,7 +137,12 @@ const ViewAttendance = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => setFilter('present')}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                filter === 'present' ? 'border-green-500 ring-2 ring-green-200' : 'border-gray-100'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Days Present</p>
@@ -121,7 +154,12 @@ const ViewAttendance = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => setFilter('absent')}
+              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+                filter === 'absent' ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-100'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Days Absent</p>
@@ -150,7 +188,11 @@ const ViewAttendance = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Daily Attendance Records</h3>
-              <p className="text-sm text-gray-600">Detailed login/logout times and status</p>
+              <p className="text-sm text-gray-600">
+                Showing {paginatedData.length} of {filteredAttendanceData.length} records
+                {filter !== 'all' && ` (${filter} days only)`}
+                {totalPages > 1 && ` - Page ${currentPage} of ${totalPages}`}
+              </p>
             </div>
             
             <div className="overflow-x-auto">
@@ -166,47 +208,38 @@ const ViewAttendance = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {attendanceData.length > 0 ? (
-                    attendanceData.sort((a, b) => new Date(b.date) - new Date(a.date))
+                  {paginatedData.length > 0 ? (
+                    paginatedData.sort((a, b) => new Date(b.date) - new Date(a.date))
                     .map((attendance) => (
                       <tr key={attendance.date} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 text-gray-400 mr-2" />
-                            <span className="text-sm font-medium text-gray-900">{attendance.date}</span>
-                          </div>
+                          <div className="text-sm font-medium text-gray-900">{attendance.date}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Clock className="w-4 h-4 text-green-400 mr-2" />
-                            <span className="text-sm text-gray-900">{attendance.check_in || "—"}</span>
-                          </div>
+                          <div className="text-sm text-gray-900">{attendance.check_in || '--'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <Clock className="w-4 h-4 text-red-400 mr-2" />
-                            <span className="text-sm text-gray-900">{attendance.check_out || "—"}</span>
-                          </div>
+                          <div className="text-sm text-gray-900">{attendance.check_out || '--'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm font-mono text-gray-900">{attendance.total_hours || "—"}</span>
+                          <div className="text-sm text-gray-900">{attendance.total_hours}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            attendance.login_status === "Logged In" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-gray-100 text-gray-800"
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            attendance.login_status === 'Logged In' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {attendance.login_status || "N/A"}
+                            {attendance.login_status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            attendance.attendance_status === "Present" 
-                              ? "bg-green-100 text-green-800" 
-                              : "bg-red-100 text-red-800"
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            attendance.attendance_status === 'Present' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
                           }`}>
-                            {attendance.attendance_status || "N/A"}
+                            {attendance.attendance_status}
                           </span>
                         </td>
                       </tr>
@@ -216,7 +249,8 @@ const ViewAttendance = () => {
                       <td colSpan="6" className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                          <p>No attendance data available for this employee</p>
+                          <h3 className="text-lg font-medium mb-2">No Records Found</h3>
+                          <p className="text-sm">No attendance records found for the selected filter.</p>
                         </div>
                       </td>
                     </tr>
@@ -224,6 +258,54 @@ const ViewAttendance = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                <div className="text-sm text-gray-700">
+                  Showing page {currentPage} of {totalPages} ({filteredAttendanceData.length} total records)
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        page === currentPage
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === totalPages
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                    >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

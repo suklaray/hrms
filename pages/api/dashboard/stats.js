@@ -1,3 +1,4 @@
+// Update the dashboard stats API
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 
@@ -19,6 +20,16 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Define role-based filtering
+    let roleFilter = [];
+    if (decoded.role === 'hr') {
+      roleFilter = ['employee'];
+    } else if (decoded.role === 'admin') {
+      roleFilter = ['hr', 'employee'];
+    } else if (decoded.role === 'superadmin') {
+      roleFilter = ['admin', 'hr', 'employee'];
+    }
+
     // Get basic counts with error handling
     let totalEmployees = 0;
     let activeEmployees = 0;
@@ -30,9 +41,8 @@ export default async function handler(req, res) {
     try {
       totalEmployees = await prisma.users.count({
         where: {
-          role: {
-            not: 'superadmin'
-          }
+          role: { in: roleFilter },
+          status: { not: 'Inactive' }
         }
       });
     } catch (e) {
@@ -43,9 +53,7 @@ export default async function handler(req, res) {
       activeEmployees = await prisma.users.count({ 
         where: { 
           status: 'Logged In',
-          role: {
-            not: 'superadmin'
-          }
+          role: { in: roleFilter }
         } 
       });
     } catch (e) {
@@ -53,7 +61,15 @@ export default async function handler(req, res) {
     }
 
     try {
-      pendingLeaves = await prisma.leave_requests.count({ where: { status: 'Pending' } });
+      pendingLeaves = await prisma.leave_requests.count({ 
+        where: { 
+          status: 'Pending',
+          users: {
+            role: { in: roleFilter },
+            status: { not: 'Inactive' }
+          }
+        } 
+      });
     } catch (e) {
       console.error('Error counting leave requests:', e);
     }
@@ -81,9 +97,8 @@ export default async function handler(req, res) {
     try {
       recentEmployees = await prisma.users.findMany({
         where: {
-          role: {
-            not: 'superadmin'
-          }
+          role: { in: roleFilter },
+          status: { not: 'Inactive' }
         },
         orderBy: { id: 'desc' },
         take: 5,

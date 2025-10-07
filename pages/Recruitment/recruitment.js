@@ -171,8 +171,13 @@ export default function Candidates(user) {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+  const StatCard = ({ title, value, icon: Icon, color, filter, isActive, onClick }) => (
+    <div 
+      className={`bg-white rounded-xl p-6 shadow-sm border cursor-pointer transition-all hover:shadow-md ${
+        isActive ? 'border-blue-300 bg-blue-50' : 'border-gray-100'
+      }`}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
@@ -184,6 +189,7 @@ export default function Candidates(user) {
       </div>
     </div>
   );
+
 
   const handleEmp = async (candidateId, newDate) => {
     try {
@@ -290,12 +296,45 @@ export default function Candidates(user) {
 
         <div className="p-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-            <StatCard title="Total Candidates" value={stats.total} icon={User} color="bg-blue-500" />
-            <StatCard title="Selected" value={stats.selected} icon={CheckCircle} color="bg-green-500" />
-            <StatCard title="Rejected" value={stats.rejected} icon={XCircle} color="bg-red-500" />
-            <StatCard title="Waiting" value={stats.waiting} icon={Clock} color="bg-yellow-500" />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <StatCard 
+                title="Total Candidates" 
+                value={stats.total} 
+                icon={User} 
+                color="bg-blue-500" 
+                filter="all"
+                isActive={statusFilter === 'all'}
+                onClick={() => handleFilterChange('all')}
+              />
+              <StatCard 
+                title="Selected" 
+                value={stats.selected} 
+                icon={CheckCircle} 
+                color="bg-green-500" 
+                filter="Selected"
+                isActive={statusFilter === 'Selected'}
+                onClick={() => handleFilterChange('Selected')}
+              />
+              <StatCard 
+                title="Rejected" 
+                value={stats.rejected} 
+                icon={XCircle} 
+                color="bg-red-500" 
+                filter="Rejected"
+                isActive={statusFilter === 'Rejected'}
+                onClick={() => handleFilterChange('Rejected')}
+              />
+              <StatCard 
+                title="Waiting" 
+                value={stats.waiting} 
+                icon={Clock} 
+                color="bg-yellow-500" 
+                filter="Waiting"
+                isActive={statusFilter === 'Waiting'}
+                onClick={() => handleFilterChange('Waiting')}
+              />
+            </div>
+
 
           {/* Filters */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
@@ -423,20 +462,25 @@ export default function Candidates(user) {
                         </td>
                         <td className="px-6 py-4">
                           <div className="space-y-2">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                              <input
-                                type="date"
-                                value={candidate.interview_date ? candidate.interview_date.split("T")[0] : ""}
-                                onChange={(e) => handleDateChange(candidate.candidate_id, e.target.value)}
-                                className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              />
-                            </div>
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                              <span>{candidate.interview_timing || 'Time not set'}</span>
-                            </div>
+                          {/* Date row */}
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                            <span className="text-sm sm:text-base px-2 py-1 whitespace-nowrap">
+                              {candidate.interview_date
+                                ? candidate.interview_date.split("T")[0]
+                                : "Not Set"}
+                            </span>
                           </div>
+
+                          {/* Time row */}
+                          <div className="flex items-center text-sm sm:text-base text-gray-600">
+                            <Clock className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
+                            <span className="whitespace-nowrap">
+                              {candidate.interview_timing || "Time not set"}
+                            </span>
+                          </div>
+                        </div>
+
                         </td>
                         <td className="px-6 py-4">
                           <select

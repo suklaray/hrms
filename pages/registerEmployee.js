@@ -55,6 +55,47 @@ export default function RegisterEmployee() {
         setMounted(true);
         setCurrentDate(new Date().toLocaleDateString());
     }, []);
+    const [userRole, setUserRole] = useState('');
+
+    useEffect(() => {
+        // Fetch current user's role
+        const fetchUserRole = async () => {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.authenticated && data.user) {
+                        setUserRole(data.user.role);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch user role:', error);
+            }
+        };
+        
+        fetchUserRole();
+    }, []);
+
+    // Function to get available role options based on current user's role
+    const getRoleOptions = () => {
+        switch (userRole) {
+            case 'hr':
+                return [{ value: 'employee', label: 'Employee' }];
+            case 'admin':
+                return [
+                    { value: 'hr', label: 'HR' },
+                    { value: 'employee', label: 'Employee' }
+                ];
+            case 'superadmin':
+                return [
+                    { value: 'employee', label: 'Employee' },
+                    { value: 'hr', label: 'HR' },
+                    { value: 'admin', label: 'Admin' }
+                ];
+            default:
+                return [{ value: 'employee', label: 'Employee' }];
+        }
+    };
 
     // Check if form is valid
     useEffect(() => {
@@ -242,65 +283,70 @@ export default function RegisterEmployee() {
         validateField(field, value);
     };
 
-    const handleRegister = async () => {
-        if (!validateForm()) {
-            alert('Please fix all validation errors before submitting.');
+const handleRegister = async () => {
+    if (!validateForm()) {
+        alert('Please fix all validation errors before submitting.');
+        return;
+    }
+    
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+        const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: formData.name,
+                email: formData.email,
+                contact_number: formData.contact_number,
+                position: formData.position,
+                date_of_joining: formData.dateOfJoining,
+                status: formData.status,
+                experience: formData.experience,
+                employee_type: formData.employeeType,
+                role: formData.role
+            }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            setMessage(data.message || "Failed to register employee.");
             return;
         }
+
+    setGeneratedPassword(data.password);
+    setGeneratedUsername(data.empid || data.username || formData.email);
+    setMessage(data.message);
+
+    setTimeout(() => {
+        setMessage('');
+    }, 1000);
+
         
-        setIsLoading(true);
-        setMessage("");
+        // Reset all form states
+        setFormData({
+            name: "",
+            email: "",
+            contact_number: "",
+            position: "",
+            dateOfJoining: "",
+            status: "Active",
+            experience: "",
+            employeeType: "",
+            role: "employee"
+        });
+        setErrors({});
+        setIsFormValid(false);
+        setEmailChecking(false);
+    } catch (error) {
+        setMessage("Network error. Please try again.");
+    } finally {
+        setIsLoading(false);
+    }
+};
 
-        try {
-            const res = await fetch("/api/auth/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: formData.name,
-                    email: formData.email,
-                    contact_number: formData.contact_number,
-                    position: formData.position,
-                    date_of_joining: formData.dateOfJoining,
-                    status: formData.status,
-                    experience: formData.experience,
-                    employee_type: formData.employeeType,
-                    role: formData.role
-                }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setMessage(data.message || "Failed to register employee.");
-                return;
-            }
-
-            setGeneratedPassword(data.password);
-            setGeneratedUsername(data.empid || data.username || formData.email);
-            setMessage(data.message);
-            
-
-            
-            setFormData({
-                name: "",
-                email: "",
-                contact_number: "",
-                position: "",
-                dateOfJoining: "",
-                status: "Active",
-                experience: "",
-                employeeType: "",
-                role: "employee"
-            });
-            setErrors({});
-            setIsFormValid(false);
-            setEmailChecking(false);
-        } catch (error) {
-            setMessage("Network error. Please try again.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const copyPassword = async () => {
         try {
@@ -626,30 +672,31 @@ export default function RegisterEmployee() {
                                 </div>
 
                                 {/* Role */}
-                                <div>
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <User className="mr-2 text-indigo-500" />
-                                        Role
-                                    </label>
-                                    <div className="relative">
-                                        <select 
-                                            value={formData.role} 
-                                            onChange={(e) => handleInputChange('role', e.target.value)}
-                                            className="w-full border-2 p-3 pr-10 rounded-xl focus:outline-none focus:border-indigo-500 appearance-none bg-white border-gray-200"
-                                        >
-                                            <option value="employee">Employee</option>
-                                            <option value="hr">HR</option>
-                                            <option value="admin">Admin</option>
-                                            <option value="ceo">CEO</option>
-                                            <option value="superadmin">Super Admin</option>
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
+                                {/* Role */}
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <User className="mr-2 text-indigo-500" />
+                                            Role
+                                        </label>
+                                        <div className="relative">
+                                            <select 
+                                                value={formData.role} 
+                                                onChange={(e) => handleInputChange('role', e.target.value)}
+                                                className="w-full border-2 p-3 pr-10 rounded-xl focus:outline-none focus:border-indigo-500 appearance-none bg-white border-gray-200"
+                                            >
+                                                <option value="">Select role</option>
+                                                {getRoleOptions().map(option => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+
                             </form>
 
                                 {/* Login Credentials Display */}

@@ -36,25 +36,34 @@ export default function AddEvent() {
       if (!formData.event_date) {
         newErrors.event_date = 'Date is required';
       } else {
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(formData.event_date)) {
-          newErrors.event_date = 'Date must be in DD-MM-YYYY format';
-        } else {
-          const currentYear = new Date().getFullYear();
-          const year = parseInt(formData.event_date.split('-')[0]);
-          if (year < currentYear - 10 || year > currentYear + 10) {
-            newErrors.event_date = `Year must be between ${currentYear - 10} and ${currentYear + 10}`;
-          }
+        const selectedDate = new Date(formData.event_date);
+        const today = new Date();
+        const tenYearsFromNow = new Date();
+        tenYearsFromNow.setFullYear(today.getFullYear() + 10);
+        
+        // Reset time for accurate comparison
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+        
+        if (selectedDate < today) {
+          newErrors.event_date = 'Event date must be in the future';
+        } else if (selectedDate > tenYearsFromNow) {
+          newErrors.event_date = 'Event date cannot be more than 10 years in the future';
         }
       }
+
       
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
     };
     // Update the date input
-    const currentYear = new Date().getFullYear();
-    const minDate = `${currentYear - 10}-01-01`;
-    const maxDate = `${currentYear + 10}-12-31`;
+    const today = new Date();
+    const tenYearsFromNow = new Date();
+    tenYearsFromNow.setFullYear(today.getFullYear() + 10);
+
+    const minDate = today.toISOString().split('T')[0];
+    const maxDate = tenYearsFromNow.toISOString().split('T')[0];
+
 
   useEffect(() => {
     const isValid = formData.title.trim().length >= 3 && 
@@ -106,6 +115,13 @@ export default function AddEvent() {
     }
     
     setFormData({ ...formData, [name]: value });
+  };
+
+  const initialFormState = {
+    title: '',
+    description: '',
+    event_date: '',
+    event_type: 'event',
   };
 
   return (
@@ -235,12 +251,19 @@ export default function AddEvent() {
                     >
                       {loading ? 'Adding...' : 'Add Event'}
                     </button>
-                    <Link
-                      href="/calendar/yearly-calendar"
-                      className="w-full sm:w-auto px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors text-center"
-                    >
-                      Cancel
-                    </Link>
+                    <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(initialFormState); 
+                          setErrors({}); 
+                          setMessage(''); 
+                        }}
+                        className="w-full sm:w-auto px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+
+
                   </div>
                 </form>
               </div>

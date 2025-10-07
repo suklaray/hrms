@@ -175,39 +175,40 @@ const getEventsForDate = (year, month, day) => {
                       )}
                       
                       {/* Hover Tooltip */}
-                      {hoveredDay === `${currentYear}-${monthIndex}-${day}` && (
-              <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg min-w-max max-w-xs">
-                
-                {/* Show Day Off if weekend */}
-                {isDayOff && (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-gray-400" />
-                    <span>Day Off (Weekend)</span>
-                  </div>
-                )}
+                      {hoveredDay === `${currentYear}-${monthIndex}-${day}` && (dayEvents.length > 0 || isDayOff) && (
+                        <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg min-w-max max-w-xs">
+                          
+                          {/* Show Day Off if weekend */}
+                          {isDayOff && (
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 rounded-full bg-gray-400" />
+                              <span>Day Off (Weekend)</span>
+                            </div>
+                          )}
 
-                {/* Show Events (with dots) */}
-                {dayEvents.length > 0 && (
-                  <div className="space-y-1 mt-1">
-                    {dayEvents.map((event, i) => (
-                      <div key={i} className="flex items-center space-x-2">
-                        {/* colored dot instead of icon */}
-                        <div className={`w-2 h-2 rounded-full ${getDotColor(event.type)}`} />
-                        <span>
-                          {event.type === 'birthday' && `${event.employee}'s Birthday`}
-                          {event.type === 'leave' && `${event.employee} - ${event.leave_type}${event.reason ? ` (${event.reason})` : ''}`}
-                          {event.type === 'holiday' && `${event.title}`}
-                          {event.type === 'event' && `${event.title}`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                          {/* Show Events (with dots) */}
+                          {dayEvents.length > 0 && (
+                            <div className="space-y-1 mt-1">
+                              {dayEvents.map((event, i) => (
+                                <div key={i} className="flex items-center space-x-2">
+                                  {/* colored dot instead of icon */}
+                                  <div className={`w-2 h-2 rounded-full ${getDotColor(event.type)}`} />
+                                  <span>
+                                    {event.type === 'birthday' && `${event.employee}'s Birthday`}
+                                    {event.type === 'leave' && `${event.employee} - ${event.leave_type}${event.reason ? ` (${event.reason})` : ''}`}
+                                    {event.type === 'holiday' && `${event.title}`}
+                                    {event.type === 'event' && `${event.title}`}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
 
-                {/* Tooltip arrow */}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                </div>
-                )}
+                          {/* Tooltip arrow */}
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      )}
+
 
                 </>
                 )}
@@ -317,8 +318,3 @@ const getEventsForDate = (year, month, day) => {
     </>
   );
 }
-
-
-
-
-//---------------------------------------------------------

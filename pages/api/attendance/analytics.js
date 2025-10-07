@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     // Get total employees based on role permissions
     let totalEmployees = await prisma.users.count({
       where: { 
-        status: 'Active',
+        status: { not: 'Inactive' },
         role: { in: getAccessibleRoles(user.role) }
       }
     });
@@ -83,16 +83,23 @@ export default async function handler(req, res) {
     // Get leave utilization
     const leaveRequests = await prisma.leave_requests.findMany({
       where: {
-        from_date: { gte: startDate },
-        to_date: { lte: endDate },
+        from_date: { lte: endDate },
+        to_date: { gte: startDate },
         status: 'Approved'
       }
     });
 
     const totalLeaveDays = leaveRequests.reduce((sum, leave) => {
-      const days = Math.ceil((new Date(leave.to_date) - new Date(leave.from_date)) / (1000 * 60 * 60 * 24)) + 1;
-      return sum + days;
+      const leaveStart = new Date(Math.max(new Date(leave.from_date), startDate));
+      const leaveEnd = new Date(Math.min(new Date(leave.to_date), endDate));
+      const days = Math.ceil((leaveEnd - leaveStart) / (1000 * 60 * 60 * 24)) + 1;
+      return sum + Math.max(0, days);
     }, 0);
+
+    // For today, count unique employees on leave
+    const employeesOnLeaveToday = period === 'today' 
+      ? new Set(leaveRequests.map(leave => leave.empid)).size
+      : 0;
 
     const leaveUtilization = totalEmployees > 0 ? Math.round((totalLeaveDays / (totalEmployees * workingDays)) * 100) : 0;
 
@@ -118,6 +125,7 @@ export default async function handler(req, res) {
       avgCheckoutTime,
       avgWorkingHours,
       leaveUtilization,
+      totalLeaveDays: period === 'today' ? employeesOnLeaveToday : totalLeaveDays,
       presentCount: presentRecords,
       absentCount: absentRecords,
       lateCount: Math.floor(presentRecords * 0.15),

@@ -171,13 +171,14 @@ export default function EmployeeHelperBot() {
         } `}
         title="Ask Employee Assistant"
       >
-        <Image
-          src="/images/robo.png"
-          width={64}
-          height={64}
-          alt="Assistant"
-          className="w-16 h-16 group-hover:scale-125 transition-transform duration-300 drop-shadow-lg"
-        />
+      <Image 
+        src="/images/robo.png" 
+        alt="Assistant" 
+        width={64}
+        height={64}
+        unoptimized
+        className="w-16 h-16 group-hover:scale-125 transition-transform duration-300 drop-shadow-lg" 
+      />
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 animate-ping opacity-30"></div>
       </button>
       {isOpen && (

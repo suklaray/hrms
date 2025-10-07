@@ -119,6 +119,10 @@ export default function PayrollForm() {
     setFormData(prev => ({ ...prev, [name]: newValue }));
   };
 
+
+
+
+
   const handleAllowanceChange = (index, e) => {
     const updatedAllowances = [...formData.allowances];
     if(e.target.name === 'percent'){
@@ -199,6 +203,29 @@ export default function PayrollForm() {
 
     return parseFloat(formData.basic_salary || 0) + totalAllowances + parseFloat(formData.bonus || 0) - totalDeductions;
   };
+  const handleAmountChange = (type, key, value, index = null) => {
+  const basicSalary = parseFloat(formData.basic_salary) || 0;
+  if (basicSalary === 0) return;
+  
+  const amount = parseFloat(value) || 0;
+  const percent = (amount / basicSalary) * 100;
+  
+  if (type === 'allowance' && index !== null) {
+    const updatedAllowances = [...formData.allowances];
+    updatedAllowances[index].percent = Math.round(percent * 100) / 100;
+    setFormData(prev => ({ ...prev, allowances: updatedAllowances }));
+  } else if (type === 'deduction' && index !== null) {
+    const updatedDeductions = [...formData.deductions];
+    updatedDeductions[index].percent = Math.round(percent * 100) / 100;
+    setFormData(prev => ({ ...prev, deductions: updatedDeductions }));
+  } else {
+    setFormData(prev => ({
+      ...prev,
+      [`${key}_percent`]: Math.round(percent * 100) / 100
+    }));
+  }
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -452,7 +479,7 @@ export default function PayrollForm() {
                       <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                         <div>
                           <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Document</p>
-                          <a href={employee.bankDetails.checkbook_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm font-medium">View Document</a>
+                          <a href={employee.bankDetails.checkbook_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View Document</a>
                         </div>
                       </div>
                     )}
@@ -578,10 +605,13 @@ export default function PayrollForm() {
                         <div>
                           <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                           <input
-                            value={`₹ ${calculateAmount(formData[`${key}_percent`]).toFixed(2)}`}
-                            readOnly
-                            className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                            type="number"
+                            value={calculateAmount(formData[`${key}_percent`]).toFixed(2)}
+                            onChange={(e) => handleAmountChange('allowance', key, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            placeholder="0.00"
                           />
+
                         </div>
                       </div>
                     </div>
@@ -641,10 +671,13 @@ export default function PayrollForm() {
                           <div>
                             <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                             <input
-                              value={`₹ ${calculateAmount(parseFloat(allowance.percent || 0)).toFixed(2)}`}
-                              readOnly
-                              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                              type="number"
+                              value={calculateAmount(parseFloat(allowance.percent || 0)).toFixed(2)}
+                              onChange={(e) => handleAmountChange('allowance', null, e.target.value, index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="0.00"
                             />
+
                           </div>
                         </div>
                         <button
@@ -714,16 +747,20 @@ export default function PayrollForm() {
                             className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                             placeholder="0"
                           />
+
                           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                         </div>
                       </div>
                       <div>
                         <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                         <input
-                          value={`₹ ${calculateAmount(formData.pf_percent).toFixed(2)}`}
-                          readOnly
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                          type="number"
+                          value={calculateAmount(formData.pf_percent).toFixed(2)}
+                          onChange={(e) => handleAmountChange('deduction', 'pf', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          placeholder="0.00"
                         />
+
                       </div>
                     </div>
                   </div>
@@ -763,10 +800,13 @@ export default function PayrollForm() {
                       <div>
                         <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                         <input
-                          value={`₹ ${calculateAmount(formData.ptax_percent).toFixed(2)}`}
-                          readOnly
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                          type="number"
+                          value={calculateAmount(formData.ptax_percent).toFixed(2)}
+                          onChange={(e) => handleAmountChange('deduction', 'ptax', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          placeholder="0.00"
                         />
+
                       </div>
                     </div>
                   </div>
@@ -806,10 +846,13 @@ export default function PayrollForm() {
                       <div>
                         <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                         <input
-                          value={`₹ ${calculateAmount(formData.esic_percent).toFixed(2)}`}
-                          readOnly
-                          className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                          type="number"
+                          value={calculateAmount(formData.esic_percent).toFixed(2)}
+                          onChange={(e) => handleAmountChange('deduction', 'esic', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                          placeholder="0.00"
                         />
+
                       </div>
                     </div>
                   </div>
@@ -868,10 +911,13 @@ export default function PayrollForm() {
                           <div>
                             <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
                             <input
-                              value={`₹ ${calculateAmount(parseFloat(deduction.percent || 0)).toFixed(2)}`}
-                              readOnly
-                              className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-700"
+                              type="number"
+                              value={calculateAmount(parseFloat(deduction.percent || 0)).toFixed(2)}
+                              onChange={(e) => handleAmountChange('deduction', null, e.target.value, index)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              placeholder="0.00"
                             />
+
                           </div>
                         </div>
                         <button
