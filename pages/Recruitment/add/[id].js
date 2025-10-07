@@ -196,10 +196,11 @@ const AddEmployee = () => {
       const data = res.data;
 
       if (res.status === 200) {
+        setErrors({}); 
+        setEmailExists(false); 
         if (isEditing) {
           setMessage('Employee updated successfully!');
           setIsEditing(false);
-          // Refresh employee data
           const empRes = await axios.get(`/api/recruitment/add-employee?email=${form.email}`);
           if (empRes.data.exists) {
             setExistingEmployee(empRes.data.employee);
@@ -221,7 +222,8 @@ const AddEmployee = () => {
           setCopiedField('');
           setMessage('Employee added successfully! Please copy the credentials below.');
         }
-      } else {
+      }
+      else {
         setMessage(isEditing ? "Failed to update employee." : "Failed to add employee.");
       }
     } catch (err) {
@@ -599,6 +601,7 @@ const AddEmployee = () => {
                             <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                               <span className="font-mono text-lg font-semibold text-gray-800">{employeeData.empid}</span>
                               <button
+                                type="button"
                                 onClick={() => copyToClipboard(employeeData.empid, 'empid')}
                                 className="ml-2 p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors"
                                 title="Copy Employee ID"
@@ -614,6 +617,7 @@ const AddEmployee = () => {
                             <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                               <span className="font-mono text-lg font-semibold text-gray-800">{employeeData.password}</span>
                               <button
+                                type="button"
                                 onClick={() => copyToClipboard(employeeData.password, 'password')}
                                 className="ml-2 p-2 text-gray-500 hover:text-green-600 hover:bg-green-100 rounded-lg transition-colors"
                                 title="Copy Password"

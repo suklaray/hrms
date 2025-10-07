@@ -1,21 +1,55 @@
 // pages/api/compliance/compliance.js
-import { verifyHRToken } from "@/lib/auth-hr";
+import jwt from "jsonwebtoken";
+import cookie from "cookie";
 import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
   if (req.method !== "GET")
     return res.status(405).json({ message: "Method Not Allowed" });
 
-  const user = await verifyHRToken(req);
-  if (!user)
-    return res.status(401).json({ message: "Unauthorized" });
-
   try {
+    // Get user from token
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const { token } = cookies;
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('=== COMPLIANCE API DEBUG ===');
+    console.log('Decoded token:', { empid: decoded.empid, role: decoded.role });
+    
+    const currentUser = await prisma.users.findUnique({
+      where: { empid: decoded.empid || decoded.id },
+      select: { empid: true, role: true }
+    });
+
+    console.log('Current user from DB:', currentUser);
+
+    if (!currentUser || !['hr', 'admin', 'superadmin'].includes(currentUser.role)) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Define role-based filtering
+    let roleFilter = [];
+    if (currentUser.role === 'hr') {
+      roleFilter = ['employee'];
+    } else if (currentUser.role === 'admin') {
+      roleFilter = ['hr', 'employee'];
+    } else if (currentUser.role === 'superadmin') {
+      roleFilter = ['admin', 'hr', 'employee'];
+    }
+
+    console.log('Role filter applied:', roleFilter);
+
     const users = await prisma.users.findMany({
       where: {
-        status: { not: "Inactive" } // Exclude inactive employees
+        status: { not: "Inactive" },
+        role: { in: roleFilter }
       }
     });
+
+    console.log('Users found:', users.length);
+    console.log('User roles found:', users.map(u => ({ empid: u.empid, role: u.role })));
+
     const employees = await prisma.employees.findMany({
       include: {
         bank_details: true,
@@ -112,6 +146,9 @@ export default async function handler(req, res) {
         ],
       };
     });
+
+    console.log('Final result count:', result.length);
+    console.log('Final result roles:', result.map(r => ({ empid: r.empid, role: r.role })));
 
     return res.status(200).json(result);
   } catch (err) {

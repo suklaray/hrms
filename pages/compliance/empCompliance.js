@@ -15,7 +15,7 @@ export default function ComplianceDashboard() {
   const [interns, setInterns] = useState([]);
   const [activeTab, setActiveTab] = useState('employees');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
+  const [itemsPerPage] = useState(6);
   const [candidateCurrentPage, setCandidateCurrentPage] = useState(1);
   const [internCurrentPage, setInternCurrentPage] = useState(1);
 
@@ -478,7 +478,7 @@ export default function ComplianceDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {candidates.map((candidate) => (
+                    {paginatedCandidates.map((candidate) => (
                       <tr key={candidate.candidate_id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -507,6 +507,42 @@ export default function ComplianceDashboard() {
                     ))}
                   </tbody>
                 </table>
+                {/* Pagination for Candidates */}
+                {candidateTotalPages > 1 && (
+                  <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing {candidateStartIndex + 1} to {Math.min(candidateStartIndex + itemsPerPage, candidateTotalItems)} of {candidateTotalItems} results
+                    </div>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => setCandidateCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={candidateCurrentPage === 1}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        {"<"}
+                      </button>
+                      {Array.from({ length: candidateTotalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setCandidateCurrentPage(page)}
+                          className={`px-3 py-1 text-sm border rounded ${
+                            candidateCurrentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setCandidateCurrentPage(prev => Math.min(prev + 1, candidateTotalPages))}
+                        disabled={candidateCurrentPage === candidateTotalPages}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        {">"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
           )}
