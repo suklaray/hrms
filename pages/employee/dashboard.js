@@ -69,6 +69,13 @@ export default function EmployeeDashboard() {
     return () => clearInterval(interval);
   }, [isWorking, workStartTime]);
 
+  const loaderProp = ({ src }) => {
+      if (src.startsWith('http://') || src.startsWith('https://')) return src;
+      
+      if (!src.startsWith('/')) return `/${src}`;
+      
+      return src;
+  }
 
   const handleLogout = async () => {
     try {
@@ -248,19 +255,17 @@ export default function EmployeeDashboard() {
               <div className="p-6">
                 <div className="flex items-start space-x-6">
                   <div className="flex-shrink-0">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center border-4 border-indigo-200 overflow-hidden">
+                    <div className="w-24 h-24 relative rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center border-4 border-indigo-200 overflow-hidden">
                       {user?.profile_photo ? (
                         <>
                           <Image
                             src={user.profile_photo}
                             alt="Profile"
-                            width={96}
-                            height={96}
+                            fill
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
+                            priority
+                            loader={loaderProp}
+                            onError={() => setUser({ ...user, profile_photo: null })}
                           />
                           <div className="hidden w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 items-center justify-center">
                             <span className="text-white font-bold text-2xl">
@@ -352,9 +357,7 @@ export default function EmployeeDashboard() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <button 
-                  onClick={() => router.push('/employee/leave-request')}
-                  className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left cursor-pointer"
-                >
+                  onClick={() => router.push('/employee/leave-request')}                >
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-blue-600" />
                     <div>

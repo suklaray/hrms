@@ -118,10 +118,10 @@ export default function Profile() {
       return;
     }
 
-    // Validate file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    // Validate file size (2MB limit)
+    const maxSize = 2 * 1024 * 1024; // 2MB
     if (file.size > maxSize) {
-      setUploadStatus({ loading: false, error: 'File size must be less than 5MB', success: false });
+      setUploadStatus({ loading: false, error: 'File size must be less than 2MB', success: false });
       return;
     }
 
@@ -204,9 +204,14 @@ export default function Profile() {
       });
     }
   };
-const loaderProp =({ src }) => {
-    return src;
-}
+  const loaderProp = ({ src }) => {
+      if (src.startsWith('http://') || src.startsWith('https://')) return src;
+      
+      if (!src.startsWith('/')) return `/${src}`;
+      
+      return src;
+  }
+
   return (
     <>
       <Head>
@@ -222,20 +227,22 @@ const loaderProp =({ src }) => {
             <>
               {/* Profile Picture */}
               <div className="flex flex-col items-center mb-6">
+                <div className="w-[120px] h-[120px] relative rounded-full border-4 border-indigo-500 overflow-hidden mb-6">
                 {preview || user.profilePic ? (
                   <Image
                     src={preview || user.profilePic}
                     alt="Profile"
-                    width={120}
-                    height={120}
-                    className="w-[120px] h-[120px] rounded-full object-cover border-4 border-indigo-500"
+                    fill
+                    className="object-cover"
                     loader={loaderProp}
+                    priority
                   />
                 ) : (
-                  <div className="w-[120px] h-[120px] rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-semibold text-sm border-2 border-dashed border-indigo-400">
+                  <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-semibold text-sm border-2 border-dashed border-indigo-400">
                     + ADD
                   </div>
                 )}
+              </div>
 
                 <input
                   type="file"
@@ -280,7 +287,7 @@ const loaderProp =({ src }) => {
                 )}
                 
                 <p className="text-xs text-gray-500 mt-2 text-center">
-                  Supported formats: JPEG, PNG, GIF (Max 5MB)
+                  Supported formats: JPEG, PNG, GIF (Max 2MB)
                 </p>
               </div>
 

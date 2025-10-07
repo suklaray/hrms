@@ -2,37 +2,52 @@ import { useState, useEffect, useCallback } from "react";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area
-} from "recharts";
+import {BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area} from "recharts";
 import { getUserFromToken } from "@/lib/getUserFromToken";
+const formatTimeToAMPM = (timeString) => {
+  if (!timeString) return '--:--';
+  
+    let date;
+    if (timeString.includes(':')) {
+      const [hours, minutes] = timeString.split(':');
+      date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    } else {
+      date = new Date(timeString);
+    }
+    
+    if (isNaN(date.getTime())) return '--:--';
+    
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+  export async function getServerSideProps(context) {
+    const { req } = context;
+    const token = req?.cookies?.token || "";
+    const user = getUserFromToken(token);
+    if (!user || !["hr", "admin", "superadmin"].includes(user.role)) {
+      return {
+        redirect: {
+          destination: "/login",
+          permanent: false,
+        },
+      };
+    }
 
-export async function getServerSideProps(context) {
-  const { req } = context;
-  const token = req?.cookies?.token || "";
-  const user = getUserFromToken(token);
-
-  if (!user || !["hr", "admin", "superadmin"].includes(user.role)) {
     return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
+      props: {
+        user: {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          email: user.email,
+        },
       },
     };
   }
-
-  return {
-    props: {
-      user: {
-        id: user.id,
-        name: user.name,
-        role: user.role,
-        email: user.email,
-      },
-    },
-  };
-}
 
 export default function AttendanceAnalytics({ user }) {
   const [data, setData] = useState(null);
@@ -120,15 +135,15 @@ export default function AttendanceAnalytics({ user }) {
               </h1>
               <p className="text-gray-600">Comprehensive workforce attendance insights</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 ">
               {['today', 'month', 'year'].map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
-                  className={`px-3 md:px-4 py-2 rounded-lg capitalize transition-colors text-sm md:text-base ${
+                  className={`px-3 md:px-4 py-2 rounded-lg capitalize transition-colors text-sm md:text-base cursor-pointer ${
                     period === p 
-                      ? 'bg-blue-600 text-white' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-blue-600 text-white ' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 '
                   }`}
                 >
                   {p}
@@ -305,18 +320,6 @@ function ChartCard({ title, subtitle, children }) {
       {children}
     </div>
   );
-}
-
-function formatTimeToAMPM(time24) {
-  if (!time24 || time24 === '--:--') return '--:--';
-  
-  const [hours, minutes] = time24.split(':').map(Number);
-  if (isNaN(hours) || isNaN(minutes)) return '--:--';
-  
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hours12 = hours % 12 || 12;
-  
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
 function getPeriodLabel(period) {

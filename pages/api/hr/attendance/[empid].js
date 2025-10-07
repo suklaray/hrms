@@ -34,12 +34,12 @@ const calculateTotalWorkingHours = (sessions) => {
 };
 
 const calculateAttendanceStatus = (totalSeconds) => {
-  return totalSeconds >= 14400 ? 'Present' : 'Absent';
+  return totalSeconds >= 14400 ? 'Present' : 'Absent'; // >= 4 hours
 };
 
 const getLoginStatus = (sessions) => {
   const hasCheckIn = sessions.some(s => s.check_in);
-  const hasCheckOut = sessions.every(s => s.check_out); 
+  const hasCheckOut = sessions.every(s => s.check_out);
 
   if (hasCheckIn && hasCheckOut) return 'Logged Out';
   if (hasCheckIn && !hasCheckOut) return 'Logged In';
@@ -54,6 +54,8 @@ export default async function handler(req, res) {
   }
 
   try {
+    const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
+
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
@@ -94,10 +96,16 @@ export default async function handler(req, res) {
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
       const attendance_status = calculateAttendanceStatus(totalSeconds);
 
+      //  Today’s logout logic
+      const isToday = date === today;
+      const check_out_display = isToday && login_status === 'Logged In'
+        ? '--'
+        : formatTime(lastCheckOut);
+
       return {
         date: formattedDate,
         check_in: formatTime(firstCheckIn),
-        check_out: login_status === 'Logged In' ? '--' : formatTime(lastCheckOut),
+        check_out: check_out_display,
         total_hours: formatted,
         login_status,
         attendance_status,
@@ -119,6 +127,7 @@ export default async function handler(req, res) {
       empid,
       daysPresent: presentDays,
       daysAbsent: absentDays,
+      totalDays,
     };
 
     res.status(200).json({ employee, attendance });
