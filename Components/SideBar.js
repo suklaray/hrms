@@ -1,7 +1,25 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import {ChevronDown,ChevronUp,Menu,X,LayoutDashboard,UserPlus,Users,UserCheck,Clock,DollarSign,Shield,TrendingUp,Phone,Settings,LogOut,ListChecks,ListCheck} from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Menu,
+  X,
+  LayoutDashboard,
+  UserPlus,
+  Users,
+  UserCheck,
+  Clock,
+  DollarSign,
+  Shield,
+  TrendingUp,
+  Phone,
+  Settings,
+  LogOut,
+  ListChecks,
+  ListCheck,
+} from "lucide-react";
 
 export default function Sidebar() {
   const router = useRouter();
@@ -12,19 +30,19 @@ export default function Sidebar() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await fetch("/api/auth/me");
         if (res.ok) {
           const userData = await res.json();
-          setUser(userData);
+          setUser(userData.user);
         }
       } catch (error) {
-        console.error('Failed to fetch user:', error);
+        console.error("Failed to fetch user:", error);
       }
     };
     fetchUser();
   }, []);
 
-   const handleLogout = async () => {
+  const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout");
       router.push("/login");
@@ -57,7 +75,8 @@ export default function Sidebar() {
   const [checkedIn, setCheckedIn] = useState(false);
 
   const role = user?.role?.toLowerCase() || "hr";
-
+  // console.log("User Role:", role);
+  
   const toggleAttendanceMenu = () => setAttendanceOpen(!attendanceOpen);
   const togglePayrollMenu = () => setPayrollOpen(!payrollOpen);
   const toggleComplianceMenu = () => setComplianceOpen(!complianceOpen);
@@ -94,7 +113,6 @@ export default function Sidebar() {
     { name: "View Payrolls", path: "/hr/payroll/payroll-view" },
     { name: "Generate Payroll", path: "/hr/payroll/generate" },
   ];
-
 
   const complianceSubItems = [
     { name: "Employee Compliance", path: "/compliance/empCompliance" },
@@ -329,7 +347,6 @@ export default function Sidebar() {
             )}
           </li>
 
-
           {/* Task Management */}
           <li>
             <Link href="/task-management/manage-tasks">
@@ -374,7 +391,9 @@ export default function Sidebar() {
               <div className="flex items-center gap-3">
                 <Settings size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
-                  <span className="text-sm font-medium">Accounts & Settings</span>
+                  <span className="text-sm font-medium">
+                    Accounts & Settings
+                  </span>
                 )}
               </div>
               {!isCollapsed &&
@@ -393,7 +412,17 @@ export default function Sidebar() {
                     </span>
                   </Link>
                 </li>
-                
+
+                {/* Bot Settings - Only for Super Admin */}
+                {user?.role?.toLowerCase() === "superadmin" && (
+                  <li>
+                    <Link href="/settings/bot-settings">
+                      <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                        Bot Settings
+                      </span>
+                    </Link>
+                  </li>
+                )}
                 <li>
                   <Link href="/leave-request/leave-request">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">

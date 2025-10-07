@@ -56,10 +56,8 @@ export default async function handler(req, res) {
 
     try {
       if (mode === "LLM") {
-        const llmResult = await getLLMAnswerFromGitHub(question, intent, user, config);
-        if (llmResult) {
-          answer = llmResult;
-        } else {
+        answer = await getLLMAnswerFromGitHub(question, intent, user, config);
+        if (!answer) {
           answer = await retryOperation(() => generateAnswer(question, user, intent));
           source = "RULE_BASED_FALLBACK";
         }
@@ -82,9 +80,9 @@ export default async function handler(req, res) {
     }
 
     // Handle both string and object responses
-    const responseData = typeof answer === 'object' && (answer.answer || answer.github_link) ? {
-      answer: answer.answer || answer,
-      github_link: answer.github_link || null,
+    const responseData = typeof answer === 'object' && answer.answer ? {
+      answer: answer.answer,
+      github_link: answer.github_link,
       source,
       intent: intent.primaryIntent,
       confidence: intent.confidence,
@@ -169,26 +167,7 @@ function isHRContactQuery(q) {
 }
 
 function isPayrollQuery(q) {
-  // Normalize common misspellings
-  const normalized = q.replace(/payslipp?/g, "payslip")
-                     .replace(/sallary|salery/g, "salary")
-                     .replace(/paymnt|paymt/g, "payment")
-                     .replace(/amnt|amout/g, "amount")
-                     .replace(/lst|las/g, "last")
-                     .replace(/previus|previos/g, "previous");
-  
-  return normalized.includes("payslip") || 
-         normalized.includes("salary") || 
-         normalized.includes("payment") ||
-         normalized.includes("pay") ||
-         /last.*month.*pay/i.test(normalized) ||
-         /previous.*month.*pay/i.test(normalized) ||
-         /last.*payslip/i.test(normalized) ||
-         /previous.*payslip/i.test(normalized) ||
-         /pay.*amount/i.test(normalized) ||
-         /salary.*amount/i.test(normalized) ||
-         /last.*salary/i.test(normalized) ||
-         /previous.*salary/i.test(normalized);
+  return q.includes("payslip") || q.includes("salary") || q.includes("pay");
 }
 
 function isAttendanceQuery(q) {
@@ -271,21 +250,21 @@ async function handleLeaveBalance(user) {
 function handlePolicyQuery(q) {
   if (q.includes("company policy") || q.includes("company's policies") || q.includes("explain the company")) {
     return {
-      answer: `Our company is built on four core pillars that guide everything we do. Innovation drives us to constantly seek better solutions and embrace new technologies. We maintain the highest standards of integrity in all our business dealings, ensuring transparency and ethical practices. Our customer-first approach means we prioritize client satisfaction and build lasting relationships. We foster a collaborative and inclusive work environment where every team member's contribution is valued and respected...`,
-      github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/employee/company_policy.md"
+      answer: `🏢 Company Policies Overview:\n\n🎯 Core Values: Innovation, integrity, customer-first\n🔒 Security: Data protection & confidentiality\n🌱 Sustainability: Paperless office & remote work\n⚖️ Compliance: Equal opportunity & anti-discrimination\n\n📞 Contact HR: hr@company.com`,
+      github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/Employee/company_policy.md"
     };
   }
   
   if (q.includes("employee policy")) {
     return {
-      answer: `Our employee policies are designed to create a productive, fair, and supportive work environment for all team members. We believe in flexible working arrangements that balance business needs with personal well-being. Our standard working hours are 12:00 PM to 9:00 PM, Monday through Friday, with core collaboration hours from 2:00 PM to 6:00 PM. We offer flexible timing options and work-from-home opportunities up to 2 days per week with manager approval...`,
-      github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/employee/employee_policy.md"
+      answer: `👥 Employee Policy:\n\n🕐 Hours: 12PM-9PM, flexible timing\n📱 Communication: Professional etiquette required\n🎯 Performance: Monthly reviews & goal tracking\n🏠 WFH: 2 days/week with approval\n\n📞 Contact HR: hr@company.com`,
+      github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/Employee/employee_policy.md"
     };
   }
 
   return {
-    answer: `Our comprehensive policy framework covers all aspects of employment to ensure a professional, secure, and inclusive workplace. Information security is paramount - we require strict confidentiality of client and company data, secure password practices with 2FA, and adherence to our clean desk policy. Technology usage guidelines ensure we use only authorized software, maintain professional internet usage, and follow proper remote work protocols with VPN requirements...`,
-    github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/employee/employee_policy.md"
+    answer: `📋 Company Policies Summary:\n\n🔒 Security: Data protection, 2FA, clean desk\n💻 Technology: Authorized software, VPN for remote\n👔 Professional: Business casual, email etiquette\n⚖️ Ethics: Anti-harassment, equal opportunity\n\n📞 Contact HR: hr@company.com`,
+    github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/Employee/employee_policy.md"
   };
 }
 
@@ -299,41 +278,21 @@ async function handlePayrollQuery(q, user) {
   }
 
   try {
-    const currentDate = new Date();
-    let targetMonth, targetYear;
-    
-    // Normalize misspellings
-    const normalized = q.replace(/payslipp?/g, "payslip")
-                       .replace(/sallary|salery/g, "salary")
-                       .replace(/paymnt|paymt/g, "payment")
-                       .replace(/amnt|amout/g, "amount")
-                       .replace(/lst|las/g, "last")
-                       .replace(/previus|previos/g, "previous");
-    
-    // Determine which month to query
-    if (/last.*month|previous.*month|last.*payslip|previous.*payslip|last.*salary|previous.*salary/i.test(normalized)) {
-      // Last month
-      const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-      targetMonth = lastMonth.getMonth() + 1;
-      targetYear = lastMonth.getFullYear();
-    } else {
-      // Current month (default)
-      targetMonth = currentDate.getMonth() + 1;
-      targetYear = currentDate.getFullYear();
-    }
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
 
     const payroll = await prisma.payroll.findFirst({
       where: {
         empid: user.empid || user.id,
         OR: [
           {
-            month: targetMonth.toString(),
-            year: targetYear,
+            month: currentMonth.toString(),
+            year: currentYear,
           },
           {
             generated_on: {
-              gte: new Date(targetYear, targetMonth - 1, 1),
-              lt: new Date(targetYear, targetMonth, 1),
+              gte: new Date(currentYear, currentMonth - 1, 1),
+              lt: new Date(currentYear, currentMonth, 1),
             },
           },
         ],
@@ -342,24 +301,14 @@ async function handlePayrollQuery(q, user) {
     });
 
     if (payroll) {
-      const monthName = new Date(targetYear, targetMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      const monthName = new Date(currentYear, currentMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
       const basicSalary = payroll.basic_salary ? parseFloat(payroll.basic_salary) : 0;
       const deductions = payroll.deductions ? parseFloat(payroll.deductions) : 0;
       const netPay = payroll.net_pay ? parseFloat(payroll.net_pay) : 0;
-      
-      const isLastMonth = targetMonth !== (currentDate.getMonth() + 1) || targetYear !== currentDate.getFullYear();
-      const timeLabel = isLastMonth ? "Last Month" : "Current Month";
 
-      return `✅ ${timeLabel} Payslip (${monthName}):\n💰 Basic Salary: ₹${basicSalary.toLocaleString()}\n💸 Deductions: ₹${deductions.toLocaleString()}\n💵 Net Salary: ₹${netPay.toLocaleString()}\n📍 Dashboard → Payroll Management`;
+      return `✅ Payslip for ${monthName}:\n💰 Basic Salary: ₹${basicSalary.toLocaleString()}\n💸 Deductions: ₹${deductions.toLocaleString()}\n💵 Net Salary: ₹${netPay.toLocaleString()}\n📍 Dashboard → Payroll Management`;
     } else {
-      const monthName = new Date(targetYear, targetMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-      const isLastMonth = targetMonth !== (currentDate.getMonth() + 1) || targetYear !== currentDate.getFullYear();
-      
-      if (isLastMonth) {
-        return `⏳ Payslip for ${monthName} is not available. Contact HR: hr@company.com`;
-      } else {
-        return `⏳ Your payslip for this month is not ready yet.`;
-      }
+      return `⏳ Your payslip for this month is not ready yet.`;
     }
   } catch (error) {
     return "Unable to check payslip status. Contact HR.";
@@ -466,8 +415,8 @@ function handleTechnicalQuery(q) {
 
 function handleBenefitsQuery() {
   return {
-    answer: `We offer a comprehensive benefits package designed to support your health, financial security, and work-life balance. Our health insurance provides extensive medical coverage for you and your family, including hospitalization, outpatient care, and preventive health checkups. The Provident Fund (PF) contribution helps build your retirement savings with both employee and employer contributions. Additional benefits include gratuity payments, performance-based bonuses, flexible working hours, and professional development opportunities...`,
-    github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/benefits/benefits_policy.md"
+    answer: `🎁 Employee Benefits:\n• Health Insurance & Medical Coverage\n• Provident Fund (PF)\n• Gratuity\n• Performance Bonuses\n• Flexible Work Hours\n\n📞 Contact HR: hr@company.com`,
+    github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/Benefits/benefits_policy.md"
   };
 }
 
