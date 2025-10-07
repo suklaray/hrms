@@ -24,6 +24,15 @@ export default function UserTasks() {
     overdue: 0
   });
 
+const calculateStats = useCallback(() => {
+  const total = tasks.length;
+  const pending = tasks.filter(t => t.status === 'Pending').length;
+  const inProgress = tasks.filter(t => t.status === 'In Progress').length;
+  const completed = tasks.filter(t => t.status === 'Completed').length;
+  const overdue = tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'Completed').length;
+  
+  setStats({ total, pending, inProgress, completed, overdue });
+}, [tasks]);
 
   useEffect(() => {
     fetchUserAndTasks();
@@ -49,17 +58,6 @@ export default function UserTasks() {
       setLoading(false);
     }
   };
-
-const calculateStats = useCallback(() => {
-  const total = tasks.length;
-  const pending = tasks.filter(t => t.status === 'Pending').length;
-  const inProgress = tasks.filter(t => t.status === 'In Progress').length;
-  const completed = tasks.filter(t => t.status === 'Completed').length;
-  const overdue = tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'Completed').length;
-  
-  setStats({ total, pending, inProgress, completed, overdue });
-}, [tasks]);
-
 
   const updateTaskStatus = async (taskId, status) => {
     try {
