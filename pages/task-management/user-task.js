@@ -1,5 +1,5 @@
 // pages/task-management/user-task.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
@@ -29,9 +29,10 @@ export default function UserTasks() {
     fetchUserAndTasks();
   }, []);
 
-  useEffect(() => {
+    useEffect(() => {
     calculateStats();
-  }, [tasks]);
+    }, [tasks, calculateStats]);
+
 
   const fetchUserAndTasks = async () => {
     try {
@@ -49,15 +50,16 @@ export default function UserTasks() {
     }
   };
 
-  const calculateStats = () => {
-    const total = tasks.length;
-    const pending = tasks.filter(t => t.status === 'Pending').length;
-    const inProgress = tasks.filter(t => t.status === 'In Progress').length;
-    const completed = tasks.filter(t => t.status === 'Completed').length;
-    const overdue = tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'Completed').length;
-    
-    setStats({ total, pending, inProgress, completed, overdue });
-  };
+const calculateStats = useCallback(() => {
+  const total = tasks.length;
+  const pending = tasks.filter(t => t.status === 'Pending').length;
+  const inProgress = tasks.filter(t => t.status === 'In Progress').length;
+  const completed = tasks.filter(t => t.status === 'Completed').length;
+  const overdue = tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'Completed').length;
+  
+  setStats({ total, pending, inProgress, completed, overdue });
+}, [tasks]);
+
 
   const updateTaskStatus = async (taskId, status) => {
     try {
