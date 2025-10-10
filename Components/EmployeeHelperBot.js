@@ -53,20 +53,16 @@ export default function EmployeeHelperBot() {
     // Show greeting on site visit/login
     const greetingTimer = setTimeout(() => {
       const today = new Date().toDateString();
-      // const lastGreetingDate = localStorage.getItem("lastGreetingDate");
 
-      // Show greeting once per day or if no greeting shown today
-      // if ( lastGreetingDate !== today) {
       setGreetingMessage(getGreetingMessage());
       setShowGreeting(true);
       setIsAnimating(true);
       localStorage.setItem("lastGreetingDate", today);
 
-      // Auto-hide greeting after 8 seconds
       setTimeout(() => {
         setShowGreeting(false);
       }, 5000);
-      // }
+ 
     }, 1000);
 
     return () => {
@@ -109,11 +105,14 @@ export default function EmployeeHelperBot() {
         ...prev,
         {
           sender: "assistant",
-          text: data.answer || "Sorry, I didn’t understand.",
-          github_link: data.github_link || null,
+          text: data.answer || "Sorry, I didn't understand.",
+          sourceFile: data.sourceFile || null,
           intent: data.intent || null,
           confidence: data.confidence || null,
           labels: data.labels || [],
+          needsConfirmation: data.needsConfirmation || false,
+          needsClarification: data.needsClarification || false,
+          suggestedResponse: data.suggestedResponse || null,
         },
       ]);
     } catch (error) {
@@ -198,13 +197,14 @@ export default function EmployeeHelperBot() {
                 <div className="text-gray-500 text-sm text-center space-y-4">
                   <div>🤖 Start a conversation with your AI Assistant</div>
 
-                  {/* Suggestions */}
+                  {/* Quick suggestions */}
                   <div className="flex flex-col gap-2">
                     {[
-                      "Can you please tell me my payslip status?",
-                      "What was my total working time yesterday?",
-                      "What are the official office working hours?",
-                      "Could you explain the company’s policies to me?",
+                      "Where can I see my payslips?",
+                      "How to apply for leave?",
+                      "Where can I find my attendance record?",
+                      "can you help with employee benefits?",
+                      "How can I contact HR?",
                     ].map((suggestion, idx) => (
                       <button
                         key={idx}
@@ -233,21 +233,32 @@ export default function EmployeeHelperBot() {
                     }`}
                   >
                     <div className="whitespace-pre-line">{msg.text}</div>
-                    {msg.github_link && (
+                    
+                    {/* Confirmation needed */}
+                    {msg.needsConfirmation && msg.suggestedResponse && (
                       <div className="mt-2 pt-2 border-t border-gray-300">
-                        <a
-                          href={msg.github_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium"
+                        <p className="text-xs text-gray-600 mb-2">Please confirm:</p>
+                        <button
+                          onClick={() => {
+                            setQuestion("Yes");
+                            handleSubmit({ preventDefault: () => {} });
+                          }}
+                          className="mr-2 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
                         >
-                          📋 View Full Policy on GitHub
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
+                          ✓ Yes, that's right
+                        </button>
+                        <button
+                          onClick={() => {
+                            setQuestion("No");
+                            handleSubmit({ preventDefault: () => {} });
+                          }}
+                          className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                        >
+                          ✗ No, something else
+                        </button>
                       </div>
                     )}
+                   
                   </div>
                 </div>
               ))}

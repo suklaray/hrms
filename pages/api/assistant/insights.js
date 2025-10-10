@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
-import { getLearningInsights } from "@/lib/assistantLearning";
-import prisma from "@/lib/prisma";
+import { getLearningInsights } from "@/lib/intentHandler";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -20,45 +19,32 @@ export default async function handler(req, res) {
       }
     }
 
-    // Check if user is admin (you can modify this check based on your user roles)
-    if (!user || user.role !== 'admin') {
+    // Check if user is admin or superadmin
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    // Get learning insights
-    const insights = await getLearningInsights();
+    // Get simulated learning insights (no DB reads)
+    const insights = getLearningInsights();
     
-    // Get recent questions
-    const recentQuestions = await prisma.$queryRaw`
-      SELECT 
-        question, 
-        intent_category, 
-        intent_labels, 
-        frequency, 
-        last_asked,
-        user_id
-      FROM assistant_learning 
-      ORDER BY last_asked DESC 
-      LIMIT 20
-    `;
-
-    // Get popular questions
-    const popularQuestions = await prisma.$queryRaw`
-      SELECT 
-        question, 
-        intent_category, 
-        frequency, 
-        confidence_score
-      FROM assistant_learning 
-      ORDER BY frequency DESC 
-      LIMIT 10
-    `;
-
+    // Format insights for display
+    const formattedInsights = {
+      totalQuestions: insights.totalQuestions,
+      activeConversations: insights.activeConversations,
+      mostCommonIntents: insights.mostCommonIntents,
+      avgConfidenceByIntent: insights.avgConfidenceByIntent,
+      recentQuestions: insights.recentQuestions,
+      summary: {
+        topIntent: insights.mostCommonIntents[0]?.[0] || 'payslip',
+        avgConfidence: Object.values(insights.avgConfidenceByIntent).reduce((a, b) => a + b, 0) / Object.keys(insights.avgConfidenceByIntent).length || 0.8,
+        conversationHealth: insights.activeConversations > 0 ? 'Active' : 'Quiet'
+      }
+    };
+    
     res.status(200).json({
-      insights,
-      recentQuestions,
-      popularQuestions,
-      totalQuestions: insights.reduce((sum, item) => sum + item.question_count, 0)
+      success: true,
+      insights: formattedInsights,
+      message: "Simulated learning insights - lightweight self-learning system"
     });
 
   } catch (error) {

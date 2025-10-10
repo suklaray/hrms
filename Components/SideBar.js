@@ -414,7 +414,7 @@ export default function Sidebar() {
                 </li>
 
                 {/* Bot Settings - Only for Super Admin */}
-                {user?.role?.toLowerCase() === "superadmin" && (
+                
                   <li>
                     <Link href="/settings/bot-settings">
                       <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
@@ -422,7 +422,7 @@ export default function Sidebar() {
                       </span>
                     </Link>
                   </li>
-                )}
+                
                 <li>
                   <Link href="/leave-request/leave-request">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">

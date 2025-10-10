@@ -1,26 +1,11 @@
 import jwt from "jsonwebtoken";
-import prisma from "@/lib/prisma";
-import { detectAdvancedIntent, storeQuestionResponse } from "@/lib/assistantLearning";
-import { getLLMAnswerFromGitHub } from "../../../lib/llm";
-import { getAssistantConfig } from "@/lib/assistantConfig";
-
-// Retry function for database operations
-async function retryOperation(operation, maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await operation();
-    } catch (error) {
-      if (i === maxRetries - 1) throw error;
-      if (error.message.includes("Server has closed the connection")) {
-        console.log(`Retry ${i + 1}/${maxRetries} for database operation`);
-        await new Promise((resolve) => setTimeout(resolve, 1000 * (i + 1)));
-        continue;
-      }
-      throw error;
-    }
-  }
-}
-
+import { 
+  detectAdvancedIntent, 
+  generateIntentResponse,
+  handleConfirmationResponse,
+  storeQuestionResponse
+} from "@/lib/intentHandler";
+import { getRelevantFile } from "@/lib/fileKnowledge";
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -44,57 +29,44 @@ export default async function handler(req, res) {
       }
     }
 
-    // Get assistant configuration
-    const config = await getAssistantConfig();
-    const mode = config.mode || "RULE_BASED";
-
-    // Advanced intent detection
-    const intent = detectAdvancedIntent(question);
+    // Advanced intent detection with user context
+    const userId = user?.empid || user?.id || 'anonymous';
+    const intent = detectAdvancedIntent(question, userId);
 
     let answer;
-    let source = mode;
+    const botMode = process.env.BOT_MODE || "RULE_BASED";
+    const source = botMode;
 
-    try {
-      if (mode === "LLM") {
-        const llmResult = await getLLMAnswerFromGitHub(question, intent, user, config);
-        if (llmResult) {
-          answer = llmResult;
-        } else {
-          answer = await retryOperation(() => generateAnswer(question, user, intent));
-          source = "RULE_BASED_FALLBACK";
-        }
-      } else {
-        answer = await retryOperation(() => generateAnswer(question, user, intent));
-      }
-    } catch (error) {
-      console.error(`${mode} assistant error:`, error);
-      answer = await retryOperation(() => generateAnswer(question, user, intent));
-      source = "RULE_BASED_FALLBACK";
+    if (botMode === "LLM") {
+      // LLM-based response
+      const { getLLMAnswerFromRepo } = await import("@/lib/llm");
+      const llmResult = await getLLMAnswerFromRepo(question, intent, user);
+      answer = llmResult?.answer || "Sorry, I couldn't generate an answer.";
+    } else {
+      // Rule-based response with file content for policy/holiday
+      answer = await generateFileBasedAnswer(question, user, intent, userId);
     }
 
-    // Store question and response for learning
+    // Store question and response for learning (in-memory)
     try {
-      await retryOperation(() =>
-        storeQuestionResponse(question, answer, user?.empid || user?.id, intent)
-      );
+      const finalAnswer = typeof answer === 'object' && answer.answer ? answer.answer : answer;
+      storeQuestionResponse(question, finalAnswer, userId, intent);
     } catch (error) {
       console.log("Failed to store learning data:", error.message);
     }
 
-    // Handle both string and object responses
-    const responseData = typeof answer === 'object' && (answer.answer || answer.github_link) ? {
-      answer: answer.answer || answer,
-      github_link: answer.github_link || null,
+    // Handle both string and object responses with confidence
+    const responseData = {
+      answer: typeof answer === 'object' && answer.answer ? answer.answer : answer,
+      sourceFile: typeof answer === 'object' && answer.sourceFile ? answer.sourceFile : null,
+      downloadUrl: typeof answer === 'object' && answer.downloadUrl ? answer.downloadUrl : null,
+      // confidence: typeof answer === 'object' && answer.confidence ? answer.confidence : Math.round(intent.confidence * 100),
+      needsConfirmation: typeof answer === 'object' && answer.needsConfirmation ? answer.needsConfirmation : false,
+      needsClarification: typeof answer === 'object' && answer.needsClarification ? answer.needsClarification : false,
+      suggestedResponse: typeof answer === 'object' && answer.suggestedResponse ? answer.suggestedResponse : null,
       source,
       intent: intent.primaryIntent,
-      confidence: intent.confidence,
-      labels: intent.labels
-    } : {
-      answer,
-      github_link: null,
-      source,
-      intent: intent.primaryIntent,
-      confidence: intent.confidence,
+      subIntent: intent.subIntent,
       labels: intent.labels
     };
     
@@ -105,394 +77,107 @@ export default async function handler(req, res) {
   }
 }
 
-// Main answer generation function
-async function generateAnswer(question, user, intent) {
-  const q = question.toLowerCase();
-
-  // Enhanced intent detection with priority rules
-  if (isLeaveBalanceQuery(q)) {
-    return await handleLeaveBalance(user);
-  }
-  if (isPolicyQuery(q)) {
-    return handlePolicyQuery(q);
-  }
-  if (isHRContactQuery(q)) {
-    return handleHRContact();
-  }
-  if (isPayrollQuery(q)) {
-    return await handlePayrollQuery(q, user);
-  }
-  if (isAttendanceQuery(q)) {
-    return await handleAttendanceQuery(q, user);
-  }
-  if (isHolidayQuery(q)) {
-    return await handleHolidayQuery(q);
-  }
-  if (isTechnicalQuery(q)) {
-    return handleTechnicalQuery(q);
-  }
-  if (isBenefitsQuery(q)) {
-    return handleBenefitsQuery();
-  }
-  if (isOfficeHoursQuery(q)) {
-    return handleOfficeHours();
-  }
-
-  // Default fallback
-  return getDefaultResponse();
-}
-
-// Query detection functions
-function isLeaveBalanceQuery(q) {
-  return q.includes("leave days remaining") ||
-    q.includes("remaining leave") ||
-    q.includes("leave balance") ||
-    q.includes("how many leave days") ||
-    /how\s+many.*leave/i.test(q) ||
-    /leave.*remaining/i.test(q);
-}
-
-function isPolicyQuery(q) {
-  return q.includes("company policies") ||
-    q.includes("company's policies") ||
-    q.includes("explain the company") ||
-    q.includes("policy") ||
-    /explain.*compan.*polic/i.test(q);
-}
-
-function isHRContactQuery(q) {
-  return q.includes("contact hr") ||
-    q.includes("hr contact") ||
-    q.includes("how to contact hr") ||
-    q.includes("hr phone") ||
-    q.includes("hr email");
-}
-
-function isPayrollQuery(q) {
-  // Normalize common misspellings
-  const normalized = q.replace(/payslipp?/g, "payslip")
-                     .replace(/sallary|salery/g, "salary")
-                     .replace(/paymnt|paymt/g, "payment")
-                     .replace(/amnt|amout/g, "amount")
-                     .replace(/lst|las/g, "last")
-                     .replace(/previus|previos/g, "previous");
-  
-  return normalized.includes("payslip") || 
-         normalized.includes("salary") || 
-         normalized.includes("payment") ||
-         normalized.includes("pay") ||
-         /last.*month.*pay/i.test(normalized) ||
-         /previous.*month.*pay/i.test(normalized) ||
-         /last.*payslip/i.test(normalized) ||
-         /previous.*payslip/i.test(normalized) ||
-         /pay.*amount/i.test(normalized) ||
-         /salary.*amount/i.test(normalized) ||
-         /last.*salary/i.test(normalized) ||
-         /previous.*salary/i.test(normalized);
-}
-
-function isAttendanceQuery(q) {
-  return q.includes("attendance") || q.includes("working") || q.includes("work time");
-}
-
-function isHolidayQuery(q) {
-  return q.includes("holiday") || q.includes("holidays");
-}
-
-function isTechnicalQuery(q) {
-  return q.includes("laptop") || q.includes("computer") || q.includes("technical") || q.includes("camera");
-}
-
-function isBenefitsQuery(q) {
-  return q.includes("benefits") || q.includes("insurance");
-}
-
-function isOfficeHoursQuery(q) {
-  return q.includes("office hours") || q.includes("office time") || q.includes("working hours");
-}
-
-// Handler functions
-async function handleLeaveBalance(user) {
-  if (!user) {
-    return "Please log in to check your leave balance.";
-  }
-
-  try {
-    const currentYear = new Date().getFullYear();
-    const leaveTypes = await retryOperation(async () => {
-      return await prisma.leave_types.findMany({
-        orderBy: { type_name: "asc" },
-      });
-    });
-    
-    if (leaveTypes.length === 0) {
-      return "No leave policy found. Contact HR: hr@company.com";
-    }
-
-    const yearStart = new Date(currentYear, 0, 1);
-    const yearEnd = new Date(currentYear, 11, 31);
-    
-    const approvedLeaves = await retryOperation(async () => {
-      return await prisma.leave_requests.findMany({
-        where: {
-          empid: user.empid || user.id,
-          status: "Approved",
-          from_date: {
-            gte: yearStart,
-            lte: yearEnd,
-          },
-        },
-      });
-    });
-
-    let response = `🏖️ Leave Balance ${currentYear}:\n`;
-    
-    leaveTypes.forEach((leaveType) => {
-      const usedDays = approvedLeaves
-        .filter(leave => leave.leave_type === leaveType.type_name)
-        .reduce((total, leave) => {
-          const fromDate = new Date(leave.from_date);
-          const toDate = new Date(leave.to_date);
-          const daysDiff = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
-          return total + daysDiff;
-        }, 0);
-      
-      const remaining = leaveType.max_days - usedDays;
-      response += `• ${leaveType.type_name}: ${remaining}/${leaveType.max_days} days\n`;
-    });
-    
-    return response;
-  } catch (error) {
-    console.error("Leave balance query error:", error);
-    return "Unable to check leave balance. Contact HR.";
-  }
-}
-
-function handlePolicyQuery(q) {
-  if (q.includes("company policy") || q.includes("company's policies") || q.includes("explain the company")) {
-    return {
-      answer: `Our company is built on four core pillars that guide everything we do. Innovation drives us to constantly seek better solutions and embrace new technologies. We maintain the highest standards of integrity in all our business dealings, ensuring transparency and ethical practices. Our customer-first approach means we prioritize client satisfaction and build lasting relationships. We foster a collaborative and inclusive work environment where every team member's contribution is valued and respected...`,
-      github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/employee/company_policy.md"
-    };
-  }
-  
-  if (q.includes("employee policy")) {
-    return {
-      answer: `Our employee policies are designed to create a productive, fair, and supportive work environment for all team members. We believe in flexible working arrangements that balance business needs with personal well-being. Our standard working hours are 12:00 PM to 9:00 PM, Monday through Friday, with core collaboration hours from 2:00 PM to 6:00 PM. We offer flexible timing options and work-from-home opportunities up to 2 days per week with manager approval...`,
-      github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/employee/employee_policy.md"
-    };
-  }
-
-  return {
-    answer: `Our comprehensive policy framework covers all aspects of employment to ensure a professional, secure, and inclusive workplace. Information security is paramount - we require strict confidentiality of client and company data, secure password practices with 2FA, and adherence to our clean desk policy. Technology usage guidelines ensure we use only authorized software, maintain professional internet usage, and follow proper remote work protocols with VPN requirements...`,
-    github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/employee/employee_policy.md"
-  };
-}
-
-function handleHRContact() {
-  return `📞 HR Contact Information:\n\n📧 Email: hr@company.com\n📱 Phone: +91-XXXX-XXXX-XX\n📍 Office: HR Department, 2nd Floor\n🕐 Hours: Monday-Friday, 10:00 AM - 6:00 PM\n\n💡 For urgent matters:\n• Call during office hours\n• Email for non-urgent queries\n• Visit HR desk for immediate assistance\n\n🎯 HR Services:\n• Employee onboarding & offboarding\n• Leave and attendance queries\n• Payroll and benefits support\n• Policy clarifications\n• Grievance handling\n• Training and development`;
-}
-
-async function handlePayrollQuery(q, user) {
-  if (!user) {
-    return "Please log in to check your payslip information.";
-  }
-
-  try {
-    const currentDate = new Date();
-    let targetMonth, targetYear;
-    
-    // Normalize misspellings
-    const normalized = q.replace(/payslipp?/g, "payslip")
-                       .replace(/sallary|salery/g, "salary")
-                       .replace(/paymnt|paymt/g, "payment")
-                       .replace(/amnt|amout/g, "amount")
-                       .replace(/lst|las/g, "last")
-                       .replace(/previus|previos/g, "previous");
-    
-    // Determine which month to query
-    if (/last.*month|previous.*month|last.*payslip|previous.*payslip|last.*salary|previous.*salary/i.test(normalized)) {
-      // Last month
-      const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-      targetMonth = lastMonth.getMonth() + 1;
-      targetYear = lastMonth.getFullYear();
-    } else {
-      // Current month (default)
-      targetMonth = currentDate.getMonth() + 1;
-      targetYear = currentDate.getFullYear();
-    }
-
-    const payroll = await prisma.payroll.findFirst({
-      where: {
-        empid: user.empid || user.id,
-        OR: [
-          {
-            month: targetMonth.toString(),
-            year: targetYear,
-          },
-          {
-            generated_on: {
-              gte: new Date(targetYear, targetMonth - 1, 1),
-              lt: new Date(targetYear, targetMonth, 1),
-            },
-          },
-        ],
-      },
-      orderBy: { generated_on: "desc" },
-    });
-
-    if (payroll) {
-      const monthName = new Date(targetYear, targetMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-      const basicSalary = payroll.basic_salary ? parseFloat(payroll.basic_salary) : 0;
-      const deductions = payroll.deductions ? parseFloat(payroll.deductions) : 0;
-      const netPay = payroll.net_pay ? parseFloat(payroll.net_pay) : 0;
-      
-      const isLastMonth = targetMonth !== (currentDate.getMonth() + 1) || targetYear !== currentDate.getFullYear();
-      const timeLabel = isLastMonth ? "Last Month" : "Current Month";
-
-      return `✅ ${timeLabel} Payslip (${monthName}):\n💰 Basic Salary: ₹${basicSalary.toLocaleString()}\n💸 Deductions: ₹${deductions.toLocaleString()}\n💵 Net Salary: ₹${netPay.toLocaleString()}\n📍 Dashboard → Payroll Management`;
-    } else {
-      const monthName = new Date(targetYear, targetMonth - 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-      const isLastMonth = targetMonth !== (currentDate.getMonth() + 1) || targetYear !== currentDate.getFullYear();
-      
-      if (isLastMonth) {
-        return `⏳ Payslip for ${monthName} is not available. Contact HR: hr@company.com`;
-      } else {
-        return `⏳ Your payslip for this month is not ready yet.`;
-      }
-    }
-  } catch (error) {
-    return "Unable to check payslip status. Contact HR.";
-  }
-}
-
-async function handleAttendanceQuery(q, user) {
-  if (!user) {
-    return "Please log in to check your attendance information.";
-  }
-
-  try {
-    const today = new Date();
-    
-    if (q.includes("today")) {
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-
-      const todayAttendance = await prisma.attendance.findFirst({
-        where: {
-          empid: user.empid || user.id,
-          date: { gte: startOfDay, lt: endOfDay },
-        },
-      });
-
-      if (todayAttendance) {
-        const checkinTime = todayAttendance.check_in ? new Date(todayAttendance.check_in).toLocaleTimeString() : "Not checked in";
-        const checkoutTime = todayAttendance.check_out ? new Date(todayAttendance.check_out).toLocaleTimeString() : "Not checked out";
-        return `Today's Attendance:\nCheck-in: ${checkinTime}\nCheck-out: ${checkoutTime}`;
-      } else {
-        return `No attendance record found for today.`;
-      }
-    }
-
-    return `📊 Attendance Overview:\n⏰ Standard Hours: 12:00 PM - 9:00 PM\n📍 View details: Dashboard → Attendance & Leave`;
-  } catch (error) {
-    return "Unable to check attendance. Contact HR.";
-  }
-}
-
-async function handleHolidayQuery(q) {
-  try {
-    if (q.includes("next") || q.includes("upcoming")) {
-      const nextHoliday = await retryOperation(async () => {
-        const today = new Date();
-        return await prisma.calendar_events.findFirst({
-          where: {
-            event_date: { gte: today },
-            event_type: "holiday",
-          },
-          orderBy: { event_date: "asc" },
-        });
-      });
-      
-      if (nextHoliday) {
-        const holidayDate = new Date(nextHoliday.event_date);
-        const today = new Date();
-        const daysUntil = Math.ceil((holidayDate - today) / (1000 * 60 * 60 * 24));
-        return `🎉 Next Holiday: ${nextHoliday.title}\n📅 Date: ${holidayDate.toLocaleDateString()}\n⏰ Days remaining: ${daysUntil} days`;
-      } else {
-        return `No upcoming holidays found.`;
-      }
-    }
-
-    if (q.includes("tomorrow")) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const startOfDay = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-      const endOfDay = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate() + 1);
-      
-      const tomorrowHoliday = await retryOperation(async () => {
-        return await prisma.calendar_events.findFirst({
-          where: {
-            event_date: { gte: startOfDay, lt: endOfDay },
-            event_type: "holiday",
-          },
-        });
-      });
-
-      if (tomorrowHoliday) {
-        return `🎉 Yes! Tomorrow is ${tomorrowHoliday.title}`;
-      } else {
-        const dayOfWeek = tomorrow.getDay();
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-          return `🛌 Tomorrow is ${dayOfWeek === 0 ? "Sunday" : "Saturday"} - Weekend off`;
+// File-based answer generation for policy and holiday queries
+async function generateFileBasedAnswer(question, user, intent, userId) {
+  // Handle confirmation responses (yes/no) - return file content if confirmed
+  const q = question.toLowerCase().trim();
+  if (q === 'yes' || q === 'no' || q.includes('yes') || q.includes('no')) {
+    const confirmationResult = handleConfirmationResponse(userId, q.includes('yes'));
+    if (confirmationResult && q.includes('yes')) {
+      // If user confirmed, check for file content for policy/holiday
+      if (intent.primaryIntent === 'policy' || intent.primaryIntent === 'holiday') {
+        const relevantFile = getRelevantFile(intent, question);
+        if (relevantFile && relevantFile.content) {
+          if (intent.primaryIntent === 'holiday') {
+            return formatHolidayContent(relevantFile);
+          }
+          if (intent.primaryIntent === 'policy') {
+            return formatPolicyContent(relevantFile, question);
+          }
         }
-        return `📅 Tomorrow is a regular working day.`;
+      }
+      return {
+        answer: confirmationResult,
+        confidence: 95,
+        isConfirmationResponse: true
+      };
+    } else if (confirmationResult) {
+      return {
+        answer: confirmationResult,
+        confidence: 95,
+        isConfirmationResponse: true
+      };
+    }
+  }
+  
+  // Check for file content first for policy and holiday queries
+  if (intent.primaryIntent === 'policy' || intent.primaryIntent === 'holiday') {
+    const relevantFile = getRelevantFile(intent, question);
+    
+    if (relevantFile && relevantFile.content) {
+      // Return file content directly for high confidence
+      if (intent.confidence >= 0.8) {
+        if (intent.primaryIntent === 'holiday') {
+          return formatHolidayContent(relevantFile);
+        }
+        if (intent.primaryIntent === 'policy') {
+          return formatPolicyContent(relevantFile, question);
+        }
       }
     }
-
-    return `🎉 Holiday Information:\n💡 Ask: "Next holiday", "Is tomorrow holiday?"`;
-  } catch (error) {
-    return "Unable to check holiday information.";
   }
+  
+  // Fallback to standard response for all other queries or low confidence
+  return generateIntentResponse(intent, question, userId);
 }
 
-function handleTechnicalQuery(q) {
-  if (q.includes("camera")) {
-    return `📷 Camera Issue - IT Support:\n\n🔧 Quick Steps:\n• Check Device Manager\n• Update camera drivers\n• Restart laptop\n• Check privacy settings\n\n📞 IT Support: it-support@company.com`;
+// Format holiday file content
+function formatHolidayContent(file) {
+  const lines = file.content.split('\n').filter(line => line.trim());
+  let formattedHolidays = '';
+  
+  // Parse holiday format
+  for (const line of lines.slice(0, 10)) {
+    const trimmed = line.trim();
+    if (trimmed && (trimmed.includes(':') || trimmed.includes('-') || /\d/.test(trimmed))) {
+      formattedHolidays += `• ${trimmed}\n`;
+    }
   }
-
-  return `🔧 Technical Support:\n\n📞 Contact IT Support:\n• Email: it-support@company.com\n• Phone: Ext. 1234\n• Visit: IT Desk, Ground Floor\n• Hours: 9 AM - 6 PM`;
-}
-
-function handleBenefitsQuery() {
+  
+  if (!formattedHolidays) {
+    formattedHolidays = file.content.substring(0, 400);
+  }
+  
   return {
-    answer: `We offer a comprehensive benefits package designed to support your health, financial security, and work-life balance. Our health insurance provides extensive medical coverage for you and your family, including hospitalization, outpatient care, and preventive health checkups. The Provident Fund (PF) contribution helps build your retirement savings with both employee and employer contributions. Additional benefits include gratuity payments, performance-based bonuses, flexible working hours, and professional development opportunities...`,
-    github_link: "https://github.com/deshmukhraysoftwareservice/hr-assistant-docs/blob/main/benefits/benefits_policy.md"
+    answer: `🎉 **Holiday List:**\n\n${formattedHolidays}\n\n💾 **Download:** /api/bot/download?file=${encodeURIComponent(file.filename)}`,
+    sourceFile: file.filename,
+    downloadUrl: `/api/bot/download?file=${encodeURIComponent(file.filename)}`,
+    confidence: 95
   };
 }
 
-function handleOfficeHours() {
-  return `🏢 Office Hours:\n⏰ Standard Working Hours: 12:00 PM - 9:00 PM\n📅 Working Days: Monday to Friday\n🍽️ Lunch Break: 1 hour (flexible timing)\n📍 Office Location: [Your Office Address]\n📞 Contact: [Office Phone Number]`;
-}
-
-function getDefaultResponse() {
-  return `Sorry, I can't help with this question. I'm designed to assist with HR-related queries.
-
-I can help you with:
-• Payroll & Salary information
-• Attendance records
-• Leave balance & applications
-• Holiday information
-• HR contact details
-• Company policies
-• IT support requests
-
-Try asking:
-• "Show my payslip"
-• "What's my attendance today?"
-• "How can I contact HR?"
-• "When is the next holiday?"
-• "Office hours"
-
-For other queries, please contact HR: hr@company.com`;
+// Format policy file content
+function formatPolicyContent(file, question) {
+  const content = file.content;
+  const queryWords = question.toLowerCase().split(/\s+/);
+  
+  // Find relevant sections based on query
+  const sections = content.split(/\n\s*\n/).filter(section => {
+    const sectionLower = section.toLowerCase();
+    return queryWords.some(word => sectionLower.includes(word));
+  });
+  
+  let relevantContent = '';
+  if (sections.length > 0) {
+    relevantContent = sections.slice(0, 2).join('\n\n');
+  } else {
+    relevantContent = content.substring(0, 600);
+  }
+  
+  return {
+    answer: `📋 **Company Policy:**\n\n${relevantContent}${content.length > relevantContent.length ? '...' : ''}\n\n💾 **Download:** /api/bot/download?file=${encodeURIComponent(file.filename)}`,
+    sourceFile: file.filename,
+    downloadUrl: `/api/bot/download?file=${encodeURIComponent(file.filename)}`,
+    confidence: 95
+  };
 }
