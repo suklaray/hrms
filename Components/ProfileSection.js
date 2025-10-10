@@ -156,34 +156,34 @@ export default function ProfileSection({ user }) {
           ) : (
             <>
               <label className="relative inline-flex items-center cursor-pointer">
-  <input
-    type="checkbox"
-    className="sr-only peer"
-    checked={isWorking}
-    onChange={handleToggleWork}
-    disabled={isLoading || !user?.empid}
-  />
-  <div className={`w-15 sm:w-17 h-6 sm:h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full peer-checked:from-green-400 peer-checked:to-green-600 transition-all duration-500 shadow-inner relative overflow-hidden ${isLoading ? 'opacity-50' : ''}`}>
-    <div className="absolute inset-0 flex items-center justify-between px-1 sm:px-2 text-xs font-medium">
-      <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
-        In
-      </span>
-      <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
-        Out
-      </span>
-    </div>
-  </div>
-  <div className="absolute left-0.5 top-0.5 w-7 sm:w-9 h-5 sm:h-7 bg-white rounded-full shadow-lg transform peer-checked:translate-x-6 sm:peer-checked:translate-x-7 transition-all duration-500 flex items-center justify-center">
-    <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
-      {isWorking ? 'Out' : 'In'}
-    </span>
-  </div>
-</label>
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={isWorking}
+                onChange={handleToggleWork}
+                disabled={isLoading || !user?.empid}
+              />
+              <div className={`w-15 sm:w-17 h-6 sm:h-8 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full peer-checked:from-sky-400 peer-checked:to-indigo-600 transition-all duration-500 shadow-inner relative overflow-hidden ${isLoading ? 'opacity-50' : ''}`}>
+                <div className="absolute inset-0 flex items-center justify-between px-1 sm:px-2 text-xs font-medium">
+                  <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
+                    In
+                  </span>
+                  <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
+                    Out
+                  </span>
+                </div>
+              </div>
+              <div className="absolute left-0.5 top-0.5 w-7 sm:w-9 h-5 sm:h-7 bg-white rounded-full shadow-lg transform peer-checked:translate-x-6 sm:peer-checked:translate-x-7 transition-all duration-500 flex items-center justify-center">
+                <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                  {isWorking ? 'Out' : 'In'}
+                </span>
+              </div>
+            </label>
 
 
             </>
           )}
-          {!statusLoading && isWorking && (
+          {/* {!statusLoading && isWorking && (
             <div className="flex items-center mt-1">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
               <span className="text-xs sm:text-sm font-mono font-bold text-green-600">{elapsedTime}</span>
@@ -191,7 +191,7 @@ export default function ProfileSection({ user }) {
           )}
           {isLoading && (
             <div className="text-xs text-gray-500">Updating...</div>
-          )}
+          )} */}
         </div>
       </div>
     </div>

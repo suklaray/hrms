@@ -10,6 +10,7 @@ export default function GeneratePayrollPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ total: 0, generated: 0, pending: 0 });
   const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
   const router = useRouter();
   const itemsPerPage = 5;
 
@@ -52,19 +53,35 @@ export default function GeneratePayrollPage() {
     return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, bgColor }) => (
-    <div className={`${bgColor} rounded-xl shadow-sm border border-gray-100 p-6`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{value}</p>
-        </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
+  const handleFilterChange = (filter) => {
+    setStatusFilter(filter);
+    setCurrentPage(1);
+  };
+  const filteredEmployees = employees.filter(emp => {
+  if (statusFilter === 'all') return true;
+  if (statusFilter === 'generated') return emp.payrollGenerated;
+  if (statusFilter === 'pending') return !emp.payrollGenerated;
+  return true;
+});
+
+
+  const StatCard = ({ title, value, icon: Icon, color, bgColor, onClick, isActive }) => (
+  <div 
+    className={`${bgColor} rounded-xl shadow-sm border border-gray-100 p-6 cursor-pointer transition-all duration-200 ${isActive ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
+    onClick={onClick}
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+        <p className="text-3xl font-bold text-gray-900">{value}</p>
+      </div>
+      <div className={`p-3 rounded-lg ${color}`}>
+        <Icon className="w-6 h-6 text-white" />
       </div>
     </div>
-  );
+  </div>
+);
+
 
   return (
     <>
@@ -100,28 +117,38 @@ export default function GeneratePayrollPage() {
         <div className="p-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <StatCard
-              title="Total Employees"
-              value={stats.total}
-              icon={Users}
-              color="bg-blue-500"
-              bgColor="bg-white"
-            />
-            <StatCard
-              title="Payroll Generated"
-              value={stats.generated}
-              icon={CheckCircle}
-              color="bg-green-500"
-              bgColor="bg-white"
-            />
-            <StatCard
-              title="Pending Generation"
-              value={stats.pending}
-              icon={Clock}
-              color="bg-orange-500"
-              bgColor="bg-white"
-            />
-          </div>
+          <StatCard
+            title="Total Employees"
+            value={stats.total}
+            icon={Users}
+            color="bg-blue-500"
+            bgColor="bg-white"
+            filter="all"
+            isActive={statusFilter === 'all'}
+            onClick={() => handleFilterChange('all')}
+          />
+          <StatCard
+            title="Payroll Generated"
+            value={stats.generated}
+            icon={CheckCircle}
+            color="bg-green-500"
+            bgColor="bg-white"
+            filter="generated"
+            isActive={statusFilter === 'generated'}
+            onClick={() => handleFilterChange('generated')}
+          />
+          <StatCard
+            title="Pending Generation"
+            value={stats.pending}
+            icon={Clock}
+            color="bg-orange-500"
+            bgColor="bg-white"
+            filter="pending"
+            isActive={statusFilter === 'pending'}
+            onClick={() => handleFilterChange('pending')}
+          />
+        </div>
+
 
           {/* Employee List */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -130,20 +157,21 @@ export default function GeneratePayrollPage() {
                 <DollarSign className="w-5 h-5 mr-2" />
                 Employee Payroll Status
               </h2>
-              {employees.length > 0 && (() => {
-                const totalPages = Math.ceil(employees.length / itemsPerPage);
-                const startIndex = (currentPage - 1) * itemsPerPage;
-                const paginatedEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
-                
-                return (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Showing {paginatedEmployees.length} of {employees.length} employees
-                    {totalPages > 1 && (
-                      <span> (Page {currentPage} of {totalPages})</span>
-                    )}
-                  </p>
-                );
-              })()}
+              {filteredEmployees.length > 0 && (() => {
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
+  
+  return (
+    <p className="text-sm text-gray-600 mt-2">
+      Showing {paginatedEmployees.length} of {filteredEmployees.length} employees
+      {totalPages > 1 && (
+        <span> (Page {currentPage} of {totalPages})</span>
+      )}
+    </p>
+  );
+})()}
+
             </div>
 
             {isLoading ? (
@@ -166,11 +194,12 @@ export default function GeneratePayrollPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {(() => {
-                      const totalPages = Math.ceil(employees.length / itemsPerPage);
-                      const startIndex = (currentPage - 1) * itemsPerPage;
-                      const paginatedEmployees = employees.slice(startIndex, startIndex + itemsPerPage);
-                      
-                      return paginatedEmployees.map((emp) => (
+                    const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+                    const startIndex = (currentPage - 1) * itemsPerPage;
+                    const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
+                    
+                    return paginatedEmployees.map((emp) => (
+
                       <tr key={emp.empid} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center">

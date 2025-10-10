@@ -190,6 +190,51 @@ export default function Candidates(user) {
     </div>
   );
 
+  const downloadCSV = () => {
+    if (!candidates || candidates.length === 0) {
+      alert("No candidate data available to download.");
+      return;
+    }
+
+    // Define headers
+    const headers = [
+      "Candidate ID",
+      "Name",
+      "Email",
+      "Contact",
+      "Interview Date",
+      "Interview Time",
+      "Status",
+      "Form Submission",
+      "Verification Status"
+    ];
+
+    // Map data
+    const csvData = candidates.map(c => [
+      c.candidate_id || "",
+      c.name || "",
+      c.email || "",
+      c.contact_number || "",
+      c.interview_date ? c.interview_date.split("T")[0] : "",
+      c.interview_timing || "",
+      c.status || "Waiting",
+      c.form_submitted ? "Submitted" : "Not Submitted",
+      c.verification ? "Verified" : "Not Verified"
+    ]);
+
+    // Combine headers + rows
+    const csvContent = [
+      headers.join(","), 
+      ...csvData.map(row => row.map(val => `"${val}"`).join(","))
+    ].join("\n");
+
+    // Trigger file download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "candidates_data.csv";
+    link.click();
+  };
 
   const handleEmp = async (candidateId, newDate) => {
     try {
@@ -284,12 +329,19 @@ export default function Candidates(user) {
             </div>
             <div className="flex items-center gap-3">
               <Link href="/Recruitment/addCandidates">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer text-sm sm:text-base">
+                <button className="bg-indigo-200 hover:bg-indigo-300 font-medium text-indigo-800 px-3 sm:px-4 py-2 rounded-lg flex items-center gap-2 transition-colors cursor-pointer text-sm sm:text-base">
                   <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Add Candidate</span>
                   <span className="sm:hidden">Add</span>
                 </button>
               </Link>
+              <button 
+                  onClick={downloadCSV}
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-green-100 hover:bg-green-200  text-green-800 font-medium rounded-lg transition-colors text-sm sm:text-base" >
+                  <Download className="w-4 h-4 flex-shrink-0" />
+                  <span className="hidden sm:inline">Candidate List</span>
+                  <span className="sm:hidden">List</span>
+                </button>
             </div>
           </div>
         </div>

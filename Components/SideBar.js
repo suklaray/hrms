@@ -91,7 +91,7 @@ export default function Sidebar() {
   ];
 
   const payrollSubItems = [
-    { name: "View Payrolls", path: "/hr/payroll/payroll-view" },
+    { name: "Payroll Records", path: "/hr/payroll/payroll-view" },
     { name: "Generate Payroll", path: "/hr/payroll/generate" },
   ];
 
@@ -393,7 +393,7 @@ export default function Sidebar() {
                     </span>
                   </Link>
                 </li>
-                
+
                 <li>
                   <Link href="/leave-request/leave-request">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
@@ -405,6 +405,13 @@ export default function Sidebar() {
                   <Link href="/payslip/payslip-lists">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
                       Payslip & Documents
+                    </span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/task-management/user-task">
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    Manage Tasks
                     </span>
                   </Link>
                 </li>
