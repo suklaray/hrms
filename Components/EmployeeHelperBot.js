@@ -105,7 +105,7 @@ export default function EmployeeHelperBot() {
         ...prev,
         {
           sender: "assistant",
-          text: data.answer || "Sorry, I didn't understand.",
+          text: data.answer || "Sorry, I did not understand.",
           sourceFile: data.sourceFile || null,
           intent: data.intent || null,
           confidence: data.confidence || null,
@@ -203,7 +203,7 @@ export default function EmployeeHelperBot() {
                       "Where can I see my payslips?",
                       "How to apply for leave?",
                       "Where can I find my attendance record?",
-                      "can you help with employee benefits?",
+                      "Can you help with employee benefits?",
                       "How can I contact HR?",
                     ].map((suggestion, idx) => (
                       <button
@@ -245,7 +245,7 @@ export default function EmployeeHelperBot() {
                           }}
                           className="mr-2 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
                         >
-                          ✓ Yes, that's right
+                          ✓ Yes, that&apos;s right
                         </button>
                         <button
                           onClick={() => {
