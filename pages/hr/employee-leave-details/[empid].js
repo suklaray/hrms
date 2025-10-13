@@ -11,7 +11,7 @@ export default function EmployeeLeaveDetails() {
   const [employeeData, setEmployeeData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (empid) {

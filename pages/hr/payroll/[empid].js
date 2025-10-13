@@ -11,7 +11,7 @@ export default function EmployeePayroll() {
   const [records, setRecords] = useState([]);
   const [employee, setEmployee] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     if (empid) {

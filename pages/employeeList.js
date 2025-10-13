@@ -59,7 +59,7 @@ export default function EmployeeListPage({ user }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchEmployees = async () => {

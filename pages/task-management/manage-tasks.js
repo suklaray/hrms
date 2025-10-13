@@ -56,7 +56,7 @@ export default function TaskManagement({ user }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(7);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     title: "",
     description: "",

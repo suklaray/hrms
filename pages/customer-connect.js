@@ -9,7 +9,7 @@ export default function CustomerConnect() {
     const [selectAll, setSelectAll] = useState(false);
     const [activeMessageId, setActiveMessageId] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    const itemsPerPage = 10;
     const togglePopup = (id) => {
     setActiveMessageId((prev) => (prev === id ? null : id));
     };

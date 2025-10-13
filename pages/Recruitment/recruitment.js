@@ -32,7 +32,7 @@ export default function Candidates(user) {
   const [selectedCandidates, setSelectedCandidates] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
 
   const fetchCandidates = async () => {

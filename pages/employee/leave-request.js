@@ -22,7 +22,7 @@ export default function LeaveRequest() {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));

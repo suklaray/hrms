@@ -14,7 +14,7 @@ export default function ViewLeaveRequests() {
   const [leaveTypeForm, setLeaveTypeForm] = useState({ type_name: '', max_days: '', paid: true });
   const [editingLeaveType, setEditingLeaveType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
 
   useEffect(() => {

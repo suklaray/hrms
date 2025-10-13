@@ -54,7 +54,7 @@ export default function PayslipLists({ user }) {
   const [loading, setLoading] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
   const router = useRouter();
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
 // Wrap fetchPayslips with useCallback
 const fetchPayslips = useCallback(async () => {

@@ -12,7 +12,7 @@ export default function GeneratePayrollPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
   const router = useRouter();
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchEmployees = async () => {

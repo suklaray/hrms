@@ -25,7 +25,7 @@ export default function HRPolicyManagement() {
 
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // Need to adjust for items per page
+  const [itemsPerPage] = useState(10); // Need to adjust for items per page
   const [showModal, setShowModal] = useState(false);
   const [selectedPolicy, setSelectedPolicy] = useState(null);
   const [employeeAcknowledgements, setEmployeeAcknowledgements] = useState({});
