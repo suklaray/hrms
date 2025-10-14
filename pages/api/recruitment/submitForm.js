@@ -16,14 +16,17 @@ export default async function handler(req, res) {
   }
 
   const form = formidable({
-    maxFileSize: 5 * 1024 * 1024, // 5MB limit
+    maxFileSize: 10 * 1024 * 1024, // 10MB per file
+    maxTotalFileSize: 50 * 1024 * 1024, // 50MB total
     keepExtensions: true,
   });
 
-  try {
-    form.parse(req, async (err, fields, files) => {
+  form.parse(req, async (err, fields, files) => {
     if (err) {
       console.error('Form parsing error:', err);
+      if (err.code === 1009) {
+        return res.status(413).json({ error: 'File size too large. Maximum total size is 50MB.' });
+      }
       return res.status(500).json({ error: 'File upload failed' });
     }
 
@@ -54,6 +57,43 @@ export default async function handler(req, res) {
         ifsc_code: getValue(fields.ifsc_code),
       };
 
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(body.email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+      }
+
+      // Check if candidate has already submitted form
+      const existingCandidate = await prisma.candidates.findUnique({
+        where: { candidate_id: body.candidate_id }
+      });
+
+      if (existingCandidate?.form_submitted) {
+        return res.status(400).json({ 
+          error: 'Form has already been submitted for this candidate',
+          alreadySubmitted: true,
+          redirectTo: '/form-already-submitted'
+        });
+      }
+
+      // Check if email already exists in employees table
+      const existingEmployee = await prisma.employees.findUnique({
+        where: { email: body.email }
+      });
+
+      if (existingEmployee) {
+        // If employee exists with same candidate_id, it means form was already submitted
+        if (existingEmployee.candidate_id === body.candidate_id) {
+          return res.status(400).json({ 
+            error: 'Form has already been submitted for this candidate',
+            alreadySubmitted: true,
+            redirectTo: '/form-already-submitted'
+          });
+        }
+        // If employee exists with different candidate_id, email is taken
+        return res.status(400).json({ error: 'Email already exists in the system' });
+      }
+
       // Create uploads directory if it doesn't exist
       const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
       if (!fs.existsSync(uploadsDir)) {
@@ -63,10 +103,16 @@ export default async function handler(req, res) {
       // Helper function to process file
       const processFile = (file) => {
         if (!file) return null;
-        const fileName = `${Date.now()}-${file.originalFilename}`;
-        const finalPath = path.join(uploadsDir, fileName);
-        fs.renameSync(file.filepath, finalPath);
-        return `/uploads/${fileName}`;
+        try {
+          const fileName = `${Date.now()}-${file.originalFilename}`;
+          const finalPath = path.join(uploadsDir, fileName);
+          fs.copyFileSync(file.filepath, finalPath);
+          fs.unlinkSync(file.filepath);
+          return `/uploads/${fileName}`;
+        } catch (error) {
+          console.error('File processing error:', error);
+          return null;
+        }
       };
 
       // Process all files
@@ -145,11 +191,16 @@ export default async function handler(req, res) {
 
     } catch (err) {
       console.error('Error in form submission:', err);
+      
+      // Handle specific Prisma errors
+      if (err.code === 'P2002') {
+        if (err.meta?.target?.includes('email')) {
+          return res.status(400).json({ error: 'Email already exists in the system' });
+        }
+        return res.status(400).json({ error: 'Duplicate entry found' });
+      }
+      
       return res.status(500).json({ error: err.message || 'Server error' });
     }
-    });
-  } catch (error) {
-    console.error('Form parsing failed:', error);
-    return res.status(500).json({ error: 'Form parsing failed' });
-  }
+  });
 }

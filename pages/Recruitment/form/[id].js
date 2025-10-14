@@ -42,34 +42,51 @@ export default function CandidateForm() {
 
   useEffect(() => {
     if (id) {
-      // Check if this is a prefill request from employee view
-      const urlParams = new URLSearchParams(window.location.search);
-      const isPrefill = urlParams.get('prefill');
-      const prefillName = urlParams.get('name');
-      const prefillEmail = urlParams.get('email');
-      
-      if (isPrefill && prefillName && prefillEmail) {
-        // Set candidate data from URL parameters
-        setCandidate({
-          candidate_id: id,
-          name: decodeURIComponent(prefillName),
-          email: decodeURIComponent(prefillEmail)
+      // Check form submission status first
+      axios
+        .get(`/api/recruitment/checkFormStatus?candidate_id=${id}`)
+        .then((res) => {
+          if (res.data.formSubmitted) {
+            // Redirect to already submitted page
+            router.push('/form-already-submitted');
+            return;
+          }
+          
+          // Check if this is a prefill request from employee view
+          const urlParams = new URLSearchParams(window.location.search);
+          const isPrefill = urlParams.get('prefill');
+          const prefillName = urlParams.get('name');
+          const prefillEmail = urlParams.get('email');
+          
+          if (isPrefill && prefillName && prefillEmail) {
+            // Set candidate data from URL parameters
+            setCandidate({
+              candidate_id: id,
+              name: decodeURIComponent(prefillName),
+              email: decodeURIComponent(prefillEmail)
+            });
+          } else {
+            // Fetch candidate data normally
+            axios
+              .get(`/api/recruitment/getCandidateById?id=${id}`,{
+                 headers: { 'Cache-Control': 'no-cache' },
+              })
+              .then((res) => {
+                setCandidate(res.data);
+                setFormData((prev) => ({
+                  ...prev,
+                  contact_no: res.data.contact_number || "",
+                }));
+              })
+              .catch((err) => console.error("Error fetching candidate:", err));
+          }
+        })
+        .catch((err) => {
+          console.error("Error checking form status:", err);
+          // Continue with normal flow if status check fails
         });
-      } else {
-        // Fetch candidate data normally
-        axios
-          .get(`/api/recruitment/getCandidateById?id=${id}`)
-          .then((res) => {
-            setCandidate(res.data);
-            setFormData((prev) => ({
-              ...prev,
-              contact_no: res.data.contact_number || "",
-            }));
-          })
-          .catch((err) => console.error("Error fetching candidate:", err));
-      }
     }
-  }, [id]);
+  }, [id, router]);
 
   // Check if form is valid
   useEffect(() => {
@@ -222,7 +239,7 @@ export default function CandidateForm() {
         if (value) {
           const birthDate = new Date(value);
           const currentDate = new Date();
-          const minDate = new Date(currentDate.getFullYear() - 10, currentDate.getMonth(), currentDate.getDate());
+          const minDate = new Date(currentDate.getFullYear() - 18, currentDate.getMonth(), currentDate.getDate());
           const year = birthDate.getFullYear();
           const yearStr = year.toString();
           
@@ -231,7 +248,7 @@ export default function CandidateForm() {
           } else if (year < 1900) {
             newErrors[name] = '❌ Please enter a valid birth year';
           } else if (birthDate > minDate) {
-            newErrors[name] = '❌ Must be at least 10 years old';
+            newErrors[name] = '❌ Must be at least 18 years old';
           } else {
             delete newErrors[name];
           }
@@ -528,6 +545,7 @@ const handleDocumentUpload = async (e, type) => {
     return Object.keys(formErrors).length === 0;
   };
 
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -562,6 +580,7 @@ const handleDocumentUpload = async (e, type) => {
     data.append("name", candidate.name);
     data.append("email", candidate.email);
     data.append("is_employee_registration", "true");
+    
 
     try {
       const response = await axios.post("/api/recruitment/submitForm", data);
@@ -569,6 +588,13 @@ const handleDocumentUpload = async (e, type) => {
       router.push('/Recruitment/form/docs_submitted');
     } catch (error) {
       console.error("Error submitting form:", error);
+      
+      // Check if form was already submitted
+      if (error.response?.data?.alreadySubmitted) {
+        router.push(error.response.data.redirectTo || '/form-already-submitted');
+        return;
+      }
+      
       alert(error.response?.data?.error || "Failed to submit form");
     } finally {
       setIsSubmitting(false);
