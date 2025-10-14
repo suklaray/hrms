@@ -1,0 +1,50 @@
+👥 Employee Policy Guidelines:
+
+🕐 Working Hours:
+• Standard Hours: 12:00 PM - 9:00 PM
+• Flexible timing with core hours 2:00 PM - 6:00 PM
+• Lunch Break: 1 hour (flexible timing)
+• Work from Home: 2 days per week (with approval)
+
+📱 Communication Policy:
+• Professional email etiquette mandatory
+• Response time: Within 4 hours during work hours
+• Team meetings: Attendance required
+• Slack/Teams: Primary communication channels
+
+🎯 Performance Standards:
+• Monthly performance reviews
+• Goal setting and tracking via dashboard
+• Continuous learning encouraged
+• Feedback culture promoted
+
+📞 Contact: HR at hr@company.com for employee policy queries`;
+     IT Company Employee Policies:
+
+🔒 Information Security:
+• Data Protection: Strict confidentiality of client & company data
+• Access Control: Use secure passwords, 2FA mandatory
+• Clean Desk Policy: Lock screens when away, secure documents
+• BYOD Policy: Personal devices must comply with security standards
+
+💻 Technology Usage:
+• Software Licensing: Use only authorized software
+• Internet Usage: Professional use, limited personal browsing
+• Remote Work: VPN required, secure home office setup
+• Equipment Care: Responsible use of company hardware
+
+👔 Professional Standards:
+• Dress Code: Smart casual, formal for client meetings
+• Communication: Professional email etiquette, respectful interactions
+• Intellectual Property: All code/designs belong to company
+• Non-Disclosure: Confidentiality agreements strictly enforced
+
+⚖️ Compliance & Ethics:
+• Anti-Harassment: Zero tolerance, multiple reporting channels
+• Equal Opportunity: Merit-based, inclusive workplace
+• Conflict of Interest: Declare any potential conflicts
+• Social Media: Professional representation of company
+
+📖 Complete policy handbook available on company intranet
+💡 Contact HR for policy clarifications: hr@company.com`;
+ 
