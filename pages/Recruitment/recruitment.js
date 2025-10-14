@@ -496,7 +496,7 @@ export default function Candidates(user) {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
-                              <div className="text-sm text-gray-500">ID: #{candidate.candidate_id}</div>
+                              {/* <div className="text-sm text-gray-500">ID: #{candidate.candidate_id}</div> */}
                             </div>
                           </div>
                         </td>

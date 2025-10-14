@@ -3,6 +3,8 @@ import Footer from "@/Components/Footer";
 import Header from "@/Components/Header";
 import EmployeeHelperBot from "@/Components/EmployeeHelperBot";
 import { useRouter } from "next/router";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -18,6 +20,13 @@ export default function App({ Component, pageProps }) {
       {!hideLayout && <Header />}
       <main className="min-w-full">
         <Component {...pageProps} />
+        <ToastContainer
+          position="top-center"
+          //autoClose={3000}
+          hideProgressBar={false}
+          closeOnClick
+          pauseOnHover
+        />
       </main>
       {!hideLayout && <Footer />}
       {!hideLayout && <EmployeeHelperBot />}

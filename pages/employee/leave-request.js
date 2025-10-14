@@ -3,6 +3,7 @@ import axios from 'axios';
 import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 export default function LeaveRequest() {
   const [form, setForm] = useState({
@@ -23,9 +24,15 @@ export default function LeaveRequest() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [leaveBalances, setLeaveBalances] = useState([]);
 
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));
+    
+    // Fetch leave balances
+    axios.get('/api/leave/balances', { withCredentials: true })
+      .then(res => setLeaveBalances(res.data))
+      .catch(err => console.error('Error fetching leave balances:', err));
 
     axios.get('/api/auth/employee/me', { withCredentials: true }).then(res => {
       const user = res.data.user;
@@ -41,6 +48,8 @@ export default function LeaveRequest() {
         .then(res => setLeaveStatusList(res.data));
     });
   }, []);
+
+
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -121,7 +130,7 @@ export default function LeaveRequest() {
         withCredentials: true,
       });
 
-      alert('Leave request submitted successfully! Check the History tab to view your pending request.');
+      toast.success('Leave request submitted successfully! Check the History tab to view your pending request.');
       setForm(prev => ({
         ...prev,
         leave_type: '',
@@ -138,7 +147,7 @@ export default function LeaveRequest() {
       setActiveTab('history');
     } catch (err) {
       console.error(err);
-      alert('Submission failed. Please try again.');
+      toast.error('Submission failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -167,6 +176,44 @@ export default function LeaveRequest() {
             </div>
           </div>
         </div>
+
+        {/* Leave Balance Display - Add this right after the form header */}
+        {leaveBalances.length > 0 && (
+          <div className="mx-8 mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <h4 className="text-sm font-semibold text-blue-800 mb-3">Your Leave Balance</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full bg-white rounded-lg border border-blue-100">
+                <thead className="bg-blue-100">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-blue-800 uppercase">Leave Type</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-blue-800 uppercase">Total Days</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-blue-800 uppercase">Used</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-blue-800 uppercase">Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-blue-100">
+                  {leaveBalances.map((balance, index) => (
+                    <tr key={index} className="hover:bg-blue-50">
+                      <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                        {balance.type_name.replace(/_/g, ' ')}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-700">
+                        {balance.max_days}
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-700">
+                        {balance.used}
+                      </td>
+                      <td className="px-4 py-2 text-sm font-semibold text-green-600">
+                        {balance.remaining}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
 
         <div className="p-6">
           {/* Tab Navigation */}
@@ -201,168 +248,142 @@ export default function LeaveRequest() {
           </div>
 
           {activeTab === 'apply' ? (
-            /* Leave Request Form */
-            <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-lg border border-blue-100">
-              <div className="p-8 border-b border-blue-100 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-2xl">
-                <h3 className="text-xl font-bold text-white flex items-center">
-                  <FileText className="w-6 h-6 mr-3" />
-                  Apply for Leave
-                </h3>
-                <p className="text-blue-100 mt-1">Submit your leave request with ease</p>
-              </div>
-              <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">Employee Name</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      readOnly
-                      className="w-full p-4 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-medium shadow-inner"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">Employee ID</label>
-                    <input
-                      type="text"
-                      value={form.empid}
-                      readOnly
-                      className="w-full p-4 border-2 border-gray-200 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 text-gray-700 font-medium shadow-inner"
-                    />
-                  </div>
-                </div>
+          /* Leave Request Form */
+          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="p-4 border-b border-gray-200 bg-blue-600 rounded-t-xl">
+              <h3 className="text-lg font-semibold text-white flex items-center">
+                <FileText className="w-5 h-5 mr-2" />
+                Apply for Leave
+              </h3>
+            </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Leave Type <span className="text-red-500 text-lg">*</span>
-                  </label>
-                  {leaveTypes.length > 0 ? (
-                    <select
-                      name="leave_type"
-                      value={form.leave_type}
-                      onChange={handleChange}
-                      className={`w-full p-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm ${
-                        errors.leave_type ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <option value="">Select Leave Type</option>
-                      {leaveTypes.map((type) => {
-                        const displayName = type.type_name.replace(/_/g, ' ');
-                        return (
-                          <option key={type.id} value={displayName}>
-                            {displayName} ({type.paid ? 'Paid' : 'Unpaid'})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  ) : (
-                    <div className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 text-center">
-                      No leave types available. Contact HR to set up leave types.
-                    </div>
-                  )}
-                  {errors.leave_type && <p className="text-red-500 text-sm mt-1">{errors.leave_type}</p>}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      From Date <span className="text-red-500 text-lg">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="from_date"
-                      value={form.from_date}
-                      onChange={handleChange}
-                      min={getTodayDate()}
-                      className={`w-full p-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm ${
-                        errors.from_date ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                    />
-                    {errors.from_date && <p className="text-red-500 text-sm mt-1 font-medium">{errors.from_date}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      To Date <span className="text-red-500 text-lg">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      name="to_date"
-                      value={form.to_date}
-                      onChange={handleChange}
-                      min={form.from_date} 
-                      className={`w-full p-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm ${
-                        errors.to_date ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    Reason for Leave <span className="text-red-500 text-lg">*</span>
-                  </label>
-                  <textarea
-                    name="reason"
-                    value={form.reason}
-                    onChange={handleChange}
-                    placeholder="Please provide a detailed reason for your leave request..."
-                    rows={5}
-                    maxLength={200}
-                    className={`w-full p-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm resize-none ${
-                      errors.reason ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 hover:border-blue-300'
-                    }`}
-                  />
-                  <div className="flex justify-between items-center mt-2">
-                    <div>
-                      {errors.reason && <p className="text-red-500 text-sm font-medium">{errors.reason}</p>}
-                    </div>
-                    <p className={`text-xs font-medium ${
-                      form.reason.length > 180 ? 'text-red-500' : 'text-gray-500'
-                    }`}>{form.reason.length}/200 characters</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">Attachment (Optional)</label>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee Name</label>
                   <input
-                    type="file"
-                    name="attachment"
-                    accept=".pdf"
-                    onChange={handleChange}
-                    className={`w-full p-4 border-2 rounded-xl focus:ring-4 focus:ring-blue-200 focus:border-blue-500 transition-all duration-200 bg-white shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 ${
-                      errors.attachment ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 hover:border-blue-300'
-                    }`}
+                    type="text"
+                    value={form.name}
+                    readOnly
+                    className="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
                   />
-                  <p className="text-xs text-blue-600 mt-2 bg-blue-50 p-2 rounded-lg">
-                    📄 Only PDF files are allowed (Max 10MB)
-                  </p>
-                  {errors.attachment && <p className="text-red-500 text-sm mt-1 font-medium">{errors.attachment}</p>}
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee ID</label>
+                  <input
+                    type="text"
+                    value={form.empid}
+                    readOnly
+                    className="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+                  />
+                </div>
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full py-4 px-6 rounded-xl transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg font-semibold text-lg ${
-                    loading 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl transform hover:-translate-y-0.5'
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Leave Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="leave_type"
+                  value={form.leave_type}
+                  onChange={handleChange}
+                  className={`w-full p-2 border rounded-lg ${
+                    errors.leave_type ? 'border-red-400' : 'border-gray-300'
                   }`}
                 >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Submitting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Send className="w-5 h-5" />
-                      <span>Submit Leave Request</span>
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          ) : (
+                  <option value="">Select Leave Type</option>
+                  {leaveTypes.map((type) => {
+                    const displayName = type.type_name.replace(/_/g, ' ');
+                    return (
+                      <option key={type.id} value={displayName}>
+                        {displayName}
+                      </option>
+                    );
+                  })}
+                </select>
+                {errors.leave_type && <p className="text-red-500 text-sm mt-1">{errors.leave_type}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    From Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="from_date"
+                    value={form.from_date}
+                    onChange={handleChange}
+                    className={`w-full p-2 border rounded-lg ${
+                      errors.from_date ? 'border-red-400' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors.from_date && <p className="text-red-500 text-sm mt-1">{errors.from_date}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    To Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    name="to_date"
+                    value={form.to_date}
+                    onChange={handleChange}
+                    min={form.from_date}
+                    className={`w-full p-2 border rounded-lg ${
+                      errors.to_date ? 'border-red-400' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="reason"
+                  value={form.reason}
+                  onChange={handleChange}
+                  placeholder="Enter reason for leave..."
+                  rows={3}
+                  maxLength={200}
+                  className={`w-full p-2 border rounded-lg resize-none ${
+                    errors.reason ? 'border-red-400' : 'border-gray-300'
+                  }`}
+                />
+                <div className="flex justify-between mt-1">
+                  {errors.reason && <p className="text-red-500 text-sm">{errors.reason}</p>}
+                  <p className="text-xs text-gray-500">{form.reason.length}/200</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Attachment (Optional)</label>
+                <input
+                  type="file"
+                  name="attachment"
+                  accept=".pdf"
+                  onChange={handleChange}
+                  className="w-full p-2 border border-gray-300 rounded-lg"
+                />
+                {errors.attachment && <p className="text-red-500 text-sm mt-1">{errors.attachment}</p>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full py-2 px-4 rounded-lg font-medium cursor-pointer ${
+                  loading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {loading ? 'Submitting...' : 'Submit Leave Request'}
+              </button>
+            </form>
+          </div>
+        ) : (
             /* Leave History Table */
             <div className="bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="p-6 border-b border-gray-100">
