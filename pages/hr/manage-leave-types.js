@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { Settings, Save, ArrowLeft } from 'lucide-react';
+import {toast} from 'react-toastify';  
 
 export default function ManageLeaveTypes() {
   const router = useRouter();
@@ -36,10 +37,10 @@ export default function ManageLeaveTypes() {
           });
         }
       }
-      alert('Leave types configured successfully');
+      toast.success('Leave types configured successfully');
       router.push('/hr/view-leave-requests');
     } catch (error) {
-      alert('Error configuring leave types');
+      toast.error('Error configuring leave types');
     }
   };
 

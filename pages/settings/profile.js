@@ -4,6 +4,7 @@ import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import Image from "next/image";
 import { FileText, CheckCircle } from "lucide-react";
+import {toast} from 'react-toastify';  
 
 function DocumentUploadForm({ user }) {
   const [uploadStatus, setUploadStatus] = useState('idle');
@@ -136,7 +137,7 @@ export default function Profile() {
       const res = await axios.post("/api/auth/settings/upload-profile-pic", formData);
       if (res.status === 200) {
         setUploadStatus({ loading: false, error: null, success: true });
-        alert('Profile picture uploaded successfully!');
+        toast.success('Profile picture uploaded successfully!');
         setTimeout(() => {
           window.location.reload(); // reload to get latest DB image
         }, 1000);

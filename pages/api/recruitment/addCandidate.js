@@ -121,6 +121,9 @@ export default async function handler(req, res) {
           resumePath = `/uploads/${fileName}`;
         }
 
+        // Generate form link
+        const formLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/Recruitment/form/${candidateId}`;
+
         // Create candidate record
         await prisma.candidates.create({
           data: {
@@ -131,7 +134,7 @@ export default async function handler(req, res) {
             interview_date: new Date(interviewDate),
             interview_timing: interviewTime,
             resume: resumePath,
-            form_link: null,
+            form_link: formLink,
             status: "Pending"
           }
         });

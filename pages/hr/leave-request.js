@@ -3,7 +3,7 @@ import axios from 'axios';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus } from 'lucide-react';
-
+import {toast} from 'react-toastify';
 export default function HRLeaveRequest() {
   const [form, setForm] = useState({
     empid: '',
@@ -143,7 +143,7 @@ export default function HRLeaveRequest() {
         withCredentials: true,
       });
 
-      alert('HR leave request submitted successfully! Awaiting admin approval.');
+      toast.success('HR leave request submitted successfully! Awaiting admin approval.');
       setForm(prev => ({
         ...prev,
         leave_type: '',
@@ -159,7 +159,7 @@ export default function HRLeaveRequest() {
       setActiveTab('history');
     } catch (err) {
       console.error(err);
-      alert('Submission failed. Please try again.');
+      toast.error('Submission failed. Please try again.');
     } finally {
       setLoading(false);
     }

@@ -22,6 +22,7 @@ import {
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaFileUpload,
   FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaBriefcase
 } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 export default function RegisterEmployee() {
     const router = useRouter();
@@ -50,6 +51,7 @@ export default function RegisterEmployee() {
     const [emailChecking, setEmailChecking] = useState(false);
     const [emailTimeout, setEmailTimeout] = useState(null);
     const [isFormValid, setIsFormValid] = useState(false);
+    const [employeeData, setEmployeeData] = useState(null);
 
     useEffect(() => {
         setMounted(true);
@@ -319,6 +321,12 @@ const handleRegister = async () => {
     setGeneratedPassword(data.password);
     setGeneratedUsername(data.empid || data.username || formData.email);
     setMessage(data.message);
+    
+    // Store employee data before resetting form
+    setEmployeeData({
+        name: formData.name,
+        email: formData.email
+    });
 
     setTimeout(() => {
         setMessage('');
@@ -365,6 +373,30 @@ const handleRegister = async () => {
             setTimeout(() => setUsernameCopied(false), 2000);
         } catch (err) {
             console.error('Failed to copy username:', err);
+        }
+    };
+
+    const handleSendCredentials = async () => {
+        try {
+            const res = await fetch('/api/auth/sendCredentials', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: employeeData?.email,
+                    username: generatedUsername,
+                    password: generatedPassword,
+                    name: employeeData?.name
+                })
+            });
+            
+            if (res.ok) {
+                toast.success('Credentials sent successfully!');
+            } else {
+                toast.error('Failed to send credentials. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error sending credentials:', error);
+            toast.error('Failed to send credentials. Please try again.');
         }
     };
 
@@ -702,9 +734,17 @@ const handleRegister = async () => {
                                 {/* Login Credentials Display */}
                                 {generatedPassword && (
                                     <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <CheckCircle className="w-5 h-5 text-green-600 cursor-pointer" />
+                                        <div className="flex justify-between items-center gap-2 mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle className="w-5 h-5 text-green-600 cursor-pointer" />
                                             <h3 className="font-semibold text-green-800">Employee Registered Successfully!</h3>
+                                            </div>
+                                            <button 
+                                                onClick={handleSendCredentials}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+                                            >
+                                                Send Credentials
+                                            </button>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>

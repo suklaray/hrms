@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   const { candidateId } = req.body;
 
   try {
-    const candidate = await prisma.candidate.findUnique({
+    const candidate = await prisma.candidates.findUnique({
       where: { candidate_id: candidateId },
     });
 
@@ -35,17 +35,10 @@ export default async function handler(req, res) {
 
     await transporter.sendMail(mailOptions);
 
-    await prisma.candidate.update({
-      where: { candidate_id: candidateId },
-      data: { form_status: "Form Mail Sent" },
-    });
-
     res.status(200).json({ message: "Form submission email sent successfully." });
 
   } catch (error) {
     console.error("Error sending form mail:", error);
     res.status(500).json({ error: "Internal Server Error" });
-  } finally {
-    await prisma.$disconnect();
   }
 }
