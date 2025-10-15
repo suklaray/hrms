@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
-import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown, FaChevronLeft, FaChevronRight, FaDownload } from "react-icons/fa";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
 
@@ -59,7 +59,7 @@ export default function EmployeeListPage({ user }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -164,6 +164,61 @@ export default function EmployeeListPage({ user }) {
     return canViewRole(role.label);
   });
 
+//-----------------logic for CSV download-----------------
+  const handleDownloadCSV = () => {
+    let filteredData = [];
+
+    if (user.role === "hr") {
+      filteredData = employees.filter(emp => emp.role?.toLowerCase() === "employee");
+    } else if (user.role === "admin") {
+      filteredData = employees.filter(emp => 
+        ["employee", "hr"].includes(emp.role?.toLowerCase())
+      );
+    } else if (user.role === "superadmin") {
+      filteredData = employees.filter(emp =>
+        ["employee", "hr", "admin"].includes(emp.role?.toLowerCase())
+      );
+    }
+
+    if (filteredData.length === 0) {
+      alert("No data available to download for your role.");
+      return;
+    }
+    
+    // Convert to CSV manually
+    const headers = [
+      "Employee ID", "Name", "Email", "Contact", "Role", 
+      "Position", "Date of Joining", "Experience"
+    ];
+    
+    const rows = filteredData.map(emp => [
+      emp.empid || "",
+      emp.name || "",
+      emp.email || "",
+      emp.contact || emp.phone || "",
+      emp.role || "",
+      emp.position || "",
+      emp.date_of_joining 
+        ? new Date(emp.date_of_joining).toLocaleDateString("en-GB") 
+        : "",
+      emp.experience || ""
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(e => e.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `employees_${user.role}_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
   return (
     <>
       <Head>
@@ -178,19 +233,32 @@ export default function EmployeeListPage({ user }) {
           <p className="text-gray-600">Manage and view all employees in your organization</p>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+          {/* Search Bar */}
+          <div className="relative flex-1 max-w-md">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search employees by name, email, ID, or position..."
+              placeholder="Search employees..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
+
+          {/* Download Button */}
+          <button
+            onClick={handleDownloadCSV}
+            className="flex items-center justify-center gap-2 px-4 py-3 
+                      bg-green-100 hover:bg-green-200 text-green-800 
+                      font-medium rounded-lg transition-colors text-sm sm:text-base"
+          >
+            <FaDownload className="w-4 h-4 flex-shrink-0" />
+            <span>Download CSV</span>
+          </button>
         </div>
+
+
 
         {/* Filter Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">

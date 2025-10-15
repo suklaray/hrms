@@ -12,7 +12,7 @@ export default function PayrollView() {
   const [dateFilter, setDateFilter] = useState({ month: '', year: '' });
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchPayrolls = async () => {

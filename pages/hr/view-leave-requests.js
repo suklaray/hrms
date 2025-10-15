@@ -4,6 +4,7 @@ import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from 'next/router';
 import { Eye, Calendar, User, Clock, CheckCircle, XCircle, AlertCircle, Plus, Edit, Trash2, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import {toast} from 'react-toastify';  
 
 export default function ViewLeaveRequests() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function ViewLeaveRequests() {
   const [leaveTypeForm, setLeaveTypeForm] = useState({ type_name: '', max_days: '', paid: true });
   const [editingLeaveType, setEditingLeaveType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
 
   useEffect(() => {
@@ -128,13 +129,13 @@ export default function ViewLeaveRequests() {
         setShowLeaveTypeModal(false);
         setLeaveTypeForm({ type_name: '', max_days: '', paid: true });
         setEditingLeaveType(null);
-        alert(editingLeaveType ? 'Leave type updated successfully' : 'Leave type added successfully');
+        toast.success(editingLeaveType ? 'Leave type updated successfully' : 'Leave type added successfully');
       } else {
-        alert(data.message || 'Error saving leave type');
+        toast.error(data.message || 'Error saving leave type');
       }
     } catch (error) {
-      console.error('Error saving leave type:', error);
-      alert('Error saving leave type');
+      //console.error('Error saving leave type:', error);
+      toast.error('Error saving leave type');
     }
   };
 

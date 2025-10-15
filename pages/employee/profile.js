@@ -59,7 +59,7 @@ export default function Profile() {
 
     // File validation
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 2 * 1024 * 1024; // 2MB
 
     if (!allowedTypes.includes(file.type)) {
       setUploadMessage({ 
@@ -74,7 +74,7 @@ export default function Profile() {
     if (file.size > maxSize) {
       setUploadMessage({ 
         type: 'error', 
-        text: 'File size must be less than 5MB', 
+        text: 'File size must be less than 2MB', 
         show: true 
       });
       setTimeout(() => setUploadMessage({ type: '', text: '', show: false }), 5000);
@@ -113,6 +113,13 @@ export default function Profile() {
     }
   };
 
+  const loaderProp = ({ src }) => {
+      if (src.startsWith('http://') || src.startsWith('https://')) return src;
+      
+      if (!src.startsWith('/')) return `/${src}`;
+      
+      return src;
+  }
 
 
   const validatePassword = (password) => {
@@ -208,13 +215,12 @@ export default function Profile() {
                             width={128}
                             height={128}
                             className="w-full h-full object-cover"
+                            loader={loaderProp}
                             priority
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
+                            onError={() => setPreview(null)}
                           />
                         ) : null}
+
                         <div className={`w-full h-full flex items-center justify-center ${preview || user?.profile_photo ? 'hidden' : ''}`}>
                           <User className="w-12 h-12 text-white" />
                         </div>
@@ -238,7 +244,7 @@ export default function Profile() {
                     {/* Upload Guidelines */}
                     <div className="mb-3 text-xs text-gray-500 text-center">
                       <p>Accepted formats: JPEG, PNG, GIF</p>
-                      <p>Maximum size: 5MB</p>
+                      <p>Maximum size: 2MB</p>
                     </div>
 
                     {/* Success/Error Message */}

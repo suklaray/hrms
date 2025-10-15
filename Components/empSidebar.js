@@ -13,6 +13,7 @@ export default function Sidebar({ user }) {
     { name: "Attendance Record", path: "/employee/attendance", icon: Calendar },
     { name: "Leave Requests", path: "/employee/leave-request", icon: FileText },
     { name: "Payslips & Docs", path: "/employee/emp-payslip", icon: CreditCard },
+    { name: "Manage Tasks", path: "/task-management/user-task", icon: CreditCard },
   ];
 
   const handleLogout = async () => {

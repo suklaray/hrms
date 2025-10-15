@@ -7,7 +7,7 @@ import axios from "axios";
 import { Copy, RefreshCw, Eye, EyeOff, User, FileText, Mail } from "lucide-react";
 import Image from "next/image";
 import toast from "react-hot-toast";
-
+import {toast} from 'react-toastify';
 export default function ViewEmployee() {
   const router = useRouter();
   const { id } = router.query;
@@ -130,7 +130,7 @@ useEffect(() => {
             role: newRole,
           },
         }));
-              alert("Employee role updated successfully.");
+        toast.success("Employee role updated successfully.");
       }
     } catch (err) {
       console.error("Failed to update role:", err);
@@ -156,7 +156,7 @@ useEffect(() => {
           employee_type: newType,
         },
       }));
-      alert("Employment type updated successfully.");
+      toast.success("Employment type updated successfully.");
     }
   } catch (err) {
     console.error("Failed to update employee type:", err);
@@ -165,7 +165,7 @@ useEffect(() => {
 
   const handlePositionUpdate = async () => {
     if (!position.trim()) {
-      alert("Please enter a valid position");
+      toast.error("Please enter a valid position");
       return;
     }
 
@@ -188,11 +188,11 @@ useEffect(() => {
             position: position,
           },
         }));
-        alert("Position updated successfully.");
+        toast.success("Position updated successfully.");
       }
     } catch (err) {
       console.error("Failed to update position:", err);
-      alert("Failed to update position. Please try again.");
+      toast.error("Failed to update position. Please try again.");
     }
   };
 
@@ -208,11 +208,11 @@ useEffect(() => {
       if (res.status === 200) {
         setNewPassword(res.data.newPassword);
         setShowPassword(false);
-        alert('Password reset successfully!');
+        toast.success('Password reset successfully!');
       }
     } catch (err) {
       console.error('Failed to reset password:', err);
-      alert('Failed to reset password. Please try again.');
+      toast.error('Failed to reset password. Please try again.');
     } finally {
       setIsResetting(false);
     }
@@ -542,7 +542,7 @@ useEffect(() => {
                               <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(newPassword);
-                                  alert('Password copied to clipboard!');
+                                  toast.success('Password copied to clipboard!');
                                 }}
                                 className="flex items-center gap-1 px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium"
                               >

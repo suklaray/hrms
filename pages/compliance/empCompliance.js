@@ -15,7 +15,7 @@ export default function ComplianceDashboard() {
   const [interns, setInterns] = useState([]);
   const [activeTab, setActiveTab] = useState('employees');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(6);
+  const [itemsPerPage] = useState(10);
   const [candidateCurrentPage, setCandidateCurrentPage] = useState(1);
   const [internCurrentPage, setInternCurrentPage] = useState(1);
 

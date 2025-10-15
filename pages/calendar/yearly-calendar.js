@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
-import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaGift, FaPlane, FaStar } from 'react-icons/fa';
+import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaGift, FaPlane, FaStar, FaDownload } from 'react-icons/fa';
+
 import Link from 'next/link';
 
 export default function YearlyCalendar() {
@@ -49,40 +50,111 @@ export default function YearlyCalendar() {
   };
 
   const formatDateLocal = (date) => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
 
-const getEventsForDate = (year, month, day) => {
-  const dateStr = formatDateLocal(new Date(year, month - 1, day));
-  return Array.isArray(events[month]) ? events[month].filter((e) => e.date === dateStr) : [];
-};
+  const getEventsForDate = (year, month, day) => {
+    const dateStr = formatDateLocal(new Date(year, month - 1, day));
+    return Array.isArray(events[month]) ? events[month].filter((e) => e.date === dateStr) : [];
+  };
 
-  const getEventIcon = (type) => {
+    const getEventIcon = (type) => {
+      switch (type) {
+        case 'birthday': return <FaGift className="w-3 h-3" />;
+        case 'leave': return <FaPlane className="w-3 h-3" />;
+        case 'holiday': return <FaStar className="w-3 h-3" />;
+        case 'event': return <FaCalendarAlt className="w-3 h-3" />;
+        default: return null;
+      }
+    };
+
+    const getUniqueEventTypes = (dayEvents) => {
+      const types = new Set();
+      dayEvents.forEach(event => types.add(event.type));
+      return Array.from(types);
+    };
+
+    const getDotColor = (type) => {
     switch (type) {
-      case 'birthday': return <FaGift className="w-3 h-3" />;
-      case 'leave': return <FaPlane className="w-3 h-3" />;
-      case 'holiday': return <FaStar className="w-3 h-3" />;
-      case 'event': return <FaCalendarAlt className="w-3 h-3" />;
-      default: return null;
+      case 'birthday': return 'bg-indigo-400';
+      case 'leave': return 'bg-orange-500';
+      case 'holiday': return 'bg-purple-500';
+      case 'event': return 'bg-green-500';
+      case 'dayoff': return 'bg-gray-300';
+      default: return 'bg-gray-500';
     }
   };
-
-  const getUniqueEventTypes = (dayEvents) => {
-    const types = new Set();
-    dayEvents.forEach(event => types.add(event.type));
-    return Array.from(types);
+// Function for csv/excel file download
+  const downloadCSV = () => {
+    const csvData = [];
+    csvData.push(['Date', 'Type', 'Title', 'Description']);
+    
+    let hasData = false;
+    Object.keys(events).forEach(month => {
+      if (events[month].length > 0) {
+        hasData = true;
+        events[month].forEach(event => {
+          csvData.push([
+            event.date,
+            event.type,
+            event.title || '',
+            event.description || event.reason || ''
+          ]);
+        });
+      }
+    });
+    
+    if (!hasData) {
+      alert(`No events found for ${currentYear}`);
+      return;
+    }
+    
+    const csvContent = csvData.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `calendar-events-${currentYear}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
-  const getDotColor = (type) => {
-  switch (type) {
-    case 'birthday': return 'bg-indigo-400';
-    case 'leave': return 'bg-orange-500';
-    case 'holiday': return 'bg-purple-500';
-    case 'event': return 'bg-green-500';
-    case 'dayoff': return 'bg-gray-300';
-    default: return 'bg-gray-500';
-  }
-};
+  const downloadHolidays = () => {
+    const holidayData = [];
+    holidayData.push(['Date', 'Holiday Name', 'Type']);
+    
+    let hasHolidays = false;
+    Object.keys(events).forEach(month => {
+      const holidays = events[month].filter(event => event.type === 'holiday');
+      if (holidays.length > 0) {
+        hasHolidays = true;
+        holidays.forEach(event => {
+          holidayData.push([
+            event.date,
+            event.title,
+            'Holiday'
+          ]);
+        });
+      }
+    });
+
+    if (!hasHolidays) {
+      alert(`No holidays found for ${currentYear}`);
+      return;
+    }
+    
+    const csvContent = holidayData.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `holidays-${currentYear}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+
+//----------------Download functions end----------------
 
   const renderMonth = (monthIndex) => {
     const month = monthIndex + 1;
@@ -293,12 +365,27 @@ const getEventsForDate = (year, month, day) => {
                     <span className="text-gray-600">Day Off</span>
                   </div>
                 </div>
-                <Link
-                  href="/calendar/add-events"
-                  className="px-4 py-2 bg-indigo-100 hover:bg-indigo-300 text-indigo-800 text-sm font-medium rounded-lg transition-colors"
-                >
-                  + Add Events
-                </Link>
+                <div className="flex items-center space-x-1">
+                  <Link
+                    href="/calendar/add-events"
+                    className="px-2 sm:px-4 py-2 bg-indigo-100 hover:bg-indigo-300 text-indigo-800 text-xs sm:text-sm font-medium rounded-lg transition-colors">
+                    <span className="hidden sm:inline">+ Add Events</span>
+                    <span className="sm:hidden">+</span>
+                  </Link>
+                  <button 
+                    onClick={downloadHolidays}
+                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs sm:text-sm font-medium rounded-lg transition-colors">
+                    <FaDownload className="w-3 h-3" />
+                    <span className="hidden sm:inline">Holidays</span>
+                  </button>
+                  <button 
+                    onClick={downloadCSV}
+                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 text-xs sm:text-sm font-medium rounded-lg transition-colors">
+                    <FaDownload className="w-3 h-3" />
+                    <span className="hidden sm:inline">All Events</span>
+                  </button>
+                </div>
+
               </div>
             </div>
 

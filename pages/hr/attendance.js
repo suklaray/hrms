@@ -52,7 +52,7 @@ export default function AttendanceList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("all");
   const router = useRouter();
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetch("/api/hr/attendance")

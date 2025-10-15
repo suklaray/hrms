@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Head from 'next/head';
 import axios from "axios";
 import { User, FileText, MapPin, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function EmployeeDocumentForm() {
   const router = useRouter();
@@ -428,7 +429,7 @@ export default function EmployeeDocumentForm() {
 
     if (Object.keys(formErrors).length > 0 || Object.keys(actualErrors).length > 0) {
       console.log('Validation errors found:', { formErrors, actualErrors });
-      alert('Please fix all validation errors before submitting.');
+      toast.error('Please fix all validation errors before submitting.');
       setErrors(prev => ({ ...prev, ...formErrors }));
       return;
     }
@@ -460,11 +461,11 @@ export default function EmployeeDocumentForm() {
 
     try {
       const response = await axios.post("/api/employee/submit-documents", data);
-      alert('Documents submitted successfully! You can close this window.');
+      toast.success('Documents submitted successfully! You can close this window.');
       window.close();
     } catch (error) {
       console.error("Error submitting documents:", error);
-      alert(error.response?.data?.error || "Failed to submit documents");
+      toast.error(error.response?.data?.error || "Failed to submit documents");
     } finally {
       setIsSubmitting(false);
     }
