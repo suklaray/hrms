@@ -69,12 +69,16 @@ model candidates {
   resume                String?
   form_link             String?
   created_at            DateTime?          @default(now())
-  form_token            String?
+  form_token            String?            @unique
   interview_mail_status String?            @default("Not Sent")
   form_status           String?            @default("Mail Not Sent")
   status                candidates_status? @default(Pending)
   verification          Boolean?           @default(false)
   form_submitted        Boolean            @default(false)
+  ip_address            String?  
+  device_info           String?   
+  token_first_used_at   DateTime?
+  token_expiry          DateTime?
   interview_timing      String?
 }
 
