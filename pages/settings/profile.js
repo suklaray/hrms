@@ -193,7 +193,7 @@ export default function Profile() {
     
     try {
       const res = await axios.post("/api/auth/change-password", { newPassword });
-      alert(res.data.message);
+      toast.success(res.data.message);
       setShowPasswordModal(false);
       setNewPassword("");
       setConfirmPassword("");

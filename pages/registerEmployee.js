@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
+//import { toast } from "react-toastify";
 
 import {
   User,
@@ -287,7 +288,7 @@ export default function RegisterEmployee() {
 
 const handleRegister = async () => {
     if (!validateForm()) {
-        alert('Please fix all validation errors before submitting.');
+        toast.error('Please fix all validation errors before submitting.');
         return;
     }
     

@@ -21,7 +21,8 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
-import toast from "react-hot-toast";
+//import toast from "react-hot-toast";
+import { toast } from "react-toastify";
 
 export default function Candidates(user) {
   const [candidates, setCandidates] = useState([]);
@@ -195,7 +196,7 @@ export default function Candidates(user) {
 
   const downloadCSV = () => {
     if (!candidates || candidates.length === 0) {
-      alert("No candidate data available to download.");
+      toast.info("No candidate data available to download.");
       return;
     }
 
@@ -306,10 +307,10 @@ export default function Candidates(user) {
         setSelectedCandidates([]);
         setSelectAll(false);
         fetchCandidates();
-        alert(`Successfully deleted ${selectedCandidates.length} candidate(s)`);
+        toast.success(`Successfully deleted ${selectedCandidates.length} candidate(s)`);
       } catch (error) {
         console.error("Error deleting candidates:", error);
-        alert("Error deleting candidates. Please try again.");
+        toast.error("Error deleting candidates. Please try again.");
       }
     }
   };

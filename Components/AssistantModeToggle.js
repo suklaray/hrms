@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Switch } from '@headlessui/react';
+import { toast } from "react-toastify";
 
 export default function AssistantModeToggle() {
   const [currentMode, setCurrentMode] = useState('RULE_BASED');
@@ -41,14 +42,14 @@ export default function AssistantModeToggle() {
         setCurrentMode(data.currentMode);
         
         // Show success notification
-        alert(`Assistant mode switched to ${data.currentMode}`);
+        toast.success(`Assistant mode switched to ${data.currentMode}`);
       } else {
         const error = await response.json();
-        alert(`Failed to switch mode: ${error.error}`);
+        toast.error(`Failed to switch mode: ${error.error}`);
       }
     } catch (error) {
       console.error('Mode switch error:', error);
-      alert('Failed to switch mode');
+      toast.error('Failed to switch mode');
     } finally {
       setLoading(false);
     }
@@ -68,12 +69,12 @@ export default function AssistantModeToggle() {
       const result = await response.json();
       
       if (result.success) {
-        alert(`✅ ${result.message}`);
+        toast.success(`${result.message}`);
       } else {
-        alert(`❌ ${result.message}`);
+        toast.error(`${result.message}`);
       }
     } catch (error) {
-      alert('❌ Connection test failed');
+      toast.error('Connection test failed');
     } finally {
       setLoading(false);
     }

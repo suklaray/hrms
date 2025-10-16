@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Sidebar from "@/Components/empSidebar";
 import { User, Mail, Camera, Lock, Save, X, Eye, EyeOff, FileText, CheckCircle } from "lucide-react";
 import Image from "next/image";
+import { toast } from "react-toastify";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -162,7 +163,7 @@ export default function Profile() {
     
     try {
       const res = await axios.post("/api/auth/change-password", { newPassword }, { withCredentials: true });
-      alert(res.data.message);
+      toast.success(res.data.message);
       setShowPasswordModal(false);
       setNewPassword("");
       setConfirmPassword("");

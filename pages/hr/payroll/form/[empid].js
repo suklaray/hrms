@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import SideBar from "@/Components/SideBar";
 import { User, Mail, Phone, Calendar, DollarSign, Plus, Minus, Calculator, CheckCircle, ArrowLeft, Eye, XCircle } from 'lucide-react';
+import { toast } from "react-toastify";
 
 export default function PayrollForm() {
   const router = useRouter();
@@ -308,7 +309,7 @@ export default function PayrollForm() {
         setMessage('Error generating payroll: ' + (error.error || 'Unknown error'));
       }
     } catch (error) {
-      alert('Error generating payroll');
+      toast.error('Error generating payroll');
     } finally {
       setSubmitting(false);
     }

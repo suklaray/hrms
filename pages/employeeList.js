@@ -5,7 +5,7 @@ import { useRouter } from "next/router";
 import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown, FaChevronLeft, FaChevronRight, FaDownload } from "react-icons/fa";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
-
+import {toast} from "react-toastify"; 
 export async function getServerSideProps(context) {
   const { req } = context;
   const token = req?.cookies?.token || "";
@@ -100,14 +100,14 @@ export default function EmployeeListPage({ user }) {
       });
       if (res.ok) {
         setEmployees(employees.filter((emp) => emp.id !== id));
-        alert("Employee has been made inactive successfully.");
+        toast.success("Employee has been made inactive successfully.");
       } else {
         console.error("Delete failed");
-        alert("Failed to make employee inactive. Please try again.");
+        toast.error("Failed to make employee inactive. Please try again.");
       }
     } catch (error) {
       console.error("Error making employee inactive:", error);
-      alert("Error occurred. Please try again.");
+      toast.error("Error occurred. Please try again.");
     }
   };
 
@@ -181,7 +181,7 @@ export default function EmployeeListPage({ user }) {
     }
 
     if (filteredData.length === 0) {
-      alert("No data available to download for your role.");
+      toast.error("No data available to download for your role.");
       return;
     }
     

@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import Head from 'next/head';
 import { Mail, Phone, MapPin, Send, MessageCircle } from "lucide-react";
-
+import {toast} from "react-toastify";
 export default function ContactPage() {
   const formRef = useRef(null);
   const [formData, setFormData] = useState({
@@ -39,7 +39,7 @@ export default function ContactPage() {
         if (data.errors) {
           setFormErrors(data.errors);
         } else {
-          alert(data.error || "Unknown error occurred.");
+          toast.error(data.error || "Unknown error occurred.");
         }
         setLoading(false);
         return;
@@ -50,7 +50,7 @@ export default function ContactPage() {
       formRef.current?.reset();
       setTimeout(() => setSubmitted(false), 4000);
     } catch (err) {
-      alert("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     }
 
     setLoading(false);

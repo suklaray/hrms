@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from "react-toastify";
 
 export default function SimpleAssistantToggle() {
   const [mode, setMode] = useState('RULE_BASED');
@@ -31,12 +32,12 @@ export default function SimpleAssistantToggle() {
 
       if (response.ok) {
         setMode(newMode);
-        alert(`✅ Assistant switched to ${newMode} mode`);
+        toast.success(`Assistant switched to ${newMode} mode`);
       } else {
-        alert('❌ Failed to switch mode');
+        toast.error('Failed to switch mode');
       }
     } catch (error) {
-      alert('❌ Error switching mode');
+      toast.error('Error switching mode');
     } finally {
       setLoading(false);
     }

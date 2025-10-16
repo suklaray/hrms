@@ -2,6 +2,8 @@ import Image from "next/image";
 import { User, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Calendar } from "lucide-react";
+import {toast} from "react-toastify";
+
 export default function ProfileSection({ user }) {
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
@@ -64,7 +66,7 @@ export default function ProfileSection({ user }) {
       const data = await res.json();
       if (!res.ok) {
         console.error(`API Error: ${res.status} - ${data.error || 'Unknown error'}`);
-        alert(data.error || `Failed to ${endpoint}. Please try again.`);
+        toast.error(data.error || `Failed to ${endpoint}. Please try again.`);
         return;
       }
       
@@ -84,7 +86,7 @@ export default function ProfileSection({ user }) {
       
     } catch (err) {
       console.error("Work toggle error:", err);
-      alert("Network error. Please check your connection and try again.");
+      toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }

@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Sidebar from "/Components/empSidebar";
 import Image from "next/image";
 import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp } from "lucide-react";
-
+import { toast } from "react-toastify";
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
@@ -115,15 +115,15 @@ export default function EmployeeDashboard() {
             setElapsedTime('00:00:00');
           }
         }
-        alert(
+        toast.success(
           data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : "")
         );
       } else {
-        alert(data.error || "An error occurred.");
+          toast.error(data.error || "An error occurred.");
       }
     } catch (err) {
       console.error("Work toggle error:", err);
-      alert("Failed to update work status.");
+      toast.error("Failed to update work status.");
     }
   };
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import axios from "axios";
+import {toast} from "react-toastify";
 
 export default function CandidateForm() {
   const router = useRouter();
@@ -550,13 +551,13 @@ const handleDocumentUpload = async (e, type) => {
     e.preventDefault();
     
     if (!validateForm()) {
-      alert('Please fix all validation errors before submitting.');
+      toast.error('Please fix all validation errors before submitting.');
       return;
     }
 
     // Show confirmation dialog
     const confirmed = window.confirm(
-      "⚠️ FINAL SUBMISSION CONFIRMATION ⚠️\n\n" +
+      " FINAL SUBMISSION CONFIRMATION \n\n" +
       "Are you absolutely sure you want to submit this application?\n\n" +
       "IMPORTANT NOTICE:\n" +
       "• Once submitted, NO changes can be made to any information\n" +
@@ -584,7 +585,7 @@ const handleDocumentUpload = async (e, type) => {
 
     try {
       const response = await axios.post("/api/recruitment/submitForm", data);
-      alert('Form submitted successfully.');
+      toast.success('Form submitted successfully.');
       router.push('/Recruitment/form/docs_submitted');
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -594,8 +595,8 @@ const handleDocumentUpload = async (e, type) => {
         router.push(error.response.data.redirectTo || '/form-already-submitted');
         return;
       }
-      
-      alert(error.response?.data?.error || "Failed to submit form");
+
+      toast.error(error.response?.data?.error || "Failed to submit form");
     } finally {
       setIsSubmitting(false);
     }

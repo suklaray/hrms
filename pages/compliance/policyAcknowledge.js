@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import SideBar from "@/Components/SideBar";
+import { toast } from "react-toastify";
 
 export default function HRPolicyManagement() {
   const [policies, setPolicies] = useState([
@@ -45,7 +46,7 @@ export default function HRPolicyManagement() {
     };
     setPolicies((prevPolicies) => [...prevPolicies, newPolicyObj]);
     setNewPolicy({ title: '', description: '', file: null, issuedDate: '' });
-    alert('Policy uploaded successfully!');
+    toast.success('Policy uploaded successfully!');
   };
 
   // Handle Employee Acknowledgement
@@ -67,7 +68,7 @@ export default function HRPolicyManagement() {
       ...prev,
       [employeeId]: { ...prev[employeeId], [policyId]: true },
     }));
-    alert(`Employee ${employeeId} acknowledged policy ${policyId} successfully.`);
+    toast.success(`Employee ${employeeId} acknowledged policy ${policyId} successfully.`);
   };
 
   // Handle Modal Toggle

@@ -7,7 +7,7 @@ import {
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaFileUpload,
   FaCheckCircle, FaTimesCircle, FaExclamationTriangle
 } from "react-icons/fa";
-
+import { toast } from "react-toastify";
 export default function AddCandidate() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -167,7 +167,7 @@ export default function AddCandidate() {
     try {
       await axios.post("/api/recruitment/addCandidate", data);
 
-      alert("Candidate added successfully!");
+      toast.success("Candidate added successfully!");
       router.push("/Recruitment/recruitment");
     } catch (error) {
       if (error.response && error.response.data.error === "Email already exists") {

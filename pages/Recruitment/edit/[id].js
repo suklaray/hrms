@@ -5,6 +5,7 @@ import axios from "axios";
 import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
 import { FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaSave, FaTimes, FaFileAlt } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 export default function EditCandidate() {
   const router = useRouter();
@@ -137,11 +138,11 @@ export default function EditCandidate() {
       await axios.put('/api/recruitment/updateCandidate', submitData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      alert('Candidate updated successfully!');
+      toast.success('Candidate updated successfully!');
       router.push(`/Recruitment/${id}`);
     } catch (error) {
       console.error('Error updating candidate:', error);
-      alert('Failed to update candidate. Please try again.');
+      toast.error('Failed to update candidate. Please try again.');
     } finally {
       setSaving(false);
     }

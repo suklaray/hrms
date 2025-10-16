@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { FaCalendarAlt, FaChevronLeft, FaChevronRight, FaGift, FaPlane, FaStar, FaDownload } from 'react-icons/fa';
-
+import { toast } from "react-toastify";
 import Link from 'next/link';
 
 export default function YearlyCalendar() {
@@ -105,7 +105,7 @@ export default function YearlyCalendar() {
     });
     
     if (!hasData) {
-      alert(`No events found for ${currentYear}`);
+      toast.info(`No events found for ${currentYear}`);
       return;
     }
     
@@ -139,7 +139,7 @@ export default function YearlyCalendar() {
     });
 
     if (!hasHolidays) {
-      alert(`No holidays found for ${currentYear}`);
+      toast.info(`No holidays found for ${currentYear}`);
       return;
     }
     
