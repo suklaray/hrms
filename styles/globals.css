@@ -89,3 +89,44 @@
 
 
  */
+
+ .swal-responsive {
+  width: min(400px, 90vw) !important;
+  max-width: 90vw !important;
+  margin: 1rem !important;
+}
+
+@media (max-width: 768px) {
+  .swal-responsive {
+    width: 95vw !important;
+    margin: 0.5rem !important;
+    padding: 1rem !important;
+  }
+}
+.swal-title-custom {
+  font-family: 'Arial', sans-serif;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.swal-content-custom {
+  font-family: 'Arial', sans-serif;
+  font-size: 14px;
+  color: #555;
+}
+
+.swal-confirm-btn {
+  background-color: #4f46e5 !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  padding: 6px 12px !important;
+}
+
+.swal-cancel-btn {
+  background-color: #f3f4f6 !important;
+  color: #111 !important;
+  font-size: 14px !important;
+  padding: 6px 12px !important;
+}
+

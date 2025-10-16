@@ -3,26 +3,12 @@ import axios from "axios";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import Link from "next/link";
-import { 
-  Eye, 
-  Trash2, 
-  Plus, 
-  Calendar, 
-  Mail, 
-  Phone, 
-  User, 
-  CheckCircle, 
-  XCircle, 
-  Clock, 
-  Search,
-  Filter,
-  Download,
-  UserPlus,
-  ChevronLeft,
+import { Eye, Trash2, Plus, Calendar, Mail, Phone, User, CheckCircle, XCircle, Clock, Search,Filter,Download,UserPlus,ChevronLeft,
   ChevronRight
 } from "lucide-react";
 //import toast from "react-hot-toast";
 import { toast } from "react-toastify";
+import { swalConfirm} from '@/utils/confirmDialog';
 
 export default function Candidates(user) {
   const [candidates, setCandidates] = useState([]);
@@ -118,16 +104,22 @@ export default function Candidates(user) {
     }
   };
 
-  const handleDelete = async (candidateId) => {
-    if (mounted && window.confirm("Are you sure you want to delete this candidate?")) {
-      try {
-        await axios.delete(`/api/recruitment/deleteCandidate?candidate_id=${candidateId}`);
-        fetchCandidates();
-      } catch (error) {
-        console.error("Error deleting candidate:", error);
-      }
-    }
-  };
+  
+const handleDelete = async (candidateId) => {
+  if (!mounted) return;
+
+  const confirmed = await swalConfirm("Are you sure you want to delete this candidate?");
+  if (!confirmed) return;
+
+  try {
+    await axios.delete(`/api/recruitment/deleteCandidate?candidate_id=${candidateId}`);
+    fetchCandidates();
+    toast.success("Candidate deleted successfully!");
+  } catch (error) {
+    console.error("Error deleting candidate:", error);
+    toast.error("Error deleting candidate. Please try again.");
+  }
+};
 
   const filteredCandidates = candidates.filter(candidate => {
     const matchesSearch = candidate.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -296,8 +288,9 @@ export default function Candidates(user) {
     const confirmMessage = selectedCandidates.length === 1 
       ? "Are you sure you want to delete this candidate?" 
       : `Are you sure you want to delete ${selectedCandidates.length} selected candidates?`;
-    
-    if (mounted && window.confirm(confirmMessage)) {
+
+
+    if (mounted && await swalConfirm(confirmMessage)) {
       try {
         await Promise.all(
           selectedCandidates.map(candidateId => 

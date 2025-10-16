@@ -4,6 +4,7 @@ import Head from 'next/head';
 import axios from "axios";
 import { User, FileText, MapPin, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "react-toastify";
+import { swalConfirm} from '@/utils/confirmDialog';
 
 export default function EmployeeDocumentForm() {
   const router = useRouter();
@@ -434,7 +435,7 @@ export default function EmployeeDocumentForm() {
       return;
     }
 
-    const confirmed = window.confirm(
+    const confirmed = await swalConfirm(
       "⚠️ FINAL SUBMISSION CONFIRMATION ⚠️\n\n" +
       "Are you absolutely sure you want to submit this application?\n\n" +
       "IMPORTANT NOTICE:\n" +

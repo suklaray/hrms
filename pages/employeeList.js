@@ -5,7 +5,9 @@ import { useRouter } from "next/router";
 import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown, FaChevronLeft, FaChevronRight, FaDownload } from "react-icons/fa";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
-import {toast} from "react-toastify"; 
+import {toast} from "react-toastify";
+import { swalConfirm} from '@/utils/confirmDialog';
+
 export async function getServerSideProps(context) {
   const { req } = context;
   const token = req?.cookies?.token || "";
@@ -91,7 +93,7 @@ export default function EmployeeListPage({ user }) {
   };
 
   const handleDelete = async (id) => {
-    const confirm = window.confirm("Do you want to remove this employee and make the user inactive? You won't be able to access this employee in other pages.");
+    const confirm = await swalConfirm("Do you want to remove this employee and make the user inactive? You won't be able to access this employee.");
     if (!confirm) return;
 
     try {

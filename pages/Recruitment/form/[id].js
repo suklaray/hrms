@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Head from 'next/head';
 import axios from "axios";
 import {toast} from "react-toastify";
+import { swalConfirm} from '@/utils/confirmDialog';
 
 export default function CandidateForm() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function CandidateForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
-
+  
   useEffect(() => {
     if (id) {
       // Check form submission status first
@@ -556,7 +557,7 @@ const handleDocumentUpload = async (e, type) => {
     }
 
     // Show confirmation dialog
-    const confirmed = window.confirm(
+    const confirmed = await swalConfirm(
       " FINAL SUBMISSION CONFIRMATION \n\n" +
       "Are you absolutely sure you want to submit this application?\n\n" +
       "IMPORTANT NOTICE:\n" +
