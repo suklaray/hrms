@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import axios from "axios";
-import { Copy, RefreshCw, Eye, EyeOff, User, FileText } from "lucide-react";
+import { Copy, RefreshCw, Eye, EyeOff, User, FileText, Mail } from "lucide-react";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import {toast} from 'react-toastify';
 export default function ViewEmployee() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function ViewEmployee() {
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [position, setPosition] = useState("");
 
 useEffect(() => {
@@ -213,6 +215,30 @@ useEffect(() => {
       toast.error('Failed to reset password. Please try again.');
     } finally {
       setIsResetting(false);
+    }
+  };
+
+  const handleSendCredentials = async () => {
+    if (!newPassword || !empid) {
+      alert('No password available to send. Please reset password first.');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const res = await axios.post('/api/employee/sendCredentials', {
+        empid: empid,
+        password: newPassword
+      });
+
+      if (res.status === 200) {
+        toast.success('Credentials sent successfully to employee email!');
+      }
+    } catch (err) {
+      console.error('Failed to send credentials:', err);
+      toast.error('Failed to send credentials. Please try again.');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -522,6 +548,14 @@ useEffect(() => {
                               >
                                 <Copy size={14} />
                                 Copy
+                              </button>
+                              <button
+                                onClick={handleSendCredentials}
+                                disabled={isSending}
+                                className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded text-sm font-medium transition-colors"
+                              >
+                                <Mail size={14} />
+                                {isSending ? 'Sending...' : 'Send Credentials'}
                               </button>
                             </div>
                           </div>
