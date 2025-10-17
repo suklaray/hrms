@@ -2,7 +2,7 @@ import { formidable } from "formidable";
 import fs from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
-
+import crypto from "crypto";
 export const config = {
   api: {
     bodyParser: false,
@@ -15,29 +15,37 @@ export default async function handler(req, res) {
   }
 
   try {
-    const form = formidable({ 
-      multiples: false, 
+    const form = formidable({
+      multiples: false,
       keepExtensions: true,
-      maxFileSize: 10 * 1024 * 1024 // 10MB limit
+      maxFileSize: 10 * 1024 * 1024, // 10MB limit
     });
 
     form.parse(req, async (err, fields, files) => {
       if (err) {
         console.error("Form parsing error:", err);
-        return res.status(400).json({ error: "Form parsing error: " + err.message });
+        return res
+          .status(400)
+          .json({ error: "Form parsing error: " + err.message });
       }
 
       try {
         // Extract field values (formidable returns arrays)
-        const getValue = (field) => Array.isArray(field) ? field[0] : field;
-        
+        const getValue = (field) => (Array.isArray(field) ? field[0] : field);
+
         const name = getValue(fields.name);
         const email = getValue(fields.email);
         const interviewDate = getValue(fields.interviewDate);
         const interviewTime = getValue(fields.interviewTime);
         const contact_number = getValue(fields.contact_number);
 
-        if (!name || !email || !interviewDate || !interviewTime || !contact_number) {
+        if (
+          !name ||
+          !email ||
+          !interviewDate ||
+          !interviewTime ||
+          !contact_number
+        ) {
           return res.status(400).json({ error: "Missing required fields" });
         }
 
@@ -49,12 +57,14 @@ export default async function handler(req, res) {
 
         // Validate contact number (10 digits)
         if (!/^\d{10}$/.test(contact_number)) {
-          return res.status(400).json({ error: "Contact number must be exactly 10 digits" });
+          return res
+            .status(400)
+            .json({ error: "Contact number must be exactly 10 digits" });
         }
 
         // Check if email already exists
         const existingEmail = await prisma.candidates.findFirst({
-          where: { email: email }
+          where: { email: email },
         });
 
         if (existingEmail) {
@@ -71,8 +81,8 @@ export default async function handler(req, res) {
         // Find the highest candidate ID across all dates to maintain continuous sequence
         const lastCandidate = await prisma.candidates.findFirst({
           orderBy: {
-            candidate_id: 'desc'
-          }
+            candidate_id: "desc",
+          },
         });
 
         let nextSerial = 1;
@@ -87,11 +97,13 @@ export default async function handler(req, res) {
 
         // Double-check for uniqueness
         const existingId = await prisma.candidates.findFirst({
-          where: { candidate_id: candidateId }
+          where: { candidate_id: candidateId },
         });
-        
+
         if (existingId) {
-          return res.status(500).json({ error: "ID generation conflict. Please try again." });
+          return res
+            .status(500)
+            .json({ error: "ID generation conflict. Please try again." });
         }
 
         // Process CV file
@@ -100,13 +112,19 @@ export default async function handler(req, res) {
         const file = files.cv?.[0] || files.cv;
         if (file) {
           // Validate file type
-          const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+          const allowedTypes = [
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          ];
           if (!allowedTypes.includes(file.mimetype)) {
-            return res.status(400).json({ error: "Only PDF, DOC, and DOCX files are allowed" });
+            return res
+              .status(400)
+              .json({ error: "Only PDF, DOC, and DOCX files are allowed" });
           }
 
           // Create uploads directory if it doesn't exist
-          const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+          const uploadsDir = path.join(process.cwd(), "public", "uploads");
           if (!fs.existsSync(uploadsDir)) {
             fs.mkdirSync(uploadsDir, { recursive: true });
           }
@@ -114,7 +132,7 @@ export default async function handler(req, res) {
           // Generate unique filename
           const fileName = `${Date.now()}-${file.originalFilename}`;
           const finalPath = path.join(uploadsDir, fileName);
-          
+
           // Move file to uploads directory
           fs.copyFileSync(file.filepath, finalPath);
           fs.unlinkSync(file.filepath);
@@ -122,7 +140,15 @@ export default async function handler(req, res) {
         }
 
         // Generate form link
-        const formLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/Recruitment/form/${candidateId}`;
+        // const formLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/Recruitment/form/${candidateId}`;
+
+        // Generate unique, secure token for candidate form access
+        const formToken = crypto.randomBytes(32).toString("hex");
+
+        // Generate token-based form link
+        const formLink = `${
+          process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+        }/Recruitment/form/${formToken}`;
 
         // Create candidate record
         await prisma.candidates.create({
@@ -135,15 +161,16 @@ export default async function handler(req, res) {
             interview_timing: interviewTime,
             resume: resumePath,
             form_link: formLink,
-            status: "Pending"
-          }
+            form_token: formToken, // ✅ new field for secure form access
+            form_submitted: false,
+            status: "Pending",
+          },
         });
 
-        res.status(200).json({ 
-          message: "Candidate added successfully", 
-          candidateId: candidateId 
+        res.status(200).json({
+          message: "Candidate added successfully",
+          candidateId: candidateId,
         });
-
       } catch (err) {
         console.error("DB insert error:", err);
         res.status(500).json({ error: "Database error: " + err.message });
