@@ -9,7 +9,6 @@ import Image from "next/image";
 import {toast} from 'react-toastify';
 
 //import toast from "react-hot-toast";
-import {toast} from 'react-toastify';
 export default function ViewEmployee() {
   const router = useRouter();
   const { id } = router.query;
