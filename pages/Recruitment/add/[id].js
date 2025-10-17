@@ -17,7 +17,8 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import Image from "next/image";
-import toast from "react-hot-toast";
+//import toast from "react-hot-toast";
+import {toast} from 'react-toastify';
 
 const AddEmployee = () => {
   const router = useRouter();

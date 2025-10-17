@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
-import toast from "react-hot-toast";
+//import toast from "react-hot-toast";
+import {toast} from 'react-toastify';
+
 import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye } from "lucide-react";
 
 export default function GeneratePayrollPage() {

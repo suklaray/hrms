@@ -75,11 +75,11 @@ model candidates {
   status                candidates_status? @default(Pending)
   verification          Boolean?           @default(false)
   form_submitted        Boolean            @default(false)
-  ip_address            String?  
-  device_info           String?   
-  token_first_used_at   DateTime?
-  token_expiry          DateTime?
   interview_timing      String?
+  device_info           String?
+  ip_address            String?
+  token_expiry          DateTime?
+  token_first_used_at   DateTime?
 }
 
 model compliance_documents {
@@ -217,9 +217,8 @@ model users {
   leave_balances   leave_balances[]
   leave_requests   leave_requests[]
   payroll          payroll[]
-
-  assignedTasks    tasks[] @relation("TaskAssignee") // tasks assigned to this user
-  createdTasks     tasks[] @relation("TaskCreator")  // tasks created by this user
+  createdTasks     tasks[]                  @relation("TaskCreator")
+  assignedTasks    tasks[]                  @relation("TaskAssignee")
 }
 
 model payroll {
@@ -272,17 +271,11 @@ model calendar_events {
   title       String
   description String?
   event_date  DateTime
-  event_type  String   // 'company', 'meeting', 'training', etc.
-  created_by  String   // empid of creator
+  event_type  String
+  created_by  String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 }
-
-enum EventType {
-  holiday
-  event
-}
-
 
 model contact_submissions {
   id         Int       @id @default(autoincrement())
@@ -293,6 +286,38 @@ model contact_submissions {
   created_at DateTime? @default(now()) @db.Timestamp(6)
 }
 
+model assistant_learning {
+  id               Int      @id @default(autoincrement())
+  question         String
+  response         String
+  user_id          String?  @db.VarChar(255)
+  intent_category  String?  @db.VarChar(100)
+  intent_labels    String?
+  confidence_score Decimal? @db.Decimal(3, 2)
+  frequency        Int      @default(1)
+  created_at       DateTime @default(now())
+  last_asked       DateTime @default(now())
+}
+
+model tasks {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  assigned_to String
+  assigned_by String
+  deadline    DateTime
+  priority    String   @default("Medium")
+  status      String   @default("Pending")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  creator     users    @relation("TaskCreator", fields: [assigned_by], references: [empid])
+  assignee    users    @relation("TaskAssignee", fields: [assigned_to], references: [empid])
+}
+
+enum EventType {
+  holiday
+  event
+}
 
 enum compliance_status_overall_status {
   Compliant
@@ -338,35 +363,3 @@ enum employees_employee_type {
   Intern
   Contractor
 }
-model assistant_learning {
-  id               Int      @id @default(autoincrement())
-  question         String   @db.Text
-  response         String   @db.Text
-  user_id          String?  @db.VarChar(255)
-  intent_category  String?  @db.VarChar(100)
-  intent_labels    String?  @db.Text
-  confidence_score Decimal? @db.Decimal(3,2)
-  frequency        Int      @default(1)
-  created_at       DateTime @default(now())
-  last_asked       DateTime @default(now())
-
-  // @@unique([question(length: 255)])
-  // @@map("assistant_learning")
-}
-
-model tasks {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String?
-  assigned_to String   // empid of assignee
-  assigned_by String   // empid of creator
-  deadline    DateTime
-  priority    String   @default("Medium") // Low, Medium, High
-  status      String   @default("Pending") // Pending, In Progress, Completed
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  
-  assignee    users    @relation("TaskAssignee", fields: [assigned_to], references: [empid])
-  creator     users    @relation("TaskCreator", fields: [assigned_by], references: [empid])
-}
-

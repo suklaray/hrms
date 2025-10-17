@@ -18,6 +18,9 @@ export default function App({ Component, pageProps }) {
     "/Recruitment/form",
     "/Recruitment/docs_submitted",
     "/form-already-submitted",
+    "/unauthorized-form-access",
+    "/form-link-expired",
+    "/form-locked-device"
   ];
 
   // Check if current path matches any no-layout path

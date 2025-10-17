@@ -79,18 +79,20 @@ export default function Candidates(user) {
   };
 
   const handleFormMail = async (candidateId) => {
-    try {
-      await axios.put("/api/recruitment/sendFormMail", {
-        candidateId,
-        status: "Form Mail Sent",
-      });
-      toast.success
-      fetchCandidates();
-    } catch (error) {
-      console.error("Error sending form mail:", error);
-      toast.error("Error sending form mail. Please try again.");
-    }
-  };
+  try {
+    const res = await axios.put("/api/recruitment/sendFormMail", {
+      candidateId,
+      status: "Form Mail Sent",
+    });
+    // console.log("Response:", res.data);
+    toast.success(res.data?.message || "Mail sent successfully");
+    fetchCandidates();
+  } catch (error) {
+    console.error("Error sending form mail:", error.response?.data || error);
+    toast.error("Error sending form mail. Please try again.");
+  }
+};
+
 
   const handleDateChange = async (candidateId, newDate) => {
     try {

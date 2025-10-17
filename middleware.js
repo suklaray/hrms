@@ -3,7 +3,13 @@ import { NextResponse } from "next/server";
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
-  const publicPaths = ["/Recruitment/form/", "/form-already-submitted"];
+  const publicPaths = [
+    "/Recruitment/form/",
+    "/form-already-submitted",
+    "/form-locked-device",
+    "/form-link-expired",
+    "/unauthorized-form-access",
+  ];
 
   if (publicPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();

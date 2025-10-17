@@ -6,6 +6,8 @@ import SideBar from "@/Components/SideBar";
 import axios from "axios";
 import { Copy, RefreshCw, Eye, EyeOff, User, FileText, Mail } from "lucide-react";
 import Image from "next/image";
+import {toast} from 'react-toastify';
+
 //import toast from "react-hot-toast";
 import {toast} from 'react-toastify';
 export default function ViewEmployee() {
@@ -220,7 +222,7 @@ useEffect(() => {
 
   const handleSendCredentials = async () => {
     if (!newPassword || !empid) {
-      alert('No password available to send. Please reset password first.');
+      toast.error('No password available to send. Please reset password first.');
       return;
     }
 

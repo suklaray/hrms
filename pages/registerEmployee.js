@@ -23,7 +23,8 @@ import {
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaFileUpload,
   FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaBriefcase
 } from "react-icons/fa";
-import toast from "react-hot-toast";
+//import toast from "react-hot-toast";
+import {toast} from 'react-toastify';
 
 export default function RegisterEmployee() {
     const router = useRouter();

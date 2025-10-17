@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
-import toast from "react-hot-toast";
+//import toast from "react-hot-toast";
 import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import {toast} from 'react-toastify';
 
 export default function GeneratePayrollPage() {
   const [employees, setEmployees] = useState([]);
