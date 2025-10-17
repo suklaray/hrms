@@ -6,7 +6,7 @@ import SideBar from "@/Components/SideBar";
 import axios from "axios";
 import { Copy, RefreshCw, Eye, EyeOff, User, FileText, Mail } from "lucide-react";
 import Image from "next/image";
-import toast from "react-hot-toast";
+//import toast from "react-hot-toast";
 import {toast} from 'react-toastify';
 export default function ViewEmployee() {
   const router = useRouter();

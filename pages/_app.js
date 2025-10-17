@@ -5,7 +5,7 @@ import Header from "@/Components/Header";
 import EmployeeHelperBot from "@/Components/EmployeeHelperBot";
 import { useRouter } from "next/router";
 import { ToastContainer } from 'react-toastify';
-import { confirmAlert } from 'react-confirm-alert';
+//import { confirmAlert } from 'react-confirm-alert';
 
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-confirm-alert/src/react-confirm-alert.css';

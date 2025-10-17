@@ -12,8 +12,22 @@ export default async function handler(req, res) {
       },
     });
 
-    // Always return array (even empty)
-    return res.status(200).json(candidates);
+    // Check if each candidate is already an employee
+    const candidatesWithEmployeeStatus = await Promise.all(
+      candidates.map(async (candidate) => {
+        const existingEmployee = await prisma.users.findUnique({
+          where: { email: candidate.email },
+          select: { empid: true }
+        });
+        
+        return {
+          ...candidate,
+          isEmployee: !!existingEmployee
+        };
+      })
+    );
+
+    return res.status(200).json(candidatesWithEmployeeStatus);
 
   } catch (error) {
     console.error("Error fetching candidates:", error);

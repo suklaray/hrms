@@ -326,7 +326,7 @@ const AddEmployee = () => {
         <div className="flex-1 p-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
           <button
             onClick={() => router.push("/Recruitment/recruitment")}
-            className="mb-6 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+            className="mb-6 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
           >
             ← Back to Recruitment
           </button>

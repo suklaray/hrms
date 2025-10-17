@@ -137,7 +137,7 @@ const getDotColor = (type) => {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => navigateMonth(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               disabled={loading}
             >
               <FaChevronLeft className="w-4 h-4 text-gray-600" />
@@ -147,7 +147,7 @@ const getDotColor = (type) => {
             </span>
             <button
               onClick={() => navigateMonth(1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               disabled={loading}
             >
               <FaChevronRight className="w-4 h-4 text-gray-600" />
@@ -261,25 +261,23 @@ const getDotColor = (type) => {
           </div>
         )}
 
-{/* Legend */}
-<div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
-    {legendItems.map((item) => (
-      <div key={item.type} className="flex items-center space-x-2">
-        <div className={`w-3 h-3 rounded-full ${getDotColor(item.type)}`}></div>
-        <span className="text-gray-600">{item.label}</span>
-      </div>
-    ))}
-  </div>
-  {/* Link Button */}
-  <Link
-    href="/calendar/yearly-calendar"
-    className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
-  >
-    View Calendar
-  </Link>
-</div>
-
+        <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-wrap gap-2 sm:gap-4 text-xs">
+            {legendItems.map((item) => (
+              <div key={item.type} className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${getDotColor(item.type)}`}></div>
+                <span className="text-gray-600">{item.label}</span>
+              </div>
+            ))}
+          </div>
+          {/* Link Button */}
+          <Link
+            href="/calendar/yearly-calendar"
+            className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
+          >
+            View Calendar
+          </Link>
+        </div>
       </div>
     </div>
   );

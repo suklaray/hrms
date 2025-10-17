@@ -41,7 +41,7 @@ export default function Sidebar({ user }) {
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
           >
             {isCollapsed ? <Menu size={20} /> : <X size={20} />}
           </button>

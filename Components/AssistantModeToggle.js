@@ -148,7 +148,7 @@ export default function AssistantModeToggle() {
             <button
               onClick={testConnection}
               disabled={loading}
-              className="w-full mt-3 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 disabled:opacity-50 transition-colors"
+              className="w-full mt-3 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 disabled:opacity-50 transition-colors cursor-pointer"
             >
               {loading ? 'Testing...' : 'Test LLM Connection'}
             </button>

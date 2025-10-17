@@ -8,7 +8,9 @@ import { format } from 'date-fns';
 import { 
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, 
   FaCheckCircle, FaTimesCircle, FaFileAlt, FaEye,
-  FaIdCard, FaUserCheck, FaArrowLeft, FaEdit
+  FaIdCard, FaUserCheck, FaArrowLeft, FaEdit,
+  FaVoicemail,
+  FaMailBulk
 } from 'react-icons/fa';
 
 export default function CandidateDetails() {
@@ -114,11 +116,14 @@ export default function CandidateDetails() {
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-1">{candidate.name}</h2>
-                <div className="flex items-center text-indigo-100">
-                  <FaIdCard className="mr-2" />
-                  <span>ID: {candidate.candidate_id}</span>
+                <div className="flex items-center text-white text-xl font-semibold capitalize">
+                  <FaUser className="mr-2" />
+                  <span>{candidate.name}</span>
                 </div>
+                {/* <div className="flex items-center text-indigo-100 text-md font-semibold">
+                  <FaEnvelope className="mr-2" />
+                  <span>Email: {candidate.email}</span>
+                </div> */}
               </div>
               <div className="flex items-center">
                 <div className={`px-4 py-2 rounded-full border-2 font-semibold mr-3 ${getStatusColor(candidate.status)}`}>

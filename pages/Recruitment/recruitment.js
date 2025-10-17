@@ -480,12 +480,14 @@ const handleDelete = async (candidateId) => {
                     {paginatedCandidates.map((candidate) => (
                       <tr key={candidate.candidate_id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedCandidates.includes(candidate.candidate_id)}
-                            onChange={() => handleSelectCandidate(candidate.candidate_id)}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                          />
+                          {!candidate.isEmployee && (
+                            <input
+                              type="checkbox"
+                              checked={selectedCandidates.includes(candidate.candidate_id)}
+                              onChange={() => handleSelectCandidate(candidate.candidate_id)}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center">
@@ -586,18 +588,29 @@ const handleDelete = async (candidateId) => {
                             {candidate.verification ? 'Verified' : 'Verify'}
                           </button>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            <Link href={`/Recruitment/${candidate.candidate_id}`}>
-                              <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer" title="View Details">
-                                <Eye className="w-4 h-4" />
-                              </button>
-                            </Link>
-                            <Link href={`/Recruitment/add/${candidate.candidate_id}`}>
-                              <button className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors cursor-pointer" title="Add as Employee">
-                                <UserPlus className="w-4 h-4" />
-                              </button>
-                            </Link>
+                        {/* action buttons of add as employee is not shown when the candidate is added an employee */}
+                       <td className="px-6 py-4">
+                        <div className={`flex items-center ${
+                            candidate.isEmployee ? 'justify-center' : 'justify-start space-x-2'
+                          }`}
+                        >
+                          {/* View Details */}
+                          <Link href={`/Recruitment/${candidate.candidate_id}`}>
+                            <button
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </Link>
+                            {!candidate.isEmployee && (
+                              <Link href={`/Recruitment/add/${candidate.candidate_id}`}>
+                                <button className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors cursor-pointer" title="Add as Employee">
+                                  <UserPlus className="w-4 h-4" />
+                                </button>
+                              </Link>
+                            )}
+                            {!candidate.isEmployee && (
                             <button
                               onClick={() => handleDelete(candidate.candidate_id)}
                               className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
@@ -605,6 +618,7 @@ const handleDelete = async (candidateId) => {
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
+                            )}
                           </div>
                         </td>
                       </tr>
