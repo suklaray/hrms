@@ -17,7 +17,7 @@ function UnauthorizedFormAccess() {
             You are not authorized to fill this form
           </h1>
           <p className="text-gray-600 mb-6">
-            The form link you are trying to access is either invalid, expired, or you don't have permission to access it.
+            The form link you are trying to access is either invalid, expired, or you don&apos;t have permission to access it.
           </p>
           <div className="space-y-3">
             <p className="text-sm text-gray-500">
