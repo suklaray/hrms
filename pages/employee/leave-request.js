@@ -25,6 +25,7 @@ export default function LeaveRequest() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [leaveBalances, setLeaveBalances] = useState([]);
+  const [dayCount, setDayCount] = useState(0);
 
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));
@@ -50,6 +51,26 @@ export default function LeaveRequest() {
   }, []);
 
 
+
+  const calculateDays = () => {
+    if (form.from_date && form.to_date) {
+      const fromDate = new Date(form.from_date);
+      const toDate = new Date(form.to_date);
+      
+      if (toDate >= fromDate) {
+        if (form.from_date === form.to_date) {
+          setDayCount(1);
+        } else {
+          const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+          setDayCount(days);
+        }
+      } else {
+        setDayCount(0);
+      }
+    } else {
+      setDayCount(0);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -80,6 +101,11 @@ export default function LeaveRequest() {
       setForm(prev => ({ ...prev, [name]: value }));
     } else {
       setForm(prev => ({ ...prev, [name]: value }));
+    }
+    
+    // Recalculate days when dates change
+    if (name === 'from_date' || name === 'to_date') {
+      setTimeout(calculateDays, 100);
     }
   };
 
@@ -337,6 +363,27 @@ export default function LeaveRequest() {
                 </div>
               </div>
 
+              {/* Day Count Display */}
+              {/* {(form.from_date && form.to_date) && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Calendar className="w-5 h-5 text-blue-600 mr-2" />
+                      <span className="text-sm font-medium text-blue-900">Leave Duration:</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-bold text-blue-600">{dayCount}</span>
+                      <span className="text-sm text-blue-700 ml-1">{dayCount === 1 ? 'day' : 'days'}</span>
+                    </div>
+                  </div>
+                  {dayCount > 0 && (
+                    <p className="text-xs text-blue-600 mt-2">
+                      From {new Date(form.from_date).toLocaleDateString()} to {new Date(form.to_date).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              )} */}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Reason <span className="text-red-500">*</span>
@@ -420,16 +467,16 @@ export default function LeaveRequest() {
                     <div className="overflow-x-auto">
                       {leaveStatusList.length > 0 ? (
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gradient-to-r from-blue-600 to-indigo-600">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">From Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">To Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied On</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Leave Type</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">From Date</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">To Date</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Days</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Applied On</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Document</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -480,7 +527,7 @@ export default function LeaveRequest() {
                         };
 
                         return (
-                          <tr key={index} className={`hover:bg-gray-50 transition-colors ${
+                          <tr key={index} className={`hover:bg-blue-50 transition-all duration-200 border-b border-gray-100 ${
                             isPastLeave ? 'bg-gray-50 text-gray-500' : 'bg-white'
                           }`}>
                             <td className="px-6 py-4 whitespace-nowrap">

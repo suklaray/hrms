@@ -214,6 +214,8 @@ model users {
   resetToken       String?
   resetTokenExpiry DateTime?                @db.Timestamp(6)
   employee_type    employees_employee_type? @default(Full_time)
+  candidate_id     String?
+  duration_months  Int?
   leave_balances   leave_balances[]
   leave_requests   leave_requests[]
   payroll          payroll[]

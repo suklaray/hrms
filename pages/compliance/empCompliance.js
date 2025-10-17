@@ -11,13 +11,13 @@ export default function ComplianceDashboard() {
   const [filter, setFilter] = useState("All");
   const [roleFilter, setRoleFilter] = useState("All");
   const [loading, setLoading] = useState(true);
-  const [candidates, setCandidates] = useState([]);
   const [interns, setInterns] = useState([]);
+  const [contractual, setContractual] = useState([]);
   const [activeTab, setActiveTab] = useState('employees');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [candidateCurrentPage, setCandidateCurrentPage] = useState(1);
   const [internCurrentPage, setInternCurrentPage] = useState(1);
+  const [contractualCurrentPage, setContractualCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchCompliance = async () => {
@@ -39,73 +39,14 @@ export default function ComplianceDashboard() {
       }
     };
 
-    const fetchCandidates = async () => {
+    const fetchContractual = async () => {
       try {
-        const res = await fetch("/api/recruitment/getCandidates");
+        const res = await fetch("/api/compliance/compliance");
         const data = await res.json();
-        
-        // Get list of employee emails to exclude candidates who are already employees
-        const empRes = await fetch("/api/compliance/compliance");
-        const employees = await empRes.json();
-        const employeeEmails = employees.map(emp => emp.email);
-        
-        // Filter out candidates who are already employees
-        const candidatesOnly = (data || []).filter(candidate => !employeeEmails.includes(candidate.email));
-        
-        // Fetch employee documents for each candidate using email
-        const candidatesWithCompliance = await Promise.all(candidatesOnly.map(async candidate => {
-          const hasForm = candidate.form_submitted;
-          const isVerified = candidate.verification;
-          const hasResume = candidate.resume;
-          
-          // Fetch employee documents using email
-          let employeeData = null;
-          try {
-            const empRes = await fetch(`/api/compliance/candidate-documents?email=${candidate.email}`);
-            if (empRes.ok) {
-              employeeData = await empRes.json();
-            }
-          } catch (err) {
-            console.error('Error fetching employee documents:', err);
-          }
-          
-          const hasAadhar = employeeData?.aadhar_card || candidate.aadhar_card;
-          const hasPan = employeeData?.pan_card || candidate.pan_card;
-          const hasBankDetails = employeeData?.bank_details || candidate.bank_details;
-          const hasExperience = employeeData?.experience_certificate || candidate.experience_certificate;
-          const hasProfilePhoto = candidate.profile_photo;
-          const hasEducation = employeeData?.education_certificates || candidate.education_certificates;
-          
-          const uploadedDocs = [hasResume, hasAadhar, hasPan, hasBankDetails].filter(Boolean).length;
-          
-          let status = "Non-compliant";
-          if (hasForm && isVerified && uploadedDocs >= 4) {
-            status = "Compliant";
-          } else if (hasForm && (isVerified || uploadedDocs >= 2)) {
-            status = "Partially Compliant";
-          }
-          
-          return {
-            ...candidate,
-            ...employeeData, // Include employee document paths
-            status,
-            documents: [
-              { type: "Resume", status: hasResume ? "Uploaded" : "Missing" },
-              { type: "Profile Photo", status: hasProfilePhoto ? "Uploaded" : "Missing" },
-              { type: "Aadhar Card", status: hasAadhar ? "Uploaded" : "Missing" },
-              { type: "PAN Card", status: hasPan ? "Uploaded" : "Missing" },
-              { type: "Bank Details", status: hasBankDetails ? "Uploaded" : "Missing" },
-              { type: "Education Certificates", status: hasEducation ? "Uploaded" : "Optional - Missing" },
-              { type: "Experience Certificate", status: hasExperience ? "Uploaded" : "Optional - Missing" },
-              { type: "Application Form", status: hasForm ? "Submitted" : "Missing" },
-              { type: "Verification", status: isVerified ? "Verified" : "Pending" }
-            ]
-          };
-        }));
-        
-        setCandidates(candidatesWithCompliance);
+        const contractualData = data.filter(emp => emp.employee_type === 'Contractor');
+        setContractual(contractualData);
       } catch (error) {
-        console.error("Error fetching candidates:", error);
+        console.error("Error fetching contractual employees:", error);
       }
     };
 
@@ -121,8 +62,8 @@ export default function ComplianceDashboard() {
     };
 
     fetchCompliance();
-    fetchCandidates();
     fetchInterns();
+    fetchContractual();
   }, []);
 
   useEffect(() => {
@@ -145,11 +86,11 @@ export default function ComplianceDashboard() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedEmployees = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-  // Candidates pagination
-  const candidateTotalItems = candidates.length;
-  const candidateTotalPages = Math.ceil(candidateTotalItems / itemsPerPage);
-  const candidateStartIndex = (candidateCurrentPage - 1) * itemsPerPage;
-  const paginatedCandidates = candidates.slice(candidateStartIndex, candidateStartIndex + itemsPerPage);
+  // Contractual pagination
+  const contractualTotalItems = contractual.length;
+  const contractualTotalPages = Math.ceil(contractualTotalItems / itemsPerPage);
+  const contractualStartIndex = (contractualCurrentPage - 1) * itemsPerPage;
+  const paginatedContractual = contractual.slice(contractualStartIndex, contractualStartIndex + itemsPerPage);
 
   // Interns pagination
   const internTotalItems = interns.length;
@@ -260,16 +201,6 @@ export default function ComplianceDashboard() {
                 Employees ({employees.length})
               </button>
               <button
-                onClick={() => setActiveTab('candidates')}
-                className={`px-6 py-3 text-sm font-medium transition-colors ${
-                  activeTab === 'candidates'
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Candidates ({candidates.length})
-              </button>
-              <button
                 onClick={() => setActiveTab('interns')}
                 className={`px-6 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'interns'
@@ -278,6 +209,16 @@ export default function ComplianceDashboard() {
                 }`}
               >
                 Interns ({interns.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('contractual')}
+                className={`px-6 py-3 text-sm font-medium transition-colors ${
+                  activeTab === 'contractual'
+                    ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Contractual ({contractual.length})
               </button>
             </div>
           </div>
@@ -388,6 +329,8 @@ export default function ComplianceDashboard() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -407,6 +350,21 @@ export default function ComplianceDashboard() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
                           {emp.role}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          emp.employee_type === 'Intern' ? 'bg-purple-100 text-purple-800' :
+                          emp.employee_type === 'Contractor' ? 'bg-orange-100 text-orange-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {emp.employee_type === 'Full_time' ? 'Full-time' : emp.employee_type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {(emp.employee_type === 'Intern' || emp.employee_type === 'Contractor') && emp.duration_months 
+                          ? `${emp.duration_months} months` 
+                          : '-'
+                        }
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(emp.status)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.lastUpdated}</td>
@@ -464,88 +422,7 @@ export default function ComplianceDashboard() {
             </>
           )}
 
-          {activeTab === 'candidates' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Candidate</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Interview Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedCandidates.map((candidate) => (
-                      <tr key={candidate.candidate_id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{candidate.name}</div>
-                            <div className="text-sm text-gray-500">{candidate.candidate_id} • {candidate.email}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{candidate.email}</div>
-                          <div className="text-sm text-gray-500">{candidate.contact_number}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(candidate.status)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {candidate.interview_date ? new Date(candidate.interview_date).toLocaleDateString() : 'Not scheduled'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => router.push(`/compliance/documents/${candidate.candidate_id}?type=candidate`)}
-                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Documents
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {/* Pagination for Candidates */}
-                {candidateTotalPages > 1 && (
-                  <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-                    <div className="text-sm text-gray-700">
-                      Showing {candidateStartIndex + 1} to {Math.min(candidateStartIndex + itemsPerPage, candidateTotalItems)} of {candidateTotalItems} results
-                    </div>
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => setCandidateCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={candidateCurrentPage === 1}
-                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-                      >
-                        {"<"}
-                      </button>
-                      {Array.from({ length: candidateTotalPages }, (_, i) => i + 1).map(page => (
-                        <button
-                          key={page}
-                          onClick={() => setCandidateCurrentPage(page)}
-                          className={`px-3 py-1 text-sm border rounded ${
-                            candidateCurrentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setCandidateCurrentPage(prev => Math.min(prev + 1, candidateTotalPages))}
-                        disabled={candidateCurrentPage === candidateTotalPages}
-                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-                      >
-                        {">"}
-                      </button>
-                    </div>
-                  </div>
-                )}
 
-              </div>
-            </div>
-          )}
 
           {activeTab === 'interns' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -558,6 +435,7 @@ export default function ComplianceDashboard() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Intern</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
@@ -565,7 +443,7 @@ export default function ComplianceDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {interns.map((intern) => (
+                    {paginatedInterns.map((intern) => (
                       <tr key={intern.empid} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
@@ -573,8 +451,9 @@ export default function ComplianceDashboard() {
                             <div className="text-sm text-gray-500">{intern.empid} • {intern.email}</div>
                           </div>
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{intern.position}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {intern.intern_duration ? `${intern.intern_duration} months` : 'Not specified'}
+                          {intern.duration_months ? `${intern.duration_months} months` : 'Not specified'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(intern.status)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{intern.lastUpdated}</td>
@@ -591,6 +470,126 @@ export default function ComplianceDashboard() {
                     ))}
                   </tbody>
                 </table>
+                {/* Pagination for Interns */}
+                {internTotalPages > 1 && (
+                  <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing {internStartIndex + 1} to {Math.min(internStartIndex + itemsPerPage, internTotalItems)} of {internTotalItems} results
+                    </div>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => setInternCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={internCurrentPage === 1}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        {"<"}
+                      </button>
+                      {Array.from({ length: internTotalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setInternCurrentPage(page)}
+                          className={`px-3 py-1 text-sm border rounded ${
+                            internCurrentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setInternCurrentPage(prev => Math.min(prev + 1, internTotalPages))}
+                        disabled={internCurrentPage === internTotalPages}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        {">"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'contractual' && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Contractual Employee Compliance</h3>
+                <p className="text-gray-600">Monitor document compliance for contractual employees</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedContractual.map((contractor) => (
+                      <tr key={contractor.empid} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{contractor.name}</div>
+                            <div className="text-sm text-gray-500">{contractor.empid} • {contractor.email}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{contractor.position}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {contractor.duration_months ? `${contractor.duration_months} months` : 'Not specified'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(contractor.status)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contractor.lastUpdated}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button
+                            onClick={() => router.push(`/compliance/documents/${contractor.empid}?type=employee`)}
+                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Documents
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {/* Pagination for Contractual */}
+                {contractualTotalPages > 1 && (
+                  <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Showing {contractualStartIndex + 1} to {Math.min(contractualStartIndex + itemsPerPage, contractualTotalItems)} of {contractualTotalItems} results
+                    </div>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => setContractualCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={contractualCurrentPage === 1}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        {"<"}
+                      </button>
+                      {Array.from({ length: contractualTotalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setContractualCurrentPage(page)}
+                          className={`px-3 py-1 text-sm border rounded ${
+                            contractualCurrentPage === page ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setContractualCurrentPage(prev => Math.min(prev + 1, contractualTotalPages))}
+                        disabled={contractualCurrentPage === contractualTotalPages}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        {">"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

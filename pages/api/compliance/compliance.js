@@ -104,6 +104,8 @@ export default async function handler(req, res) {
         email: u.email,
         position: u.position || "—",
         role: u.role,
+        employee_type: u.employee_type,
+        duration_months: u.duration_months,
         status,
         lastUpdated:
           emp?.created_at?.toISOString().split("T")[0] || "—",

@@ -112,8 +112,7 @@ export default async function handler(req, res) {
     const empid = generateEmpid(name); 
     const password = generatePassword();
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    await prisma.users.create({
+    const newEmployee = await prisma.users.create({
       data: {
         empid,
         name,
@@ -127,8 +126,55 @@ export default async function handler(req, res) {
         role,
         verified: "verified",
         employee_type: employee_type || "Full_time",
+        candidate_id: candidate?.candidate_id,
+        duration_months: (employee_type === "Intern" || employee_type === "Contractor") ? intern_duration : null,
       },
     });
+
+    // Get candidate_id from candidates table
+    const candidate = await prisma.candidates.findFirst({
+      where: { email },
+      select: { candidate_id: true }
+    });
+
+    // Get employee data from employees table using candidate_id
+    const employeeData = candidate ? await prisma.employees.findFirst({
+      where: { candidate_id: candidate.candidate_id },
+      select: {
+        empid: true,
+        aadhar_card: true,
+        pan_card: true,
+        education_certificates: true,
+        resume: true,
+        experience_certificate: true,
+        profile_photo: true
+      }
+    }) : null;
+
+    // Create compliance documents if employee data exists
+    if (employeeData) {
+      const documents = [
+        { doc_type: 'aadhar_card', file_path: employeeData.aadhar_card },
+        { doc_type: 'pan_card', file_path: employeeData.pan_card },
+        { doc_type: 'education_certificates', file_path: employeeData.education_certificates },
+        { doc_type: 'resume', file_path: employeeData.resume },
+        { doc_type: 'experience_certificate', file_path: employeeData.experience_certificate },
+        { doc_type: 'profile_photo', file_path: employeeData.profile_photo }
+      ];
+
+      for (const doc of documents) {
+        if (doc.file_path) {
+          await prisma.compliance_documents.create({
+            data: {
+              empid: employeeData.empid,
+              doc_type: doc.doc_type,
+              file_path: doc.file_path,
+              uploaded_at: new Date()
+            }
+          });
+        }
+      }
+    }
 
     res.status(200).json({
       message: "Employee added successfully",
