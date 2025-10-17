@@ -96,7 +96,7 @@ birthdays.forEach(employee => {
     yearEvents[month].push({
       id: `birthday-${employee.empid}`,
       type: "birthday",
-      date: formatDateLocal(birthdayThisYear),   // ✅ FIXED
+      date: formatDateLocal(birthdayThisYear),  
       employee: employee.name,
       title: `${employee.name}'s Birthday`,
       color: "#f59e0b"
@@ -116,9 +116,9 @@ approvedLeaves.forEach(leave => {
       if (!yearEvents[month]) yearEvents[month] = [];
       
       yearEvents[month].push({
-        id: `leave-${leave.empid}-${formatDateLocal(currentDate)}`, // ✅ FIXED
+        id: `leave-${leave.empid}-${formatDateLocal(currentDate)}`,
         type: "leave",
-        date: formatDateLocal(currentDate),  // ✅ FIXED
+        date: formatDateLocal(currentDate),  
         employee: leave.name,
         leave_type: leave.leave_type,
         reason: leave.reason,
