@@ -109,6 +109,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: "Employee already exists" });
     }
 
+    // Get candidate_id from candidates table
+    const candidate = await prisma.candidates.findFirst({
+      where: { email },
+      select: { candidate_id: true }
+    });
+
     const empid = generateEmpid(name); 
     const password = generatePassword();
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -129,12 +135,6 @@ export default async function handler(req, res) {
         candidate_id: candidate?.candidate_id,
         duration_months: (employee_type === "Intern" || employee_type === "Contractor") ? intern_duration : null,
       },
-    });
-
-    // Get candidate_id from candidates table
-    const candidate = await prisma.candidates.findFirst({
-      where: { email },
-      select: { candidate_id: true }
     });
 
     // Get employee data from employees table using candidate_id

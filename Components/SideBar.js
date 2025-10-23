@@ -76,7 +76,7 @@ export default function Sidebar() {
 
   const role = user?.role?.toLowerCase() || "hr";
   // console.log("User Role:", role);
-  
+
   const toggleAttendanceMenu = () => setAttendanceOpen(!attendanceOpen);
   const togglePayrollMenu = () => setPayrollOpen(!payrollOpen);
   const toggleComplianceMenu = () => setComplianceOpen(!complianceOpen);
@@ -414,6 +414,29 @@ export default function Sidebar() {
                 </li>
 
                 {/* Bot Settings - Only for Super Admin */}
+
+                <li>
+                  <Link href="/settings/bot-settings">
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      Bot Settings
+                    </span>
+                  </Link>
+                </li>
+                {/* Add Position - position can be added like QA,Full Stack Developer */}
+                <li>
+                  <Link href="/settings/position-management">
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      Add Position
+                    </span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/leave-request/leave-request">
+                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                      Leave Requests
+                    </span>
+                  </Link>
+                </li>
                 
                   <li>
                     <Link href="/settings/bot-settings">
@@ -442,7 +465,7 @@ export default function Sidebar() {
                 <li>
                   <Link href="/task-management/user-task">
                     <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                    Manage Tasks
+                      Manage Tasks
                     </span>
                   </Link>
                 </li>

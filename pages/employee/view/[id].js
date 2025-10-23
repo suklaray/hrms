@@ -34,6 +34,7 @@ export default function ViewEmployee() {
   const [isOpen1, setIsOpen1] = useState(false);
   const [isOpen2, setIsOpen2] = useState(false);
   const [isOpen3, setIsOpen3] = useState(false);
+  const [positions, setPositions] = useState([]);
   useEffect(() => {
     const fetchEverything = async () => {
       try {
@@ -57,6 +58,10 @@ export default function ViewEmployee() {
         }
 
         //  Fetch employee details only if ID is present
+        // Fetch positions
+        const posRes = await axios.get('/api/settings/positions');
+        setPositions(posRes.data);
+
         if (id) {
           const empRes = await axios.get(`/api/auth/employee/view/${id}`);
           setData(empRes.data);
@@ -430,13 +435,18 @@ export default function ViewEmployee() {
                       </p>
                       {["admin", "superadmin"].includes(role) && (
                         <div className="mt-2 flex gap-2">
-                          <input
-                            type="text"
+                          <select
                             value={position}
                             onChange={(e) => setPosition(e.target.value)}
-                            placeholder="Enter new position"
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
+                          >
+                            <option value="">Select Position</option>
+                            {positions.map((pos) => (
+                              <option key={pos.id} value={pos.position_name}>
+                                {pos.position_name}
+                              </option>
+                            ))}
+                          </select>
                           <button
                             onClick={handlePositionUpdate}
                             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
