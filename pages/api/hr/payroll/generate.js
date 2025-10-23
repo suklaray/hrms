@@ -80,17 +80,17 @@ export default async function handler(req, res) {
     });
 
     // Update user status to 'Payroll Generated'
-    try {
-      await prisma.users.update({
-        where: { empid },
-        data: {
-          status: 'Payroll Generated',
-        },
-      });
-      console.log(`Updated status for employee ${empid} to 'Payroll Generated'`);
-    } catch (updateError) {
-      console.error('Error updating user status:', updateError);
-    }
+    // try {
+    //   await prisma.users.update({
+    //     where: { empid },
+    //     data: {
+    //       status: 'Payroll Generated',
+    //     },
+    //   });
+    //   console.log(`Updated status for employee ${empid} to 'Payroll Generated'`);
+    // } catch (updateError) {
+    //   console.error('Error updating user status:', updateError);
+    // }
 
     return res.status(200).json({ 
       message: "Payroll generated successfully",
