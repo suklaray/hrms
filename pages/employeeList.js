@@ -166,8 +166,8 @@ export default function EmployeeListPage({ user }) {
     return canViewRole(role.label);
   });
 
-//-----------------logic for CSV download-----------------
-  const handleDownloadCSV = () => {
+//-----------------logic for Excel download-----------------
+  const handleDownloadExcel = () => {
     let filteredData = [];
 
     if (user.role === "hr") {
@@ -187,37 +187,27 @@ export default function EmployeeListPage({ user }) {
       return;
     }
     
-    // Convert to CSV manually
-    const headers = [
-      "Employee ID", "Name", "Email", "Contact", "Role", 
-      "Position", "Date of Joining", "Experience"
-    ];
-    
-    const rows = filteredData.map(emp => [
-      emp.empid || "",
-      emp.name || "",
-      emp.email || "",
-      emp.contact || emp.phone || "",
-      emp.role || "",
-      emp.position || "",
-      emp.date_of_joining 
+    // Map data for Excel
+    const excelData = filteredData.map(emp => ({
+      "Employee ID": emp.empid || "",
+      "Name": emp.name || "",
+      "Email": emp.email || "",
+      "Contact": emp.contact || emp.phone || "",
+      "Role": emp.role || "",
+      "Position": emp.position || "",
+      "Date of Joining": emp.date_of_joining 
         ? new Date(emp.date_of_joining).toLocaleDateString("en-GB") 
         : "",
-      emp.experience || ""
-    ]);
+      "Experience": emp.experience || ""
+    }));
 
-    const csvContent = [headers, ...rows]
-      .map(e => e.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `employees_${user.role}_${new Date().toISOString().split("T")[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Create Excel file
+    import('xlsx').then(XLSX => {
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Employees");
+      XLSX.writeFile(wb, `employees_${user.role}_${new Date().toISOString().split("T")[0]}.xlsx`);
+    });
   };
 
 
@@ -250,7 +240,7 @@ export default function EmployeeListPage({ user }) {
 
           {/* Download Button */}
           <button
-            onClick={handleDownloadCSV}
+            onClick={handleDownloadExcel}
             className="flex items-center justify-center gap-2 px-4 py-3 
                       bg-green-100 hover:bg-green-200 text-green-800 
                       font-medium rounded-lg transition-colors text-sm sm:text-base"

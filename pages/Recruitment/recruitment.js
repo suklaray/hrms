@@ -188,50 +188,32 @@ const handleDelete = async (candidateId) => {
     </div>
   );
 
-  const downloadCSV = () => {
+  const downloadExcel = () => {
     if (!candidates || candidates.length === 0) {
       toast.info("No candidate data available to download.");
       return;
     }
 
-    // Define headers
-    const headers = [
-      "Candidate ID",
-      "Name",
-      "Email",
-      "Contact",
-      "Interview Date",
-      "Interview Time",
-      "Status",
-      "Form Submission",
-      "Verification Status"
-    ];
+    // Map data for Excel
+    const excelData = candidates.map(c => ({
+      "Candidate ID": c.candidate_id || "",
+      "Name": c.name || "",
+      "Email": c.email || "",
+      "Contact": c.contact_number || "",
+      "Interview Date": c.interview_date ? c.interview_date.split("T")[0] : "",
+      "Interview Time": c.interview_timing || "",
+      "Status": c.status || "Waiting",
+      "Form Submission": c.form_submitted ? "Submitted" : "Not Submitted",
+      "Verification Status": c.verification ? "Verified" : "Not Verified"
+    }));
 
-    // Map data
-    const csvData = candidates.map(c => [
-      c.candidate_id || "",
-      c.name || "",
-      c.email || "",
-      c.contact_number || "",
-      c.interview_date ? c.interview_date.split("T")[0] : "",
-      c.interview_timing || "",
-      c.status || "Waiting",
-      c.form_submitted ? "Submitted" : "Not Submitted",
-      c.verification ? "Verified" : "Not Verified"
-    ]);
-
-    // Combine headers + rows
-    const csvContent = [
-      headers.join(","), 
-      ...csvData.map(row => row.map(val => `"${val}"`).join(","))
-    ].join("\n");
-
-    // Trigger file download
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "candidates_data.csv";
-    link.click();
+    // Create Excel file
+    import('xlsx').then(XLSX => {
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Candidates");
+      XLSX.writeFile(wb, "candidates_data.xlsx");
+    });
   };
 
   const handleEmp = async (candidateId, newDate) => {
@@ -335,7 +317,7 @@ const handleDelete = async (candidateId) => {
                 </button>
               </Link>
               <button 
-                  onClick={downloadCSV}
+                  onClick={downloadExcel}
                   className="flex items-center justify-center gap-2 px-3 py-2 bg-green-100 hover:bg-green-200  text-green-800 font-medium rounded-lg transition-colors text-sm sm:text-base" >
                   <Download className="w-4 h-4 flex-shrink-0" />
                   <span className="hidden sm:inline">Candidate List</span>
