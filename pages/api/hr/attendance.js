@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import cookie from "cookie";
 
 const formatDuration = (seconds) => {
-  const hrs = Math.floor(seconds / 3600).toString().padStart(3, '0');
+  const hrs = Math.floor(seconds / 3600).toString().padStart(2, '0');
   const mins = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
   const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
   return `${hrs}:${mins}:${secs}`;
@@ -33,11 +33,11 @@ export default async function handler(req, res) {
     // Define role-based filtering
     let roleFilter = [];
     if (currentUser.role === 'hr') {
-      roleFilter = ['employee'];
+      roleFilter = ['employee','hr'];
     } else if (currentUser.role === 'admin') {
-      roleFilter = ['hr', 'employee'];
+      roleFilter = ['hr', 'employee','admin'];
     } else if (currentUser.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
+      roleFilter = ['admin', 'hr', 'employee', 'superadmin'];
     }
 
     const results = await prisma.$queryRawUnsafe(`
