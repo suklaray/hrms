@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
@@ -50,8 +50,10 @@ export async function getServerSideProps(context) {
 export default function LeaveRequest({ user }) {
   const [activeTab, setActiveTab] = useState("apply");
   const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [dayCount, setDayCount] = useState(0);
   const [formData, setFormData] = useState({
     from_date: "",
     to_date: "",
@@ -60,13 +62,18 @@ export default function LeaveRequest({ user }) {
     attachment: ""
   });
 
-  const leaveTypes = ["Sick Leave", "Casual Leave", "Annual Leave", "Emergency Leave", "Maternity Leave", "Paternity Leave"];
+
 
   useEffect(() => {
+    fetchLeaveTypes();
     if (activeTab === "history") {
       fetchLeaveRequests();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    calculateDays();
+  }, [calculateDays]);
 
   const fetchLeaveRequests = async () => {
     setLoading(true);
@@ -123,6 +130,36 @@ export default function LeaveRequest({ user }) {
     }
   };
 
+  const fetchLeaveTypes = async () => {
+    try {
+      const response = await fetch("/api/leave/types", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLeaveTypes(data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch leave types:", error);
+    }
+  };
+
+  const calculateDays = useCallback(() => {
+    if (formData.from_date && formData.to_date) {
+      const fromDate = new Date(formData.from_date);
+      const toDate = new Date(formData.to_date);
+      
+      if (toDate >= fromDate) {
+        const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+        setDayCount(days);
+      } else {
+        setDayCount(0);
+      }
+    } else {
+      setDayCount(0);
+    }
+  }, [formData.from_date, formData.to_date]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -166,8 +203,46 @@ export default function LeaveRequest({ user }) {
           </div>
 
           <div className="p-6">
+            {/* Leave Types Table */}
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-8">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Leave Types</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {leaveTypes.map((type, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          {type.type_name?.replace(/_/g, ' ')}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {type.max_days || 0}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {type.max_days || 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {leaveTypes.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No leave types found</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Tabs */}
-            <div className="bg-white rounded-lg shadow mb-6">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6">
               <div className="border-b border-gray-200">
                 <nav className="flex space-x-8 px-6">
                   <button
@@ -228,10 +303,12 @@ export default function LeaveRequest({ user }) {
                           value={formData.leave_type}
                           onChange={handleChange}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                         >
                           {leaveTypes.map((type) => (
-                            <option key={type} value={type}>{type}</option>
+                            <option key={type.id} value={type.type_name.replace(/_/g, ' ')}>
+                              {type.type_name.replace(/_/g, ' ')}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -246,7 +323,7 @@ export default function LeaveRequest({ user }) {
                           value={formData.from_date}
                           onChange={handleChange}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                         />
                       </div>
 
@@ -260,7 +337,8 @@ export default function LeaveRequest({ user }) {
                           value={formData.to_date}
                           onChange={handleChange}
                           required
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          min={formData.from_date}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                         />
                       </div>
 
@@ -274,10 +352,31 @@ export default function LeaveRequest({ user }) {
                           value={formData.attachment}
                           onChange={handleChange}
                           placeholder="Attachment URL or description"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                         />
                       </div>
                     </div>
+
+                    {/* Date Count Display */}
+                    {(formData.from_date && formData.to_date) && (
+                      <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <Calendar className="w-5 h-5 text-indigo-600 mr-2" />
+                            <span className="text-sm font-medium text-indigo-900">Leave Duration:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-2xl font-bold text-indigo-600">{dayCount}</span>
+                            <span className="text-sm text-indigo-700 ml-1">{dayCount === 1 ? 'day' : 'days'}</span>
+                          </div>
+                        </div>
+                        {dayCount > 0 && (
+                          <p className="text-xs text-indigo-600 mt-2">
+                            From {new Date(formData.from_date).toLocaleDateString()} to {new Date(formData.to_date).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -297,7 +396,7 @@ export default function LeaveRequest({ user }) {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full md:w-auto px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+                      className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                     >
                       {loading ? "Submitting..." : "Submit Leave Request"}
                     </button>

@@ -214,6 +214,8 @@ model users {
   resetToken       String?
   resetTokenExpiry DateTime?                @db.Timestamp(6)
   employee_type    employees_employee_type? @default(Full_time)
+  candidate_id     String?
+  duration_months  Int?
   leave_balances   leave_balances[]
   leave_requests   leave_requests[]
   payroll          payroll[]
@@ -235,6 +237,7 @@ model payroll {
   net_pay           Decimal?
   generated_on      DateTime? @default(now())
   payslip_pdf       String?
+  payslip_status    payslip_status?    @default(pending)
   pf                Decimal?  @default(0.00)
   ptax              Decimal?  @default(0.00)
   esic              Decimal?  @default(0.00)
@@ -243,6 +246,10 @@ model payroll {
   users             users?    @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([empid])
+}
+enum payslip_status {
+  pending
+  generated
 }
 
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.

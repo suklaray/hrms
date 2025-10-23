@@ -15,6 +15,7 @@ import {
 
 export default function CandidateDetails() {
   const [candidate, setCandidate] = useState(null);
+  const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,6 +27,17 @@ export default function CandidateDetails() {
       try {
         const res = await axios.get(`/api/recruitment/getCandidateById?id=${candidate_id}`);
         setCandidate(res.data);
+        
+        // If form is submitted, fetch employee details
+        if (res.data.form_submitted) {
+          try {
+            const empRes = await axios.get(`/api/recruitment/getEmployeeById?id=${candidate_id}`);
+            setEmployee(empRes.data);
+          } catch (empError) {
+            console.error("Error fetching employee details:", empError);
+          }
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error("Error fetching candidate details:", error);
@@ -213,7 +225,7 @@ export default function CandidateDetails() {
             </div>
 
             {/* Documents */}
-            <div>
+            <div className="mb-8">
               <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                 <FaFileAlt className="mr-2 text-indigo-500" />
                 Documents
@@ -243,6 +255,121 @@ export default function CandidateDetails() {
                 </div>
               </div>
             </div>
+
+            {/* Employee Details Section - Only show if form is submitted */}
+            {candidate.form_submitted && employee && (
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <FaUserCheck className="mr-2 text-green-500" />
+                  Employee Details
+                </h3>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                      <FaIdCard className="text-green-500 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Employee ID</p>
+                        <p className="font-semibold text-gray-900">{employee.empid}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                      <FaUser className="text-green-500 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Full Name</p>
+                        <p className="font-semibold text-gray-900">{employee.name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                      <FaEnvelope className="text-green-500 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Email</p>
+                        <p className="font-semibold text-gray-900">{employee.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                      <FaPhone className="text-green-500 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Contact</p>
+                        <p className="font-semibold text-gray-900">{employee.contact_no || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                      <FaCalendarAlt className="text-green-500 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Date of Birth</p>
+                        <p className="font-semibold text-gray-900">
+                          {employee.dob ? format(new Date(employee.dob), "dd MMM yyyy") : "Not provided"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                      <FaUser className="text-green-500 mr-3" />
+                      <div>
+                        <p className="text-sm text-gray-600">Gender</p>
+                        <p className="font-semibold text-gray-900">{employee.gender || 'Not specified'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Additional Employee Info */}
+                  <div className="mt-6 pt-6 border-t border-green-200">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                        <FaFileAlt className="text-green-500 mr-3" />
+                        <div>
+                          <p className="text-sm text-gray-600">Highest Qualification</p>
+                          <p className="font-semibold text-gray-900">{employee.highest_qualification || 'Not provided'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
+                        <FaCalendarAlt className="text-green-500 mr-3" />
+                        <div>
+                          <p className="text-sm text-gray-600">Registration Date</p>
+                          <p className="font-semibold text-gray-900">
+                            {employee.created_at ? format(new Date(employee.created_at), "dd MMM yyyy") : "Not available"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Employee Documents */}
+                  <div className="mt-6 pt-6 border-t border-green-200">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-4">Submitted Documents</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {[
+                        { label: 'Aadhar Card', file: employee.aadhar_card, key: 'aadhar' },
+                        { label: 'PAN Card', file: employee.pan_card, key: 'pan' },
+                        { label: 'Resume', file: employee.resume, key: 'resume' },
+                        { label: 'Education Certificates', file: employee.education_certificates, key: 'education' },
+                        { label: 'Experience Certificate', file: employee.experience_certificate, key: 'experience' },
+                        { label: 'Profile Photo', file: employee.profile_photo, key: 'photo' }
+                      ].map((doc) => (
+                        <div key={doc.key} className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border">
+                          <div className="flex items-center">
+                            <FaFileAlt className="text-green-500 mr-2" />
+                            <span className="text-sm font-medium text-gray-700">{doc.label}</span>
+                          </div>
+                          {doc.file ? (
+                            <a 
+                              href={doc.file} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="flex items-center px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200 transition-colors"
+                            >
+                              <FaEye className="mr-1" />
+                              View
+                            </a>
+                          ) : (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded text-xs">Not uploaded</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

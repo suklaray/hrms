@@ -38,6 +38,7 @@ export default function RegisterEmployee() {
         status: "Active",
         experience: "",
         employeeType: "",
+        duration_months: "",
         role: "employee"
     });
     const [generatedPassword, setGeneratedPassword] = useState("");
@@ -103,7 +104,13 @@ export default function RegisterEmployee() {
 
     // Check if form is valid
     useEffect(() => {
-        const requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
+        let requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
+        
+        // Add duration_months as required if employee type is Intern or Contractor
+        if (formData.employeeType === 'Intern' || formData.employeeType === 'Contractor') {
+            requiredFields.push('duration_months');
+        }
+        
         const hasAllFields = requiredFields.every(field => {
             return formData[field] && formData[field].toString().trim() !== '';
         });
@@ -205,6 +212,15 @@ export default function RegisterEmployee() {
                     delete newErrors[name];
                 }
                 break;
+            case 'duration_months':
+                if (!value && (formData.employeeType === 'Intern' || formData.employeeType === 'Contractor')) {
+                    newErrors[name] = 'Duration is required for interns and contractors';
+                } else if (value && (isNaN(value) || value < 1 || value > 12)) {
+                    newErrors[name] = 'Duration must be between 1 and 12 months';
+                } else {
+                    delete newErrors[name];
+                }
+                break;
             default:
                 if (!value && ['status', 'role'].includes(name)) {
                     newErrors[name] = `${name.charAt(0).toUpperCase() + name.slice(1)} is required`;
@@ -264,7 +280,13 @@ export default function RegisterEmployee() {
     };
 
     const validateForm = () => {
-        const requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
+        let requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
+        
+        // Add duration_months as required if employee type is Intern or Contractor
+        if (formData.employeeType === 'Intern' || formData.employeeType === 'Contractor') {
+            requiredFields.push('duration_months');
+        }
+        
         let isValid = true;
         
         requiredFields.forEach(field => {
@@ -309,6 +331,7 @@ const handleRegister = async () => {
                 status: formData.status,
                 experience: formData.experience,
                 employee_type: formData.employeeType,
+                duration_months: formData.duration_months,
                 role: formData.role
             }),
         });
@@ -345,6 +368,7 @@ const handleRegister = async () => {
             status: "Active",
             experience: "",
             employeeType: "",
+            duration_months: "",
             role: "employee"
         });
         setErrors({});
@@ -704,6 +728,37 @@ const handleRegister = async () => {
                                     </div>
                                     {errors.employeeType && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.employeeType}</p>}
                                 </div>
+
+                                {/* Duration - Show for Intern or Contractor */}
+                                {(formData.employeeType === "Intern" || formData.employeeType === "Contractor") && (
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <Clock className="mr-2 text-indigo-500" />
+                                            Duration (Months) *
+                                        </label>
+                                        <div className="relative">
+                                            <input 
+                                                type="number" 
+                                                value={formData.duration_months} 
+                                                onChange={(e) => handleInputChange('duration_months', e.target.value)}
+                                                placeholder="Enter duration in months"
+                                                min="1"
+                                                max="12"
+                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
+                                                    errors.duration_months 
+                                                        ? 'border-red-500 focus:border-red-500' 
+                                                        : formData.duration_months && !errors.duration_months
+                                                            ? 'border-green-500 focus:border-green-500'
+                                                            : 'border-gray-200 focus:border-indigo-500'
+                                                }`}
+                                            />
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                {getFieldIcon('duration_months', errors.duration_months, formData.duration_months && !errors.duration_months)}
+                                            </div>
+                                        </div>
+                                        {errors.duration_months && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.duration_months}</p>}
+                                    </div>
+                                )}
 
                                 {/* Role */}
                                 {/* Role */}

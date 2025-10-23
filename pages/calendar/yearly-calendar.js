@@ -84,74 +84,70 @@ export default function YearlyCalendar() {
       default: return 'bg-gray-500';
     }
   };
-// Function for csv/excel file download
-  const downloadCSV = () => {
-    const csvData = [];
-    csvData.push(['Date', 'Type', 'Title', 'Description']);
-    
-    let hasData = false;
-    Object.keys(events).forEach(month => {
-      if (events[month].length > 0) {
-        hasData = true;
-        events[month].forEach(event => {
-          csvData.push([
-            event.date,
-            event.type,
-            event.title || '',
-            event.description || event.reason || ''
-          ]);
+// Function for excel file download
+  const downloadExcel = () => {
+  const excelData = [];
+  
+  let hasData = false;
+  Object.keys(events).forEach(month => {
+    if (events[month].length > 0) {
+      hasData = true;
+      events[month].forEach(event => {
+        excelData.push({
+          'Date': event.date,
+          'Type': event.type,
+          'Title': event.title || '',
+          'Description': event.description || event.reason || ''
         });
-      }
-    });
-    
-    if (!hasData) {
-      toast.info(`No events found for ${currentYear}`);
-      return;
+      });
     }
-    
-    const csvContent = csvData.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `calendar-events-${currentYear}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
+  });
+  
+  if (!hasData) {
+    toast.info(`No events found for ${currentYear}`);
+    return;
+  }
+  
+  import('xlsx').then(XLSX => {
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Events");
+    XLSX.writeFile(wb, `calendar-events-${currentYear}.xlsx`);
+  });
+};
 
-  const downloadHolidays = () => {
-    const holidayData = [];
-    holidayData.push(['Date', 'Holiday Name', 'Type']);
-    
-    let hasHolidays = false;
-    Object.keys(events).forEach(month => {
-      const holidays = events[month].filter(event => event.type === 'holiday');
-      if (holidays.length > 0) {
-        hasHolidays = true;
-        holidays.forEach(event => {
-          holidayData.push([
-            event.date,
-            event.title,
-            'Holiday'
-          ]);
+
+  const downloadHolidaysExcel = () => {
+  const holidayData = [];
+  
+  let hasHolidays = false;
+  Object.keys(events).forEach(month => {
+    const holidays = events[month].filter(event => event.type === 'holiday');
+    if (holidays.length > 0) {
+      hasHolidays = true;
+      holidays.forEach(event => {
+        holidayData.push({
+          'Date': event.date,
+          'Holiday Name': event.title,
+          'Type': 'Holiday'
         });
-      }
-    });
-
-    if (!hasHolidays) {
-      toast.info(`No holidays found for ${currentYear}`);
-      return;
+      });
     }
-    
-    const csvContent = holidayData.map(row => row.map(field => `"${field}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `holidays-${currentYear}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
+  });
+
+  if (!hasHolidays) {
+    toast.info(`No holidays found for ${currentYear}`);
+    return;
+  }
+  
+  import('xlsx').then(XLSX => {
+    const ws = XLSX.utils.json_to_sheet(holidayData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Holidays");
+    XLSX.writeFile(wb, `holidays-${currentYear}.xlsx`);
+  });
+};
+
 
 
 //----------------Download functions end----------------
@@ -373,13 +369,13 @@ export default function YearlyCalendar() {
                     <span className="sm:hidden">+</span>
                   </Link>
                   <button 
-                    onClick={downloadHolidays}
+                    onClick={downloadHolidaysExcel}
                     className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs sm:text-sm font-medium rounded-lg transition-colors">
                     <FaDownload className="w-3 h-3" />
                     <span className="hidden sm:inline">Holidays</span>
                   </button>
                   <button 
-                    onClick={downloadCSV}
+                    onClick={downloadExcel}
                     className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 text-xs sm:text-sm font-medium rounded-lg transition-colors">
                     <FaDownload className="w-3 h-3" />
                     <span className="hidden sm:inline">All Events</span>

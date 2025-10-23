@@ -33,7 +33,7 @@ const AddEmployee = () => {
     profile_photo: "",
     role: "",
     employee_type: "",
-    intern_duration: "",
+    duration_months: "",
   });
 
   const [message, setMessage] = useState("");
@@ -270,7 +270,7 @@ const AddEmployee = () => {
             profile_photo: "",
             role: "",
             employee_type: "",
-            intern_duration: "",
+            duration_months: "",
           });
           setProfilePhotoUrl("");
           setEmployeeData({ empid: data.empid, password: data.password });
@@ -553,12 +553,12 @@ const AddEmployee = () => {
                     )}
                   </div>
 
-                  {/* Intern Duration - Show only if Intern is selected */}
-                  {form.employee_type === "Intern" && (
+                  {/* Duration - Show for Intern or Contractor */}
+                  {(form.employee_type === "Intern" || form.employee_type === "Contractor") && (
                     <div>
                       <label className="flex items-center text-sm font-semibold mb-2 text-gray-700">
                         <FaRegClock className="mr-2 text-indigo-500" />
-                        Internship Duration (months)
+                        {form.employee_type === "Intern" ? "Internship" : "Contract"} Duration (months)
                       </label>
                       <input
                         className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
@@ -567,12 +567,12 @@ const AddEmployee = () => {
                             : "border-gray-200 bg-white focus:border-indigo-500"
                         }`}
                         type="number"
-                        name="intern_duration"
-                        placeholder="e.g. 6"
+                        name="duration_months"
+                        placeholder={form.employee_type === "Intern" ? "e.g. 6" : "e.g. 12"}
                         onChange={handleChange}
-                        value={form.intern_duration}
+                        value={form.duration_months}
                         min="1"
-                        max="24"
+                        max={form.employee_type === "Intern" ? "24" : "60"}
                         required
                         disabled={existingEmployee && !isEditing}
                       />
@@ -641,7 +641,7 @@ const AddEmployee = () => {
                   <div className="md:col-span-2 mt-6">
                     <button
                       type="submit"
-                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                       disabled={
                         emailExists ||
                         (existingEmployee && !isEditing) ||

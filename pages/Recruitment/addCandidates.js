@@ -167,6 +167,17 @@ export default function AddCandidate() {
     try {
       await axios.post("/api/recruitment/addCandidate", data);
 
+      setFormData({
+        name: "",
+        email: "",
+        contact_number: "",
+        interviewDate: "",
+        interviewTime: "",
+        cv: null,
+      });
+      setErrors({});
+      setErrorMessage("");
+
       toast.success("Candidate added successfully!");
       router.push("/Recruitment/recruitment");
     } catch (error) {

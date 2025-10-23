@@ -288,6 +288,11 @@ export default function CandidateForm() {
             currentDate.getMonth(),
             currentDate.getDate()
           );
+          const maxDate = new Date(
+            currentDate.getFullYear() - 70,
+            currentDate.getMonth(),
+            currentDate.getDate()
+          );
           const year = birthDate.getFullYear();
           const yearStr = year.toString();
 
@@ -297,6 +302,8 @@ export default function CandidateForm() {
             newErrors[name] = "❌ Please enter a valid birth year";
           } else if (birthDate > minDate) {
             newErrors[name] = "❌ Must be at least 18 years old";
+          } else if (birthDate < maxDate) {
+            newErrors[name] = "❌ Age cannot exceed 70 years";
           } else {
             delete newErrors[name];
           }
