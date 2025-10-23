@@ -369,7 +369,7 @@ export default function YearlyCalendar() {
                     <span className="sm:hidden">+</span>
                   </Link>
                   <button 
-                    onClick={downloadHolidays}
+                    onClick={downloadHolidaysExcel}
                     className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs sm:text-sm font-medium rounded-lg transition-colors">
                     <FaDownload className="w-3 h-3" />
                     <span className="hidden sm:inline">Holidays</span>
