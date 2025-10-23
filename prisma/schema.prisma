@@ -221,6 +221,7 @@ model users {
   payroll          payroll[]
   createdTasks     tasks[]                  @relation("TaskCreator")
   assignedTasks    tasks[]                  @relation("TaskAssignee")
+  positions        positions[]
 }
 
 model payroll {
@@ -319,6 +320,17 @@ model tasks {
   updated_at  DateTime @updatedAt
   creator     users    @relation("TaskCreator", fields: [assigned_by], references: [empid])
   assignee    users    @relation("TaskAssignee", fields: [assigned_to], references: [empid])
+}
+
+model positions {
+  id            Int      @id @default(autoincrement())
+  position_name String
+  description   String?
+  created_by    String
+  created_at    DateTime @default(now())
+  users         users    @relation(fields: [created_by], references: [empid])
+
+  @@index([created_by])
 }
 
 enum EventType {
