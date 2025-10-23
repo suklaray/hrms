@@ -558,14 +558,9 @@ const handleDelete = async (candidateId) => {
                         </td>
                         <td className="px-2 sm:px-4 lg:px-6 py-4">
                           <div className="space-y-2">
-                            {candidate.form_link ? (
-                              <a href={candidate.form_link} target="_blank" rel="noopener noreferrer" 
-                                 className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium block">
-                                View Form
-                              </a>
-                            ) : (
-                              <span className="text-gray-400 text-xs sm:text-sm block">No form</span>
-                            )}
+                            <Link href="/Recruitment/form/preview" className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium block">
+                              View Form
+                            </Link>
                             <div>
                               <span className={`text-xs px-1 sm:px-2 py-1 rounded-full whitespace-nowrap inline-block ${
                                 candidate.form_submitted 
