@@ -28,7 +28,8 @@ export default async function handler(req, res) {
         month: true,
         year: true,
         net_pay: true,
-        generated_on: true
+        generated_on: true,
+        payslip_status: true
       }
     });
 

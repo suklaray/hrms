@@ -272,7 +272,6 @@ export default function ViewLeaveRequests() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manage</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -327,17 +326,6 @@ export default function ViewLeaveRequests() {
                             >
                               <Eye className="w-5 h-5" />
                             </button>
-                          </td>
-                          <td className="px-6 py-4">
-                            <select
-                              value={leave.status}
-                              onChange={(e) => handleStatusChange(leave.id, e.target.value)}
-                              className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                              <option value="Pending">Pending</option>
-                              <option value="Approved">Approved</option>
-                              <option value="Rejected">Rejected</option>
-                            </select>
                           </td>
                         </tr>
                       );

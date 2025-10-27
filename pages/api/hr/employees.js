@@ -51,6 +51,10 @@ export default async function handler(req, res) {
             empid: emp.empid,
             month: currentMonth,
             year: currentYear
+          },
+          select: {
+            payslip_status: true,
+            generated_on: true
           }
         });
 
@@ -70,6 +74,7 @@ export default async function handler(req, res) {
         return {
           ...emp,
           payrollGenerated: !!currentPayroll,
+          payslipStatus: currentPayroll ? 'generated' : 'pending',
           lastPaymentDate: lastPayroll?.generated_on || null,
           phone: emp.contact_number
         };
