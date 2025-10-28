@@ -13,6 +13,7 @@ import {
   Mail,
   ChevronDown,
   ChevronUp,
+  CheckCircle,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
@@ -34,6 +35,8 @@ export default function ViewEmployee() {
   const [isOpen1, setIsOpen1] = useState(false);
   const [isOpen2, setIsOpen2] = useState(false);
   const [isOpen3, setIsOpen3] = useState(false);
+  const [positions, setPositions] = useState([]);
+  const [isVerifying, setIsVerifying] = useState(false);
   useEffect(() => {
     const fetchEverything = async () => {
       try {
@@ -57,6 +60,15 @@ export default function ViewEmployee() {
         }
 
         //  Fetch employee details only if ID is present
+        // Fetch positions (only for admin/hr/superadmin)
+        try {
+          const posRes = await axios.get('/api/settings/positions');
+          setPositions(posRes.data);
+        } catch (posError) {
+          console.log('Could not fetch positions:', posError.message);
+          setPositions([]);
+        }
+
         if (id) {
           const empRes = await axios.get(`/api/auth/employee/view/${id}`);
           setData(empRes.data);
@@ -262,6 +274,37 @@ export default function ViewEmployee() {
     }
   };
 
+  const handleVerifyEmployee = async () => {
+    if (!empid) return;
+
+    setIsVerifying(true);
+    try {
+      const isCurrentlyVerified = user?.verified === 'verified';
+      const updatedVerificationStatus = !isCurrentlyVerified;
+
+      const res = await axios.put("/api/auth/employee/updateVerification", {
+        empid: empid,
+        verificationStatus: updatedVerificationStatus,
+      });
+      
+      if (res.status === 200) {
+        setData((prev) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            verified: updatedVerificationStatus ? 'verified' : 'not_verified',
+          },
+        }));
+        toast.success(`Employee ${updatedVerificationStatus ? 'verified' : 'unverified'} successfully!`);
+      }
+    } catch (err) {
+      console.error("Failed to update verification:", err);
+      toast.error("Failed to update verification. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -341,15 +384,45 @@ export default function ViewEmployee() {
                   </div>
 
                   <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
-                    <p className="text-gray-600">{email}</p>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        ID: {empid}
-                      </span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
-                        {user?.role || "N/A"}
-                      </span>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
+                        <p className="text-gray-600">{email}</p>
+                        <div className="flex items-center space-x-4 mt-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            ID: {empid}
+                          </span>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
+                            {user?.role || "N/A"}
+                          </span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user?.verified === 'verified' 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            {user?.verified === 'verified' ? 'Verified' : 'Not Verified'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {["admin", "hr", "superadmin"].includes(role) && (
+                        <button
+                          onClick={handleVerifyEmployee}
+                          disabled={isVerifying}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            user?.verified === 'verified'
+                              ? 'bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white'
+                              : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white'
+                          }`}
+                        >
+                          <CheckCircle size={16} className={isVerifying ? "animate-spin" : ""} />
+                          {isVerifying 
+                            ? (user?.verified === 'verified' ? "Unverifying..." : "Verifying...") 
+                            : (user?.verified === 'verified' ? "Unverify" : "Verify")
+                          }
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -428,15 +501,20 @@ export default function ViewEmployee() {
                       <p className="text-gray-900 font-medium">
                         {user?.position || "N/A"}
                       </p>
-                      {["admin", "superadmin"].includes(role) && (
+                      {["admin", "hr", "superadmin"].includes(role) && (
                         <div className="mt-2 flex gap-2">
-                          <input
-                            type="text"
+                          <select
                             value={position}
                             onChange={(e) => setPosition(e.target.value)}
-                            placeholder="Enter new position"
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
+                          >
+                            <option value="">Select Position</option>
+                            {positions.map((pos) => (
+                              <option key={pos.id} value={pos.position_name}>
+                                {pos.position_name}
+                              </option>
+                            ))}
+                          </select>
                           <button
                             onClick={handlePositionUpdate}
                             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
@@ -454,7 +532,7 @@ export default function ViewEmployee() {
                       <p className="text-gray-900 font-medium capitalize">
                         {user?.employee_type || "N/A"}
                       </p>
-                      {["admin", "superadmin"].includes(role) && (
+                      {["admin", "hr", "superadmin"].includes(role) && (
                         <select
                           value={user?.employee_type || ""}
                           onChange={(e) =>
@@ -479,7 +557,7 @@ export default function ViewEmployee() {
                       <p className="text-gray-900 font-medium capitalize">
                         {user?.role || "N/A"}
                       </p>
-                      {["admin", "superadmin"].includes(role) && (
+                      {["admin", "hr", "superadmin"].includes(role) && (
                         <select
                           value={user?.role || ""}
                           onChange={(e) => handleRoleChange(e.target.value)}
@@ -707,7 +785,7 @@ export default function ViewEmployee() {
               </div>
 
               {/* System Credentials */}
-              {["admin", "superadmin"].includes(role) && (
+              {["admin", "hr", "superadmin"].includes(role) && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100">
                   <div className="p-6 border-b border-gray-100">
                     <h3 className="text-lg font-semibold text-gray-900">

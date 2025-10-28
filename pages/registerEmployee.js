@@ -25,6 +25,7 @@ import {
 } from "react-icons/fa";
 //import toast from "react-hot-toast";
 import {toast} from 'react-toastify';
+import axios from "axios";
 
 export default function RegisterEmployee() {
     const router = useRouter();
@@ -55,7 +56,7 @@ export default function RegisterEmployee() {
     const [emailTimeout, setEmailTimeout] = useState(null);
     const [isFormValid, setIsFormValid] = useState(false);
     const [employeeData, setEmployeeData] = useState(null);
-
+    const [positions, setPositions] = useState([]);
     useEffect(() => {
         setMounted(true);
         setCurrentDate(new Date().toLocaleDateString());
@@ -63,6 +64,15 @@ export default function RegisterEmployee() {
     const [userRole, setUserRole] = useState('');
 
     useEffect(() => {
+        // Fetch positions
+            axios.get('/api/settings/positions')
+              .then((res) => {
+                setPositions(res.data);
+              })
+              .catch((err) => {
+                console.error('Error fetching positions:', err);
+                toast.error('Failed to fetch positions');
+              })
         // Fetch current user's role
         const fetchUserRole = async () => {
             try {
@@ -616,19 +626,24 @@ const handleRegister = async () => {
                                         Position *
                                     </label>
                                     <div className="relative">
-                                        <input 
-                                            type="text" 
+                                        <select 
                                             value={formData.position} 
                                             onChange={(e) => handleInputChange('position', e.target.value)}
-                                            placeholder="Job title or position"
-                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
+                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors appearance-none bg-white ${
                                                 errors.position 
                                                     ? 'border-red-500 focus:border-red-500' 
                                                     : formData.position && !errors.position
                                                         ? 'border-green-500 focus:border-green-500'
                                                         : 'border-gray-200 focus:border-indigo-500'
                                             }`}
-                                        />
+                                        >
+                                            <option value="">Select Position</option>
+                                            {positions.map((position) => (
+                                                <option key={position.id} value={position.position_name}>
+                                                    {position.position_name}
+                                                </option>
+                                            ))}
+                                        </select>
                                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                                             {getFieldIcon('position', errors.position, formData.position && !errors.position)}
                                         </div>

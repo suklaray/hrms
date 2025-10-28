@@ -15,6 +15,8 @@ export default function EmployeeDashboard() {
 
   const router = useRouter();
 
+  const isAccessEnabled = user?.verified === 'verified' && user?.form_submitted === true;
+
   useEffect(() => {
     async function fetchUser() {
       try {
@@ -196,6 +198,10 @@ export default function EmployeeDashboard() {
         </div>
 
         <div className="p-6">
+          {isAccessEnabled ? (
+            // Verified User Dashboard
+            <>
+
           {/* Work Status Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex items-center justify-between">
@@ -356,55 +362,126 @@ export default function EmployeeDashboard() {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <button 
-                  onClick={() => router.push('/employee/leave-request')}                >
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="font-medium text-blue-900">Apply Leave</p>
-                      <p className="text-sm text-blue-600">Request time off</p>
+                {isAccessEnabled ? (
+                  // Verified User Actions
+                  <>
+                    <button 
+                      onClick={() => router.push('/employee/leave-request')}
+                      className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Calendar className="w-5 h-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium text-blue-900">Apply Leave</p>
+                          <p className="text-sm text-blue-600">Request time off</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => router.push('/employee/attendance')}
+                      className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Clock className="w-5 h-5 text-green-600" />
+                        <div>
+                          <p className="font-medium text-green-900">View Attendance</p>
+                          <p className="text-sm text-green-600">Check your records</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => router.push('/employee/profile')}
+                      className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <User className="w-5 h-5 text-purple-600" />
+                        <div>
+                          <p className="font-medium text-purple-900">Update Profile</p>
+                          <p className="text-sm text-purple-600">Edit your details</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => router.push('/employee/emp-payslip')}
+                      className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Mail className="w-5 h-5 text-orange-600" />
+                        <div>
+                          <p className="font-medium text-orange-900">Payslips & Docs</p>
+                          <p className="text-sm text-orange-600">View documents</p>
+                        </div>
+                      </div>
+                    </button>
+                  </>
+                ) : (
+                  // Unverified User Actions
+                  <>
+                    <div className="p-4 bg-gray-100 rounded-lg border border-gray-200 text-left cursor-not-allowed opacity-60">
+                      <div className="flex items-center space-x-3">
+                        <Calendar className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="font-medium text-gray-500">Apply Leave (Locked)</p>
+                          <p className="text-sm text-gray-400">Complete verification first</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </button>
-                <button 
-                  onClick={() => router.push('/employee/attendance')}
-                  className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Clock className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="font-medium text-green-900">View Attendance</p>
-                      <p className="text-sm text-green-600">Check your records</p>
+                    <div className="p-4 bg-gray-100 rounded-lg border border-gray-200 text-left cursor-not-allowed opacity-60">
+                      <div className="flex items-center space-x-3">
+                        <Clock className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="font-medium text-gray-500">View Attendance (Locked)</p>
+                          <p className="text-sm text-gray-400">Complete verification first</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </button>
-                <button 
-                  onClick={() => router.push('/employee/profile')}
-                  className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <User className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <p className="font-medium text-purple-900">Update Profile</p>
-                      <p className="text-sm text-purple-600">Edit your details</p>
+                    <button 
+                      onClick={() => router.push('/employee/profile')}
+                      className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <User className="w-5 h-5 text-purple-600" />
+                        <div>
+                          <p className="font-medium text-purple-900">Update Profile</p>
+                          <p className="text-sm text-purple-600">Complete verification here</p>
+                        </div>
+                      </div>
+                    </button>
+                    <div className="p-4 bg-gray-100 rounded-lg border border-gray-200 text-left cursor-not-allowed opacity-60">
+                      <div className="flex items-center space-x-3">
+                        <Mail className="w-5 h-5 text-gray-400" />
+                        <div>
+                          <p className="font-medium text-gray-500">Payslips & Docs (Locked)</p>
+                          <p className="text-sm text-gray-400">Complete verification first</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </button>
-                <button 
-                  onClick={() => router.push('/employee/emp-payslip')}
-                  className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left cursor-pointer"
-                >
-                  <div className="flex items-center space-x-3">
-                    <Mail className="w-5 h-5 text-orange-600" />
-                    <div>
-                      <p className="font-medium text-orange-900">Payslips & Docs</p>
-                      <p className="text-sm text-orange-600">View documents</p>
-                    </div>
-                  </div>
-                </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
+            </>
+          ) : (
+            // Unverified User - Profile Completion Card
+            <div className="flex justify-center items-center min-h-[60vh]">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 max-w-md w-full text-center">
+                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <User className="w-8 h-8 text-yellow-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Complete Your Profile</h2>
+                <p className="text-gray-600 mb-6">
+                  Please complete your profile verification and form submission to access all HRMS features.
+                </p>
+                <button
+                  onClick={() => router.push('/employee/profile')}
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  Complete Profile Setup
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

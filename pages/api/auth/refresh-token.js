@@ -1,34 +1,27 @@
 import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { rateLimiter } from "@/lib/rateLimiter";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method Not Allowed" });
+    return res.status(405).json({ message: "Method not allowed" });
   }
 
-  const allow = rateLimiter()(req, res);
-  if (!allow) return;
-
-  const { email, password } = req.body;
-
   try {
-    const user = await prisma.users.findUnique({ where: { email } });
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Fetch updated user data
+    const user = await prisma.users.findUnique({
+      where: { empid: decoded.empid }
+    });
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid email" });
-    }
-
-    // Checking role
-    if (user.role !== "admin" && user.role !== "hr" && user.role !== "superadmin") {
-      return res.status(403).json({ message: "Access denied: Only Admins and HRs can log in here" });
-    }
-
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(401).json({ message: "Invalid password" });
+      return res.status(404).json({ message: "User not found" });
     }
 
     // Check if user has submitted employee form
@@ -53,19 +46,21 @@ export default async function handler(req, res) {
       hasFormSubmitted = true;
     }
 
+    // Create new JWT with updated data
     const payload = {
       id: user.id,
       empid: user.empid,
       name: user.name,
-      role: user.role,
       email: user.email,
+      role: user.role,
       verified: user.verified,
       form_submitted: hasFormSubmitted,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const newToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
-    res.setHeader("Set-Cookie", cookie.serialize("token", token, {
+    // Set new cookie
+    res.setHeader("Set-Cookie", cookie.serialize("token", newToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -73,9 +68,9 @@ export default async function handler(req, res) {
       path: "/",
     }));
 
-    res.status(200).json({ message: "Login successful" });
+    res.status(200).json({ message: "Token refreshed successfully" });
   } catch (error) {
-    console.error("Login Error:", error);
-    res.status(500).json({ message: "Error logging in", error: error.message });
+    console.error("Error refreshing token:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 }

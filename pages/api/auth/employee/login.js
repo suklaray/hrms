@@ -40,6 +40,23 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: "Invalid password" });
     }
 
+    // Check if user has submitted employee form
+    let hasFormSubmitted = false;
+    
+    // Check employees table for document submission using email (more reliable)
+    const employee = await prisma.employees.findUnique({
+      where: { email: user.email }
+    });
+    hasFormSubmitted = !!employee;
+    
+    // If not found in employees table and user came from candidate, check candidates table
+    if (!hasFormSubmitted && user.candidate_id) {
+      const candidate = await prisma.candidates.findUnique({
+        where: { candidate_id: user.candidate_id }
+      });
+      hasFormSubmitted = candidate?.form_submitted === true;
+    }
+
     // Create JWT
     const payload = {
       id: user.id,
@@ -47,6 +64,8 @@ export default async function handler(req, res) {
       name: user.name,
       email: user.email,
       role: user.role,
+      verified: user.verified,
+      form_submitted: hasFormSubmitted,
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });

@@ -47,8 +47,18 @@ const AddEmployee = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const [positions, setPositions] = useState([]);
 
   useEffect(() => {
+    // Fetch positions
+    axios.get('/api/settings/positions')
+      .then((res) => {
+        setPositions(res.data);
+      })
+      .catch((err) => {
+        console.error('Error fetching positions:', err);
+      });
+
     if (id) {
       setLoading(true);
       axios
@@ -497,7 +507,7 @@ const AddEmployee = () => {
                       <FaBriefcase className="mr-2 text-indigo-500" />
                       Position
                     </label>
-                    <input
+                    <select
                       className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
                         errors.position
                           ? "border-red-500 bg-red-50"
@@ -506,12 +516,20 @@ const AddEmployee = () => {
                           : "border-gray-200 bg-white focus:border-indigo-500"
                       }`}
                       name="position"
-                      placeholder="e.g. Software Engineer"
                       onChange={handleChange}
                       value={form.position}
                       required
                       disabled={existingEmployee && !isEditing}
-                    />
+                    >
+                      <option value="" disabled>
+                        Select Position
+                      </option>
+                      {positions.map((position) => (
+                        <option key={position.id} value={position.position_name}>
+                          {position.position_name}
+                        </option>
+                      ))}
+                    </select>
                     {errors.position && (
                       <p className="text-red-500 text-sm mt-1">
                         {errors.position}
