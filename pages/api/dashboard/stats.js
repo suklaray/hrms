@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     } else if (decoded.role === 'admin') {
       roleFilter = ['hr', 'employee', 'admin'];
     } else if (decoded.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
+      roleFilter = ['admin', 'hr', 'employee','superadmin'];
     }
 
     // Get basic counts with error handling
