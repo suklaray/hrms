@@ -336,7 +336,7 @@ export default function AttendanceList() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
                             onClick={() => handleViewClick(user.empid)}
-                            className="inline-flex items-center p-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-colors"
+                            className="inline-flex items-center p-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-colors cursor-pointer"
                             title="View Details"
                           >
                             <Eye className="w-4 h-4" />
@@ -413,4 +413,3 @@ export default function AttendanceList() {
     </>
   );
 }
-

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
+
 import { Search, Calendar, Users, Eye, Download, Filter, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function PayrollView() {
+
   const [payrolls, setPayrolls] = useState([]);
   const [filteredPayrolls, setFilteredPayrolls] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
@@ -78,8 +80,31 @@ export default function PayrollView() {
       const currentYear = new Date().getFullYear();
       return item.month === currentMonth && item.year === currentYear;
     }).length;
-    const totalAmount = filteredPayrolls.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0);
-    return { total, thisMonth, totalAmount };
+    
+    // Calculate total amount based on current filters
+    let amountData;
+    let periodText;
+    
+    // If month filter is applied, show monthly amount
+    if (dateFilter.month) {
+      const year = dateFilter.year || new Date().getFullYear();
+      amountData = filteredPayrolls;
+      periodText = `${dateFilter.month} ${year}`;
+    } else if (activeTab === 'recent') {
+      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+      const currentYear = new Date().getFullYear();
+      amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
+      periodText = `${currentMonth} ${currentYear}`;
+    } else {
+      // Default to current month when nothing is selected
+      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+      const currentYear = new Date().getFullYear();
+      amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
+      periodText = `${currentMonth} ${currentYear}`;
+    }
+    
+    const totalAmount = amountData.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0);
+    return { total, thisMonth, totalAmount, periodText };
   };
 
   const stats = getStats();
@@ -136,6 +161,7 @@ export default function PayrollView() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Amount</p>
                   <p className="text-3xl font-bold text-indigo-600">₹{stats.totalAmount.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">{stats.periodText}</p>
                 </div>
                 <div className="p-3 bg-indigo-100 rounded-lg">
                   <span className="text-2xl font-bold text-indigo-600">₹</span>

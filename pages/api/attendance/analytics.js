@@ -56,15 +56,59 @@ export default async function handler(req, res) {
       where: { date: { gte: startDate, lte: endDate } }
     });
 
-    // Unique employee IDs for today to avoid double-counting multiple records
-    const employeeIds = [...new Set(attendanceData.map(a => a.empid))];
+    // For today: count unique employees, for other periods: use all records
+    let presentCount, absentCount, totalForCalculation;
+    
+    if (period === 'today') {
+      // For today, count unique employees to avoid double-counting
+      const uniqueEmployees = [...new Set(attendanceData.map(a => a.empid))];
+      const employeeStatus = {};
+      
+      // Get the latest status for each employee today
+      uniqueEmployees.forEach(empid => {
+        const empRecords = attendanceData.filter(a => a.empid === empid);
+        const latestRecord = empRecords.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date))[0];
+        employeeStatus[empid] = latestRecord?.attendance_status || 'Absent';
+      });
+      
+      presentCount = Object.values(employeeStatus).filter(status => status === 'Present').length;
+      
+      // If no attendance records exist for today, show 0 present, 0 absent
+      if (attendanceData.length === 0) {
+        absentCount = 0;
+        totalForCalculation = 1; // Avoid division by zero
+      } else {
+        absentCount = totalEmployees - presentCount;
+        totalForCalculation = totalEmployees;
+      }
+    } else {
+      // For month/year, calculate based on employee-days
+      const expectedAttendanceDays = totalEmployees * workingDays;
+      
+      // Count unique employee-day combinations
+      const employeeDayMap = new Map();
+      attendanceData.forEach(record => {
+        const dateKey = record.date.toDateString();
+        const empDayKey = `${record.empid}-${dateKey}`;
+        
+        if (!employeeDayMap.has(empDayKey)) {
+          employeeDayMap.set(empDayKey, record.attendance_status);
+        } else {
+          // If multiple records for same employee-day, prioritize Present over Absent
+          if (record.attendance_status === 'Present') {
+            employeeDayMap.set(empDayKey, 'Present');
+          }
+        }
+      });
+      
+      presentCount = Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
+      const recordedDays = employeeDayMap.size;
+      absentCount = expectedAttendanceDays - presentCount;
+      totalForCalculation = expectedAttendanceDays;
+    }
 
-    const presentRecords = attendanceData.filter(a => a.attendance_status === 'Present').length;
-    const absentRecords = attendanceData.filter(a => a.attendance_status === 'Absent').length;
-    const totalAttendanceRecords = attendanceData.length;
-
-    const avgAttendance = totalAttendanceRecords > 0 ? Math.round((presentRecords / totalAttendanceRecords) * 100) : 0;
-    const absenteeismRate = totalAttendanceRecords > 0 ? Math.round((absentRecords / totalAttendanceRecords) * 100) : 0;
+    const avgAttendance = totalForCalculation > 0 ? Math.round((presentCount / totalForCalculation) * 100) : 0;
+    const absenteeismRate = totalForCalculation > 0 ? Math.round((absentCount / totalForCalculation) * 100) : 0;
 
     // Average check-in/out
     // Get first check-in and last check-out per employee per day
@@ -155,9 +199,9 @@ export default async function handler(req, res) {
       avgWorkingHours,
       leaveUtilization,
       totalLeaveDays: period === 'today' ? employeesOnLeaveToday : totalLeaveDays,
-      presentCount: presentRecords,
-      absentCount: absentRecords,
-      lateCount: Math.floor(presentRecords * 0.15),
+      presentCount,
+      absentCount,
+      lateCount: Math.floor(presentCount * 0.15),
       presentPercent: avgAttendance,
       absentPercent: absenteeismRate,
       latePercent: Math.max(0, 100 - avgAttendance - absenteeismRate),
@@ -210,8 +254,21 @@ async function generateRealTrendData(period, startDate, endDate, prisma) {
       const attendanceRecords = await prisma.attendance.findMany({
         where: { date: { gte: periodStart, lte: periodEnd } }
       });
-      const presentCount = attendanceRecords.filter(a => a.attendance_status === 'Present').length;
-      const totalCount = attendanceRecords.length;
+      
+      // Use employee-day logic for consistency
+      const employeeDayMap = new Map();
+      attendanceRecords.forEach(record => {
+        const dateKey = record.date.toDateString();
+        const empDayKey = `${record.empid}-${dateKey}`;
+        if (!employeeDayMap.has(empDayKey)) {
+          employeeDayMap.set(empDayKey, record.attendance_status);
+        } else if (record.attendance_status === 'Present') {
+          employeeDayMap.set(empDayKey, 'Present');
+        }
+      });
+      
+      const presentCount = Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
+      const totalCount = employeeDayMap.size;
       data.push({ period: current.toLocaleDateString('en-US', { month: 'short' }), attendance: totalCount ? Math.round((presentCount / totalCount) * 100) : 0 });
       current.setMonth(current.getMonth() + 1);
       if (data.length >= 12) break;
@@ -227,8 +284,21 @@ async function generateRealTrendData(period, startDate, endDate, prisma) {
       const attendanceRecords = await prisma.attendance.findMany({
         where: { date: { gte: weekStart, lte: weekEnd } }
       });
-      const presentCount = attendanceRecords.filter(a => a.attendance_status === 'Present').length;
-      const totalCount = attendanceRecords.length;
+      
+      // Use employee-day logic for consistency
+      const employeeDayMap = new Map();
+      attendanceRecords.forEach(record => {
+        const dateKey = record.date.toDateString();
+        const empDayKey = `${record.empid}-${dateKey}`;
+        if (!employeeDayMap.has(empDayKey)) {
+          employeeDayMap.set(empDayKey, record.attendance_status);
+        } else if (record.attendance_status === 'Present') {
+          employeeDayMap.set(empDayKey, 'Present');
+        }
+      });
+      
+      const presentCount = Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
+      const totalCount = employeeDayMap.size;
       data.push({ period: `Week ${weekNum}`, attendance: totalCount ? Math.round((presentCount / totalCount) * 100) : 0 });
       current.setDate(current.getDate() + 7);
       weekNum++;
@@ -265,8 +335,21 @@ async function getDepartmentAttendance(startDate, endDate, prisma) {
     const userAttendance = await prisma.attendance.findMany({
       where: { empid: user.empid, date: { gte: startDate, lte: endDate } }
     });
-    roleStats[user.role].present += userAttendance.filter(a => a.attendance_status === 'Present').length;
-    roleStats[user.role].total += userAttendance.length;
+    
+    // Use employee-day logic for consistency
+    const employeeDayMap = new Map();
+    userAttendance.forEach(record => {
+      const dateKey = record.date.toDateString();
+      const empDayKey = `${record.empid}-${dateKey}`;
+      if (!employeeDayMap.has(empDayKey)) {
+        employeeDayMap.set(empDayKey, record.attendance_status);
+      } else if (record.attendance_status === 'Present') {
+        employeeDayMap.set(empDayKey, 'Present');
+      }
+    });
+    
+    roleStats[user.role].present += Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
+    roleStats[user.role].total += employeeDayMap.size;
   }
 
   return Object.entries(roleStats)
