@@ -48,12 +48,14 @@ export default async function handler(req, res) {
     const isWorking = !!(attendance?.check_in && !attendance?.check_out);
     const workStartTime = attendance?.check_in || null;
 
-    // 5. Return user info + attendance status
+    // 5. Return user info + attendance status + JWT fields
     res.status(200).json({
       user: {
         ...user,
         isWorking,
         workStartTime,
+        verified: decoded.verified,
+        form_submitted: decoded.form_submitted,
       },
     });
   } catch (err) {

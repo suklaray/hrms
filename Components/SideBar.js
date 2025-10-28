@@ -26,6 +26,7 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [user, setUser] = useState(null);
+  const [userStatus, setUserStatus] = useState({ verified: false, formSubmitted: false });
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -34,6 +35,10 @@ export default function Sidebar() {
         if (res.ok) {
           const userData = await res.json();
           setUser(userData.user);
+          setUserStatus({
+            verified: userData.user?.verified === 'verified',
+            formSubmitted: userData.user?.form_submitted || false
+          });
         }
       } catch (error) {
         console.error("Failed to fetch user:", error);
@@ -75,7 +80,9 @@ export default function Sidebar() {
   const [checkedIn, setCheckedIn] = useState(false);
 
   const role = user?.role?.toLowerCase() || "hr";
-  // console.log("User Role:", role);
+  const isSuperAdmin = role === "superadmin";
+  const isAccessEnabled = isSuperAdmin || (userStatus.verified && userStatus.formSubmitted);
+  // console.log("User Role:", role, "Is Super Admin:", isSuperAdmin, "Access Enabled:", isAccessEnabled);
 
   const toggleAttendanceMenu = () => setAttendanceOpen(!attendanceOpen);
   const togglePayrollMenu = () => setPayrollOpen(!payrollOpen);
@@ -91,8 +98,8 @@ export default function Sidebar() {
       : "hover:bg-blue-600"; // hr
 
   const navItems = [
-    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck },
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, allowUnverified: true },
+    { name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck, allowUnverified: false },
   ];
 
   const employeeSubItems = [
@@ -148,19 +155,34 @@ export default function Sidebar() {
         <ul className="space-y-4">
           {navItems.map((item) => {
             const IconComponent = item.icon;
+            const canAccess = isAccessEnabled || item.allowUnverified;
             return (
               <li key={item.name}>
-                <Link href={item.path}>
+                {canAccess ? (
+                  <Link href={item.path}>
+                    <div
+                      className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                      title={isCollapsed ? item.name : ""}
+                    >
+                      <IconComponent size={18} className="flex-shrink-0" />
+                      {!isCollapsed && (
+                        <span className="text-sm font-medium">{item.name}</span>
+                      )}
+                    </div>
+                  </Link>
+                ) : (
                   <div
-                    className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
-                    title={isCollapsed ? item.name : ""}
+                    className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
+                    title={isCollapsed ? `${item.name} (Locked)` : "Complete verification and form submission to access"}
                   >
                     <IconComponent size={18} className="flex-shrink-0" />
                     {!isCollapsed && (
-                      <span className="text-sm font-medium">{item.name}</span>
+                      <span className="text-sm font-medium">
+                        {item.name} <span className="ml-2 text-xs">(🔒)</span>
+                      </span>
                     )}
                   </div>
-                </Link>
+                )}
               </li>
             );
           })}
@@ -169,18 +191,26 @@ export default function Sidebar() {
           <li>
             <button
               onClick={
-                isCollapsed
-                  ? () => router.push("/employeeList")
-                  : toggleEmployeeMenu
+                isAccessEnabled
+                  ? (isCollapsed
+                      ? () => router.push("/employeeList")
+                      : toggleEmployeeMenu)
+                  : undefined
               }
-              className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
-              title={isCollapsed ? "Employee Management" : ""}
+              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
+                isAccessEnabled
+                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              }`}
+              title={isCollapsed ? (isAccessEnabled ? "Employee Management" : "Employee Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
+              disabled={!isAccessEnabled}
             >
               <div className="flex items-center gap-3">
                 <Users size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Employee Management
+                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
@@ -191,7 +221,7 @@ export default function Sidebar() {
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && employeeOpen && (
+            {!isCollapsed && employeeOpen && isAccessEnabled && (
               <ul className="pl-6 pt-2 space-y-2">
                 {employeeSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -215,29 +245,37 @@ export default function Sidebar() {
           <li>
             <button
               onClick={
-                isCollapsed
-                  ? () => router.push("/hr/attendance")
-                  : toggleAttendanceMenu
+                isAccessEnabled
+                  ? (isCollapsed
+                      ? () => router.push("/hr/attendance")
+                      : toggleAttendanceMenu)
+                  : undefined
               }
-              className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
-              title={isCollapsed ? "Attendance & Leave" : ""}
+              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
+                isAccessEnabled
+                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              }`}
+              title={isCollapsed ? (isAccessEnabled ? "Attendance & Leave" : "Attendance & Leave (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
+              disabled={!isAccessEnabled}
             >
               <div className="flex items-center gap-3">
                 <Clock size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Attendance & Leave
+                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
-              {!isCollapsed &&
+              {!isCollapsed && isAccessEnabled &&
                 (attendanceOpen ? (
                   <ChevronUp size={16} />
                 ) : (
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && attendanceOpen && (
+            {!isCollapsed && attendanceOpen && isAccessEnabled && (
               <ul className="pl-6 pt-2 space-y-2">
                 {attendanceSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -261,29 +299,37 @@ export default function Sidebar() {
           <li>
             <button
               onClick={
-                isCollapsed
-                  ? () => router.push("/hr/payroll/payroll-view")
-                  : togglePayrollMenu
+                isAccessEnabled
+                  ? (isCollapsed
+                      ? () => router.push("/hr/payroll/payroll-view")
+                      : togglePayrollMenu)
+                  : undefined
               }
-              className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
-              title={isCollapsed ? "Payroll Management" : ""}
+              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
+                isAccessEnabled
+                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              }`}
+              title={isCollapsed ? (isAccessEnabled ? "Payroll Management" : "Payroll Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
+              disabled={!isAccessEnabled}
             >
               <div className="flex items-center gap-3">
                 <DollarSign size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Payroll Management
+                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
-              {!isCollapsed &&
+              {!isCollapsed && isAccessEnabled &&
                 (payrollOpen ? (
                   <ChevronUp size={16} />
                 ) : (
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && payrollOpen && (
+            {!isCollapsed && payrollOpen && isAccessEnabled && (
               <ul className="pl-6 pt-2 space-y-2">
                 {payrollSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -307,27 +353,37 @@ export default function Sidebar() {
           <li>
             <button
               onClick={
-                isCollapsed
-                  ? () => router.push("/compliance/empCompliance")
-                  : toggleComplianceMenu
+                isAccessEnabled
+                  ? (isCollapsed
+                      ? () => router.push("/compliance/empCompliance")
+                      : toggleComplianceMenu)
+                  : undefined
               }
-              className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
-              title={isCollapsed ? "Compliance Management" : ""}
+              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
+                isAccessEnabled
+                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              }`}
+              title={isCollapsed ? (isAccessEnabled ? "Compliance Management" : "Compliance Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
+              disabled={!isAccessEnabled}
             >
               <div className="flex items-center gap-3">
                 <Shield size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
-                  <span className="text-sm font-medium">Compliance</span>
+                  <span className="text-sm font-medium">
+                    Compliance
+                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
+                  </span>
                 )}
               </div>
-              {!isCollapsed &&
+              {!isCollapsed && isAccessEnabled &&
                 (complianceOpen ? (
                   <ChevronUp size={16} />
                 ) : (
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && complianceOpen && (
+            {!isCollapsed && complianceOpen && isAccessEnabled && (
               <ul className="pl-6 pt-2 space-y-2">
                 {complianceSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -349,32 +405,60 @@ export default function Sidebar() {
 
           {/* Task Management */}
           <li>
-            <Link href="/task-management/manage-tasks">
+            {isAccessEnabled ? (
+              <Link href="/task-management/manage-tasks">
+                <div
+                  className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                  title={isCollapsed ? "Task Management" : ""}
+                >
+                  <ListChecks size={19} className="flex-shrink-0" />
+                  {!isCollapsed && (
+                    <span className="text-sm font-medium">Task Management</span>
+                  )}
+                </div>
+              </Link>
+            ) : (
               <div
-                className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
-                title={isCollapsed ? "Task Management" : ""}
+                className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
+                title={isCollapsed ? "Task Management (Locked)" : "Complete verification and form submission to access"}
               >
                 <ListChecks size={19} className="flex-shrink-0" />
                 {!isCollapsed && (
-                  <span className="text-sm font-medium">Task Management</span>
+                  <span className="text-sm font-medium">
+                    Task Management <span className="ml-2 text-xs">(🔒)</span>
+                  </span>
                 )}
               </div>
-            </Link>
+            )}
           </li>
 
           {/* Customer Connect */}
           <li>
-            <Link href="/customer-connect">
+            {isAccessEnabled ? (
+              <Link href="/customer-connect">
+                <div
+                  className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                  title={isCollapsed ? "Customer Connect" : ""}
+                >
+                  <Phone size={18} className="flex-shrink-0" />
+                  {!isCollapsed && (
+                    <span className="text-sm font-medium">Customer Connect</span>
+                  )}
+                </div>
+              </Link>
+            ) : (
               <div
-                className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
-                title={isCollapsed ? "Customer Connect" : ""}
+                className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
+                title={isCollapsed ? "Customer Connect (Locked)" : "Complete verification and form submission to access"}
               >
                 <Phone size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
-                  <span className="text-sm font-medium">Customer Connect</span>
+                  <span className="text-sm font-medium">
+                    Customer Connect <span className="ml-2 text-xs">(🔒)</span>
+                  </span>
                 )}
               </div>
-            </Link>
+            )}
           </li>
 
           {/* Settings Dropdown */}
@@ -413,62 +497,86 @@ export default function Sidebar() {
                   </Link>
                 </li>
 
-                {/* Bot Settings - Only for Super Admin */}
-
-                <li>
-                  <Link href="/settings/bot-settings">
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                      Bot Settings
-                    </span>
-                  </Link>
-                </li>
-                {/* Add Position - position can be added like QA,Full Stack Developer */}
-                <li>
-                  <Link href="/settings/position-management">
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                      Add Position
-                    </span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/leave-request/leave-request">
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                      Leave Requests
-                    </span>
-                  </Link>
-                </li>
-                
-                  <li>
-                    <Link href="/settings/bot-settings">
-                      <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                        Bot Settings
-                      </span>
-                    </Link>
-                  </li>
-                
-                {role !== "superadmin" && (
-                  <li>
-                    <Link href="/leave-request/leave-request">
-                      <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                        Leave Requests
-                      </span>
-                    </Link>
-                  </li>
+                {/* Other settings - only accessible if verified and form submitted */}
+                {isAccessEnabled && (
+                  <>
+                    <li>
+                      <Link href="/settings/bot-settings">
+                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                          Bot Settings
+                        </span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/settings/position-management">
+                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                          Add Position
+                        </span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/leave-request/leave-request">
+                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                          Leave Requests
+                        </span>
+                      </Link>
+                    </li>
+                    {role !== "superadmin" && (
+                      <li>
+                        <Link href="/leave-request/leave-request">
+                          <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                            Leave Requests
+                          </span>
+                        </Link>
+                      </li>
+                    )}
+                    <li>
+                      <Link href="/payslip/payslip-lists">
+                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                          Payslip & Documents
+                        </span>
+                      </Link>
+                    </li>
+                    <li>
+                      <Link href="/task-management/user-task">
+                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                          Manage Tasks
+                        </span>
+                      </Link>
+                    </li>
+                  </>
                 )}
-                <li>
-                  <Link href="/payslip/payslip-lists">
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                      Payslip & Documents
-                    </span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/task-management/user-task">
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                      Manage Tasks
-                    </span>
-                  </Link>
-                </li>
+                
+                {/* Show locked items for non-verified users */}
+                {!isAccessEnabled && (
+                  <>
+                    <li>
+                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
+                        Bot Settings (🔒)
+                      </span>
+                    </li>
+                    <li>
+                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
+                        Add Position (🔒)
+                      </span>
+                    </li>
+                    <li>
+                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
+                        Leave Requests (🔒)
+                      </span>
+                    </li>
+                    <li>
+                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
+                        Payslip & Documents (🔒)
+                      </span>
+                    </li>
+                    <li>
+                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
+                        Manage Tasks (🔒)
+                      </span>
+                    </li>
+                  </>
+                )}
               </ul>
             )}
           </li>

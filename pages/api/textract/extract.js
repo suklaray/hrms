@@ -15,11 +15,16 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const textract = new AWS.Textract({
-  region: process.env.AWS_REGION,
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-});
+// Check if AWS credentials are available
+const hasAWSCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY;
+
+const textract = hasAWSCredentials 
+  ? new AWS.Textract({
+      region: process.env.AWS_REGION || 'us-east-1',
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    })
+  : null;
 
 const extractAadharNumber = (text) => {
   const aadharRegex = /\b\d{4}\s?\d{4}\s?\d{4}\b/g;
@@ -44,58 +49,96 @@ export default async function handler(req, res) {
     filename: (name, ext, part) => `${Date.now()}-${part.originalFilename}`,
   });
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error("Form parsing error:", err);
-      return res.status(500).json({ error: "File upload failed" });
+  try {
+    const [fields, files] = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        else resolve([fields, files]);
+      });
+    });
+
+    const file = files.file?.[0] || files.file;
+    const docType = fields.docType?.[0] || fields.docType;
+    
+    if (!file) {
+      return res.status(400).json({ error: "No file provided" });
     }
 
-    try {
-      const file = files.file?.[0] || files.file;
-      const docType = fields.docType?.[0] || fields.docType;
-      
-      if (!file) {
-        return res.status(400).json({ error: "No file provided" });
-      }
-
-      const buffer = fs.readFileSync(file.filepath);
-
-      const params = {
-        Document: { Bytes: buffer },
-        FeatureTypes: ["FORMS"],
-      };
-
-      textract.analyzeDocument(params, (error, data) => {
-        if (error) {
-          console.error("Textract error:", error);
-          return res.status(500).json({ error: "Textract failed" });
-        }
-
-        const extractedText = (data.Blocks || [])
-          .filter((b) => b.BlockType === "LINE")
-          .map((b) => b.Text)
-          .join(" ");
-
-        let extractedNumber = null;
-        
-        if (docType === 'aadhar') {
-          extractedNumber = extractAadharNumber(extractedText);
-        } else if (docType === 'pan') {
-          extractedNumber = extractPANNumber(extractedText);
-        }
-
-        // Clean up uploaded file
+    // If Textract is not available, return empty result
+    if (!textract) {
+      // Clean up uploaded file
+      try {
         fs.unlinkSync(file.filepath);
+      } catch (cleanupError) {
+        console.error("File cleanup error:", cleanupError);
+      }
+      
+      return res.status(200).json({
+        extractedNumber: null,
+        docType,
+        message: "Document analysis service not available. Please enter details manually."
+      });
+    }
 
-        return res.status(200).json({
-          extractedNumber,
-          docType,
+    const buffer = fs.readFileSync(file.filepath);
+
+    const params = {
+      Document: { Bytes: buffer },
+      FeatureTypes: ["FORMS"],
+    };
+
+    try {
+      const data = await new Promise((resolve, reject) => {
+        textract.analyzeDocument(params, (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
         });
       });
 
-    } catch (err) {
-      console.error("Processing failed:", err);
-      res.status(500).json({ error: "Processing failed" });
+      const extractedText = (data.Blocks || [])
+        .filter((b) => b.BlockType === "LINE")
+        .map((b) => b.Text)
+        .join(" ");
+
+      let extractedNumber = null;
+      
+      if (docType === 'aadhar') {
+        extractedNumber = extractAadharNumber(extractedText);
+      } else if (docType === 'pan') {
+        extractedNumber = extractPANNumber(extractedText);
+      }
+
+      // Clean up uploaded file
+      try {
+        fs.unlinkSync(file.filepath);
+      } catch (cleanupError) {
+        console.error("File cleanup error:", cleanupError);
+      }
+
+      return res.status(200).json({
+        extractedNumber,
+        docType,
+      });
+
+    } catch (textractError) {
+      console.error("Textract error:", textractError);
+      
+      // Clean up uploaded file on error
+      try {
+        fs.unlinkSync(file.filepath);
+      } catch (cleanupError) {
+        console.error("File cleanup error:", cleanupError);
+      }
+      
+      return res.status(200).json({
+        extractedNumber: null,
+        docType,
+        message: "Document analysis failed. Please enter details manually."
+      });
     }
-  });
+
+  } catch (err) {
+    console.error("Processing failed:", err);
+    return res.status(500).json({ error: "Processing failed" });
+  }
 }

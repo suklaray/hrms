@@ -15,16 +15,30 @@ export default async function handler(req, res) {
   }
 
   const form = formidable({
-    maxFileSize: 10 * 1024 * 1024, // 10MB limit
+    maxFileSize: 15 * 1024 * 1024, // 15MB limit
+    maxTotalFileSize: 50 * 1024 * 1024, // 50MB total limit
     keepExtensions: true,
   });
 
-  try {
-    form.parse(req, async (err, fields, files) => {
-      if (err) {
-        console.error('Form parsing error:', err);
-        return res.status(500).json({ error: 'File upload failed' });
+  form.parse(req, async (err, fields, files) => {
+    if (err) {
+      console.error('Form parsing error:', err);
+      
+      // Handle specific file size errors
+      if (err.code === 1009) {
+        return res.status(413).json({ 
+          error: 'File size too large. Maximum total file size allowed is 50MB. Please compress your files and try again.' 
+        });
       }
+      
+      if (err.code === 1016) {
+        return res.status(413).json({ 
+          error: 'Individual file size too large. Maximum file size allowed is 15MB per file.' 
+        });
+      }
+      
+      return res.status(400).json({ error: 'File upload failed. Please check your files and try again.' });
+    }
 
       try {
         // Extract field values
@@ -182,18 +196,16 @@ export default async function handler(req, res) {
           });
         }
 
-        return res.status(200).json({
+        // Don't refresh JWT tokens to avoid session conflicts between different users/tabs
+
+        res.status(200).json({
           message: 'Documents submitted successfully',
           employee_id: employee.empid
         });
 
       } catch (err) {
         console.error('Error in document submission:', err);
-        return res.status(500).json({ error: err.message || 'Server error' });
+        res.status(500).json({ error: err.message || 'Server error' });
       }
     });
-  } catch (error) {
-    console.error('Form parsing failed:', error);
-    return res.status(500).json({ error: 'Form parsing failed' });
-  }
 }
