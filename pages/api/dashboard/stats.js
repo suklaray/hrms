@@ -57,7 +57,8 @@ export default async function handler(req, res) {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      currentlyOnline = await prisma.attendance.findMany({
+      // Get attendance records for today where checked in but not checked out
+      const attendanceRecords = await prisma.attendance.findMany({
         where: {
           date: {
             gte: today,
@@ -66,23 +67,40 @@ export default async function handler(req, res) {
           check_in: { not: null },
           check_out: null
         },
-        include: {
-          users: {
-            select: {
-              empid: true,
-              name: true,
-              role: true,
-              position: true,
-              profile_photo: true
-            }
-          }
+        select: {
+          empid: true,
+          check_in: true
         }
       });
+
+      // Get user details for those empids
+      if (attendanceRecords.length > 0) {
+        const empids = attendanceRecords.map(record => record.empid);
+        const users = await prisma.users.findMany({
+          where: {
+            empid: { in: empids },
+            role: { in: roleFilter }
+          },
+          select: {
+            empid: true,
+            name: true,
+            role: true,
+            position: true,
+            profile_photo: true
+          }
+        });
+
+        // Combine attendance and user data
+        currentlyOnline = attendanceRecords.map(attendance => {
+          const user = users.find(u => u.empid === attendance.empid);
+          return user ? {
+            ...attendance,
+            users: user
+          } : null;
+        }).filter(Boolean);
+      }
       
-      // Filter by role permissions
-      currentlyOnline = currentlyOnline.filter(attendance => 
-        roleFilter.includes(attendance.users?.role)
-      );
+
       
       activeEmployees = currentlyOnline.length;
     } catch (e) {
@@ -157,6 +175,16 @@ export default async function handler(req, res) {
       pendingLeaves,
       todayAttendance: attendancePercentage,
       totalCandidates,
+      currentlyOnline: currentlyOnline.map(attendance => ({
+        empid: attendance.users?.empid,
+        name: attendance.users?.name,
+        role: attendance.users?.role,
+        position: attendance.users?.position,
+        profile_photo: attendance.users?.profile_photo,
+        check_in: attendance.check_in,
+        workingHours: attendance.check_in ? 
+          Math.round((new Date() - new Date(attendance.check_in)) / (1000 * 60 * 60) * 10) / 10 : 0
+      })),
       recentEmployees: recentEmployees.map(emp => ({
         empid: emp.empid,
         name: emp.name,
