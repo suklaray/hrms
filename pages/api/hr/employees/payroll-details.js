@@ -2,7 +2,6 @@ import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { canAccessRole } from "@/lib/roleBasedAccess";
 
-
 export default async function handler(req, res) {
   const { empid } = req.query;
 
@@ -15,7 +14,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Check authentication and authorization
     const token = req.cookies.token;
     if (!token) {
       return res.status(401).json({ message: 'Access denied' });
@@ -26,7 +24,6 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Allow employees to access their own data
     if (decoded.role === 'employee') {
       if (decoded.empid !== empid) {
         return res.status(403).json({ message: 'Access denied to this employee data' });
@@ -37,33 +34,50 @@ export default async function handler(req, res) {
 
     const user = await prisma.users.findUnique({
       where: { empid },
-      select: {
-        empid: true,
-        name: true,
-        email: true,
-        contact_number: true,
-        role: true,
-        position: true,
-        status: true,
-      },
     });
 
     if (!user) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    // Check if user is inactive
     if (user.status === "Inactive") {
       return res.status(403).json({ message: "Access denied. Employee is inactive." });
     }
 
-    // For HR/admin roles, check if they can access this employee's data
     if (['admin', 'hr', 'superadmin'].includes(decoded.role) && !canAccessRole(decoded.role, user.role)) {
       return res.status(403).json({ message: 'Access denied to this employee data' });
     }
 
+    let bankDetails = null;
+    let employeeContact = null;
+    
+    if (user.candidate_id) {
+      // Step 1: Find employee record using candidate_id
+      const employeeRecord = await prisma.employees.findFirst({
+        where: { candidate_id: user.candidate_id },
+      });
+      
+      if (employeeRecord) {
+        employeeContact = employeeRecord.contact_no;
+        
+        // Step 2: Use employee.empid to get bank details
+        const bankDetailsRecord = await prisma.bank_details.findFirst({
+          where: { employee_id: employeeRecord.empid }
+        });
+        
+        if (bankDetailsRecord) {
+          bankDetails = bankDetailsRecord;
+        }
+      }
+    }
+
+    const finalContact = user.contact_number || employeeContact || 'Not provided';
+
     const employee = {
       ...user,
+      contact_number: finalContact,
+      contact_no: finalContact,
+      bankDetails: bankDetails,
     };
 
     res.status(200).json(employee);

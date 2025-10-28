@@ -43,25 +43,32 @@ export default function PayslipPreview() {
 
     await new Promise((res) => setTimeout(res, 500));
 
-    const canvas = await html2canvas(slipRef.current, { scale: 2 });
+    const canvas = await html2canvas(slipRef.current, { 
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    });
     const imgData = canvas.toDataURL("image/png");
 
     const pdf = new jsPDF("p", "mm", "a4");
     const pdfW = pdf.internal.pageSize.getWidth();
     const pdfH = pdf.internal.pageSize.getHeight();
 
-    // Convert canvas size from px to mm
-    const imgW = canvas.width * 0.264583; // 1px = 0.264583mm
+    // Convert canvas size from px to mm with better scaling
+    const imgW = canvas.width * 0.264583;
     const imgH = canvas.height * 0.264583;
 
-    // Calculate scaled image size to fit inside A4 while preserving aspect ratio
-    const scale = Math.min(pdfW / imgW, pdfH / imgH);
+    // Calculate scale to fit width with minimal margins
+    const margin = 10; // 10mm margin on each side
+    const availableW = pdfW - (2 * margin);
+    const scale = availableW / imgW;
     const finalW = imgW * scale;
     const finalH = imgH * scale;
 
-    // Center the image
-    const marginX = (pdfW - finalW) / 2;
-    const marginY = (pdfH - finalH) / 2;
+    // Position with minimal top margin
+    const marginX = margin;
+    const marginY = 5; // Minimal top margin
 
     pdf.addImage(imgData, "PNG", marginX, marginY, finalW, finalH);
     pdf.save(`Payslip-${empid}-${month}-${year}.pdf`);
@@ -119,8 +126,9 @@ export default function PayslipPreview() {
             background: "#ffffff",
             border: "1px solid #D1D5DB",
             borderRadius: "0.5rem",
-            padding: "1rem",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+            padding: "1.5rem",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+            margin: "0 auto"
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
@@ -136,17 +144,37 @@ export default function PayslipPreview() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: window.innerWidth < 640 ? "0.75rem" : "0.875rem", marginBottom: "1.5rem" }}>
-            <p><strong style={{ textTransform: "uppercase" }}>Employee ID:</strong> <span style={{ textTransform: "uppercase" }}>{employee.empid}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.name}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Email:</strong> <span style={{ wordBreak: "break-all" }}>{employee.email}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Contact:</strong> <span style={{ textTransform: "uppercase" }}>{employee.contact_number || 'NOT PROVIDED'}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Role:</strong> <span style={{ textTransform: "uppercase" }}>{employee.role}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Position:</strong> <span style={{ textTransform: "uppercase" }}>{employee.position}</span></p>
-          </div>
+          {/* Employee Details Section */}
+          
+            <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB" }}>
+              <h3 style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", marginBottom: "0.75rem", textTransform: "uppercase" }}>Employee Details</h3>
+              <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.name}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Email:</strong> <span style={{ wordBreak: "break-all" }}>{employee.email}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Contact:</strong> <span style={{ textTransform: "uppercase" }}>{employee.contact_number || 'NOT PROVIDED'}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Role:</strong> <span style={{ textTransform: "uppercase" }}>{employee.role}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Position:</strong> <span style={{ textTransform: "uppercase" }}>{employee.position}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Payslip Period:</strong> <span style={{ textTransform: "uppercase" }}>{month}, {year}</span></p>
+            </div>
+            </div>
+         
+
+          {/* Bank Details Section */}
+          {employee.bankDetails && (
+            <div style={{ marginTop: "1.5rem",  marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB" }}>
+              <h3 style={{ fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.75rem", textTransform: "uppercase" }}>Bank Details</h3>
+              <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Holder:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.account_holder_name || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Bank Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.bank_name || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Branch:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.branch_name || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Number:</strong> <span>{employee.bankDetails.account_number || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>IFSC Code:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.ifsc_code || 'N/A'}</span></p>
+                </div>
+            </div>
+          )}
 
           {/* Earnings and Deductions Table */}
-          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB", marginBottom: "1.5rem" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB",  marginBottom: "1.5rem" }}>
             <thead>
               <tr>
                 <th style={{ border: "1px solid #D1D5DB", padding: "0.75rem", backgroundColor: "#F9FAFB", fontSize: "14px", fontWeight: "600", textAlign: "left", textTransform: "uppercase", color: "#374151" }}>EARNINGS</th>
@@ -214,6 +242,8 @@ export default function PayslipPreview() {
               Net Pay: ₹{Number(payslip.net_pay).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
+
+          
 
           <div style={{ borderTop: "1px solid #D1D5DB", marginTop: "2rem", paddingTop: "1rem", textAlign: "center", fontSize: window.innerWidth < 640 ? "0.625rem" : "0.75rem", color: "#6B7280", textTransform: "uppercase" }}>
             <p>Company Name · Address line 1 · Address line 2 · Contact</p>

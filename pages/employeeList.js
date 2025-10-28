@@ -246,7 +246,7 @@ export default function EmployeeListPage({ user }) {
                       font-medium rounded-lg transition-colors text-sm sm:text-base"
           >
             <FaDownload className="w-4 h-4 flex-shrink-0" />
-            <span>Download CSV</span>
+            <span>Download employee List</span>
           </button>
         </div>
 

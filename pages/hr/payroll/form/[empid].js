@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import SideBar from "@/Components/SideBar";
-import { User, Mail, Phone, Calendar, DollarSign, Plus, Minus, Calculator, CheckCircle, ArrowLeft, Eye, XCircle } from 'lucide-react';
+import { User, Mail, Phone, Calendar, DollarSign, Plus, Minus, Calculator, CheckCircle, ArrowLeft, Eye, XCircle, CreditCard } from 'lucide-react';
 import { toast } from "react-toastify";
 
 export default function PayrollForm() {
@@ -12,6 +12,7 @@ export default function PayrollForm() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [employeeData, setEmployeeData] = useState(null);
+  const [currentMonthPayrollExists, setCurrentMonthPayrollExists] = useState(false);
   const [formData, setFormData] = useState({
     basic_salary: '',
     hra_percent: 40,
@@ -38,6 +39,8 @@ export default function PayrollForm() {
     fetch(`/api/hr/employees/${empid}`)
       .then((res) => res.json())
       .then((data) => {
+        console.log('Employee data:', data.employee);
+        console.log('Bank details:', data.employee?.bankDetails);
         setEmployee(data.employee);
         setLoading(false);
       })
@@ -50,6 +53,21 @@ export default function PayrollForm() {
     fetch(`/api/hr/payroll/get?empid=${empid}`)
       .then((res) => res.json())
       .then((payrolls) => {
+        // Check if payroll exists for current month
+        const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+        const currentYear = new Date().getFullYear();
+        const currentMonthPayroll = payrolls?.find(p => p.month === currentMonth && p.year === currentYear);
+        setCurrentMonthPayrollExists(!!currentMonthPayroll);
+        
+        // Pre-fill month and year if current month payroll exists
+        if (currentMonthPayroll) {
+          setFormData(prev => ({
+            ...prev,
+            month: currentMonth,
+            year: currentYear
+          }));
+        }
+        
         if (payrolls && payrolls.length > 0) {
           // Get the most recent payroll
           const lastPayroll = payrolls[payrolls.length - 1];
@@ -306,7 +324,7 @@ export default function PayrollForm() {
         setFormData(prev => ({ ...prev, month: '', year: new Date().getFullYear() }));
       } else {
         const error = await res.json();
-        setMessage('Error generating payroll: ' + (error.error || 'Unknown error'));
+        setMessage('' + (error.error || 'Unknown error'));
       }
     } catch (error) {
       toast.error('Error generating payroll');
@@ -410,33 +428,33 @@ export default function PayrollForm() {
                 </div>
               )}
               
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <User className="w-5 h-5 text-gray-500" />
-                  <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <User className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Employee ID</p>
-                    <p className="font-medium text-gray-900">{employee.empid}</p>
+                    <p className="font-medium text-gray-900 truncate">{employee.empid}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <User className="w-5 h-5 text-gray-500" />
-                  <div>
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <User className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Full Name</p>
-                    <p className="font-medium text-gray-900">{employee.name}</p>
+                    <p className="font-medium text-gray-900 truncate">{employee.name}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <Mail className="w-5 h-5 text-gray-500" />
-                  <div>
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <Mail className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Email Address</p>
-                    <p className="font-medium text-gray-900">{employee.email}</p>
+                    <p className="font-medium text-gray-900 truncate">{employee.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <Phone className="w-5 h-5 text-gray-500" />
-                  <div>
+                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                  <Phone className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500 uppercase tracking-wide">Contact Number</p>
-                    <p className="font-medium text-gray-900">{employee.contact_number || 'Not provided'}</p>
+                    <p className="font-medium text-gray-900 truncate">{employee.contact_no || 'Not provided'}</p>
                   </div>
                 </div>
               </div>
@@ -444,43 +462,54 @@ export default function PayrollForm() {
               {/* Bank Details */}
               {employee.bankDetails && (
                 <div>
-                  <h3 className="text-md font-semibold text-gray-900 mb-3">Bank Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div>
+                  <h3 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-blue-600" />
+                    Bank Details
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Account Holder</p>
-                        <p className="font-medium text-gray-900">{employee.bankDetails.account_holder_name}</p>
+                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.account_holder_name}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div>
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</p>
-                        <p className="font-medium text-gray-900">{employee.bankDetails.bank_name}</p>
+                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.bank_name}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div>
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">Account Number</p>
-                        <p className="font-medium text-gray-900">{employee.bankDetails.account_number}</p>
+                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.account_number}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div>
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">IFSC Code</p>
-                        <p className="font-medium text-gray-900">{employee.bankDetails.ifsc_code}</p>
+                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.ifsc_code}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Branch</p>
-                        <p className="font-medium text-gray-900">{employee.bankDetails.branch_name || 'Not provided'}</p>
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Branch Name</p>
+                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.branch_name || 'Not provided'}</p>
                       </div>
                     </div>
                     {employee.bankDetails.checkbook_document && (
-                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                        <div>
+                      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Document</p>
-                          <a href={employee.bankDetails.checkbook_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm font-medium cursor-pointer">View Document</a>
+                          <a 
+                            href={employee.bankDetails.checkbook_document} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Document
+                          </a>
                         </div>
                       </div>
                     )}
@@ -1014,30 +1043,43 @@ export default function PayrollForm() {
 
               {/* Submit Button */}
               <div className="flex justify-end gap-4">
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
-                >
-                  {submitting ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Generate Payroll
-                    </>
-                  )}
-                </button>
+                {!currentMonthPayrollExists && (
+                  <button
+                    type="button"
+                    onClick={() => router.back()}
+                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+                {!currentMonthPayrollExists ? (
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Generate Payroll
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`)}
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <Eye className="w-4 h-4" />
+                    View Payslip
+                  </button>
+                )}
               </div>
             </form>
           </div>

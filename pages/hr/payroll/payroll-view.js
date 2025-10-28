@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
+
 import { Search, Calendar, Users, Eye, Download, Filter, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function PayrollView() {
+
   const [payrolls, setPayrolls] = useState([]);
   const [filteredPayrolls, setFilteredPayrolls] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
@@ -78,8 +80,31 @@ export default function PayrollView() {
       const currentYear = new Date().getFullYear();
       return item.month === currentMonth && item.year === currentYear;
     }).length;
-    const totalAmount = filteredPayrolls.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0);
-    return { total, thisMonth, totalAmount };
+    
+    // Calculate total amount based on current filters
+    let amountData;
+    let periodText;
+    
+    // If month filter is applied, show monthly amount
+    if (dateFilter.month) {
+      const year = dateFilter.year || new Date().getFullYear();
+      amountData = filteredPayrolls;
+      periodText = `${dateFilter.month} ${year}`;
+    } else if (activeTab === 'recent') {
+      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+      const currentYear = new Date().getFullYear();
+      amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
+      periodText = `${currentMonth} ${currentYear}`;
+    } else {
+      // Default to current month when nothing is selected
+      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+      const currentYear = new Date().getFullYear();
+      amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
+      periodText = `${currentMonth} ${currentYear}`;
+    }
+    
+    const totalAmount = amountData.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0);
+    return { total, thisMonth, totalAmount, periodText };
   };
 
   const stats = getStats();
@@ -136,6 +161,7 @@ export default function PayrollView() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Amount</p>
                   <p className="text-3xl font-bold text-indigo-600">₹{stats.totalAmount.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">{stats.periodText}</p>
                 </div>
                 <div className="p-3 bg-indigo-100 rounded-lg">
                   <span className="text-2xl font-bold text-indigo-600">₹</span>
@@ -238,6 +264,7 @@ export default function PayrollView() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Net Pay</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated On</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -257,6 +284,15 @@ export default function PayrollView() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-green-600">₹{parseFloat(item.net_pay).toLocaleString()}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            item.payslip_status === 'generated' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {item.payslip_status === 'generated' ? 'Generated' : 'Pending'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.generated_on ? new Date(item.generated_on).toLocaleDateString() : 'N/A'}
@@ -281,7 +317,7 @@ export default function PayrollView() {
                     ))}
                     {paginatedPayrolls.length === 0 && (
                       <tr>
-                        <td colSpan="6" className="text-center text-gray-500 py-8">
+                        <td colSpan="7" className="text-center text-gray-500 py-8">
                           {searchTerm || dateFilter.month || dateFilter.year ? 'No payrolls match your filters.' : 'No payroll records found.'}
                         </td>
                       </tr>

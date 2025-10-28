@@ -19,13 +19,14 @@ export default function ViewLeaveRequests() {
 
 
   useEffect(() => {
-    // Fetch leave requests
+    // Fetching leave requests
     fetch('/api/hr/leave-requests')
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          // Group by employee and get latest request
-          const groupedData = data.data.reduce((acc, leave) => {
+          // Filter only pending leaves and group by employee
+          const pendingLeaves = data.data.filter(leave => leave.status === 'Pending');
+          const groupedData = pendingLeaves.reduce((acc, leave) => {
             if (!acc[leave.empid] || new Date(leave.created_at) > new Date(acc[leave.empid].created_at)) {
               acc[leave.empid] = leave;
             }
@@ -272,7 +273,6 @@ export default function ViewLeaveRequests() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Manage</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -323,21 +323,10 @@ export default function ViewLeaveRequests() {
                           <td className="px-6 py-4">
                             <button
                               onClick={() => handleViewEmployee(leave.empid)}
-                              className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                              className="p-2 text-gray-400 hover:text-indigo-600 transition-colors cursor-pointer"
                             >
                               <Eye className="w-5 h-5" />
                             </button>
-                          </td>
-                          <td className="px-6 py-4">
-                            <select
-                              value={leave.status}
-                              onChange={(e) => handleStatusChange(leave.id, e.target.value)}
-                              className="text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                              <option value="Pending">Pending</option>
-                              <option value="Approved">Approved</option>
-                              <option value="Rejected">Rejected</option>
-                            </select>
                           </td>
                         </tr>
                       );

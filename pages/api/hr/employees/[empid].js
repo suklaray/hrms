@@ -26,9 +26,39 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: "Access denied. Employee is inactive." });
     }
 
+    console.log("User contact_number:", user.contact_number);
+
+    // Get bank details and contact info from employees table
+    let bankDetails = null;
+    let employeeContact = null;
+    
+    if (user.candidate_id) {
+      // Find employee record using candidate_id
+      const employeeRecord = await prisma.employees.findFirst({
+        where: { candidate_id: user.candidate_id },
+        include: {
+          bank_details: true
+        }
+      });
+      
+      if (employeeRecord) {
+        console.log("Employee contact_no:", employeeRecord.contact_no);
+        
+        if (employeeRecord.bank_details.length > 0) {
+          bankDetails = employeeRecord.bank_details[0];
+        }
+        // Get contact number from employees table
+        employeeContact = employeeRecord.contact_no;
+      }
+    }
+
+    const finalContact = user.contact_number || employeeContact || 'Not provided';
+    console.log("Final contact:", finalContact);
+
     const employee = {
       ...user,
-      contact_no: 'Not provided',
+      contact_no: finalContact,
+      bankDetails: bankDetails,
     };
 
     return res.status(200).json({ employee });

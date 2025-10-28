@@ -71,10 +71,6 @@ export default function LeaveRequest({ user }) {
     }
   }, [activeTab]);
 
-  useEffect(() => {
-    calculateDays();
-  }, [calculateDays]);
-
   const fetchLeaveRequests = async () => {
     setLoading(true);
     try {
@@ -159,6 +155,12 @@ export default function LeaveRequest({ user }) {
       setDayCount(0);
     }
   }, [formData.from_date, formData.to_date]);
+
+  
+  useEffect(() => {
+    calculateDays();
+  }, [calculateDays]);
+
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

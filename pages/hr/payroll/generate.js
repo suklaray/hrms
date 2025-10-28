@@ -235,10 +235,10 @@ export default function GeneratePayrollPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          {emp.payrollGenerated ? (
+                          {emp.payslipStatus === 'generated' ? (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                               <CheckCircle className="w-3 h-3 mr-1" />
-                              Completed
+                              Generated
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200">
@@ -249,18 +249,14 @@ export default function GeneratePayrollPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleGeneratePayroll(emp.empid)}
-                              className="inline-flex items-center px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm leading-4 font-medium rounded-md transition-colors cursor-pointer"
-                            >
-                              <span className="mr-1">₹</span>
-                              Generate
-                            </button>
-                            {/*{emp.payrollGenerated && (
-                              <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors">
-                                <Eye className="w-4 h-4" />
+                              <button
+                                onClick={() => handleGeneratePayroll(emp.empid)}
+                                className="inline-flex items-center px-3 py-2 border border-blue-300 text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-sm leading-4 font-medium rounded-md transition-colors cursor-pointer"
+                              >
+                                <span className="mr-1">₹</span>
+                                Generate
                               </button>
-                            )}*/}
+                            
                           </div>
                         </td>
                       </tr>

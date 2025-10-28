@@ -497,6 +497,18 @@ export default function Sidebar() {
                   </Link>
                 </li>
 
+                {/* Users own attendance */}
+                {['hr', 'admin', 'superadmin'].includes(role) && (
+                  <li>
+                    <Link href="/hr/attendance/my-attendance">
+                      <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                        My Attendance
+                      </span>
+                    </Link>
+                  </li>
+                )}
+
+
                 {/* Other settings - only accessible if verified and form submitted */}
                 {isAccessEnabled && (
                   <>
