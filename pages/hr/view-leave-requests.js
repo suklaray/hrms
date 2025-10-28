@@ -19,13 +19,14 @@ export default function ViewLeaveRequests() {
 
 
   useEffect(() => {
-    // Fetch leave requests
+    // Fetching leave requests
     fetch('/api/hr/leave-requests')
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          // Group by employee and get latest request
-          const groupedData = data.data.reduce((acc, leave) => {
+          // Filter only pending leaves and group by employee
+          const pendingLeaves = data.data.filter(leave => leave.status === 'Pending');
+          const groupedData = pendingLeaves.reduce((acc, leave) => {
             if (!acc[leave.empid] || new Date(leave.created_at) > new Date(acc[leave.empid].created_at)) {
               acc[leave.empid] = leave;
             }
@@ -322,7 +323,7 @@ export default function ViewLeaveRequests() {
                           <td className="px-6 py-4">
                             <button
                               onClick={() => handleViewEmployee(leave.empid)}
-                              className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+                              className="p-2 text-gray-400 hover:text-indigo-600 transition-colors cursor-pointer"
                             >
                               <Eye className="w-5 h-5" />
                             </button>

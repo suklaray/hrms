@@ -12,6 +12,9 @@ export default function EmployeeLeaveDetails() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState('');
+
 
   useEffect(() => {
     if (empid) {
@@ -51,7 +54,32 @@ export default function EmployeeLeaveDetails() {
     return today.isBetween(startDate, endDate, 'day', '[]');
   };
 
-  const handleStatusChange = async (leaveId, newStatus) => {
+  const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
+    // Business logic for status changes
+    if (currentStatus === 'Rejected' && newStatus === 'Approved') {
+      alert('Cannot change status from Rejected to Approved. This action is not allowed.');
+      return;
+    }
+
+    // Confirmation message
+    let confirmMessage = '';
+    if (newStatus === 'Approved') {
+      confirmMessage = 'Are you sure you want to APPROVE this leave request? Once confirmed, this can only be changed to Rejected (one time only).';
+    } else if (newStatus === 'Rejected') {
+      if (currentStatus === 'Approved') {
+        confirmMessage = 'Are you sure you want to REJECT this leave request? This is a one-time change from Approved to Rejected and cannot be reversed.';
+      } else {
+        confirmMessage = 'Are you sure you want to REJECT this leave request? Once confirmed, this cannot be changed.';
+      }
+    } else {
+      confirmMessage = `Are you sure you want to change the status to ${newStatus}?`;
+    }
+
+    // Show confirmation dialog
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
     try {
       const res = await fetch('/api/hr/update-leave-status', {
         method: 'POST',
@@ -72,6 +100,7 @@ export default function EmployeeLeaveDetails() {
       console.error('Error updating status:', error);
     }
   };
+
 
   const handleLogout = () => {
     router.push("/login");
@@ -98,6 +127,7 @@ export default function EmployeeLeaveDetails() {
       </div>
     );
   }
+  
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -167,15 +197,23 @@ export default function EmployeeLeaveDetails() {
                   {(() => {
                     if (!employeeData.leaveHistory || employeeData.leaveHistory.length === 0) return null;
                     
-                    const totalPages = Math.ceil(employeeData.leaveHistory.length / itemsPerPage);
+                    // Filter out past dates for completed leave requests
+                    const today = moment().startOf('day');
+                    const filteredLeaves = employeeData.leaveHistory.filter(leave => {
+                      const toDate = moment(leave.to_date).startOf('day');
+                      return toDate.isSameOrAfter(today);
+                    });
+                    
+                    const totalPages = Math.ceil(filteredLeaves.length / itemsPerPage);
                     const startIndex = (currentPage - 1) * itemsPerPage;
-                    const paginatedLeaves = employeeData.leaveHistory.slice(startIndex, startIndex + itemsPerPage);
+                    const paginatedLeaves = filteredLeaves.slice(startIndex, startIndex + itemsPerPage);
                     
                     return paginatedLeaves.map((leave, index) => {
                       const fromDate = moment(leave.from_date);
                       const toDate = moment(leave.to_date);
                       const duration = toDate.diff(fromDate, 'days') + 1;
-                      
+                  
+
                       return (
                         <tr key={leave.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -191,7 +229,14 @@ export default function EmployeeLeaveDetails() {
                             <div className="text-sm text-gray-900">{duration} day{duration > 1 ? 's' : ''}</div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm text-gray-900 max-w-xs truncate" title={leave.reason}>
+                            <div 
+                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
+                              title="Click to view full reason"
+                              onClick={() => {
+                                setSelectedReason(leave.reason);
+                                setShowReasonModal(true);
+                              }}
+                            >
                               {leave.reason}
                             </div>
                           </td>
@@ -231,13 +276,14 @@ export default function EmployeeLeaveDetails() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <select
                               value={leave.status}
-                              onChange={(e) => handleStatusChange(leave.id, e.target.value)}
+                              onChange={(e) => handleStatusChange(leave.id, e.target.value, leave.status)}
                               className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                               <option value="Pending">Pending</option>
                               <option value="Approved">Approved</option>
                               <option value="Rejected">Rejected</option>
                             </select>
+
                           </td>
                         </tr>
                       );
@@ -259,7 +305,12 @@ export default function EmployeeLeaveDetails() {
             
             {/* Pagination */}
             {employeeData.leaveHistory && (() => {
-              const totalPages = Math.ceil(employeeData.leaveHistory.length / itemsPerPage);
+              const today = moment().startOf('day');
+              const filteredLeaves = employeeData.leaveHistory.filter(leave => {
+                const toDate = moment(leave.to_date).startOf('day');
+                return toDate.isSameOrAfter(today);
+              });
+              const totalPages = Math.ceil(filteredLeaves.length / itemsPerPage);
               
               const handlePageChange = (page) => {
                 setCurrentPage(page);
@@ -268,7 +319,7 @@ export default function EmployeeLeaveDetails() {
               return totalPages > 1 ? (
                 <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
                   <div className="text-sm text-gray-700">
-                    Showing page {currentPage} of {totalPages} ({employeeData.leaveHistory.length} total requests)
+                    Showing page {currentPage} of {totalPages} ({filteredLeaves.length} total requests)
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -315,6 +366,27 @@ export default function EmployeeLeaveDetails() {
           </div>
         </div>
       </div>
+      {/* Reason Modal */}
+{/* Reason Modal */}
+{showReasonModal && (
+  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white/90 backdrop-blur-lg rounded-3xl border border-gray-200 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg max-h-80 sm:max-h-96 overflow-hidden shadow-xl">
+      <div className="flex justify-between items-center p-6 border-b border-gray-200/50">
+        <h3 className="text-lg font-bold text-gray-800">Leave Reason</h3>
+        <button
+          onClick={() => setShowReasonModal(false)}
+          className="w-8 h-8 rounded-full bg-gray-100/80 hover:bg-gray-200/80 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-all"
+        >
+          ×
+        </button>
+      </div>
+      <div className="p-6 text-sm text-gray-800 whitespace-pre-wrap overflow-y-auto max-h-64">
+        {selectedReason}
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
