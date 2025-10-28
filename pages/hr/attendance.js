@@ -75,7 +75,7 @@ export default function AttendanceList() {
     if (activeFilter === "present") {
       filtered = filtered.filter(user => user.attendance_status === "Present");
     } else if (activeFilter === "online") {
-      filtered = filtered.filter(user => user.status === "Logged In");
+      filtered = filtered.filter(user => user.today_checkin && !user.last_logout);
     }
     
     // Apply search filter
@@ -132,7 +132,7 @@ export default function AttendanceList() {
   const stats = {
     total: data.length,
     present: data.filter(u => u.attendance_status === "Present").length,
-    loggedIn: data.filter(u => u.status === "Logged In").length,
+    loggedIn: data.filter(u => u.today_checkin && !u.last_logout).length,
     avgHours: data.length > 0 ? (data.reduce((acc, u) => acc + parseFloat(u.total_hours || 0), 0) / data.length).toFixed(1) : 0
   };
 

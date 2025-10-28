@@ -54,7 +54,14 @@ export default async function handler(req, res) {
           ORDER BY a2.check_in ASC 
           LIMIT 1
         ) AS last_login,
-        MAX(a.check_out) AS last_logout,
+        (
+          SELECT a2.check_out 
+          FROM attendance a2 
+          WHERE a2.empid = u.empid 
+            AND DATE(a2.check_in) = CURRENT_DATE 
+          ORDER BY a2.check_in DESC 
+          LIMIT 1
+        ) AS today_checkout,
         (
           SELECT a2.check_in 
           FROM attendance a2 
@@ -106,7 +113,7 @@ export default async function handler(req, res) {
         email: user.email,
         role: user.role,
         last_login: user.last_login ? user.last_login.toISOString() : null,
-        last_logout: user.last_logout ? user.last_logout.toISOString() : null,
+        last_logout: user.today_checkout ? user.today_checkout.toISOString() : null,
         today_checkin: user.today_checkin ? user.today_checkin.toISOString() : null,
         today_completed_seconds: user.today_completed_seconds || 0,
         today_total_seconds: user.today_total_seconds || 0,

@@ -23,9 +23,9 @@ export default async function handler(req, res) {
     // Define role-based filtering
     let roleFilter = [];
     if (decoded.role === 'hr') {
-      roleFilter = ['employee'];
+      roleFilter = ['employee','hr'];
     } else if (decoded.role === 'admin') {
-      roleFilter = ['hr', 'employee'];
+      roleFilter = ['hr', 'employee', 'admin'];
     } else if (decoded.role === 'superadmin') {
       roleFilter = ['admin', 'hr', 'employee'];
     }
@@ -49,15 +49,45 @@ export default async function handler(req, res) {
       console.error('Error counting users:', e);
     }
 
+    // Get currently online employees (checked in but not checked out today)
+    let currentlyOnline = [];
     try {
-      activeEmployees = await prisma.users.count({ 
-        where: { 
-          status: 'Logged In',
-          role: { in: roleFilter }
-        } 
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      currentlyOnline = await prisma.attendance.findMany({
+        where: {
+          date: {
+            gte: today,
+            lt: tomorrow
+          },
+          check_in: { not: null },
+          check_out: null
+        },
+        include: {
+          users: {
+            select: {
+              empid: true,
+              name: true,
+              role: true,
+              position: true,
+              profile_photo: true
+            }
+          }
+        }
       });
+      
+      // Filter by role permissions
+      currentlyOnline = currentlyOnline.filter(attendance => 
+        roleFilter.includes(attendance.users?.role)
+      );
+      
+      activeEmployees = currentlyOnline.length;
     } catch (e) {
-      console.error('Error counting logged in users:', e);
+      console.error('Error fetching currently online employees:', e);
+      activeEmployees = 0;
     }
 
     try {
