@@ -54,25 +54,27 @@ export default function ViewLeaveRequests() {
   };
 
   const handleStatusChange = async (leaveId, newStatus) => {
-    try {
-      const res = await fetch('/api/hr/update-leave-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: leaveId, status: newStatus }),
-      });
+  try {
+    const res = await fetch('/api/hr/update-leave-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: leaveId, status: newStatus }),
+    });
 
-      const data = await res.json();
-      if (data.success) {
-        setAllLeaveData((prev) =>
-          prev.map((leave) =>
-            leave.id === leaveId ? { ...leave, status: newStatus } : leave
-          )
-        );
+    const data = await res.json();
+    if (data.success) {
+      // Refetch the data to get the latest status
+      const refreshRes = await fetch('/api/hr/leave-requests');
+      const refreshData = await refreshRes.json();
+      if (refreshData.success) {
+        setAllLeaveData(refreshData.data);
       }
-    } catch (error) {
-      console.error('Error updating status:', error);
     }
-  };
+  } catch (error) {
+    console.error('Error updating status:', error);
+  }
+};
+
 
   const formatDate = (dateString) => {
     return moment(dateString).isValid() ? moment(dateString).format('DD/MM/YYYY') : 'Invalid Date';
@@ -145,20 +147,24 @@ export default function ViewLeaveRequests() {
     setShowLeaveTypeModal(true);
   };
 
-  // Filter data based on active tab
-  const getFilteredData = () => {
-    if (activeTab === 'pending') {
-      const pendingLeaves = allLeaveData.filter(leave => leave.status === 'Pending');
-      const groupedData = pendingLeaves.reduce((acc, leave) => {
-        if (!acc[leave.empid] || new Date(leave.created_at) > new Date(acc[leave.empid].created_at)) {
-          acc[leave.empid] = leave;
-        }
-        return acc;
-      }, {});
-      return Object.values(groupedData);
-    }
-    return allLeaveData;
-  };
+
+ // Filter data based on active tab
+const getFilteredData = () => {
+  if (activeTab === 'pending') {
+    console.log('All leave data:', allLeaveData.map(l => ({ id: l.id, empid: l.empid, status: l.status })));
+    const pendingLeaves = allLeaveData.filter(leave => leave.status === 'Pending');
+    console.log('Pending leaves:', pendingLeaves.map(l => ({ id: l.id, empid: l.empid, status: l.status })));
+    const groupedData = pendingLeaves.reduce((acc, leave) => {
+      if (!acc[leave.empid] || new Date(leave.created_at) > new Date(acc[leave.empid].created_at)) {
+        acc[leave.empid] = leave;
+      }
+      return acc;
+    }, {});
+    return Object.values(groupedData);
+  }
+  return allLeaveData;
+};
+
 
   const filteredData = getFilteredData();
 
@@ -260,19 +266,28 @@ export default function ViewLeaveRequests() {
               
               {/* Tabs */}
               <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-                <button
-                  onClick={() => {
-                    setActiveTab('pending');
-                    setCurrentPage(1);
-                  }}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    activeTab === 'pending'
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Pending Requests
-                </button>
+              <button
+                onClick={() => {
+                  setActiveTab('pending');
+                  setCurrentPage(1);
+                  // Refresh data when switching to pending tab
+                  fetch('/api/hr/leave-requests')
+                    .then((res) => res.json())
+                    .then((data) => {
+                      if (data.success) {
+                        setAllLeaveData(data.data);
+                      }
+                    });
+                }}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === 'pending'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Pending Requests
+              </button>
+
                 <button
                   onClick={() => {
                     setActiveTab('history');

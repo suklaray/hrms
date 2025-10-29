@@ -219,10 +219,15 @@ const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
           {/* Leave Balance Chart */}
           {leaveBalances.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              {/* <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
                 Leave Balance ({moment().year()})
+              </h3> */}
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Calendar className="w-5 h-5 mr-2" />
+                Pending Leave Requests
               </h3>
+
               <div className="overflow-x-auto">
                 <table className="w-full bg-white rounded-lg border border-blue-100">
                   <thead className="bg-blue-100">
@@ -293,9 +298,12 @@ const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
                     // Filter out past dates for completed leave requests
                     const today = moment().startOf('day');
                     const filteredLeaves = employeeData.leaveHistory.filter(leave => {
-                      const toDate = moment(leave.to_date).startOf('day');
-                      return toDate.isSameOrAfter(today);
+                      return leave.status === 'Pending';
                     });
+
+
+
+
                     
                     const totalPages = Math.ceil(filteredLeaves.length / itemsPerPage);
                     const startIndex = (currentPage - 1) * itemsPerPage;
