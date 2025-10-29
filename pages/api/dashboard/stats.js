@@ -102,9 +102,9 @@ export default async function handler(req, res) {
       
 
       
-      activeEmployees = parseInt(results[0]?.count || 0);
+      activeEmployees = currentlyOnline.length;
     } catch (e) {
-      console.error('Error counting currently online employees:', e);
+      console.error('Error fetching currently online employees:', e);
       activeEmployees = 0;
     }
 
