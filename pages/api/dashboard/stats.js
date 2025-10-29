@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     } else if (decoded.role === 'admin') {
       roleFilter = ['hr', 'employee', 'admin'];
     } else if (decoded.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
+      roleFilter = ['admin', 'hr', 'employee','superadmin'];
     }
 
     // Get basic counts with error handling
@@ -49,20 +49,58 @@ export default async function handler(req, res) {
       console.error('Error counting users:', e);
     }
 
-    // Get currently online employees - same logic as HR attendance page
+    // Get currently online employees (checked in but not checked out today)
+    let currentlyOnline = [];
     try {
-      const results = await prisma.$queryRawUnsafe(`
-        SELECT COUNT(*) as count
-        FROM users u
-        WHERE u.role IN (${roleFilter.map(role => `'${role}'`).join(', ')})
-          AND u.status != 'Inactive'
-          AND EXISTS (
-            SELECT 1 FROM attendance a2 
-            WHERE a2.empid = u.empid 
-              AND DATE(a2.check_in) = CURRENT_DATE 
-              AND a2.check_out IS NULL
-          )
-      `);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      // Get attendance records for today where checked in but not checked out
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: {
+          date: {
+            gte: today,
+            lt: tomorrow
+          },
+          check_in: { not: null },
+          check_out: null
+        },
+        select: {
+          empid: true,
+          check_in: true
+        }
+      });
+
+      // Get user details for those empids
+      if (attendanceRecords.length > 0) {
+        const empids = attendanceRecords.map(record => record.empid);
+        const users = await prisma.users.findMany({
+          where: {
+            empid: { in: empids },
+            role: { in: roleFilter }
+          },
+          select: {
+            empid: true,
+            name: true,
+            role: true,
+            position: true,
+            profile_photo: true
+          }
+        });
+
+        // Combine attendance and user data
+        currentlyOnline = attendanceRecords.map(attendance => {
+          const user = users.find(u => u.empid === attendance.empid);
+          return user ? {
+            ...attendance,
+            users: user
+          } : null;
+        }).filter(Boolean);
+      }
+      
+
       
       activeEmployees = parseInt(results[0]?.count || 0);
     } catch (e) {
@@ -137,6 +175,16 @@ export default async function handler(req, res) {
       pendingLeaves,
       todayAttendance: attendancePercentage,
       totalCandidates,
+      currentlyOnline: currentlyOnline.map(attendance => ({
+        empid: attendance.users?.empid,
+        name: attendance.users?.name,
+        role: attendance.users?.role,
+        position: attendance.users?.position,
+        profile_photo: attendance.users?.profile_photo,
+        check_in: attendance.check_in,
+        workingHours: attendance.check_in ? 
+          Math.round((new Date() - new Date(attendance.check_in)) / (1000 * 60 * 60) * 10) / 10 : 0
+      })),
       recentEmployees: recentEmployees.map(emp => ({
         empid: emp.empid,
         name: emp.name,
