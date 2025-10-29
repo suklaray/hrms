@@ -160,18 +160,19 @@ export default function PayslipPreview() {
          
 
           {/* Bank Details Section */}
-          {employee.bankDetails && (
-            <div style={{ marginTop: "1.5rem",  marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB" }}>
-              <h3 style={{ fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.75rem", textTransform: "uppercase" }}>Bank Details</h3>
-              <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
-                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Holder:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.account_holder_name || 'N/A'}</span></p>
-                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Bank Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.bank_name || 'N/A'}</span></p>
-                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Branch:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.branch_name || 'N/A'}</span></p>
-                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Number:</strong> <span>{employee.bankDetails.account_number || 'N/A'}</span></p>
-                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>IFSC Code:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.ifsc_code || 'N/A'}</span></p>
+            {employee.bankDetails && (
+              <div style={{ marginTop: "1.5rem", marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB" }}>
+                <h3 style={{ fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.75rem", textTransform: "uppercase" }}>Bank Details</h3>
+                <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
+                  <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Holder:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.account_holder_name || 'N/A'}</span></p>
+                  <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Bank Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.bank_name || 'N/A'}</span></p>
+                  <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Branch:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.branch_name || 'N/A'}</span></p>
+                  <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Number:</strong> <span>{employee.bankDetails.account_number || 'N/A'}</span></p>
+                  <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>IFSC Code:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.ifsc_code || 'N/A'}</span></p>
                 </div>
-            </div>
-          )}
+              </div>
+            )}
+
 
           {/* Earnings and Deductions Table */}
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB",  marginBottom: "1.5rem" }}>

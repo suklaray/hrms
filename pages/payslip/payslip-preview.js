@@ -119,14 +119,32 @@ export default function PayslipPreview() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: window.innerWidth < 640 ? "0.75rem" : "0.875rem", marginBottom: "1.5rem" }}>
-            <p><strong style={{ textTransform: "uppercase" }}>Employee ID:</strong> <span style={{ textTransform: "uppercase" }}>{employee.empid}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.name}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Email:</strong> <span style={{ wordBreak: "break-all" }}>{employee.email}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Contact:</strong> <span style={{ textTransform: "uppercase" }}>{employee.contact_number || 'NOT PROVIDED'}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Role:</strong> <span style={{ textTransform: "uppercase" }}>{employee.role}</span></p>
-            <p><strong style={{ textTransform: "uppercase" }}>Position:</strong> <span style={{ textTransform: "uppercase" }}>{employee.position}</span></p>
+          {/* Employee Details Section */}
+          <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB" }}>
+            <h3 style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", marginBottom: "0.75rem", textTransform: "uppercase" }}>Employee Details</h3>
+            <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.name}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Email:</strong> <span style={{ wordBreak: "break-all" }}>{employee.email}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Contact:</strong> <span style={{ textTransform: "uppercase" }}>{employee.contact_number || 'NOT PROVIDED'}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Role:</strong> <span style={{ textTransform: "uppercase" }}>{employee.role}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Position:</strong> <span style={{ textTransform: "uppercase" }}>{employee.position}</span></p>
+              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Payslip Period:</strong> <span style={{ textTransform: "uppercase" }}>{month}, {year}</span></p>
+            </div>
           </div>
+
+          {/* Bank Details Section */}
+          {employee.bankDetails && (
+            <div style={{ marginTop: "1.5rem", marginBottom: "1.5rem", padding: "1rem", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB" }}>
+              <h3 style={{ fontSize: "0.875rem", fontWeight: "500", color: "#374151", marginBottom: "0.75rem", textTransform: "uppercase" }}>Bank Details</h3>
+              <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Holder:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.account_holder_name || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Bank Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.bank_name || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Branch:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.branch_name || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Account Number:</strong> <span>{employee.bankDetails.account_number || 'N/A'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>IFSC Code:</strong> <span style={{ textTransform: "uppercase" }}>{employee.bankDetails.ifsc_code || 'N/A'}</span></p>
+              </div>
+            </div>
+          )}
 
           <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #D1D5DB", marginBottom: "1.5rem" }}>
             <thead>

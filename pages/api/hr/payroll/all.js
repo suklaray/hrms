@@ -38,6 +38,7 @@ export default async function handler(req, res) {
         users: {
           select: {
             name: true,
+            email: true,
             position: true,
             status: true,
             role: true
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
       .map(p => ({
         ...p,
         name: p.users.name,
+        email: p.users.email,
         position: p.users.position
       }));
 

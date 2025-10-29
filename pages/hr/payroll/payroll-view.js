@@ -109,6 +109,10 @@ export default function PayrollView() {
 
   const stats = getStats();
 
+  const handleDownload = (empid, month, year) => {
+    window.open(`/hr/payroll/payslip-preview/${empid}?month=${month}&year=${year}&download=true`, '_blank');
+  };
+
   return (
     <>
       <Head>
@@ -264,7 +268,6 @@ export default function PayrollView() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Net Pay</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated On</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -276,6 +279,7 @@ export default function PayrollView() {
                           <div>
                             <div className="text-sm font-medium text-gray-900">{item.name}</div>
                             <div className="text-sm text-gray-500">ID: {item.empid}</div>
+                            <div className="text-sm text-gray-500">Email: {item.email}</div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.position}</td>
@@ -284,15 +288,6 @@ export default function PayrollView() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-green-600">₹{parseFloat(item.net_pay).toLocaleString()}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            item.payslip_status === 'generated' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {item.payslip_status === 'generated' ? 'Generated' : 'Pending'}
-                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.generated_on ? new Date(item.generated_on).toLocaleDateString() : 'N/A'}
@@ -305,19 +300,20 @@ export default function PayrollView() {
                                 View
                               </button>
                             </Link>
-                            <Link href={`/hr/payroll/payslip-preview/${item.empid}?month=${item.month}&year=${item.year}`}>
-                              <button className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
-                                <Download className="w-4 h-4" />
-                                Download
-                              </button>
-                            </Link>
+                            {/* <button 
+                              onClick={() => handleDownload(item.empid, item.month, item.year)}
+                              className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download
+                            </button> */}
                           </div>
                         </td>
                       </tr>
                     ))}
                     {paginatedPayrolls.length === 0 && (
                       <tr>
-                        <td colSpan="7" className="text-center text-gray-500 py-8">
+                        <td colSpan="6" className="text-center text-gray-500 py-8">
                           {searchTerm || dateFilter.month || dateFilter.year ? 'No payrolls match your filters.' : 'No payroll records found.'}
                         </td>
                       </tr>
