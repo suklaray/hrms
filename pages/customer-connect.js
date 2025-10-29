@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Head from 'next/head';
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import SideBar from "@/Components/SideBar";
-
+import { swalConfirm } from '@/utils/confirmDialog';
 export default function CustomerConnect() {
     const [messages, setMessages] = useState([]);
     const [selected, setSelected] = useState([]);
@@ -38,7 +38,7 @@ export default function CustomerConnect() {
     };
 
     const handleDelete = async () => {
-        const confirmDelete = confirm(`Are you sure you want to delete ${selected.length} selected message(s)? This action cannot be undone.`);
+        const confirmDelete = await swalConfirm(`Are you sure you want to delete ${selected.length} selected message(s)? This action cannot be undone.`);
         
         if (!confirmDelete) {
             return;
