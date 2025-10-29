@@ -1,7 +1,7 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import SideBar from "@/Components/SideBar";
-import { User, Mail, Phone, Calendar, DollarSign, Plus, Minus, Calculator, CheckCircle, ArrowLeft, Eye, XCircle, CreditCard } from 'lucide-react';
+import { User, Mail, Phone, Calendar, DollarSign, Plus, Minus, Calculator, CheckCircle, ArrowLeft, Eye, XCircle, CreditCard, Clock, X } from 'lucide-react';
 import { toast } from "react-toastify";
 
 export default function PayrollForm() {
@@ -13,6 +13,10 @@ export default function PayrollForm() {
   const [message, setMessage] = useState('');
   const [employeeData, setEmployeeData] = useState(null);
   const [currentMonthPayrollExists, setCurrentMonthPayrollExists] = useState(false);
+  const [leaveData, setLeaveData] = useState(null);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [selectedLeaves, setSelectedLeaves] = useState([]);
+  const [modalTitle, setModalTitle] = useState('');
   const [formData, setFormData] = useState({
     basic_salary: '',
     hra_percent: 40,
@@ -118,7 +122,33 @@ export default function PayrollForm() {
       .catch((err) => {
         console.error('Error fetching previous payroll:', err);
       });
+
+    // Fetch leave data when month and year are selected
+    if (formData.month && formData.year) {
+      fetch(`/api/hr/leaves/monthly?empid=${empid}&month=${formData.month}&year=${formData.year}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setLeaveData(data);
+        })
+        .catch((err) => {
+          console.error('Error fetching leave data:', err);
+        });
+    }
   }, [empid]);
+
+  // Separate useEffect for leave data to avoid dependency issues
+  useEffect(() => {
+    if (empid && formData.month && formData.year) {
+      fetch(`/api/hr/leaves/monthly?empid=${empid}&month=${formData.month}&year=${formData.year}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setLeaveData(data);
+        })
+        .catch((err) => {
+          console.error('Error fetching leave data:', err);
+        });
+    }
+  }, [empid, formData.month, formData.year]);
 
   const calculateAmount = (percent) => {
     return ((formData.basic_salary || 0) * percent) / 100;
@@ -136,6 +166,18 @@ export default function PayrollForm() {
       }
     }
     setFormData(prev => ({ ...prev, [name]: newValue }));
+  };
+
+  const openLeaveModal = (leaves, title) => {
+    setSelectedLeaves(leaves);
+    setModalTitle(title);
+    setShowLeaveModal(true);
+  };
+
+  const closeLeaveModal = () => {
+    setShowLeaveModal(false);
+    setSelectedLeaves([]);
+    setModalTitle('');
   };
 
 
@@ -517,6 +559,59 @@ export default function PayrollForm() {
                 </div>
               )}
             </div>
+
+            {/* Leave Information Cards */}
+            {formData.month && formData.year && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Leave Summary for {formData.month} {formData.year}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Approved Leaves Card */}
+                  <div 
+                    onClick={() => openLeaveModal(leaveData?.approved?.leaves || [], 'Approved Leaves')}
+                    className="bg-green-50 border border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-green-800">Approved Leaves</p>
+                        <p className="text-2xl font-bold text-green-900">{leaveData?.approved?.count || 0}</p>
+                      </div>
+                      <CheckCircle className="w-8 h-8 text-green-600" />
+                    </div>
+                  </div>
+
+                  {/* Paid Leaves Card */}
+                  <div 
+                    onClick={() => openLeaveModal(leaveData?.paid?.leaves || [], 'Paid Leaves')}
+                    className="bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-blue-800">Paid Leaves</p>
+                        <p className="text-2xl font-bold text-blue-900">{leaveData?.paid?.count || 0}</p>
+                      </div>
+                      <DollarSign className="w-8 h-8 text-blue-600" />
+                    </div>
+                  </div>
+
+                  {/* Unpaid Leaves Card */}
+                  <div 
+                    onClick={() => openLeaveModal(leaveData?.unpaid?.leaves || [], 'Unpaid Leaves')}
+                    className="bg-red-50 border border-red-200 rounded-lg p-4 cursor-pointer hover:bg-red-100 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-red-800">Unpaid Leaves</p>
+                        <p className="text-2xl font-bold text-red-900">{leaveData?.unpaid?.count || 0}</p>
+                      </div>
+                      <XCircle className="w-8 h-8 text-red-600" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Payroll Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -1085,6 +1180,68 @@ export default function PayrollForm() {
           </div>
         </div>
       </div>
+
+      {/* Leave Details Modal */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">{modalTitle}</h3>
+              <button
+                onClick={closeLeaveModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {selectedLeaves.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedLeaves.map((leave, index) => (
+                    <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Leave Type</p>
+                          <p className="font-medium text-gray-900">{leave.leave_type}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">From Date</p>
+                          <p className="font-medium text-gray-900">{new Date(leave.from_date).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">To Date</p>
+                          <p className="font-medium text-gray-900">{new Date(leave.to_date).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Status</p>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            leave.status === 'Approved' ? 'bg-green-100 text-green-800' :
+                            leave.status === 'Rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {leave.status}
+                          </span>
+                        </div>
+                      </div>
+                      {leave.reason && (
+                        <div className="mt-3">
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Reason</p>
+                          <p className="text-sm text-gray-700">{leave.reason}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No leaves found for this category</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
