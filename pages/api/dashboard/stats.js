@@ -49,44 +49,24 @@ export default async function handler(req, res) {
       console.error('Error counting users:', e);
     }
 
-    // Get currently online employees (checked in but not checked out today)
-    let currentlyOnline = [];
+    // Get currently online employees - same logic as HR attendance page
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      currentlyOnline = await prisma.attendance.findMany({
-        where: {
-          date: {
-            gte: today,
-            lt: tomorrow
-          },
-          check_in: { not: null },
-          check_out: null
-        },
-        include: {
-          users: {
-            select: {
-              empid: true,
-              name: true,
-              role: true,
-              position: true,
-              profile_photo: true
-            }
-          }
-        }
-      });
+      const results = await prisma.$queryRawUnsafe(`
+        SELECT COUNT(*) as count
+        FROM users u
+        WHERE u.role IN (${roleFilter.map(role => `'${role}'`).join(', ')})
+          AND u.status != 'Inactive'
+          AND EXISTS (
+            SELECT 1 FROM attendance a2 
+            WHERE a2.empid = u.empid 
+              AND DATE(a2.check_in) = CURRENT_DATE 
+              AND a2.check_out IS NULL
+          )
+      `);
       
-      // Filter by role permissions
-      currentlyOnline = currentlyOnline.filter(attendance => 
-        roleFilter.includes(attendance.users?.role)
-      );
-      
-      activeEmployees = currentlyOnline.length;
+      activeEmployees = parseInt(results[0]?.count || 0);
     } catch (e) {
-      console.error('Error fetching currently online employees:', e);
+      console.error('Error counting currently online employees:', e);
       activeEmployees = 0;
     }
 
