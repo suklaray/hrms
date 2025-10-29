@@ -273,7 +273,6 @@ const handleDelete = async (candidateId) => {
       ? "Are you sure you want to delete this candidate?" 
       : `Are you sure you want to delete ${selectedCandidates.length} selected candidates?`;
 
-
     if (mounted && await swalConfirm(confirmMessage)) {
       try {
         await Promise.all(

@@ -8,15 +8,15 @@ import {toast} from 'react-toastify';
 
 export default function ViewLeaveRequests() {
   const router = useRouter();
-  const [leaveData, setLeaveData] = useState([]);
+  const [allLeaveData, setAllLeaveData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [showLeaveTypeModal, setShowLeaveTypeModal] = useState(false);
   const [leaveTypeForm, setLeaveTypeForm] = useState({ type_name: '', max_days: '', paid: true });
   const [editingLeaveType, setEditingLeaveType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState('pending');
   const itemsPerPage = 10;
-
 
   useEffect(() => {
     // Fetching leave requests
@@ -24,15 +24,7 @@ export default function ViewLeaveRequests() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          // Filter only pending leaves and group by employee
-          const pendingLeaves = data.data.filter(leave => leave.status === 'Pending');
-          const groupedData = pendingLeaves.reduce((acc, leave) => {
-            if (!acc[leave.empid] || new Date(leave.created_at) > new Date(acc[leave.empid].created_at)) {
-              acc[leave.empid] = leave;
-            }
-            return acc;
-          }, {});
-          setLeaveData(Object.values(groupedData));
+          setAllLeaveData(data.data);
         }
         setLoading(false);
       })
@@ -71,7 +63,7 @@ export default function ViewLeaveRequests() {
 
       const data = await res.json();
       if (data.success) {
-        setLeaveData((prev) =>
+        setAllLeaveData((prev) =>
           prev.map((leave) =>
             leave.id === leaveId ? { ...leave, status: newStatus } : leave
           )
@@ -107,8 +99,12 @@ export default function ViewLeaveRequests() {
   };
 
   const handleViewEmployee = (empid) => {
+  if (activeTab === 'history') {
+    router.push(`/hr/employee-leave-summary/${empid}`);
+  } else {
     router.push(`/hr/employee-leave-details/${empid}`);
-  };
+  }
+};
 
   const handleLeaveTypeSubmit = async (e) => {
     e.preventDefault();
@@ -135,7 +131,6 @@ export default function ViewLeaveRequests() {
         toast.error(data.message || 'Error saving leave type');
       }
     } catch (error) {
-      //console.error('Error saving leave type:', error);
       toast.error('Error saving leave type');
     }
   };
@@ -150,7 +145,22 @@ export default function ViewLeaveRequests() {
     setShowLeaveTypeModal(true);
   };
 
+  // Filter data based on active tab
+  const getFilteredData = () => {
+    if (activeTab === 'pending') {
+      const pendingLeaves = allLeaveData.filter(leave => leave.status === 'Pending');
+      const groupedData = pendingLeaves.reduce((acc, leave) => {
+        if (!acc[leave.empid] || new Date(leave.created_at) > new Date(acc[leave.empid].created_at)) {
+          acc[leave.empid] = leave;
+        }
+        return acc;
+      }, {});
+      return Object.values(groupedData);
+    }
+    return allLeaveData;
+  };
 
+  const filteredData = getFilteredData();
 
   if (loading) {
     return (
@@ -199,7 +209,6 @@ export default function ViewLeaveRequests() {
                 <Plus className="w-4 h-4" />
                 <span>Add Leave Type</span>
               </button>
-
             </div>
             
             <div className="p-6">
@@ -244,18 +253,49 @@ export default function ViewLeaveRequests() {
             </div>
           </div>
 
-          {/* Leave Requests List */}
+          {/* Leave Requests List with Tabs */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Employee Leave Requests</h2>
-              {leaveData.length > 0 && (() => {
-                const totalPages = Math.ceil(leaveData.length / itemsPerPage);
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Employee Leave Requests</h2>
+              
+              {/* Tabs */}
+              <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => {
+                    setActiveTab('pending');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'pending'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Pending Requests
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('history');
+                    setCurrentPage(1);
+                  }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeTab === 'history'
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  All Leave History
+                </button>
+              </div>
+
+              {filteredData.length > 0 && (() => {
+                const totalPages = Math.ceil(filteredData.length / itemsPerPage);
                 const startIndex = (currentPage - 1) * itemsPerPage;
-                const paginatedData = leaveData.slice(startIndex, startIndex + itemsPerPage);
+                const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
                 
                 return (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Showing {paginatedData.length} of {leaveData.length} leave requests
+                  <p className="text-sm text-gray-600 mt-4">
+                    Showing {paginatedData.length} of {filteredData.length} {activeTab === 'pending' ? 'pending requests' : 'leave records'}
                     {totalPages > 1 && (
                       <span> (Page {currentPage} of {totalPages})</span>
                     )}
@@ -271,17 +311,17 @@ export default function ViewLeaveRequests() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Details</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {(() => {
-                    if (leaveData.length === 0) return null;
+                    if (filteredData.length === 0) return null;
                     
-                    const totalPages = Math.ceil(leaveData.length / itemsPerPage);
+                    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
                     const startIndex = (currentPage - 1) * itemsPerPage;
-                    const paginatedData = leaveData.slice(startIndex, startIndex + itemsPerPage);
+                    const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
                     
                     return paginatedData.map((leave) => {
                       const currentStatus = getLeaveStatus(leave);
@@ -295,6 +335,8 @@ export default function ViewLeaveRequests() {
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{leave.name}</div>
                                 <div className="text-sm text-gray-500">ID: {leave.empid}</div>
+                                <div className="text-sm text-gray-500">Email: {leave.users?.email || 'N/A'}</div>
+
                               </div>
                             </div>
                           </td>
@@ -332,12 +374,12 @@ export default function ViewLeaveRequests() {
                       );
                     });
                   })()}
-                  {leaveData.length === 0 && (
+                  {filteredData.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                         <div className="flex flex-col items-center">
                           <Calendar className="w-12 h-12 text-gray-300 mb-4" />
-                          <p>No leave requests found</p>
+                          <p>No {activeTab === 'pending' ? 'pending requests' : 'leave records'} found</p>
                         </div>
                       </td>
                     </tr>
@@ -348,7 +390,7 @@ export default function ViewLeaveRequests() {
             
             {/* Pagination */}
             {(() => {
-              const totalPages = Math.ceil(leaveData.length / itemsPerPage);
+              const totalPages = Math.ceil(filteredData.length / itemsPerPage);
               
               const handlePageChange = (page) => {
                 setCurrentPage(page);
@@ -357,7 +399,7 @@ export default function ViewLeaveRequests() {
               return totalPages > 1 ? (
                 <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
                   <div className="text-sm text-gray-700">
-                    Showing page {currentPage} of {totalPages} ({leaveData.length} total requests)
+                    Showing page {currentPage} of {totalPages} ({filteredData.length} total {activeTab === 'pending' ? 'requests' : 'records'})
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -474,7 +516,7 @@ export default function ViewLeaveRequests() {
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-{editingLeaveType ? 'Update' : 'Add'} Leave Type
+                    {editingLeaveType ? 'Update' : 'Add'} Leave Type
                   </button>
                 </div>
               </form>

@@ -526,13 +526,13 @@ export default function Sidebar() {
                         </span>
                       </Link>
                     </li>
-                    <li>
+                    {/* <li>
                       <Link href="/leave-request/leave-request">
                         <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
                           Leave Requests
                         </span>
                       </Link>
-                    </li>
+                    </li> */}
                     {role !== "superadmin" && (
                       <li>
                         <Link href="/leave-request/leave-request">
