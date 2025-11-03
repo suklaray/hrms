@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import SideBar from "@/Components/SideBar";
-import { Building2 } from 'lucide-react';
+import { Building2, Server } from 'lucide-react';
 
 export default function PayslipPreview() {
   const router = useRouter();
@@ -122,40 +122,53 @@ export default function PayslipPreview() {
           ref={slipRef}
           style={{
             width: "100%",
-            maxWidth: "800px",
+            maxWidth: "900px", 
             background: "#ffffff",
             border: "1px solid #D1D5DB",
             borderRadius: "0.5rem",
-            padding: "1.5rem",
+            padding: "2rem", 
             boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-            margin: "0 auto"
+            margin: "0 auto",
+            minHeight: "fit-content"
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>            
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <Building2 size={window.innerWidth < 640 ? 32 : 48} color="#4F46E5" />
                 <span style={{ fontSize: window.innerWidth < 640 ? "1rem" : "1.25rem", fontWeight: "bold", color: "#4F46E5", textTransform: "uppercase" }}>HRMS</span>
               </div>
               <div style={{ textAlign: "right" }}>
-                <h1 style={{ fontSize: window.innerWidth < 640 ? "1.25rem" : "1.5rem", fontWeight: "bold", color: "#4F46E5", textTransform: "uppercase" }}>PAYSLIP</h1>
+                <h2 style={{ fontSize: window.innerWidth < 640 ? "1.25rem" : "1.5rem", fontWeight: "bold", color: "#4F46E5", textTransform: "uppercase", margin: "0" }}>PAYSLIP</h2>
                 <p style={{ fontSize: "0.875rem", color: "#4B5563", textTransform: "uppercase" }}>{month} {year}</p>
+              </div>
+            </div></div>
+
+          <div style={{  marginBottom: "1.5rem", textAlign: "center"}}>
+            <div style={{ textAlign: "center" }}>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap:"0.5rem", alignItems: "center", justifyContent: "left", marginTop: "1rem" }}>
+                <Server size={window.innerWidth < 640 ? 20 : 28} color="#4F46E5" />
+              </div>
+              <div style={{  textAlign: "center" }}>
+                <h1 style={{ fontSize: window.innerWidth < 640 ? "0.875rem" : "1.5rem", fontWeight: "bold", color: "#4F46E5", textTransform: "uppercase" }}>COMPANY NAME</h1>
+                <p style={{ fontSize: "0.875rem", color: "#4B5563", textTransform: "uppercase" }}>Company Address</p>
               </div>
             </div>
           </div>
-
-          {/* Employee Details Section */}
           
+          {/* Employee Details Section */}        
             <div style={{ marginTop: "1.5rem", padding: "1rem", backgroundColor: "#F9FAFB", borderRadius: "0.5rem", border: "1px solid #E5E7EB" }}>
               <h3 style={{ fontSize: "0.875rem", fontWeight: "600", color: "#374151", marginBottom: "0.75rem", textTransform: "uppercase" }}>Employee Details</h3>
               <div style={{ display: "grid", gridTemplateColumns: window.innerWidth < 640 ? "1fr" : "1fr 1fr", gap: "0.5rem", fontSize: "0.75rem" }}>
                 <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Name:</strong> <span style={{ textTransform: "uppercase" }}>{employee.name}</span></p>
-              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Email:</strong> <span style={{ wordBreak: "break-all" }}>{employee.email}</span></p>
-              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Contact:</strong> <span style={{ textTransform: "uppercase" }}>{employee.contact_number || 'NOT PROVIDED'}</span></p>
-              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Role:</strong> <span style={{ textTransform: "uppercase" }}>{employee.role}</span></p>
-              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Position:</strong> <span style={{ textTransform: "uppercase" }}>{employee.position}</span></p>
-              <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Payslip Period:</strong> <span style={{ textTransform: "uppercase" }}>{month}, {year}</span></p>
-            </div>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Email:</strong> <span style={{ wordBreak: "break-word", fontSize: "0.7rem" }}>{employee.email}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Contact:</strong> <span style={{ textTransform: "uppercase" }}>{employee.contact_number || 'NOT PROVIDED'}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Role:</strong> <span style={{ textTransform: "uppercase" }}>{employee.role}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Position:</strong> <span style={{ textTransform: "uppercase" }}>{employee.position}</span></p>
+                <p><strong style={{ textTransform: "uppercase", color: "#374151" }}>Payslip Period:</strong> <span style={{ textTransform: "uppercase" }}>{month}, {year}</span></p>
+              </div>
             </div>
          
 
@@ -191,6 +204,14 @@ export default function PayslipPreview() {
                 <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textTransform: "uppercase" }}>{deductionDetails.length > 0 ? deductionDetails[0]?.name.toUpperCase() : ''}</td>
                 <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textAlign: "right" }}>{deductionDetails.length > 0 ? Number(deductionDetails[0]?.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 }) : ''}</td>
               </tr>
+              {payslip.bonus > 0 && (
+                <tr>
+                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textTransform: "uppercase" }}>BONUS</td>
+                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textAlign: "right" }}>{Number(payslip.bonus).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px" }}></td>
+                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px" }}></td>
+                </tr>
+              )}
               {payslip.hra > 0 && (
                 <tr>
                   <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textTransform: "uppercase" }}>HOUSE RENT ALLOWANCE</td>
@@ -207,14 +228,6 @@ export default function PayslipPreview() {
                   <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textAlign: "right" }}>{deductionDetails[2] ? Number(deductionDetails[2].amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 }) : ''}</td>
                 </tr>
               )}
-              {payslip.bonus > 0 && (
-                <tr>
-                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textTransform: "uppercase" }}>BONUS</td>
-                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px", textAlign: "right" }}>{Number(payslip.bonus).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
-                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px" }}></td>
-                  <td style={{ border: "1px solid #D1D5DB", padding: "0.5rem", fontSize: "12px" }}></td>
-                </tr>
-              )}
               {allowanceDetails.filter(a => !['House Rent Allowance (HRA)', 'Dearness Allowance (DA)'].includes(a.name)).map((allowance, idx) => {
                 const deductionIdx = idx + (payslip.hra > 0 ? 1 : 0) + (payslip.da > 0 ? 1 : 0) + 1;
                 return (
@@ -226,6 +239,7 @@ export default function PayslipPreview() {
                   </tr>
                 );
               })}
+              
               <tr style={{ backgroundColor: "#F3F4F6" }}>
                 <td style={{ border: "1px solid #D1D5DB", padding: "0.75rem", fontSize: "14px", fontWeight: "600", textTransform: "uppercase" }}>TOTAL ALLOWANCES</td>
                 <td style={{ border: "1px solid #D1D5DB", padding: "0.75rem", fontSize: "14px", fontWeight: "600", textAlign: "right" }}>{totalCustomAllowances.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
@@ -247,7 +261,7 @@ export default function PayslipPreview() {
           
 
           <div style={{ borderTop: "1px solid #D1D5DB", marginTop: "2rem", paddingTop: "1rem", textAlign: "center", fontSize: window.innerWidth < 640 ? "0.625rem" : "0.75rem", color: "#6B7280", textTransform: "uppercase" }}>
-            <p>Company Name · Address line 1 · Address line 2 · Contact</p>
+            <p>This is computer generated payslip, signature Not required</p>
           </div>
         </div>
 

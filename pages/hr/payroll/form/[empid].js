@@ -17,6 +17,8 @@ export default function PayrollForm() {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [selectedLeaves, setSelectedLeaves] = useState([]);
   const [modalTitle, setModalTitle] = useState('');
+  const [payrollExists, setPayrollExists] = useState(false);
+
   const [formData, setFormData] = useState({
     basic_salary: '',
     hra_percent: 40,
@@ -52,6 +54,7 @@ export default function PayrollForm() {
         console.error('Error fetching employee:', err);
         setLoading(false);
       });
+
 
     // Fetch previous payroll data to pre-fill form
     fetch(`/api/hr/payroll/get?empid=${empid}`)
@@ -135,6 +138,21 @@ export default function PayrollForm() {
         })
         .catch((err) => {
           console.error('Error fetching leave data:', err);
+        });
+    }
+  }, [empid, formData.month, formData.year]);
+
+  useEffect(() => {
+    if (empid && formData.month && formData.year) {
+      // Check if payroll exists for selected month/year
+      fetch(`/api/hr/payroll/get?empid=${empid}`)
+        .then((res) => res.json())
+        .then((payrolls) => {
+          const existingPayroll = payrolls?.find(p => p.month === formData.month && p.year === formData.year);
+          setPayrollExists(!!existingPayroll);
+        })
+        .catch((err) => {
+          console.error('Error checking payroll existence:', err);
         });
     }
   }, [empid, formData.month, formData.year]);
@@ -403,6 +421,28 @@ export default function PayrollForm() {
       </div>
     );
   }
+  const canGeneratePayroll = () => {
+    if (!formData.month || !formData.year) return false;
+    
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth(); // 0-11
+    const currentYear = currentDate.getFullYear();
+    
+    const selectedMonthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'].indexOf(formData.month);
+    
+    // Don't allow future months
+    if (formData.year > currentYear || (formData.year === currentYear && selectedMonthIndex > currentMonth)) {
+      return false;
+    }
+    
+    // Don't allow if payroll already exists
+    if (payrollExists) {
+      return false;
+    }
+    
+    return true;
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -1127,16 +1167,24 @@ export default function PayrollForm() {
 
               {/* Submit Button */}
               <div className="flex justify-end gap-4">
-                {!currentMonthPayrollExists && (
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                
+                {payrollExists ? (
                   <button
                     type="button"
-                    onClick={() => router.back()}
-                    className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`)}
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 cursor-pointer"
                   >
-                    Cancel
+                    <Eye className="w-4 h-4" />
+                    View Payslip
                   </button>
-                )}
-                {!currentMonthPayrollExists ? (
+                ) : canGeneratePayroll() ? (
                   <button
                     type="submit"
                     disabled={submitting}
@@ -1155,16 +1203,15 @@ export default function PayrollForm() {
                     )}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => router.push(`/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`)}
-                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 cursor-pointer"
-                  >
-                    <Eye className="w-4 h-4" />
-                    View Payslip
-                  </button>
+                  <div className="px-6 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed flex items-center gap-2">
+                    <XCircle className="w-4 h-4" />
+                    {!formData.month || !formData.year ? 'Select Month & Year' : 
+                    payrollExists ? 'Payroll Already Generated' : 
+                    'Cannot Generate for Future Months'}
+                  </div>
                 )}
               </div>
+
             </form>
           </div>
         </div>
