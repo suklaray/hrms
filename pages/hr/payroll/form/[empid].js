@@ -123,7 +123,7 @@ export default function PayrollForm() {
         console.error('Error fetching previous payroll:', err);
       });
 
-    
+    // Leave data will be fetched by separate useEffect
   }, [empid]);
 
   useEffect(() => {

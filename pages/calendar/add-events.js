@@ -9,8 +9,13 @@ export default function AddEvent() {
     title: '',
     description: '',
     event_date: '',
-    event_type: 'event'
+    event_type: 'event',
+    visible_to: []
   });
+  const [employees, setEmployees] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState({});
@@ -74,6 +79,32 @@ export default function AddEvent() {
     setIsFormValid(isValid);
   }, [formData]);
 
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.relative')) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await fetch('/api/task-management/tasks');
+      if (res.ok) {
+        const data = await res.json();
+        setEmployees(data.employees || []);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -88,14 +119,18 @@ export default function AddEvent() {
       const res = await fetch('/api/calendar/add-events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          visible_to: formData.visible_to.join(',')
+        })
       });
 
       const data = await res.json();
       
       if (res.ok) {
         setMessage('Event added successfully!');
-        setFormData({ title: '', description: '', event_date: '', event_type: 'event' });
+        setFormData({ title: '', description: '', event_date: '', event_type: 'event', visible_to: [] });
+        setSelectedEmployees([]);
         setErrors({});
       } else {
         setMessage(data.message || 'Failed to add event');
@@ -114,6 +149,10 @@ export default function AddEvent() {
       setErrors({ ...errors, [name]: '' });
     }
     
+    if (name === 'visible_to') {
+      // Handle multi-select for visible_to
+      return;
+    }
     setFormData({ ...formData, [name]: value });
   };
 
@@ -122,6 +161,40 @@ export default function AddEvent() {
     description: '',
     event_date: '',
     event_type: 'event',
+    visible_to: []
+  };
+
+  const filteredEmployees = employees.filter(emp => 
+    emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.empid.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleEmployeeSelect = (employee) => {
+    const isSelected = selectedEmployees.some(emp => emp.empid === employee.empid);
+    if (isSelected) {
+      const updated = selectedEmployees.filter(emp => emp.empid !== employee.empid);
+      setSelectedEmployees(updated);
+      setFormData({ ...formData, visible_to: updated.map(emp => emp.email) });
+    } else {
+      const updated = [...selectedEmployees, employee];
+      setSelectedEmployees(updated);
+      setFormData({ ...formData, visible_to: updated.map(emp => emp.email) });
+    }
+    setSearchTerm('');
+  };
+
+  const handleAllSelect = () => {
+    setSelectedEmployees([{ empid: 'all', name: 'All Employees', email: 'all' }]);
+    setFormData({ ...formData, visible_to: ['all'] });
+    setSearchTerm('');
+    setShowDropdown(false);
+  };
+
+  const removeEmployee = (empidToRemove) => {
+    const updated = selectedEmployees.filter(emp => emp.empid !== empidToRemove);
+    setSelectedEmployees(updated);
+    setFormData({ ...formData, visible_to: updated.map(emp => emp.email) });
   };
 
   return (
@@ -231,6 +304,67 @@ export default function AddEvent() {
                       <option value="event">Event</option>
                       <option value="holiday">Holiday</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Visible To *
+                    </label>
+                    <div className="relative">
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[42px] flex flex-wrap gap-1 items-center">
+                        {selectedEmployees.map((employee) => (
+                          <span key={employee.empid} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
+                            {employee.name}
+                            <button
+                              type="button"
+                              onClick={() => removeEmployee(employee.empid)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setShowDropdown(e.target.value.trim() !== '');
+                          }}
+                          onFocus={() => setShowDropdown(searchTerm.trim() !== '')}
+                          className="flex-1 min-w-[120px] outline-none"
+                          placeholder="Search employees..."
+                        />
+                      </div>
+                      
+                      {showDropdown && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          <div
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
+                            onClick={handleAllSelect}
+                          >
+                            <div className="font-medium">All Employees</div>
+                            <div className="text-sm text-gray-500">Visible to everyone</div>
+                          </div>
+                          {filteredEmployees.map((employee) => (
+                            <div
+                              key={employee.empid}
+                              className={`px-3 py-2 hover:bg-gray-100 cursor-pointer ${
+                                selectedEmployees.some(emp => emp.empid === employee.empid) ? 'bg-blue-50' : ''
+                              }`}
+                              onClick={() => handleEmployeeSelect(employee)}
+                            >
+                              <div className="font-medium">{employee.name}</div>
+                              <div className="text-sm text-gray-500">{employee.email} • {employee.empid} • {employee.role}</div>
+                            </div>
+                          ))}
+                          {filteredEmployees.length === 0 && searchTerm && (
+                            <div className="px-3 py-2 text-gray-500">No employees found</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gray-500 text-xs mt-1">Select specific employees or choose &quot;All Employees&quot;</p>
                   </div>
 
                   {message && (
