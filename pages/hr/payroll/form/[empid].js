@@ -123,17 +123,7 @@ export default function PayrollForm() {
         console.error('Error fetching previous payroll:', err);
       });
 
-    // Fetch leave data when month and year are selected
-    if (formData.month && formData.year) {
-      fetch(`/api/hr/leaves/monthly?empid=${empid}&month=${formData.month}&year=${formData.year}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setLeaveData(data);
-        })
-        .catch((err) => {
-          console.error('Error fetching leave data:', err);
-        });
-    }
+    // Leave data will be fetched by separate useEffect
   }, [empid]);
 
   // Separate useEffect for leave data to avoid dependency issues

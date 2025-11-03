@@ -1,17 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import Sidebar from "/Components/empSidebar";
 import Image from "next/image";
-import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp } from "lucide-react";
+import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-toastify";
-
+import EmployeeCalenderSection from "/Components/EmployeeCalenderSection";
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [stats, setStats] = useState({ todayHours: '0.0', weekHours: '0.0', monthHours: '0.0' });
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [events, setEvents] = useState([]);
+  const [calendarLoading, setCalendarLoading] = useState(true);
 
   const router = useRouter();
 
@@ -43,6 +47,8 @@ export default function EmployeeDashboard() {
           const statsData = await statsRes.json();
           setStats(statsData);
         }
+        
+        // Calendar events fetched by separate useEffect
       } catch (err) {
         console.error("Error fetching user:", err);
         setUser({ error: 'Unable to load profile data' });
@@ -50,6 +56,25 @@ export default function EmployeeDashboard() {
     }
     fetchUser();
   }, [router]);
+
+  const fetchCalendarEvents = useCallback(async () => {
+    setCalendarLoading(true);
+    try {
+      const res = await fetch(`/api/calendar/events?month=${currentMonth + 1}&year=${currentYear}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data.events || []);
+      }
+    } catch (error) {
+      console.error('Error fetching calendar events:', error);
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, [currentMonth, currentYear]);
+
+  useEffect(() => {
+    fetchCalendarEvents();
+  }, [fetchCalendarEvents]);
 
 
 
@@ -354,14 +379,20 @@ export default function EmployeeDashboard() {
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
-              <p className="text-sm text-gray-600">Common tasks and shortcuts</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Calendar and Quick Actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Calendar Section */}
+           <EmployeeCalenderSection 
+              events={events} 
+              loading={calendarLoading}/>
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+                <p className="text-sm text-gray-600">Common tasks and shortcuts</p>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 gap-4">
                 {isAccessEnabled ? (
                   // Verified User Actions
                   <>
@@ -458,6 +489,7 @@ export default function EmployeeDashboard() {
                     </div>
                   </>
                 )}
+                </div>
               </div>
             </div>
           </div>
