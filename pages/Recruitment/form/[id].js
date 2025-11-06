@@ -56,7 +56,10 @@ export default function CandidateForm() {
       try {
         // Optional: show loading spinner here
         const res = await axios.get(
-          `/api/recruitment/getCandidateByToken?token=${token}`
+          `/api/recruitment/getCandidateByToken?token=${token}`,
+          {
+            validateStatus: (status) => status < 400 // Accept 200-399 as success
+          }
         );
         const candidateData = res.data;
 
@@ -81,15 +84,17 @@ export default function CandidateForm() {
 
         console.error("Token validation error:", err.response?.data);
 
+        // Handle specific error cases only for actual errors (not 304)
         if (status === 403 && errorMsg?.includes("already submitted")) {
           router.replace("/form-already-submitted");
         } else if (status === 403 && errorMsg?.includes("locked")) {
           router.replace("/form-locked-device");
         } else if (status === 403 && errorMsg?.includes("expired")) {
           router.replace("/form-link-expired");
-        } else {
+        } else if (status === 404) {
           router.replace("/unauthorized-form-access");
         }
+        // Don't redirect for 304 or other non-error status codes
       }
     };
 
