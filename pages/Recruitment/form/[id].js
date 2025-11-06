@@ -71,6 +71,9 @@ export default function CandidateForm() {
           ...prev,
           contact_no: candidateData.contact_number || "",
         }));
+        
+        // Fallback: Ensure IP and device info are captured
+        setTimeout(() => captureUserDataFallback(token), 1000);
       } catch (err) {
         const status = err.response?.status;
         const errorMsg = err.response?.data?.error;
@@ -92,6 +95,31 @@ export default function CandidateForm() {
 
     verifyToken();
   }, [id, router.isReady, router]);
+
+  // Fallback method to capture user data if not already saved
+  const captureUserDataFallback = async (token) => {
+    try {
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenResolution: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('Fallback: Capturing device info:', deviceInfo);
+
+      const response = await axios.post('/api/recruitment/updateUserData', {
+        token,
+        device_info: JSON.stringify(deviceInfo)
+      });
+      
+      console.log('Fallback capture result:', response.data);
+    } catch (error) {
+      console.error('Fallback capture failed:', error.response?.data || error.message);
+    }
+  };
 
   // Check if form is valid
   useEffect(() => {
