@@ -280,6 +280,7 @@ model calendar_events {
   description String?
   event_date  DateTime
   event_type  String
+  visible_to  String   @default("all")
   created_by  String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
