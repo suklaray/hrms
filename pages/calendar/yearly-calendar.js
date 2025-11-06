@@ -20,7 +20,6 @@ export default function YearlyCalendar() {
   const [events, setEvents] = useState({});
   const [loading, setLoading] = useState(true);
   const [hoveredDay, setHoveredDay] = useState(null);
-  const [showDownloadDropdown, setShowDownloadDropdown] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -223,87 +222,6 @@ export default function YearlyCalendar() {
     });
   };
 
-//PDF download function ----------
-const downloadPDF = () => {
-  const pdfData = [];
-  
-  let hasData = false;
-  Object.keys(events).forEach(month => {
-    if (events[month].length > 0) {
-      hasData = true;
-      events[month].forEach(event => {
-        pdfData.push({
-          date: event.date,
-          type: event.type,
-          title: event.title || '',
-          description: event.description || event.reason || ''
-        });
-      });
-    }
-  });
-  
-  if (!hasData) {
-    toast.info(`No events found for ${currentYear}`);
-    return;
-  }
-  
-  import('jspdf').then(({ jsPDF }) => {
-    const doc = new jsPDF();
-    doc.text(`Calendar Events ${currentYear}`, 20, 20);
-    
-    let yPosition = 40;
-    pdfData.forEach((event, index) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      doc.text(`${event.date} - ${event.type}: ${event.title}`, 20, yPosition);
-      yPosition += 10;
-    });
-    
-    doc.save(`calendar-events-${currentYear}.pdf`);
-  });
-};
-
-const downloadHolidaysPDF = () => {
-  const holidayData = [];
-  
-  let hasHolidays = false;
-  Object.keys(events).forEach(month => {
-    const holidays = events[month].filter(event => event.type === 'holiday');
-    if (holidays.length > 0) {
-      hasHolidays = true;
-      holidays.forEach(event => {
-        holidayData.push({
-          date: event.date,
-          title: event.title
-        });
-      });
-    }
-  });
-
-  if (!hasHolidays) {
-    toast.info(`No holidays found for ${currentYear}`);
-    return;
-  }
-  
-  import('jspdf').then(({ jsPDF }) => {
-    const doc = new jsPDF();
-    doc.text(`Holidays ${currentYear}`, 20, 20);
-    
-    let yPosition = 40;
-    holidayData.forEach((holiday) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      doc.text(`${holiday.date} - ${holiday.title}`, 20, yPosition);
-      yPosition += 10;
-    });
-    
-    doc.save(`holidays-${currentYear}.pdf`);
-  });
-};
   //----------------Download functions end----------------
   const handleEdit = (event) => {
     setEditingEvent(event);
