@@ -413,6 +413,11 @@ const downloadHolidaysPDF = () => {
   );
 
   const handleEmployeeSelect = (employee) => {
+    // Don't allow individual selection if "All Employees" is selected
+    if (selectedEmployees.some(emp => emp.empid === 'all')) {
+      return;
+    }
+    
     const isSelected = selectedEmployees.some(emp => emp.empid === employee.empid);
     if (isSelected) {
       const updated = selectedEmployees.filter(emp => emp.empid !== employee.empid);
@@ -867,8 +872,9 @@ const downloadHolidaysPDF = () => {
                           setShowDropdown(e.target.value.trim() !== '');
                         }}
                         onFocus={() => setShowDropdown(searchTerm.trim() !== '')}
-                        className="flex-1 min-w-[120px] outline-none"
-                        placeholder="Search employees..."
+                        disabled={selectedEmployees.some(emp => emp.empid === 'all')}
+                        className="flex-1 min-w-[120px] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        placeholder={selectedEmployees.some(emp => emp.empid === 'all') ? "All employees selected" : "Search employees..."}
                       />
                     </div>
                     
@@ -881,20 +887,24 @@ const downloadHolidaysPDF = () => {
                           <div className="font-medium">All Employees</div>
                           <div className="text-sm text-gray-500">Visible to everyone</div>
                         </div>
-                        {filteredEmployees.map((employee) => (
-                          <div
-                            key={employee.empid}
-                            className={`px-3 py-2 hover:bg-gray-100 cursor-pointer ${
-                              selectedEmployees.some(emp => emp.empid === employee.empid) ? 'bg-blue-50' : ''
-                            }`}
-                            onClick={() => handleEmployeeSelect(employee)}
-                          >
-                            <div className="font-medium">{employee.name}</div>
-                            <div className="text-sm text-gray-500">{employee.email} • {employee.empid} • {employee.role}</div>
-                          </div>
-                        ))}
-                        {filteredEmployees.length === 0 && searchTerm && (
-                          <div className="px-3 py-2 text-gray-500">No employees found</div>
+                        {!selectedEmployees.some(emp => emp.empid === 'all') && (
+                          <>
+                            {filteredEmployees.map((employee) => (
+                              <div
+                                key={employee.empid}
+                                className={`px-3 py-2 hover:bg-gray-100 cursor-pointer ${
+                                  selectedEmployees.some(emp => emp.empid === employee.empid) ? 'bg-blue-50' : ''
+                                }`}
+                                onClick={() => handleEmployeeSelect(employee)}
+                              >
+                                <div className="font-medium">{employee.name}</div>
+                                <div className="text-sm text-gray-500">{employee.email} • {employee.empid} • {employee.role}</div>
+                              </div>
+                            ))}
+                            {filteredEmployees.length === 0 && searchTerm && (
+                              <div className="px-3 py-2 text-gray-500">No employees found</div>
+                            )}
+                          </>
                         )}
                       </div>
                     )}

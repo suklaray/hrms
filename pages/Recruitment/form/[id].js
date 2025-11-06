@@ -71,6 +71,9 @@ export default function CandidateForm() {
           ...prev,
           contact_no: candidateData.contact_number || "",
         }));
+        
+        // Capture IP and device info when form loads
+        await captureUserData(token);
       } catch (err) {
         const status = err.response?.status;
         const errorMsg = err.response?.data?.error;
@@ -92,6 +95,26 @@ export default function CandidateForm() {
 
     verifyToken();
   }, [id, router.isReady, router]);
+
+  // Capture user IP and device info
+  const captureUserData = async (token) => {
+    try {
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenResolution: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      };
+
+      await axios.post('/api/recruitment/updateUserData', {
+        token,
+        device_info: JSON.stringify(deviceInfo)
+      });
+    } catch (error) {
+      console.error('Failed to capture user data:', error);
+    }
+  };
 
   // Check if form is valid
   useEffect(() => {
