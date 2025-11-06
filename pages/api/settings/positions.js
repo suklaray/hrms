@@ -43,6 +43,26 @@ export default async function handler(req, res) {
       console.error("Error creating position:", error);
       res.status(500).json({ error: "Failed to create position" });
     }
+  } else if (req.method === "PUT") {
+    try {
+      const { id } = req.query;
+      const { position_name, description } = req.body;
+      
+      if (!position_name) {
+        return res.status(400).json({ error: "Position name is required" });
+      }
+
+      await prisma.$queryRaw`
+        UPDATE positions 
+        SET position_name = ${position_name}, description = ${description || null}
+        WHERE id = ${parseInt(id)}
+      `;
+
+      res.status(200).json({ message: "Position updated successfully" });
+    } catch (error) {
+      console.error("Error updating position:", error);
+      res.status(500).json({ error: "Failed to update position" });
+    }
   } else if (req.method === "DELETE") {
     try {
       const { id } = req.query;
