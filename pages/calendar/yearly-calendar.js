@@ -32,6 +32,7 @@ export default function YearlyCalendar() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [showDownloadDropdown, setShowDownloadDropdown] = useState(null);
 
   const months = [
     "January",
@@ -157,6 +158,89 @@ export default function YearlyCalendar() {
         return "bg-gray-500";
     }
   };
+//---------------- pdf Download functions start----------------
+  const downloadPDF = () => {
+  const pdfData = [];
+  
+  let hasData = false;
+  Object.keys(events).forEach(month => {
+    if (events[month].length > 0) {
+      hasData = true;
+      events[month].forEach(event => {
+        pdfData.push({
+          date: event.date,
+          type: event.type,
+          title: event.title || '',
+          description: event.description || event.reason || ''
+        });
+      });
+    }
+  });
+  
+  if (!hasData) {
+    toast.info(`No events found for ${currentYear}`);
+    return;
+  }
+  
+  import('jspdf').then(({ jsPDF }) => {
+    const doc = new jsPDF();
+    doc.text(`Calendar Events ${currentYear}`, 20, 20);
+    
+    let yPosition = 40;
+    pdfData.forEach((event) => {
+      if (yPosition > 270) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      doc.text(`${event.date} - ${event.type}: ${event.title}`, 20, yPosition);
+      yPosition += 10;
+    });
+    
+    doc.save(`calendar-events-${currentYear}.pdf`);
+  });
+};
+
+const downloadHolidaysPDF = () => {
+  const holidayData = [];
+  
+  let hasHolidays = false;
+  Object.keys(events).forEach(month => {
+    const holidays = events[month].filter(event => event.type === 'holiday');
+    if (holidays.length > 0) {
+      hasHolidays = true;
+      holidays.forEach(event => {
+        holidayData.push({
+          date: event.date,
+          title: event.title
+        });
+      });
+    }
+  });
+
+  if (!hasHolidays) {
+    toast.info(`No holidays found for ${currentYear}`);
+    return;
+  }
+  
+  import('jspdf').then(({ jsPDF }) => {
+    const doc = new jsPDF();
+    doc.text(`Holidays ${currentYear}`, 20, 20);
+    
+    let yPosition = 40;
+    holidayData.forEach((holiday) => {
+      if (yPosition > 270) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      doc.text(`${holiday.date} - ${holiday.title}`, 20, yPosition);
+      yPosition += 10;
+    });
+    
+    doc.save(`holidays-${currentYear}.pdf`);
+  });
+};
+  //---------------- pdf Download functions end----------------
+
   // Function for excel file download
   const downloadExcel = () => {
     const excelData = [];
@@ -626,20 +710,63 @@ export default function YearlyCalendar() {
                     <span className="hidden sm:inline">+ Add Events</span>
                     <span className="sm:hidden">+</span>
                   </Link>
-                  <button
-                    onClick={downloadHolidaysExcel}
-                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs sm:text-sm font-medium rounded-lg transition-colors"
-                  >
-                    <FaDownload className="w-3 h-3" />
-                    <span className="hidden sm:inline">Holidays</span>
-                  </button>
-                  <button
-                    onClick={downloadExcel}
-                    className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 text-xs sm:text-sm font-medium rounded-lg transition-colors"
-                  >
-                    <FaDownload className="w-3 h-3" />
-                    <span className="hidden sm:inline">All Events</span>
-                  </button>
+                  <div className="flex items-center space-x-1">
+                  
+                  {/* Holidays Download Dropdown */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowDownloadDropdown(showDownloadDropdown === 'holidays' ? null : 'holidays')}
+                      className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-xs sm:text-sm font-medium rounded-lg transition-colors"
+                    >
+                      <FaDownload className="w-3 h-3" />
+                      <span className="hidden sm:inline">Holidays</span>
+                    </button>
+                    {showDownloadDropdown === 'holidays' && (
+                      <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                        <button 
+                          onClick={() => { downloadHolidaysExcel(); setShowDownloadDropdown(null); }}
+                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                        >
+                          Excel
+                        </button>
+                        <button 
+                          onClick={() => { downloadHolidaysPDF(); setShowDownloadDropdown(null); }}
+                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                        >
+                          PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* All Events Download Dropdown */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowDownloadDropdown(showDownloadDropdown === 'events' ? null : 'events')}
+                      className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 bg-green-100 hover:bg-green-200 text-green-800 text-xs sm:text-sm font-medium rounded-lg transition-colors"
+                    >
+                      <FaDownload className="w-3 h-3" />
+                      <span className="hidden sm:inline">All Events</span>
+                    </button>
+                    {showDownloadDropdown === 'events' && (
+                      <div className="absolute right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                        <button 
+                          onClick={() => { downloadExcel(); setShowDownloadDropdown(null); }}
+                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                        >
+                          Excel
+                        </button>
+                        <button 
+                          onClick={() => { downloadPDF(); setShowDownloadDropdown(null); }}
+                          className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-50"
+                        >
+                          PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 </div>
               </div>
             </div>
