@@ -78,19 +78,17 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: "expired:Form link has expired" });
     }
 
-    // First-time access → lock form to this device/IP (only for non-admin users)
+    // First-time access → lock form to this device/IP
     if (!candidate.device_info && !candidate.ip_address) {
-      // Only save device info if it's NOT an admin user
-      if (!session || !allowedRoles.includes(session.role)) {
-        await prisma.candidates.update({
-          where: { candidate_id: candidate.candidate_id },
-          data: {
-            device_info: userAgent,
-            ip_address: ip,
-            token_first_used_at: new Date(),
-          },
-        });
-      }
+      // Save device info for first-time access (both admin and regular users)
+      await prisma.candidates.update({
+        where: { candidate_id: candidate.candidate_id },
+        data: {
+          device_info: userAgent,
+          ip_address: ip,
+          token_first_used_at: new Date(),
+        },
+      });
       return res.status(200).json(candidate);
     }
 
@@ -101,8 +99,8 @@ export default async function handler(req, res) {
         candidate.device_info &&
         candidate.device_info.startsWith(userAgent.slice(0, 50));
       if (!sameIp || !sameUA) {
-        return res.status(404).json({
-          error: "Invalid or expired token",
+        return res.status(403).json({
+          error: "locked:Form is locked to a different device",
         });
       }
     }
