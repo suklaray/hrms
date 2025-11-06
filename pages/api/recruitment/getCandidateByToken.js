@@ -29,7 +29,12 @@ export default async function handler(req, res) {
   const ip = getClientIP();
   const userAgent = (req.headers["user-agent"] || "unknown-browser").slice(0, 200);
   
-  console.log('IP Detection:', { ip, userAgent: userAgent.slice(0, 50), headers: Object.keys(req.headers) });
+  console.log('IP Detection:', { 
+    ip, 
+    userAgent: userAgent.slice(0, 50), 
+    isLocalhost: ip === '::1' || ip === '127.0.0.1',
+    headers: Object.keys(req.headers) 
+  });
 
   if (!token) {
     return res.status(400).json({ error: "Token is required" });
@@ -95,25 +100,36 @@ export default async function handler(req, res) {
 
     // First-time access → lock form to this device/IP
     if (!candidate.device_info && !candidate.ip_address) {
-      console.log('First-time access - saving device info:', { ip, userAgent: userAgent.slice(0, 50) });
-      
-      // Save device info for first-time access (both admin and regular users)
-      const updateResult = await prisma.candidates.update({
-        where: { candidate_id: candidate.candidate_id },
-        data: {
-          device_info: userAgent,
-          ip_address: ip,
-          token_first_used_at: new Date(),
-        },
+      console.log('First-time access - saving device info:', { 
+        candidateId: candidate.candidate_id,
+        ip, 
+        userAgent: userAgent.slice(0, 50) 
       });
       
-      console.log('Device info saved successfully:', { 
-        candidateId: candidate.candidate_id, 
-        savedIP: updateResult.ip_address,
-        savedDevice: updateResult.device_info?.slice(0, 50)
-      });
-      
-      return res.status(200).json(candidate);
+      try {
+        // Save device info for first-time access (both admin and regular users)
+        const updateResult = await prisma.candidates.update({
+          where: { candidate_id: candidate.candidate_id },
+          data: {
+            device_info: userAgent,
+            ip_address: ip,
+            token_first_used_at: new Date(),
+          },
+        });
+        
+        console.log('Device info saved successfully:', { 
+          candidateId: candidate.candidate_id, 
+          savedIP: updateResult.ip_address,
+          savedDevice: updateResult.device_info?.slice(0, 50),
+          updateSuccess: true
+        });
+        
+        return res.status(200).json(candidate);
+      } catch (updateError) {
+        console.error('Failed to save device info:', updateError);
+        // Continue anyway, don't block form access
+        return res.status(200).json(candidate);
+      }
     }
 
     // 🔐 Subsequent accesses: validate same device/IP (only for non-admin users)
