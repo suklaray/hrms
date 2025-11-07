@@ -13,55 +13,34 @@ export default async function handler(req, res) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { empid } = req.query;
     
-    // Use empid from URL parameter
+    // Find user by empid
     const user = await prisma.users.findUnique({
       where: { empid: empid },
-      select: { empid: true, name: true, email: true, role: true, contact_number: true, position: true, candidate_id: true }
+      select: { empid: true, name: true, email: true, role: true, contact_number: true, position: true }
     });
     
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    let bankDetails = null;
-    let employeeContact = null;
-
-    // Try to find bank details using empid directly first
-    const directBankDetails = await prisma.bank_details.findFirst({
-      where: { employee_id: empid }
+    // Find employee record using main_employee_id matching users.empid
+    const employee = await prisma.employees.findFirst({
+      where: { main_employee_id: user.empid }
     });
-    
-    if (directBankDetails) {
-      bankDetails = directBankDetails;
-    }
 
-    // If no direct bank details and candidate_id exists, try the candidate route
-    if (!bankDetails && user.candidate_id) {
-      const employeeRecord = await prisma.employees.findFirst({
-        where: { candidate_id: user.candidate_id },
+    let bankDetails = null;
+    if (employee) {
+      // Find bank details using employee.empid
+      bankDetails = await prisma.bank_details.findFirst({
+        where: { employee_id: employee.empid }
       });
-      
-      if (employeeRecord) {
-        employeeContact = employeeRecord.contact_no;
-        
-        const bankDetailsRecord = await prisma.bank_details.findFirst({
-          where: { employee_id: employeeRecord.empid }
-        });
-        
-        if (bankDetailsRecord) {
-          bankDetails = bankDetailsRecord;
-        }
-      }
     }
 
-    const finalContact = user.contact_number || employeeContact || 'Not provided';
-
-    const employee = {
+    const finalEmployee = {
       ...user,
-      contact_number: finalContact,
-      contact_no: finalContact,
-      bankDetails: bankDetails,
+      contact_number: employee?.contact_no || user.contact_number || 'Not provided',
+      bankDetails: bankDetails
     };
 
-    res.json(employee);
+    res.json(finalEmployee);
   } catch {
     res.status(403).json({ error: "Invalid token" });
   }
