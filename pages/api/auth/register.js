@@ -61,13 +61,13 @@ export default async function handler(req, res) {
       });
     }
 
-    const existingUser = await prisma.users.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Email already registered.",
-      });
-    }
+    // const existingUser = await prisma.users.findUnique({ where: { email } });
+    // if (existingUser) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Email already registered.",
+    //   });
+    // }
 
     const empid = `${name.substring(0, 2).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
     const rawPassword = uuidv4().slice(0, 8); // Secure 8-char password
