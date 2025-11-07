@@ -12,9 +12,29 @@ export default async function handler(req, res) {
   const cookies = parse(req.headers.cookie || "");
   const userToken = cookies.token;
   const session = userToken ? await getUserFromToken(userToken) : null;
-  const rawXff = req.headers["x-forwarded-for"] || "";
-  const ip = rawXff.split(",")[0].trim() || req.socket.remoteAddress;
-  const userAgent = (req.headers["user-agent"] || "").slice(0, 200); // shorten stored UA
+  // Enhanced IP detection with multiple fallbacks
+  const getClientIP = () => {
+    const forwarded = req.headers["x-forwarded-for"];
+    const realIP = req.headers["x-real-ip"];
+    const clientIP = req.headers["x-client-ip"];
+    const remoteAddr = req.connection?.remoteAddress || req.socket?.remoteAddress;
+    
+    if (forwarded) return forwarded.split(',')[0].trim();
+    if (realIP) return realIP.trim();
+    if (clientIP) return clientIP.trim();
+    if (remoteAddr) return remoteAddr;
+    return 'unknown';
+  };
+  
+  const ip = getClientIP();
+  const userAgent = (req.headers["user-agent"] || "unknown-browser").slice(0, 200);
+  
+  console.log('IP Detection:', { 
+    ip, 
+    userAgent: userAgent.slice(0, 50), 
+    isLocalhost: ip === '::1' || ip === '127.0.0.1',
+    headers: Object.keys(req.headers) 
+  });
 
   if (!token) {
     return res.status(400).json({ error: "Token is required" });
@@ -78,11 +98,17 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: "expired:Form link has expired" });
     }
 
-    // First-time access → lock form to this device/IP (only for non-admin users)
+    // First-time access → lock form to this device/IP
     if (!candidate.device_info && !candidate.ip_address) {
-      // Only save device info if it's NOT an admin user
-      if (!session || !allowedRoles.includes(session.role)) {
-        await prisma.candidates.update({
+      console.log('First-time access - saving device info:', { 
+        candidateId: candidate.candidate_id,
+        ip, 
+        userAgent: userAgent.slice(0, 50) 
+      });
+      
+      try {
+        // Save device info for first-time access (both admin and regular users)
+        const updateResult = await prisma.candidates.update({
           where: { candidate_id: candidate.candidate_id },
           data: {
             device_info: userAgent,
@@ -90,8 +116,20 @@ export default async function handler(req, res) {
             token_first_used_at: new Date(),
           },
         });
+        
+        console.log('Device info saved successfully:', { 
+          candidateId: candidate.candidate_id, 
+          savedIP: updateResult.ip_address,
+          savedDevice: updateResult.device_info?.slice(0, 50),
+          updateSuccess: true
+        });
+        
+        return res.status(200).json(candidate);
+      } catch (updateError) {
+        console.error('Failed to save device info:', updateError);
+        // Continue anyway, don't block form access
+        return res.status(200).json(candidate);
       }
-      return res.status(200).json(candidate);
     }
 
     // 🔐 Subsequent accesses: validate same device/IP (only for non-admin users)
@@ -101,8 +139,8 @@ export default async function handler(req, res) {
         candidate.device_info &&
         candidate.device_info.startsWith(userAgent.slice(0, 50));
       if (!sameIp || !sameUA) {
-        return res.status(404).json({
-          error: "Invalid or expired token",
+        return res.status(403).json({
+          error: "locked:Form is locked to a different device",
         });
       }
     }

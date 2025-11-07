@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import axios from "axios";
-import {toast} from "react-toastify";
-import { swalConfirm} from '@/utils/confirmDialog';
+import { toast } from "react-toastify";
+import { swalConfirm } from "@/utils/confirmDialog";
 
 export default function CandidateForm() {
   const router = useRouter();
@@ -41,7 +41,7 @@ export default function CandidateForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
-  
+
   useEffect(() => {
     if (!router.isReady) return;
 
@@ -56,7 +56,10 @@ export default function CandidateForm() {
       try {
         // Optional: show loading spinner here
         const res = await axios.get(
-          `/api/recruitment/getCandidateByToken?token=${token}`
+          `/api/recruitment/getCandidateByToken?token=${token}`,
+          {
+            validateStatus: (status) => status < 400 // Accept 200-399 as success
+          }
         );
         const candidateData = res.data;
 
@@ -71,6 +74,9 @@ export default function CandidateForm() {
           ...prev,
           contact_no: candidateData.contact_number || "",
         }));
+
+        // Fallback: Ensure IP and device info are captured
+        setTimeout(() => captureUserDataFallback(token), 1000);
       } catch (err) {
         const status = err.response?.status;
         const errorMsg = err.response?.data?.error;
@@ -78,20 +84,50 @@ export default function CandidateForm() {
 
         console.error("Token validation error:", err.response?.data);
 
+        // Handle specific error cases only for actual errors (not 304)
         if (status === 403 && errorMsg?.includes("already submitted")) {
           router.replace("/form-already-submitted");
         } else if (status === 403 && errorMsg?.includes("locked")) {
-          router.replace("/form-locked-device"); 
+          router.replace("/form-locked-device");
         } else if (status === 403 && errorMsg?.includes("expired")) {
           router.replace("/form-link-expired");
-        } else {
+        } else if (status === 404) {
           router.replace("/unauthorized-form-access");
         }
+        // Don't redirect for 304 or other non-error status codes
       }
     };
 
     verifyToken();
   }, [id, router.isReady, router]);
+
+  // Fallback method to capture user data if not already saved
+  const captureUserDataFallback = async (token) => {
+    try {
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenResolution: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timestamp: new Date().toISOString(),
+      };
+
+      console.log("Fallback: Capturing device info:", deviceInfo);
+
+      const response = await axios.post("/api/recruitment/updateUserData", {
+        token,
+        device_info: JSON.stringify(deviceInfo),
+      });
+
+      console.log("Fallback capture result:", response.data);
+    } catch (error) {
+      console.error(
+        "Fallback capture failed:",
+        error.response?.data || error.message
+      );
+    }
+  };
 
   // Check if form is valid
   useEffect(() => {
@@ -680,20 +716,20 @@ export default function CandidateForm() {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error('Please fix all validation errors before submitting.');
+      toast.error("Please fix all validation errors before submitting.");
       return;
     }
 
     // Show confirmation dialog
     const confirmed = await swalConfirm(
       " FINAL SUBMISSION CONFIRMATION \n\n" +
-      "Are you absolutely sure you want to submit this application?\n\n" +
-      "IMPORTANT NOTICE:\n" +
-      "• Once submitted, NO changes can be made to any information\n" +
-      "• All documents and details will be permanently locked\n" +
-      "• This action cannot be undone\n" +
-      "• Please verify all information is correct before proceeding\n\n" +
-      "Click 'OK' only if you are certain all details are accurate and final."
+        "Are you absolutely sure you want to submit this application?\n\n" +
+        "IMPORTANT NOTICE:\n" +
+        "• Once submitted, NO changes can be made to any information\n" +
+        "• All documents and details will be permanently locked\n" +
+        "• This action cannot be undone\n" +
+        "• Please verify all information is correct before proceeding\n\n" +
+        "Click 'OK' only if you are certain all details are accurate and final."
     );
 
     if (!confirmed) {
@@ -713,8 +749,8 @@ export default function CandidateForm() {
 
     try {
       const response = await axios.post("/api/recruitment/submitForm", data);
-      toast.success('Form submitted successfully.');
-      router.push('/Recruitment/form/docs_submitted');
+      toast.success("Form submitted successfully.");
+      router.push("/Recruitment/form/docs_submitted");
     } catch (error) {
       console.error("Error submitting form:", error);
       if (error.response?.data?.alreadySubmitted) {
