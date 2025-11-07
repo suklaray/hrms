@@ -57,6 +57,7 @@ export default function RegisterEmployee() {
     const [isFormValid, setIsFormValid] = useState(false);
     const [employeeData, setEmployeeData] = useState(null);
     const [positions, setPositions] = useState([]);
+    const [isResettingForm, setIsResettingForm] = useState(false);
     useEffect(() => {
         setMounted(true);
         setCurrentDate(new Date().toLocaleDateString());
@@ -151,16 +152,24 @@ export default function RegisterEmployee() {
             case 'email':
                 if (!value.trim()) {
                     newErrors[name] = 'Email is required';
+                    // Clear any pending email checks when email is empty
+                    if (emailTimeout) {
+                        clearTimeout(emailTimeout);
+                        setEmailTimeout(null);
+                    }
                 } else if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) {
                     newErrors[name] = 'Please enter a valid email address';
                 } else if (value.length > 254) {
                     newErrors[name] = 'Email address is too long';
                 } else {
                     delete newErrors[name];
-                    // Debounced email check
-                    if (emailTimeout) clearTimeout(emailTimeout);
-                    const timeout = setTimeout(() => checkEmailAvailability(value), 800);
-                    setEmailTimeout(timeout);
+                    // Only check email availability if not in the process of form reset
+                    if (value.trim() !== '') {
+                        // Debounced email check
+                        if (emailTimeout) clearTimeout(emailTimeout);
+                        const timeout = setTimeout(() => checkEmailAvailability(value), 800);
+                        setEmailTimeout(timeout);
+                    }
                 }
                 break;
             case 'contact_number':
@@ -244,6 +253,7 @@ export default function RegisterEmployee() {
 
     const checkEmailAvailability = async (email) => {
         if (!email || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) return;
+        if (isResettingForm || isLoading) return; // Don't check during reset or submission
         
         setEmailChecking(true);
         try {
@@ -299,8 +309,8 @@ export default function RegisterEmployee() {
         
         let isValid = true;
         
+        // Check if all required fields have values without triggering validation
         requiredFields.forEach(field => {
-            validateField(field, formData[field]);
             if (!formData[field] || (typeof formData[field] === 'string' && !formData[field].trim())) {
                 isValid = false;
             }
@@ -310,23 +320,28 @@ export default function RegisterEmployee() {
     };
 
     const handleInputChange = (field, value) => {
+        // Skip validation if form is being reset
+        if (isResettingForm) return;
+        
         // Normalize email input
         if (field === 'email') {
             value = value.toLowerCase().trim();
         }
         
         setFormData(prev => ({ ...prev, [field]: value }));
-        
-        // Only validate if not in the middle of form reset
-        if (value !== '' || field !== 'email') {
-            validateField(field, value);
-        }
+        validateField(field, value);
     };
 
 const handleRegister = async () => {
     if (!validateForm()) {
         toast.error('Please fix all validation errors before submitting.');
         return;
+    }
+    
+    // Clear any pending email validation timeouts BEFORE starting registration
+    if (emailTimeout) {
+        clearTimeout(emailTimeout);
+        setEmailTimeout(null);
     }
     
     setIsLoading(true);
@@ -372,6 +387,15 @@ const handleRegister = async () => {
     }, 1000);
 
         
+        // Set flag to prevent validation during reset
+        setIsResettingForm(true);
+        
+        // Clear any pending email validation timeouts first
+        if (emailTimeout) {
+            clearTimeout(emailTimeout);
+            setEmailTimeout(null);
+        }
+        
         // Reset all form states
         setFormData({
             name: "",
@@ -389,16 +413,8 @@ const handleRegister = async () => {
         setIsFormValid(false);
         setEmailChecking(false);
         
-        // Clear any pending email validation timeouts
-        if (emailTimeout) {
-            clearTimeout(emailTimeout);
-            setEmailTimeout(null);
-        }
-        
-        if (emailTimeout) {
-            clearTimeout(emailTimeout);
-            setEmailTimeout(null);
-        }
+        // Reset the flag after a brief delay
+        setTimeout(() => setIsResettingForm(false), 100);
     } catch (error) {
         setMessage("Network error. Please try again.");
     } finally {
