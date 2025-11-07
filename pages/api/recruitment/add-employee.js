@@ -96,7 +96,7 @@ export default async function handler(req, res) {
     profile_photo,
     role,
     employee_type,
-    intern_duration,
+    duration_months,
   } = req.body;
 
   try {
@@ -115,66 +115,132 @@ export default async function handler(req, res) {
       select: { candidate_id: true }
     });
 
+    if (!candidate) {
+      return res.status(404).json({ message: "Candidate not found" });
+    }
+
+    // Get candidate data from candidate_details table
+    const candidateDetails = await prisma.candidate_details.findFirst({
+      where: { candidate_id: candidate.candidate_id },
+      include: {
+        addresses: true,
+        bank_details: true,
+      }
+    });
+
+    if (!candidateDetails) {
+      return res.status(404).json({ message: "Candidate details not found" });
+    }
+
     const empid = generateEmpid(name); 
     const password = generatePassword();
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newEmployee = await prisma.users.create({
+
+    /// Create user record
+    const newUser = await prisma.users.create({
       data: {
         empid,
         name,
         email,
+        contact_number: candidateDetails.contact_no, // ✓ Already added
         password: hashedPassword,
         position,
         date_of_joining: new Date(date_of_joining),
         status: "Active",
         experience: experience || null,
-        profile_photo: profile_photo || null,
+        profile_photo: candidateDetails.profile_photo || profile_photo || null,
         role,
         verified: "verified",
         employee_type: employee_type || "Full_time",
-        candidate_id: candidate?.candidate_id,
-        duration_months: (employee_type === "Intern" || employee_type === "Contractor") ? intern_duration : null,
+        candidate_id: candidate.candidate_id,
+        duration_months: (employee_type === "Intern" || employee_type === "Contractor") ? duration_months : null,
       },
     });
 
-    // Get employee data from employees table using candidate_id
-    const employeeData = candidate ? await prisma.employees.findFirst({
-      where: { candidate_id: candidate.candidate_id },
-      select: {
-        empid: true,
-        aadhar_card: true,
-        pan_card: true,
-        education_certificates: true,
-        resume: true,
-        experience_certificate: true,
-        profile_photo: true
-      }
-    }) : null;
+    // Create employee record from candidate_details
+    const newEmployee = await prisma.employees.create({
+      data: {
+        candidate_id: candidate.candidate_id,        // ✓ Candidate ID
+        main_employee_id: empid,                     // ✓ Same as users.empid
+        name: candidateDetails.name,
+        email: candidateDetails.email,
+        contact_no: candidateDetails.contact_no,     // ✓ Contact number in employees table
+        password: candidateDetails.password,
+        gender: candidateDetails.gender,
+        dob: candidateDetails.dob,
+        highest_qualification: candidateDetails.highest_qualification,
+        aadhar_number: candidateDetails.aadhar_number,
+        pan_number: candidateDetails.pan_number,
+        aadhar_card: candidateDetails.aadhar_card,
+        pan_card: candidateDetails.pan_card,
+        education_certificates: candidateDetails.education_certificates,
+        resume: candidateDetails.resume,
+        experience_certificate: candidateDetails.experience_certificate,
+        profile_photo: candidateDetails.profile_photo,
+      },
+    });
 
-    // Create compliance documents if employee data exists
-    if (employeeData) {
-      const documents = [
-        { doc_type: 'aadhar_card', file_path: employeeData.aadhar_card },
-        { doc_type: 'pan_card', file_path: employeeData.pan_card },
-        { doc_type: 'education_certificates', file_path: employeeData.education_certificates },
-        { doc_type: 'resume', file_path: employeeData.resume },
-        { doc_type: 'experience_certificate', file_path: employeeData.experience_certificate },
-        { doc_type: 'profile_photo', file_path: employeeData.profile_photo }
-      ];
 
-      for (const doc of documents) {
-        if (doc.file_path) {
-          await prisma.compliance_documents.create({
-            data: {
-              empid: employeeData.empid,
-              doc_type: doc.doc_type,
-              file_path: doc.file_path,
-              uploaded_at: new Date()
-            }
-          });
-        }
+    // Create employee address from candidate address
+    if (candidateDetails.addresses[0]) {
+      const addr = candidateDetails.addresses[0];
+      await prisma.addresses.create({
+        data: {
+          employee_id: newEmployee.empid,
+          address_line1: addr.address_line1,
+          address_line2: addr.address_line2,
+          city: addr.city,
+          state: addr.state,
+          country: addr.country,
+          pincode: addr.pincode,
+        },
+      });
+    }
+
+    // Create employee bank details from candidate bank details
+    if (candidateDetails.bank_details[0]) {
+      const bank = candidateDetails.bank_details[0];
+      await prisma.bank_details.create({
+        data: {
+          employee_id: newEmployee.empid,
+          account_holder_name: bank.account_holder_name,
+          bank_name: bank.bank_name,
+          branch_name: bank.branch_name,
+          account_number: bank.account_number,
+          ifsc_code: bank.ifsc_code,
+          checkbook_document: bank.checkbook_document,
+        },
+      });
+    }
+
+    // Create compliance documents
+    const documents = [
+      { doc_type: 'aadhar_card', file_path: candidateDetails.aadhar_card },
+      { doc_type: 'pan_card', file_path: candidateDetails.pan_card },
+      { doc_type: 'education_certificates', file_path: candidateDetails.education_certificates },
+      { doc_type: 'resume', file_path: candidateDetails.resume },
+      { doc_type: 'experience_certificate', file_path: candidateDetails.experience_certificate },
+      { doc_type: 'profile_photo', file_path: candidateDetails.profile_photo }
+    ];
+
+    for (const doc of documents) {
+      if (doc.file_path) {
+        await prisma.compliance_documents.create({
+          data: {
+            empid: newEmployee.empid,
+            doc_type: doc.doc_type,
+            file_path: doc.file_path,
+            uploaded_at: new Date()
+          }
+        });
       }
     }
+
+    // Update candidate status to Selected
+    await prisma.candidates.update({
+      where: { candidate_id: candidate.candidate_id },
+      data: { status: "Selected" }
+    });
 
     res.status(200).json({
       message: "Employee added successfully",

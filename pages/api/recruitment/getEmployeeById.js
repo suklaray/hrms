@@ -10,22 +10,48 @@ export default async function handler(req, res) {
     }
 
     try {
-      const employee = await prisma.employees.findFirst({
+      // Fetch from candidate_details table instead of employees
+      const candidateDetails = await prisma.candidate_details.findFirst({
         where: {
           candidate_id: id,
+        },
+        include: {
+          addresses: true,
+          bank_details: true,
         },
         orderBy: {
           created_at: "desc",
         },
       });
 
-      if (!employee) {
-        return res.status(404).json({ error: "Candidate not found" });
+      if (!candidateDetails) {
+        return res.status(404).json({ error: "Candidate details not found" });
       }
 
-      return res.status(200).json(employee);
+      // Transform to match existing frontend structure
+      const transformedData = {
+        empid: candidateDetails.id,
+        candidate_id: candidateDetails.candidate_id,
+        name: candidateDetails.name,
+        email: candidateDetails.email,
+        contact_no: candidateDetails.contact_no,
+        gender: candidateDetails.gender,
+        dob: candidateDetails.dob,
+        highest_qualification: candidateDetails.highest_qualification,
+        aadhar_number: candidateDetails.aadhar_number,
+        pan_number: candidateDetails.pan_number,
+        aadhar_card: candidateDetails.aadhar_card,
+        pan_card: candidateDetails.pan_card,
+        education_certificates: candidateDetails.education_certificates,
+        resume: candidateDetails.resume,
+        experience_certificate: candidateDetails.experience_certificate,
+        profile_photo: candidateDetails.profile_photo,
+        created_at: candidateDetails.created_at,
+      };
+
+      return res.status(200).json(transformedData);
     } catch (error) {
-      console.error("Error fetching candidate:", error);
+      console.error("Error fetching candidate details:", error);
       return res.status(500).json({ error: "Server error" });
     }
   } else {
