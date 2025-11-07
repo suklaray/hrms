@@ -216,7 +216,7 @@ export default function EmployeePayslipPreview() {
   </div>
 
   <div style={{ borderTop: "1px solid #D1D5DB", marginTop: "2rem", paddingTop: "1rem", textAlign: "center", fontSize: window.innerWidth < 640 ? "0.625rem" : "0.75rem", color: "#6B7280", textTransform: "uppercase" }}>
-    <p>Company Name · Address line 1 · Address line 2 · Contact</p>
+    <p>This is computer generated payslip, signature Not required</p>
   </div>
 </div>
 <button

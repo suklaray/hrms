@@ -384,6 +384,11 @@ const handleRegister = async () => {
         setErrors({});
         setIsFormValid(false);
         setEmailChecking(false);
+        
+        if (emailTimeout) {
+            clearTimeout(emailTimeout);
+            setEmailTimeout(null);
+        }
     } catch (error) {
         setMessage("Network error. Please try again.");
     } finally {

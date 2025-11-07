@@ -10,6 +10,7 @@ export default function EmployeeAttendance() {
   const [error, setError] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [holidays, setHolidays] = useState([]);
 
   const fetchUser = useCallback(async () => {
     try {
@@ -26,6 +27,55 @@ export default function EmployeeAttendance() {
       setError('Error loading user data');
     }
   }, []);
+
+  const fetchHolidays = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/calendar/yearly-events?year=${currentYear}`);
+      if (res.ok) {
+        const data = await res.json();
+        const holidayList = [];
+        Object.keys(data.events || {}).forEach(month => {
+          data.events[month].forEach(event => {
+            if (event.type === 'holiday') {
+              holidayList.push(event);
+            }
+          });
+        });
+        setHolidays(holidayList);
+      }
+    } catch (error) {
+      console.error('Error fetching holidays:', error);
+    }
+  }, [currentYear]);
+
+  useEffect(() => {
+    fetchHolidays();
+  }, [fetchHolidays]);
+
+
+  const downloadHolidaysPDF = () => {
+    if (holidays.length === 0) {
+      alert('No holidays found for this year');
+      return;
+    }
+    
+    import('jspdf').then(({ jsPDF }) => {
+      const doc = new jsPDF();
+      doc.text(`Holidays ${currentYear}`, 20, 20);
+      
+      let yPosition = 40;
+      holidays.forEach((holiday) => {
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+        doc.text(`${holiday.date} - ${holiday.title}`, 20, yPosition);
+        yPosition += 10;
+      });
+      
+      doc.save(`holidays-${currentYear}.pdf`);
+    });
+  };
 
   const fetchAttendance = useCallback(async () => {
     try {
@@ -132,6 +182,11 @@ export default function EmployeeAttendance() {
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
+                <button
+                    onClick={downloadHolidaysPDF}
+                    className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg text-sm font-medium cursor-pointer">
+                    Holiday List PDF
+                  </button>
               </div>
             </div>
           </div>
