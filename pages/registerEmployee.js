@@ -316,7 +316,11 @@ export default function RegisterEmployee() {
         }
         
         setFormData(prev => ({ ...prev, [field]: value }));
-        validateField(field, value);
+        
+        // Only validate if not in the middle of form reset
+        if (value !== '' || field !== 'email') {
+            validateField(field, value);
+        }
     };
 
 const handleRegister = async () => {
@@ -384,6 +388,12 @@ const handleRegister = async () => {
         setErrors({});
         setIsFormValid(false);
         setEmailChecking(false);
+        
+        // Clear any pending email validation timeouts
+        if (emailTimeout) {
+            clearTimeout(emailTimeout);
+            setEmailTimeout(null);
+        }
         
         if (emailTimeout) {
             clearTimeout(emailTimeout);
@@ -738,7 +748,6 @@ const handleRegister = async () => {
                                         >
                                             <option value="">Select employee type</option>
                                             <option value="Full_time">Full-time</option>
-                                            <option value="Part_time">Part-time</option>
                                             <option value="Intern">Intern</option>
                                             <option value="Contractor">Contractor</option>
                                         </select>
