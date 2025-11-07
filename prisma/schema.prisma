@@ -104,6 +104,7 @@ model compliance_status {
 model employees {
   empid                                         Int                    @id @default(autoincrement())
   candidate_id                                  String?
+  main_employee_id                              String?                // Same as users.empid
   name                                          String?
   email                                         String?                @unique(map: "employees_email_unique")
   contact_no                                    String?

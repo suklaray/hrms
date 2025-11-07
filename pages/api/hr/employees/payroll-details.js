@@ -32,6 +32,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    // Get user data from users table using empid (string like "jyosri8308")
     const user = await prisma.users.findUnique({
       where: { empid },
     });
@@ -51,37 +52,25 @@ export default async function handler(req, res) {
     let bankDetails = null;
     let employeeContact = null;
 
-    console.log('Looking for employee with candidate_id:', user.candidate_id);
-
-    if (user.candidate_id) {
-      // Step 1: Find employee record using candidate_id
-      const employeeRecord = await prisma.employees.findFirst({
-        where: { candidate_id: user.candidate_id },
+    // Find employee record using main_employee_id (same as users.empid)
+    const employeeRecord = await prisma.employees.findFirst({
+      where: { main_employee_id: empid }, // Use main_employee_id instead of candidate_id
+    });
+    
+    if (employeeRecord) {
+      employeeContact = employeeRecord.contact_no;
+      
+      // Get bank details using employee.empid (auto-increment ID)
+      const bankDetailsRecord = await prisma.bank_details.findFirst({
+        where: { employee_id: employeeRecord.empid }
       });
       
-      console.log('Employee record found:', employeeRecord);
-      
-      if (employeeRecord) {
-        employeeContact = employeeRecord.contact_no;
-        
-        console.log('Looking for bank details with employee_id:', employeeRecord.empid);
-        
-        // Step 2: Use employee.empid to get bank details
-        const bankDetailsRecord = await prisma.bank_details.findFirst({
-          where: { employee_id: employeeRecord.empid }
-        });
-        
-        console.log('Bank details found:', bankDetailsRecord);
-        
-        if (bankDetailsRecord) {
-          bankDetails = bankDetailsRecord;
-        }
+      if (bankDetailsRecord) {
+        bankDetails = bankDetailsRecord;
       }
     }
 
     const finalContact = user.contact_number || employeeContact || 'Not provided';
-
-    console.log('Final bankDetails before response:', bankDetails);
 
     const employee = {
       ...user,

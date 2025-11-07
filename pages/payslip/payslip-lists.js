@@ -82,7 +82,7 @@ useEffect(() => {
 }, [fetchPayslips]);
 
   const handleViewPayslip = (month, year) => {
-    window.open(`/payslip/payslip-preview?month=${month}&year=${year}&empid=${user.empid}`, '_blank');
+    router.push(`/payslip/payslip-preview?month=${month}&year=${year}&empid=${user.empid}`);
   };
 
 const handleDownloadPayslip = async (month, year) => {

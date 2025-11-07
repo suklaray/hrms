@@ -25,14 +25,22 @@ export default async function handler(req, res) {
       return res.status(404).json({ message: 'Employee not found' });
     }
 
-    const employeeData = await prisma.employees.findFirst({
-      where: { email: employee.email },
-      select: { contact_no: true },
+    // Find employee record using main_employee_id matching users.empid
+    const employeeRecord = await prisma.employees.findFirst({
+      where: { main_employee_id: employee.empid },
     });
+
+    let bankDetails = null;
+    if (employeeRecord) {
+      bankDetails = await prisma.bank_details.findFirst({
+        where: { employee_id: employeeRecord.empid }
+      });
+    }
 
     const result = {
       ...employee,
-      contact_number: employeeData?.contact_no || null,
+      contact_number: employeeRecord?.contact_no || null,
+      bankDetails: bankDetails
     };
 
     res.status(200).json(result);
