@@ -93,38 +93,59 @@ export default function LeaveRequest({ user }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+  e.preventDefault();
+  setLoading(true);
+  setMessage("");
 
-    try {
-      const response = await fetch("/api/leave-records/leave-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-        credentials: "include",
+  try {
+    let attachmentData = "";
+    
+    // Convert file to base64 if attachment exists
+    if (formData.attachment && typeof formData.attachment === 'object') {
+      const reader = new FileReader();
+      attachmentData = await new Promise((resolve) => {
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(formData.attachment);
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage("Leave request submitted successfully!");
-        setFormData({
-          from_date: "",
-          to_date: "",
-          reason: "",
-          leave_type: "Sick Leave",
-          attachment: ""
-        });
-      } else {
-        setMessage(data.message || "Failed to submit leave request.");
-      }
-    } catch (error) {
-      setMessage("Error submitting leave request.");
-    } finally {
-      setLoading(false);
+    } else {
+      attachmentData = formData.attachment || "";
     }
-  };
+
+    const response = await fetch("/api/leave-records/leave-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from_date: formData.from_date,
+        to_date: formData.to_date,
+        reason: formData.reason,
+        leave_type: formData.leave_type,
+        attachment: attachmentData
+      }),
+      credentials: "include",
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setMessage("Leave request submitted successfully!");
+      setFormData({
+        from_date: "",
+        to_date: "",
+        reason: "",
+        leave_type: "Sick Leave",
+        attachment: ""
+      });
+    } else {
+      setMessage(data.message || "Failed to submit leave request.");
+    }
+  } catch (error) {
+    setMessage("Error submitting leave request.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   const fetchLeaveTypes = async () => {
     try {
@@ -349,14 +370,24 @@ export default function LeaveRequest({ user }) {
                           Attachment (Optional)
                         </label>
                         <input
-                          type="text"
+                          type="file"
                           name="attachment"
-                          value={formData.attachment}
-                          onChange={handleChange}
-                          placeholder="Attachment URL or description"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              setFormData({ ...formData, attachment: file });
+                            }
+                          }}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                         />
+                        {formData.attachment && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                            <p className="text-sm text-gray-600">Selected: {formData.attachment.name}</p>
+                          </div>
+                        )}
                       </div>
+
                     </div>
 
                     {/* Date Count Display */}
@@ -432,6 +463,8 @@ export default function LeaveRequest({ user }) {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied Date</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attachment</th>
+
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -459,6 +492,19 @@ export default function LeaveRequest({ user }) {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {new Date(request.applied_at).toLocaleDateString()}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {request.attachment ? (
+                                  <button
+                                    onClick={() => window.open(request.attachment, '_blank')}
+                                    className="flex items-center text-indigo-600 hover:text-indigo-800"
+                                  >
+                                    <Eye className="w-4 h-4 mr-1" />
+                                    View
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-400">No attachment</span>
+                                )}
                               </td>
                             </tr>
                           ))}

@@ -85,12 +85,20 @@ useEffect(() => {
     window.open(`/payslip/payslip-preview?month=${month}&year=${year}&empid=${user.empid}`, '_blank');
   };
 
-  const handleDownloadPayslip = (month, year) => {
-    const link = document.createElement('a');
-    link.href = `/payslip/payslip-preview?month=${month}&year=${year}&empid=${user.empid}&download=true`;
-    link.target = '_blank';
-    link.click();
-  };
+const handleDownloadPayslip = async (month, year) => {
+  try {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = `/payslip/payslip-preview?month=${month}&year=${year}&empid=${user.empid}&download=true`;
+    document.body.appendChild(iframe);
+    
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 3000);
+  } catch (error) {
+    console.error('Download failed:', error);
+  }
+};
 
 
   const paginatedPayslips = payslips;
@@ -219,13 +227,13 @@ useEffect(() => {
                                     <Eye className="w-4 h-4 mr-1" />
                                     View
                                   </button>
-                                  <button
+                                  {/* <button
                                     onClick={() => handleDownloadPayslip(payslip.month, payslip.year)}
                                     className="inline-flex items-center px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                                   >
                                     <Download className="w-4 h-4 mr-1" />
                                     Download
-                                  </button>
+                                  </button> */}
                                 </div>
                               </td>
                             </tr>

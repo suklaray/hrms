@@ -4,6 +4,7 @@ import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { ArrowLeft, Calendar, Clock, User, Trash2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
+import { swalConfirm } from '@/utils/confirmDialog';
 
 export default function EmployeeTasks() {
   const [tasks, setTasks] = useState([]);
@@ -67,8 +68,8 @@ export default function EmployeeTasks() {
 
   const deleteSelectedTasks = async () => {
     if (selectedTasks.length === 0) return;
-
-    if (!confirm(`Are you sure you want to delete ${selectedTasks.length} task(s)?`)) return;
+    const confirm = await swalConfirm(`Are you sure you want to delete ${selectedTasks.length} task(s)?`);
+    if (!confirm) return;
 
     try {
       const response = await fetch(`/api/task-management/delete-tasks`, {

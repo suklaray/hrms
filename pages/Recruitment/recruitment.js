@@ -326,7 +326,7 @@ export default function Candidates(user) {
         ? "Are you sure you want to delete this candidate?"
         : `Are you sure you want to delete ${selectedCandidates.length} selected candidates?`;
 
-    if (mounted && (await swalConfirm(confirmMessage))) {
+    if (mounted && await swalConfirm(confirmMessage)) {
       try {
         await Promise.all(
           selectedCandidates.map((candidateId) =>

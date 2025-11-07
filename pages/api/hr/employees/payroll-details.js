@@ -50,20 +50,28 @@ export default async function handler(req, res) {
 
     let bankDetails = null;
     let employeeContact = null;
-    
+
+    console.log('Looking for employee with candidate_id:', user.candidate_id);
+
     if (user.candidate_id) {
       // Step 1: Find employee record using candidate_id
       const employeeRecord = await prisma.employees.findFirst({
         where: { candidate_id: user.candidate_id },
       });
       
+      console.log('Employee record found:', employeeRecord);
+      
       if (employeeRecord) {
         employeeContact = employeeRecord.contact_no;
+        
+        console.log('Looking for bank details with employee_id:', employeeRecord.empid);
         
         // Step 2: Use employee.empid to get bank details
         const bankDetailsRecord = await prisma.bank_details.findFirst({
           where: { employee_id: employeeRecord.empid }
         });
+        
+        console.log('Bank details found:', bankDetailsRecord);
         
         if (bankDetailsRecord) {
           bankDetails = bankDetailsRecord;
@@ -72,6 +80,8 @@ export default async function handler(req, res) {
     }
 
     const finalContact = user.contact_number || employeeContact || 'Not provided';
+
+    console.log('Final bankDetails before response:', bankDetails);
 
     const employee = {
       ...user,

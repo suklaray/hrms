@@ -132,30 +132,55 @@ model employees {
   @@index([email])
 }
 
-model main_employee {
-  empid                  String    @id @db.VarChar(20)
-  candidate_id           Int?
-  email                  String    @db.VarChar(100)
-  password               String    @db.VarChar(255)
-  role                   String?   @default("employee") @db.VarChar(20)
-  name                   String?   @db.VarChar(100)
-  contact                String?   @db.VarChar(15)
-  position               String?   @db.VarChar(100)
-  doj                    DateTime? @db.Date
-  gender                 String?   @db.VarChar(10)
-  dob                    DateTime? @db.Date
-  address                String?
-  employee_type          String?   @db.VarChar(50)
-  experience             String?   @db.VarChar(50)
-  profile_photo          String?   @db.VarChar(255)
-  aadhar_card            String?   @db.VarChar(255)
-  pan_card               String?   @db.VarChar(255)
-  education_certificates String?
-  resume                 String?   @db.VarChar(255)
-  experience_certificate String?   @db.VarChar(255)
-  bank_details           String?
-  status                 String?   @default("active") @db.VarChar(20)
-  created_at             DateTime? @default(now()) @db.Timestamp(0)
+model candidate_details {
+  id                                            Int                    @id @default(autoincrement())
+  candidate_id                                  String?
+  name                                          String?
+  email                                         String?                @unique(map: "candidates_unique_email")
+  contact_no                                    String?
+  password                                      String?
+  gender                                        String?
+  dob                                           DateTime?
+  aadhar_card                                   String?
+  pan_card                                      String?
+  education_certificates                        String?
+  resume                                        String?
+  experience_certificate                        String?
+  profile_photo                                 String?
+  aadhar_number                                 String?
+  pan_number                                    String?
+  highest_qualification                         String?
+  addresses                                     candidates_addresses[]
+  bank_details                                  candidates_bank_details[]
+  created_at                                    DateTime?              @default(now())
+}
+
+model candidates_addresses {
+  id                    Int       @id @default(autoincrement())
+  candidate_id          Int
+  address_line1         String
+  address_line2         String?
+  city                  String
+  state                 String
+  country               String
+  pincode               String
+  candidate_details     candidate_details @relation(fields: [candidate_id], references: [id])
+
+  @@index([candidate_id])
+}
+
+model candidates_bank_details {
+  id                  Int       @id @default(autoincrement())
+  candidate_id        Int
+  account_holder_name String
+  bank_name           String
+  branch_name         String?
+  account_number      String
+  ifsc_code           String
+  checkbook_document  String?
+  candidate_details           candidate_details @relation(fields: [candidate_id], references: [id])
+
+  @@index([candidate_id])
 }
 
 model leave_types {

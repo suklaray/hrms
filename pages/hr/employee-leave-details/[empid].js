@@ -4,6 +4,7 @@ import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
 import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import moment from 'moment';
+import { swalConfirm } from '@/utils/confirmDialog';
 
 export default function EmployeeLeaveDetails() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function EmployeeLeaveDetails() {
   const itemsPerPage = 10;
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
-
+  const [leaveBalances, setLeaveBalances] = useState([]);
 
   useEffect(() => {
     if (empid) {
@@ -23,6 +24,7 @@ export default function EmployeeLeaveDetails() {
         .then((data) => {
           if (data.success) {
             setEmployeeData(data.data);
+            calculateLeaveBalances(data.data.leaveHistory);
           }
           setLoading(false);
         })
@@ -32,6 +34,7 @@ export default function EmployeeLeaveDetails() {
         });
     }
   }, [empid]);
+
 
   const formatDate = (dateString) => {
     return moment(dateString).isValid() ? moment(dateString).format('DD/MM/YYYY') : 'Invalid Date';
@@ -54,52 +57,96 @@ export default function EmployeeLeaveDetails() {
     return today.isBetween(startDate, endDate, 'day', '[]');
   };
 
-  const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
-    // Business logic for status changes
-    if (currentStatus === 'Rejected' && newStatus === 'Approved') {
-      alert('Cannot change status from Rejected to Approved. This action is not allowed.');
-      return;
-    }
 
-    // Confirmation message
-    let confirmMessage = '';
-    if (newStatus === 'Approved') {
-      confirmMessage = 'Are you sure you want to APPROVE this leave request? Once confirmed, this can only be changed to Rejected (one time only).';
-    } else if (newStatus === 'Rejected') {
-      if (currentStatus === 'Approved') {
-        confirmMessage = 'Are you sure you want to REJECT this leave request? This is a one-time change from Approved to Rejected and cannot be reversed.';
-      } else {
-        confirmMessage = 'Are you sure you want to REJECT this leave request? Once confirmed, this cannot be changed.';
-      }
+const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
+  // Business logic for status changes
+  if (currentStatus === 'Rejected' && newStatus === 'Approved') {
+    await swalConfirm('Cannot change status from Rejected to Approved. This action is not allowed.', false);
+    return;
+  }
+
+  if ((currentStatus === 'Approved' || currentStatus === 'Rejected') && newStatus === 'Pending') {
+    await swalConfirm('Cannot change status back to Pending once it has been Approved or Rejected.', false);
+    return;
+  }
+
+  // Confirmation message
+  let confirmMessage = '';
+  if (newStatus === 'Approved') {
+    confirmMessage = 'Are you sure you want to APPROVE this leave request? Once confirmed, this can only be changed to Rejected (one time only).';
+  } else if (newStatus === 'Rejected') {
+    if (currentStatus === 'Approved') {
+      confirmMessage = 'Are you sure you want to REJECT this leave request? This is a one-time change from Approved to Rejected and cannot be reversed.';
     } else {
-      confirmMessage = `Are you sure you want to change the status to ${newStatus}?`;
+      confirmMessage = 'Are you sure you want to REJECT this leave request? Once confirmed, this cannot be changed.';
     }
+  }
 
-    // Show confirmation dialog
-    if (!confirm(confirmMessage)) {
-      return;
+  const confirmed = await swalConfirm(confirmMessage);
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch('/api/hr/update-leave-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: leaveId, status: newStatus }),
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      setEmployeeData(prev => ({
+        ...prev,
+        leaveHistory: prev.leaveHistory.map(leave =>
+          leave.id === leaveId ? { ...leave, status: newStatus } : leave
+        )
+      }));
     }
+  } catch (error) {
+    console.error('Error updating status:', error);
+  }
+};
 
-    try {
-      const res = await fetch('/api/hr/update-leave-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: leaveId, status: newStatus }),
+
+
+  const calculateLeaveBalances = async (leaveHistory) => {
+  try {
+    const res = await fetch('/api/hr/leave-types');
+    const data = await res.json();
+    
+    if (data.success) {
+      const leaveTypes = data.data;
+      const currentYear = moment().year();
+      
+      const balances = leaveTypes.map(type => {
+        const normalizeType = (str) => str.replace(/[_\s]/g, '').toLowerCase();
+        
+        const approvedLeaves = leaveHistory.filter(leave => 
+          normalizeType(leave.leave_type) === normalizeType(type.type_name) && 
+          leave.status === 'Approved' &&
+          moment(leave.from_date).year() === currentYear
+        );
+        
+        const usedDays = approvedLeaves.reduce((sum, leave) => {
+          const days = moment(leave.to_date).diff(moment(leave.from_date), 'days') + 1;
+          return sum + days;
+        }, 0);
+        
+        return {
+          type_name: type.type_name,
+          max_days: type.max_days,
+          used: usedDays,
+          remaining: Math.max(0, type.max_days - usedDays),
+          paid: type.paid // Add this line
+        };
       });
       
-      const data = await res.json();
-      if (data.success) {
-        setEmployeeData(prev => ({
-          ...prev,
-          leaveHistory: prev.leaveHistory.map(leave =>
-            leave.id === leaveId ? { ...leave, status: newStatus } : leave
-          )
-        }));
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
+      setLeaveBalances(balances);
     }
-  };
+  } catch (error) {
+    console.error('Error calculating leave balances:', error);
+  }
+};
+
 
 
   const handleLogout = () => {
@@ -169,6 +216,57 @@ export default function EmployeeLeaveDetails() {
             </div>
           </div>
 
+          {/* Leave Balance Chart */}
+          {leaveBalances.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+              {/* <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Calendar className="w-5 h-5 mr-2" />
+                Leave Balance ({moment().year()})
+              </h3> */}
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <Calendar className="w-5 h-5 mr-2" />
+                Pending Leave Requests
+              </h3>
+
+              <div className="overflow-x-auto">
+                <table className="w-full bg-white rounded-lg border border-blue-100">
+                  <thead className="bg-blue-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-800 uppercase">Leave Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-800 uppercase">Total Days</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-800 uppercase">Used</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-800 uppercase">Remaining</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-800 uppercase">Payment</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-blue-100">
+                    {leaveBalances.map((balance, index) => (
+                      <tr key={index} className="hover:bg-blue-50">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                          {balance.type_name.replace(/_/g, ' ')}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {balance.max_days}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {balance.used}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-semibold text-green-600">
+                          {balance.remaining}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {balance.paid ? 'Paid' : 'Unpaid'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+              </div>
+            </div>
+          )}
+
+
           {/* Leave History Table */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100">
@@ -200,9 +298,12 @@ export default function EmployeeLeaveDetails() {
                     // Filter out past dates for completed leave requests
                     const today = moment().startOf('day');
                     const filteredLeaves = employeeData.leaveHistory.filter(leave => {
-                      const toDate = moment(leave.to_date).startOf('day');
-                      return toDate.isSameOrAfter(today);
+                      return leave.status === 'Pending';
                     });
+
+
+
+
                     
                     const totalPages = Math.ceil(filteredLeaves.length / itemsPerPage);
                     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -279,9 +380,22 @@ export default function EmployeeLeaveDetails() {
                               onChange={(e) => handleStatusChange(leave.id, e.target.value, leave.status)}
                               className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
-                              <option value="Pending">Pending</option>
-                              <option value="Approved">Approved</option>
-                              <option value="Rejected">Rejected</option>
+                              {leave.status === 'Pending' && (
+                                <>
+                                  <option value="Pending">Pending</option>
+                                  <option value="Approved">Approved</option>
+                                  <option value="Rejected">Rejected</option>
+                                </>
+                              )}
+                              {leave.status === 'Approved' && (
+                                <>
+                                  <option value="Approved">Approved</option>
+                                  <option value="Rejected">Rejected</option>
+                                </>
+                              )}
+                              {leave.status === 'Rejected' && (
+                                <option value="Rejected">Rejected</option>
+                              )}
                             </select>
 
                           </td>
