@@ -317,11 +317,20 @@ export default function RegisterEmployee() {
         
         setFormData(prev => ({ ...prev, [field]: value }));
         
-        // Only validate if not in the middle of form reset
-        if (value !== '' || field !== 'email') {
-            validateField(field, value);
+        // Skip validation for empty email fields (during form reset)
+        if (field === 'email' && value === '') {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.email;
+                return newErrors;
+            });
+            return;
         }
+        
+        validateField(field, value);
     };
+
+
 
 const handleRegister = async () => {
     if (!validateForm()) {
