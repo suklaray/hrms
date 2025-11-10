@@ -566,11 +566,25 @@ export default function ViewEmployee() {
                           <option value="" disabled>
                             Change User Role
                           </option>
-                          <option value="employee">Employee</option>
-                          <option value="hr">HR</option>
-                          <option value="admin">Admin</option>
-                          <option value="superadmin">Superadmin</option>
+                          {role === "superadmin" && (
+                            <>
+                              <option value="employee">Employee</option>
+                              <option value="hr">HR</option>
+                              <option value="admin">Admin</option>
+                              <option value="superadmin">Superadmin</option>
+                            </>
+                          )}
+                          {role === "admin" && (
+                            <>
+                              <option value="employee">Employee</option>
+                              <option value="hr">HR</option>
+                            </>
+                          )}
+                          {role === "hr" && (
+                            <option value="employee">Employee</option>
+                          )}
                         </select>
+
                       )}
                     </div>
                   </div>

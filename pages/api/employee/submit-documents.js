@@ -97,11 +97,21 @@ export default async function handler(req, res) {
           where: { email: body.email },
           data: { name: body.name }
         });
+        // Get user data to fetch empid and candidate_id
+        const user = await prisma.users.findUnique({
+          where: { empid: body.empid },
+          select: { empid: true, candidate_id: true }
+        });
 
+        if (!user) {
+          return res.status(404).json({ error: 'User not found' });
+        }
         // Update or create employee record
         const employee = await prisma.employees.upsert({
           where: { email: body.email },
           update: {
+            main_employee_id: user.empid, 
+            candidate_id: user.candidate_id,
             name: body.name,
             contact_no: body.contact_no,
             gender: body.gender,
@@ -117,6 +127,8 @@ export default async function handler(req, res) {
             profile_photo: profilePath,
           },
           create: {
+            main_employee_id: user.empid,  
+            candidate_id: user.candidate_id,
             name: body.name,
             email: body.email,
             contact_no: body.contact_no,

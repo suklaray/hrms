@@ -268,8 +268,8 @@ export default function CandidateDetails() {
                     <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">
                       <FaIdCard className="text-green-500 mr-3" />
                       <div>
-                        <p className="text-sm text-gray-600">Employee ID</p>
-                        <p className="font-semibold text-gray-900">{employee.empid}</p>
+                        <p className="text-sm text-gray-600">Candidate ID</p>
+                        <p className="font-semibold text-gray-900">{employee.candidate_id}</p>
                       </div>
                     </div>
                     <div className="flex items-center p-4 bg-white rounded-lg shadow-sm">

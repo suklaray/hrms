@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { Calendar, Clock, FileText, Plus, Eye, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Clock, FileText, Plus, Eye, AlertCircle, CheckCircle, XCircle, X } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
 
@@ -61,6 +61,8 @@ export default function LeaveRequest({ user }) {
     leave_type: "Sick Leave",
     attachment: ""
   });
+    const [selectedReason, setSelectedReason] = useState(null);
+
 
 
 
@@ -479,9 +481,14 @@ export default function LeaveRequest({ user }) {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {new Date(request.to_date).toLocaleDateString()}
                               </td>
-                              <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                                {request.reason}
-                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+  <div 
+    className="truncate cursor-pointer hover:text-indigo-600" 
+    onClick={() => setSelectedReason(request.reason)}
+  >
+    {request.reason}
+  </div>
+</td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
                                   {getStatusIcon(request.status)}
@@ -517,6 +524,20 @@ export default function LeaveRequest({ user }) {
             </div>
           </div>
         </div>
+        {selectedReason && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4 relative">
+              <button 
+                onClick={() => setSelectedReason(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <h3 className="text-lg font-semibold mb-4 pr-8">Leave Reason</h3>
+              <p className="text-gray-700">{selectedReason}</p>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
