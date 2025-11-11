@@ -45,8 +45,12 @@ export default function EmployeeDashboard() {
         });
         if (statsRes.ok) {
           const statsData = await statsRes.json();
-          setStats(statsData);
+          setStats({
+            ...statsData,
+            todayCompletedSeconds: statsData.todayCompletedSeconds || 0
+          });
         }
+
         
         // Calendar events fetched by separate useEffect
       } catch (err) {
@@ -76,25 +80,42 @@ export default function EmployeeDashboard() {
     fetchCalendarEvents();
   }, [fetchCalendarEvents]);
 
+// Timer effect - exact same logic as HR attendance
+useEffect(() => {
+  let interval;
+  
+  if (isWorking && workStartTime) {
+    interval = setInterval(() => {
+      const now = new Date();
+      const checkIn = new Date(workStartTime);
+      
+      // Validate checkIn time
+      if (isNaN(checkIn.getTime())) {
+        setElapsedTime('00:00:00');
+        return;
+      }
 
+      const currentSessionSeconds = (now - checkIn) / 1000;
+      const completedTime = Number(stats.todayCompletedSeconds) || 0;
+      const totalSecondsToday = completedTime + currentSessionSeconds;
+      
+      const hours = Math.floor(totalSecondsToday / 3600);
+      const minutes = Math.floor((totalSecondsToday % 3600) / 60);
+      const seconds = Math.floor(totalSecondsToday % 60);
 
-  // Timer effect
-  useEffect(() => {
-    let interval;
-    if (isWorking && workStartTime) {
-      interval = setInterval(() => {
-        const now = new Date();
-        const diff = now - workStartTime;
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setElapsedTime(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-      }, 1000);
-    } else {
-      setElapsedTime('00:00:00');
-    }
-    return () => clearInterval(interval);
-  }, [isWorking, workStartTime]);
+      setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+    }, 1000);
+  } else {
+    // When not working, show completed time for today
+    const completedTime = Number(stats.todayCompletedSeconds) || 0;
+    const hours = Math.floor(completedTime / 3600);
+    const minutes = Math.floor((completedTime % 3600) / 60);
+    const seconds = Math.floor(completedTime % 60);
+    setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+  }
+  
+  return () => clearInterval(interval);
+}, [isWorking, workStartTime, stats.todayCompletedSeconds]);
 
   const loaderProp = ({ src }) => {
       if (src.startsWith('http://') || src.startsWith('https://')) return src;
@@ -117,42 +138,53 @@ export default function EmployeeDashboard() {
   };
 
   const handleToggleWork = async () => {
-    if (!user) return;
-    const endpoint = isWorking ? "checkout" : "checkin";
-    try {
-      const res = await fetch(`/api/employee/${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        // Refetch user data to get updated work status
-        const userRes = await fetch("/api/auth/employee/me", {
-          credentials: "include",
-        });
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUser(userData.user);
-          setIsWorking(userData.user.isWorking);
-          if (userData.user.isWorking && userData.user.workStartTime) {
-            setWorkStartTime(new Date(userData.user.workStartTime));
-          } else {
-            setWorkStartTime(null);
-            setElapsedTime('00:00:00');
-          }
+  if (!user) return;
+  const endpoint = isWorking ? "checkout" : "checkin";
+  try {
+    const res = await fetch(`/api/employee/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    const data = await res.json();
+    if (res.ok) {
+      // Refetch user data AND stats
+      const [userRes, statsRes] = await Promise.all([
+        fetch("/api/auth/employee/me", { credentials: "include" }),
+        fetch("/api/employee/stats", { credentials: "include" })
+      ]);
+      
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        setUser(userData.user);
+        setIsWorking(userData.user.isWorking);
+        if (userData.user.isWorking && userData.user.workStartTime) {
+          setWorkStartTime(new Date(userData.user.workStartTime));
+        } else {
+          setWorkStartTime(null);
         }
-        toast.success(
-          data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : "")
-        );
-      } else {
-          toast.error(data.error || "An error occurred.");
       }
-    } catch (err) {
-      console.error("Work toggle error:", err);
-      toast.error("Failed to update work status.");
+      
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats({
+          ...statsData,
+          todayCompletedSeconds: statsData.todayCompletedSeconds || 0
+        });
+      }
+      
+      toast.success(
+        data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : "")
+      );
+    } else {
+        toast.error(data.error || "An error occurred.");
     }
-  };
+  } catch (err) {
+    console.error("Work toggle error:", err);
+    toast.error("Failed to update work status.");
+  }
+};
+
 
   if (!user) {
     return (

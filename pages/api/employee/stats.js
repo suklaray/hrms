@@ -35,7 +35,24 @@ export default async function handler(req, res) {
       const diff = checkOut - new Date(todayAttendance.check_in);
       todayHours = Math.max(0, diff / (1000 * 60 * 60));
     }
-
+    // Get all completed sessions for today (where check_out is not null)
+    const completedSessions = await prisma.attendance.findMany({
+      where: {
+        empid: user.empid,
+        date: {
+          gte: today,
+          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+        },
+        check_out: { not: null }
+      }
+    });
+    let todayCompletedSeconds = 0;
+    completedSessions.forEach(session => {
+      if (session.check_in && session.check_out) {
+        const diff = new Date(session.check_out) - new Date(session.check_in);
+        todayCompletedSeconds += diff / 1000; // Convert to seconds
+      }
+    });
     // This week's hours
     const weekAttendance = await prisma.attendance.findMany({
       where: {
@@ -77,8 +94,10 @@ export default async function handler(req, res) {
     res.status(200).json({
       todayHours: todayHours.toFixed(1),
       weekHours: weekHours.toFixed(1),
-      monthHours: monthHours.toFixed(1)
+      monthHours: monthHours.toFixed(1),
+      todayCompletedSeconds: todayCompletedSeconds
     });
+
   } catch (error) {
     console.error('Error fetching employee stats:', error);
     res.status(500).json({ message: 'Internal server error' });
