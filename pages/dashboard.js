@@ -35,8 +35,7 @@ export async function getServerSideProps(context) {
         email: true,
         profile_photo: true,
         position: true,
-        role: true,
-        verified: true
+        role: true
       }
     });
   } catch (error) {
@@ -53,7 +52,7 @@ export async function getServerSideProps(context) {
         email: userData?.email || user.email,
         profile_photo: userData?.profile_photo || null,
         position: userData?.position || null,
-        verified: userData?.verified || user.verified || null,
+        verified: user.verified || null,
         form_submitted: user.form_submitted || null,
       },
     },
@@ -108,7 +107,7 @@ export default function Dashboard({ user }) {
         <title>Dashboard - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <SideBar/>
+      <SideBar user={user}/>
       <div className="flex-1 overflow-auto">
         <div className="p-6">
         {isAccessEnabled ? (

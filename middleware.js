@@ -75,7 +75,7 @@ export async function middleware(request) {
     const role = decoded.role?.toString().toLowerCase() || "";
     const isVerified = decoded.verified === "verified";
     const hasFormSubmitted = !!decoded.form_submitted;
-    
+
     // Redirect logged-in users away from login pages only
     if (["/login", "/employee/login"].includes(pathname)) {
       const dashboardPath =
@@ -108,15 +108,18 @@ export async function middleware(request) {
 
     // For employees: redirect unverified users or those who haven't submitted forms
     if (role === "employee") {
-      const needsVerification = !isVerified || !hasFormSubmitted;
+      const needsVerification = !isVerified && !hasFormSubmitted;
       if (needsVerification) {
-        return NextResponse.redirect(new URL("/employee/dashboard", request.url));
+        return NextResponse.redirect(
+          new URL("/employee/dashboard", request.url)
+        );
       }
     }
-    
+
     // For admin/hr: only check verification (they don't need to submit employee forms)
     if (["admin", "hr"].includes(role)) {
-      if (!isVerified) {
+      const needsVerification = !isVerified && !hasFormSubmitted;
+      if (needsVerification) {
         return NextResponse.redirect(new URL("/dashboard", request.url));
       }
     }
