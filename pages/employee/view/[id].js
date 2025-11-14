@@ -261,6 +261,7 @@ export default function ViewEmployee() {
       const res = await axios.post("/api/employee/sendCredentials", {
         empid: empid,
         password: newPassword,
+        role: user?.role
       });
 
       if (res.status === 200) {

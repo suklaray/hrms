@@ -5,11 +5,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { email, username, password, name } = req.body;
+  const { email, username, password, name, role } = req.body;
 
-  if (!email || !username || !password || !name) {
+  if (!email || !username || !password || !name || !role) {
     return res.status(400).json({ error: "Missing required fields" });
   }
+
+  // Determine what to show as username based on role
+  const displayUsername = role.toLowerCase() === 'employee' ? username : email;
 
   try {
     const transporter = nodemailer.createTransport({
@@ -33,7 +36,7 @@ export default async function handler(req, res) {
           <p>Your employee account has been created successfully. Here are your login credentials:</p>
           
           <div style="background-color: #F3F4F6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p><strong>Username:</strong> ${username}</p>
+            <p><strong>Username:</strong> ${displayUsername}</p>
             <p><strong>Password:</strong> ${password}</p>
           </div>
           
