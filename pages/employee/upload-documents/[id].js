@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import axios from "axios";
-import { User, FileText, MapPin, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
+import { User, FileText, MapPin, CreditCard, CheckCircle, AlertCircle, Eye } from "lucide-react";
 import { toast } from "react-toastify";
 import { swalConfirm} from '@/utils/confirmDialog';
 
@@ -43,13 +43,65 @@ export default function EmployeeDocumentForm() {
   const [isFormValid, setIsFormValid] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
   const [extracting, setExtracting] = useState({ aadhar: false, pan: false });
+  const [existingData, setExistingData] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const fetchExistingData = async () => {
+    try {
+      const response = await axios.get(`/api/employee/get-documents/${id}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+        params: {
+          t: Date.now()
+        }
+      });
+      console.log('API Response:', response.data);
+      if (response.data.exists) {
+        console.log('Existing data found:', response.data.data);
+        setExistingData(response.data.data);
+        setIsEditing(true);
+        // Pre-fill form with existing data, keeping files as null
+        const existingFormData = { ...response.data.data };
+        // Format date properly for input field
+        if (existingFormData.dob) {
+          existingFormData.dob = new Date(existingFormData.dob).toISOString().split('T')[0];
+        }
+        console.log('Setting form data:', existingFormData);
+        setFormData(prev => {
+          const newFormData = {
+            ...prev,
+            ...existingFormData,
+            aadhar_card: null,
+            pan_card: null,
+            education_certificates: null,
+            resume: null,
+            experience_certificate: null,
+            profile_photo: null,
+            bank_details: null,
+          };
+          console.log('Final form data being set:', newFormData);
+          return newFormData;
+        });
+      } else {
+        console.log('No existing data found');
+      }
+    } catch (error) {
+      console.error("Error fetching existing data:", error);
+    }
+  };
+
+
+
   useEffect(() => {
     if (mounted && id) {
+      fetchExistingData();
+      
       const urlParams = new URLSearchParams(window.location.search);
       const prefillName = urlParams.get('name');
       const prefillEmail = urlParams.get('email');
@@ -62,7 +114,15 @@ export default function EmployeeDocumentForm() {
         });
       } else {
         // Fetch employee data
-        axios.get(`/api/employee/get-employee/${id}`)
+        axios.get(`/api/employee/get-employee/${id}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          },
+          params: {
+            t: Date.now()
+          }
+        })
           .then((res) => {
             setEmployee(res.data);
           })
@@ -70,6 +130,11 @@ export default function EmployeeDocumentForm() {
       }
     }
   }, [mounted, id]);
+
+  // Debug formData changes
+  useEffect(() => {
+    console.log('Current formData:', formData);
+  }, [formData]);
 
   // Check if form is valid
   useEffect(() => {
@@ -82,7 +147,7 @@ export default function EmployeeDocumentForm() {
     const requiredFileFields = [
       'aadhar_card', 'pan_card', 'education_certificates',
       'resume', 'profile_photo', 'bank_details'
-    ];
+    ].filter(field => !existingData?.[field]);
 
     const missingTextFields = requiredTextFields.filter(field => {
       return !formData[field] || formData[field].toString().trim() === '';
@@ -97,7 +162,7 @@ export default function EmployeeDocumentForm() {
     const hasNoErrors = Object.keys(errors).length === 0;
 
     setIsFormValid(hasAllTextFields && hasAllFileFields && hasNoErrors);
-  }, [formData, errors]);
+  }, [formData, errors, existingData]);
 
   const validateField = (name, value) => {
     const newErrors = { ...errors };
@@ -268,7 +333,7 @@ export default function EmployeeDocumentForm() {
     });
 
     requiredFiles.forEach(field => {
-      if (!formData[field]) {
+      if (!formData[field] && !existingData?.[field]) {
         newErrors[field] = '❌ This field is required';
       }
     });
@@ -285,7 +350,7 @@ export default function EmployeeDocumentForm() {
       if (name === 'experience_certificate') {
         return;
       }
-      if (!formData[name]) {
+      if (!formData[name] && !existingData?.[name]) {
         setErrors(prev => ({ ...prev, [name]: '❌ This field is required' }));
       } else {
         setErrors(prev => ({ ...prev, [name]: undefined }));
@@ -416,9 +481,9 @@ export default function EmployeeDocumentForm() {
       }
     });
 
-    // Check required files
+    // Check required files (only if no existing file exists)
     requiredFiles.forEach(field => {
-      if (!formData[field]) {
+      if (!formData[field] && !existingData?.[field]) {
         formErrors[field] = 'This file is required';
       }
     });
@@ -454,7 +519,12 @@ export default function EmployeeDocumentForm() {
 
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
-      if (value) data.append(key, value);
+      if (value) {
+        data.append(key, value);
+      } else if (existingData?.[key] && ['aadhar_card', 'pan_card', 'education_certificates', 'resume', 'experience_certificate', 'profile_photo', 'bank_details'].includes(key)) {
+        // Include existing file path for files that weren't re-uploaded
+        data.append(`existing_${key}`, existingData[key]);
+      }
     });
     data.append("empid", id);
     data.append("name", employee.name);
@@ -722,17 +792,30 @@ export default function EmployeeDocumentForm() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Aadhar Card *</label>
-                  <input
-                    type="file"
-                    name="aadhar_card"
-                    accept="image/*,application/pdf"
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.aadhar_card ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="aadhar_card"
+                      accept="image/*,application/pdf"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required={!existingData?.aadhar_card}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.aadhar_card ? 'border-red-500' : 'border-gray-300'
+                      } ${existingData?.aadhar_card ? 'pr-12' : ''}`}
+                    />
+                    {existingData?.aadhar_card && (
+                      <a
+                        href={existingData.aadhar_card}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        title="View current document"
+                      >
+                        <Eye size={20} />
+                      </a>
+                    )}
+                  </div>
                   {errors.aadhar_card && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                       {errors.aadhar_card}
@@ -771,17 +854,30 @@ export default function EmployeeDocumentForm() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">PAN Card *</label>
-                  <input
-                    type="file"
-                    name="pan_card"
-                    accept="image/*,application/pdf"
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.pan_card ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="pan_card"
+                      accept="image/*,application/pdf"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required={!existingData?.pan_card}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.pan_card ? 'border-red-500' : 'border-gray-300'
+                      } ${existingData?.pan_card ? 'pr-12' : ''}`}
+                    />
+                    {existingData?.pan_card && (
+                      <a
+                        href={existingData.pan_card}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        title="View current document"
+                      >
+                        <Eye size={20} />
+                      </a>
+                    )}
+                  </div>
                   {errors.pan_card && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                       {errors.pan_card}
@@ -851,16 +947,29 @@ export default function EmployeeDocumentForm() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Educational Certificates *</label>
-                  <input
-                    type="file"
-                    name="education_certificates"
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.education_certificates ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="education_certificates"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required={!existingData?.education_certificates}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.education_certificates ? 'border-red-500' : 'border-gray-300'
+                      } ${existingData?.education_certificates ? 'pr-12' : ''}`}
+                    />
+                    {existingData?.education_certificates && (
+                      <a
+                        href={existingData.education_certificates}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        title="View current document"
+                      >
+                        <Eye size={20} />
+                      </a>
+                    )}
+                  </div>
                   {errors.education_certificates && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                       {errors.education_certificates}
@@ -871,16 +980,29 @@ export default function EmployeeDocumentForm() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Resume *</label>
-                  <input
-                    type="file"
-                    name="resume"
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.resume ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="resume"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required={!existingData?.resume}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.resume ? 'border-red-500' : 'border-gray-300'
+                      } ${existingData?.resume ? 'pr-12' : ''}`}
+                    />
+                    {existingData?.resume && (
+                      <a
+                        href={existingData.resume}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        title="View current document"
+                      >
+                        <Eye size={20} />
+                      </a>
+                    )}
+                  </div>
                   {errors.resume && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                       {errors.resume}
@@ -891,17 +1013,30 @@ export default function EmployeeDocumentForm() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo *</label>
-                  <input
-                    type="file"
-                    name="profile_photo"
-                    accept="image/jpeg,image/png,image/jpg"
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.profile_photo ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="profile_photo"
+                      accept="image/jpeg,image/png,image/jpg"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required={!existingData?.profile_photo}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.profile_photo ? 'border-red-500' : 'border-gray-300'
+                      } ${existingData?.profile_photo ? 'pr-12' : ''}`}
+                    />
+                    {existingData?.profile_photo && (
+                      <a
+                        href={existingData.profile_photo}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        title="View current document"
+                      >
+                        <Eye size={20} />
+                      </a>
+                    )}
+                  </div>
                   {errors.profile_photo && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                       {errors.profile_photo}
@@ -912,14 +1047,27 @@ export default function EmployeeDocumentForm() {
                 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Experience Certificate (Optional)</label>
-                  <input
-                    type="file"
-                    name="experience_certificate"
-                    onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.experience_certificate ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="experience_certificate"
+                      onChange={handleChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.experience_certificate ? 'border-red-500' : 'border-gray-300'
+                      } ${existingData?.experience_certificate ? 'pr-12' : ''}`}
+                    />
+                    {existingData?.experience_certificate && (
+                      <a
+                        href={existingData.experience_certificate}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        title="View current document"
+                      >
+                        <Eye size={20} />
+                      </a>
+                    )}
+                  </div>
                   {errors.experience_certificate && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                       {errors.experience_certificate}
@@ -1058,16 +1206,29 @@ export default function EmployeeDocumentForm() {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Bank Details File *</label>
-                  <input
-                    type="file"
-                    name="bank_details"
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    required
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                      errors.bank_details ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
+                  <div className="relative">
+                    <input
+                      type="file"
+                      name="bank_details"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      required={!existingData?.bank_details}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                        errors.bank_details ? 'border-red-500' : 'border-gray-300'
+                      } ${existingData?.bank_details ? 'pr-12' : ''}`}
+                    />
+                    {existingData?.bank_details && (
+                      <a
+                        href={existingData.bank_details}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                        title="View current document"
+                      >
+                        <Eye size={20} />
+                      </a>
+                    )}
+                  </div>
                   {errors.bank_details && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
                       {errors.bank_details}

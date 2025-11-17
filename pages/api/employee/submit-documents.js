@@ -83,14 +83,14 @@ export default async function handler(req, res) {
           return `/uploads/${fileName}`;
         };
 
-        // Process all files
-        const aadharPath = processFile(files.aadhar_card?.[0] || files.aadhar_card);
-        const panPath = processFile(files.pan_card?.[0] || files.pan_card);
-        const educationPath = processFile(files.education_certificates?.[0] || files.education_certificates);
-        const resumePath = processFile(files.resume?.[0] || files.resume);
-        const experiencePath = processFile(files.experience_certificate?.[0] || files.experience_certificate);
-        const profilePath = processFile(files.profile_photo?.[0] || files.profile_photo);
-        const bankPath = processFile(files.bank_details?.[0] || files.bank_details);
+        // Process files or use existing paths
+        const aadharPath = processFile(files.aadhar_card?.[0] || files.aadhar_card) || getValue(fields.existing_aadhar_card);
+        const panPath = processFile(files.pan_card?.[0] || files.pan_card) || getValue(fields.existing_pan_card);
+        const educationPath = processFile(files.education_certificates?.[0] || files.education_certificates) || getValue(fields.existing_education_certificates);
+        const resumePath = processFile(files.resume?.[0] || files.resume) || getValue(fields.existing_resume);
+        const experiencePath = processFile(files.experience_certificate?.[0] || files.experience_certificate) || getValue(fields.existing_experience_certificate);
+        const profilePath = processFile(files.profile_photo?.[0] || files.profile_photo) || getValue(fields.existing_profile_photo);
+        const bankPath = processFile(files.bank_details?.[0] || files.bank_details) || getValue(fields.existing_bank_details);
 
         // Update users table name if needed
         await prisma.users.updateMany({
@@ -119,12 +119,12 @@ export default async function handler(req, res) {
             highest_qualification: body.highest_qualification,
             aadhar_number: body.aadhar_number,
             pan_number: body.pan_number,
-            aadhar_card: aadharPath,
-            pan_card: panPath,
-            education_certificates: educationPath,
-            resume: resumePath,
-            experience_certificate: experiencePath,
-            profile_photo: profilePath,
+            ...(aadharPath && { aadhar_card: aadharPath }),
+            ...(panPath && { pan_card: panPath }),
+            ...(educationPath && { education_certificates: educationPath }),
+            ...(resumePath && { resume: resumePath }),
+            ...(experiencePath && { experience_certificate: experiencePath }),
+            ...(profilePath && { profile_photo: profilePath }),
           },
           create: {
             main_employee_id: user.empid,  
@@ -160,7 +160,7 @@ export default async function handler(req, res) {
               branch_name: body.branch_name,
               account_number: body.account_number,
               ifsc_code: body.ifsc_code,
-              checkbook_document: bankPath,
+              ...(bankPath && { checkbook_document: bankPath }),
             }
           });
         } else {
