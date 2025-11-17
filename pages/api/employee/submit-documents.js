@@ -92,10 +92,15 @@ export default async function handler(req, res) {
         const profilePath = processFile(files.profile_photo?.[0] || files.profile_photo) || getValue(fields.existing_profile_photo);
         const bankPath = processFile(files.bank_details?.[0] || files.bank_details) || getValue(fields.existing_bank_details);
 
-        // Update users table name if needed
+        // Update users table with form details
         await prisma.users.updateMany({
           where: { email: body.email },
-          data: { name: body.name }
+          data: { 
+            name: body.name,
+            contact_number: body.contact_no,
+            form_submitted: true,
+            ...(profilePath && { profile_photo: profilePath })
+          }
         });
         // Get user data to fetch empid and candidate_id
         const user = await prisma.users.findUnique({
