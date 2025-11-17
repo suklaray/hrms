@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   try {
-    if (req.method === 'POST' || req.method === 'PUT') {
+    if (req.method === 'POST' || req.method === 'PUT' || req.method === 'DELETE') {
       const token = req.cookies.token;
       if (!token) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       });
       return res.status(200).json({ success: true, data: leaveTypes });
     }
-
+ 
     if (req.method === 'POST') {
       const { type_name, max_days, paid } = req.body;
       
@@ -57,6 +57,16 @@ export default async function handler(req, res) {
       });
 
       return res.status(200).json({ success: true, data: updatedLeaveType });
+    }
+    if (req.method === 'DELETE') {
+      const { id } = req.body;
+      
+      if (!id) {
+        return res.status(400).json({ success: false, message: 'ID is required' });
+      }
+      await prisma.leave_types.delete({ where: { id: parseInt(id) } });
+
+      return res.status(200).json({ success: true, message: 'Leave type deleted successfully' });     
     }
 
     return res.status(405).json({ success: false, message: 'Method not allowed' });
