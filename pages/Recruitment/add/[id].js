@@ -225,7 +225,8 @@ const AddEmployee = () => {
                     email: originalFormData?.email || form.email,
                     username: employeeData?.empid,
                     password: employeeData?.password,
-                    name: originalFormData?.name || form.name
+                    name: originalFormData?.name || form.name,
+                    role:originalFormData?.role || form.role
                 })
             });
             
@@ -270,7 +271,7 @@ const AddEmployee = () => {
             setExistingEmployee(empRes.data.employee);
           }
         } else {
-          setOriginalFormData({ name: form.name, email: form.email });
+          setOriginalFormData({ name: form.name, email: form.email,role:form.role });
           setForm({
             name: "",
             email: "",
@@ -283,7 +284,7 @@ const AddEmployee = () => {
             duration_months: "",
           });
           setProfilePhotoUrl("");
-          setEmployeeData({ empid: data.empid, password: data.password });
+          setEmployeeData({ empid: data.empid, password: data.password});
           setCopiedField("");
           setMessage(
             "Employee added successfully! Please copy the credentials below."

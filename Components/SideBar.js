@@ -21,31 +21,42 @@ import {
   ListCheck,
 } from "lucide-react";
 
-export default function Sidebar() {
+export default function Sidebar({ user: propUser }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [user, setUser] = useState(null);
-  const [userStatus, setUserStatus] = useState({ verified: false, formSubmitted: false });
+  const [user, setUser] = useState(propUser || null);
+  const [userStatus, setUserStatus] = useState({
+    verified: propUser?.verified === "verified" || false,
+    formSubmitted: propUser?.form_submitted || false,
+  });
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData.user);
-          setUserStatus({
-            verified: userData.user?.verified === 'verified',
-            formSubmitted: userData.user?.form_submitted || false
-          });
+    if (propUser) {
+      setUser(propUser);
+      setUserStatus({
+        verified: propUser.verified === "verified",
+        formSubmitted: propUser.form_submitted || false,
+      });
+    } else {
+      const fetchUser = async () => {
+        try {
+          const res = await fetch("/api/auth/me");
+          if (res.ok) {
+            const userData = await res.json();
+            setUser(userData.user);
+            setUserStatus({
+              verified: userData.user?.verified === 'verified',
+              formSubmitted: userData.user?.form_submitted || false
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch user:", error);
         }
-      } catch (error) {
-        console.error("Failed to fetch user:", error);
-      }
-    };
-    fetchUser();
-  }, []);
+      };
+      fetchUser();
+    }
+  }, [propUser]);
 
   const handleLogout = async () => {
     try {
@@ -193,7 +204,7 @@ export default function Sidebar() {
               onClick={
                 isAccessEnabled
                   ? (isCollapsed
-                      ? () => router.push("/employeeList")
+                    ? () => router.push("/employeeList")
                       : toggleEmployeeMenu)
                   : undefined
               }
@@ -247,7 +258,7 @@ export default function Sidebar() {
               onClick={
                 isAccessEnabled
                   ? (isCollapsed
-                      ? () => router.push("/hr/attendance")
+                    ? () => router.push("/hr/attendance")
                       : toggleAttendanceMenu)
                   : undefined
               }
@@ -301,7 +312,7 @@ export default function Sidebar() {
               onClick={
                 isAccessEnabled
                   ? (isCollapsed
-                      ? () => router.push("/hr/payroll/payroll-view")
+                    ? () => router.push("/hr/payroll/payroll-view")
                       : togglePayrollMenu)
                   : undefined
               }
@@ -355,7 +366,7 @@ export default function Sidebar() {
               onClick={
                 isAccessEnabled
                   ? (isCollapsed
-                      ? () => router.push("/compliance/empCompliance")
+                    ? () => router.push("/compliance/empCompliance")
                       : toggleComplianceMenu)
                   : undefined
               }
@@ -497,21 +508,19 @@ export default function Sidebar() {
                   </Link>
                 </li>
 
-                {/* Users own attendance */}
-                {['hr', 'admin', 'superadmin'].includes(role) && (
-                  <li>
-                    <Link href="/hr/attendance/my-attendance">
-                      <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                        My Attendance
-                      </span>
-                    </Link>
-                  </li>
-                )}
-
-
                 {/* Other settings - only accessible if verified and form submitted */}
                 {isAccessEnabled && (
                   <>
+                    {/* Users own attendance */}
+                    {["hr", "admin", "superadmin"].includes(role) && (
+                      <li>
+                        <Link href="/hr/attendance/my-attendance">
+                          <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                            My Attendance
+                          </span>
+                        </Link>
+                      </li>
+                    )}
                     <li>
                       <Link href="/settings/bot-settings">
                         <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
@@ -558,10 +567,15 @@ export default function Sidebar() {
                     </li>
                   </>
                 )}
-                
+
                 {/* Show locked items for non-verified users */}
                 {!isAccessEnabled && (
                   <>
+                    <li>
+                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
+                        My Attendance (🔒)
+                      </span>
+                    </li>
                     <li>
                       <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
                         Bot Settings (🔒)

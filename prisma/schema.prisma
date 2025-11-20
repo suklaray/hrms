@@ -237,6 +237,7 @@ model users {
   created_at       DateTime?                @default(now())
   role             users_role               @default(employee)
   verified         users_verified?          @default(not_verified)
+  form_submitted   Boolean                  @default(false)
   resetToken       String?
   resetTokenExpiry DateTime?                @db.Timestamp(6)
   employee_type    employees_employee_type? @default(Full_time)

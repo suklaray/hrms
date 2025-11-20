@@ -141,11 +141,11 @@ export default function ProfileSection({ user }) {
               </span>
             )}
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">{user?.name || "N/A"}</h3>
-            <p className="text-sm text-gray-600 capitalize">{user?.role || "Employee"}</p>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 truncate" title={user?.name || "N/A"}>{user?.name || "N/A"}</h3>
+            <p className="text-sm text-gray-600 capitalize truncate" title={user?.role || "Employee"}>{user?.role || "Employee"}</p>
             {user?.position && (
-              <p className="text-sm text-gray-500">{user.position}</p>
+              <p className="text-sm text-gray-500 truncate" title={user.position}>{user.position}</p>
             )}
           </div>
         </div>

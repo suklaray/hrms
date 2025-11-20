@@ -394,7 +394,8 @@ const handleRegister = async () => {
     // Store employee data before resetting form
     setEmployeeData({
         name: formData.name,
-        email: formData.email
+        email: formData.email,
+        role: formData.role
     });
 
     setTimeout(() => {
@@ -467,7 +468,8 @@ const handleRegister = async () => {
                     email: employeeData?.email,
                     username: generatedUsername,
                     password: generatedPassword,
-                    name: employeeData?.name
+                    name: employeeData?.name,
+                    role: employeeData?.role
                 })
             });
             

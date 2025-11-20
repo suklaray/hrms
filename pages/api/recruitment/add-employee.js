@@ -109,7 +109,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: "Employee already exists" });
     }
 
-    // Get candidate_id from candidates table
+    // Get candidate_id and form_submitted from candidates table
     const candidate = await prisma.candidates.findFirst({
       where: { email },
       select: { candidate_id: true }
@@ -150,7 +150,8 @@ export default async function handler(req, res) {
         experience: experience || null,
         profile_photo: candidateDetails.profile_photo || profile_photo || null,
         role,
-        verified: "verified",
+        verified: "not_verified",
+        form_submitted: candidate.form_submitted, 
         employee_type: employee_type || "Full_time",
         candidate_id: candidate.candidate_id,
         duration_months: (employee_type === "Intern" || employee_type === "Contractor") ? duration_months : null,

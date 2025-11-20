@@ -8,7 +8,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { empid, password } = req.body;
+  const { empid, password, role } = req.body;
 
   if (!empid || !password) {
     return res.status(400).json({ error: 'Employee ID and password are required' });
@@ -24,9 +24,14 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
+    // Determine what to show as username based on role
+    const displayUsername = role?.toLowerCase() === 'employee' ? empid : employee.email;
+
     // Create email transporter
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT || 465,
+      secure: true,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -52,8 +57,8 @@ export default async function handler(req, res) {
             
             <div style="background: white; border: 2px solid #e9ecef; border-radius: 8px; padding: 25px; margin: 25px 0;">
               <div style="margin-bottom: 15px;">
-                <strong style="color: #495057;">Employee ID:</strong>
-                <span style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-family: monospace; margin-left: 10px;">${employee.empid}</span>
+                <strong style="color: #495057;">Username:</strong>
+                <span style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-family: monospace; margin-left: 10px;">${displayUsername}</span>
               </div>
               <div>
                 <strong style="color: #495057;">New Password:</strong>

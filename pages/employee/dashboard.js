@@ -23,21 +23,21 @@ export default function EmployeeDashboard() {
 
   useEffect(() => {
     async function fetchUser() {
-      try {
-        const res = await fetch("/api/auth/employee/me", {
-          credentials: "include",
-        });
-        if (!res.ok) {
-          return router.replace("/employee/login");
-        }
-        const data = await res.json();
-        setUser(data.user);
-        setIsWorking(data.user.isWorking);
-        if (data.user.isWorking && data.user.workStartTime) {
-          setWorkStartTime(new Date(data.user.workStartTime));
-        } else {
-          setWorkStartTime(null);
-        }
+              try {
+          const res = await fetch("/api/auth/employee/me", {
+            credentials: "include",
+          });
+          if (!res.ok) {
+            return router.replace("/employee/login");
+          }
+          const data = await res.json();
+          setUser(data.user);
+          setIsWorking(data.user.isWorking);
+          if (data.user.isWorking && data.user.workStartTime) {
+            setWorkStartTime(new Date(data.user.workStartTime));
+          } else {
+            setWorkStartTime(null);
+                }
         
         // Fetch stats
         const statsRes = await fetch("/api/employee/stats", {
@@ -345,32 +345,32 @@ useEffect(() => {
                   </div>
                   <div className="flex-1 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-3">
-                        <User className="w-5 h-5 text-gray-400" />
-                        <div>
+                      <div className="flex items-start space-x-3">
+                        <User className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
                           <p className="text-sm text-gray-600">Full Name</p>
-                          <p className="font-medium text-gray-900">{user.name}</p>
+                          <p className="font-medium text-gray-900 break-words">{user.name}</p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Mail className="w-5 h-5 text-gray-400" />
-                        <div>
+                      <div className="flex items-start space-x-3">
+                        <Mail className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
                           <p className="text-sm text-gray-600">Email</p>
-                          <p className="font-medium text-gray-900">{user.email}</p>
+                          <p className="font-medium text-gray-900 break-all text-sm">{user.email}</p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Briefcase className="w-5 h-5 text-gray-400" />
-                        <div>
+                      <div className="flex items-start space-x-3">
+                        <Briefcase className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
                           <p className="text-sm text-gray-600">Position</p>
-                          <p className="font-medium text-gray-900">{user.position ||'Not specified' }</p>
+                          <p className="font-medium text-gray-900 break-words">{user.position || 'Not specified'}</p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <Shield className="w-5 h-5 text-gray-400" />
-                        <div>
+                      <div className="flex items-start space-x-3">
+                        <Briefcase className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
                           <p className="text-sm text-gray-600">Role</p>
-                          <p className="font-medium text-gray-900 capitalize">{user.role}</p>
+                          <p className="font-medium text-gray-900 capitalize break-words">{user.role}</p>
                         </div>
                       </div>
                     </div>
