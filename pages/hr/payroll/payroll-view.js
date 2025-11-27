@@ -116,7 +116,7 @@ export default function PayrollView() {
       periodText = `${currentMonth} ${currentYear}`;
     }
     
-    const totalAmount = amountData.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0);
+    const totalAmount = Math.round(amountData.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0) * 100) / 100;
     return { total, thisMonth, totalAmount, periodText };
   };
 
@@ -178,7 +178,7 @@ export default function PayrollView() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Amount</p>
                   <p className="text-3xl font-bold text-indigo-600">
-                    {userRole === 'hr' ? '₹XXX' : `₹${stats.totalAmount.toLocaleString()}`}
+                    {userRole === 'hr' ? '₹XXX' : `₹${stats.totalAmount.toFixed(2)}`}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">{stats.periodText}</p>
                 </div>
@@ -302,7 +302,9 @@ export default function PayrollView() {
                           <div className="text-sm text-gray-900">{item.month} {item.year}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-green-600">₹{parseFloat(item.net_pay).toLocaleString()}</div>
+                          <div className="text-sm font-medium text-green-600">
+                            {`₹${parseFloat(item.net_pay).toFixed(2)}`}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.generated_on ? new Date(item.generated_on).toLocaleDateString() : 'N/A'}
