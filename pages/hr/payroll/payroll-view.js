@@ -6,7 +6,6 @@ import SideBar from "@/Components/SideBar";
 import { Search, Calendar, Users, Eye, Download, Filter, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function PayrollView() {
-
   const [payrolls, setPayrolls] = useState([]);
   const [filteredPayrolls, setFilteredPayrolls] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
@@ -14,6 +13,7 @@ export default function PayrollView() {
   const [dateFilter, setDateFilter] = useState({ month: '', year: '' });
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [userRole, setUserRole] = useState(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -29,7 +29,20 @@ export default function PayrollView() {
         setLoading(false);
       }
     };
+
+    const fetchUserRole = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const userData = await res.json();
+        setUserRole(userData.user.role);
+        // console.log('User role:',userData.user.role);
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      }
+    };
+
     fetchPayrolls();
+    fetchUserRole();
   }, []);
 
   useEffect(() => {
@@ -164,7 +177,9 @@ export default function PayrollView() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                  <p className="text-3xl font-bold text-indigo-600">₹{stats.totalAmount.toLocaleString()}</p>
+                  <p className="text-3xl font-bold text-indigo-600">
+                    {userRole === 'hr' ? '₹XXX' : `₹${stats.totalAmount.toLocaleString()}`}
+                  </p>
                   <p className="text-xs text-gray-500 mt-1">{stats.periodText}</p>
                 </div>
                 <div className="p-3 bg-indigo-100 rounded-lg">
@@ -300,13 +315,6 @@ export default function PayrollView() {
                                 View
                               </button>
                             </Link>
-                            {/* <button 
-                              onClick={() => handleDownload(item.empid, item.month, item.year)}
-                              className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
-                            >
-                              <Download className="w-4 h-4" />
-                              Download
-                            </button> */}
                           </div>
                         </td>
                       </tr>
