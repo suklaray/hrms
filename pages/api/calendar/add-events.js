@@ -38,9 +38,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: "Creator email missing in token" });
     }
 
-    // Add creator email if not already present
-    if (!finalVisibleTo.includes(creatorEmail)) {
-      finalVisibleTo.push(creatorEmail);
+    // If "all" is selected, keep it as "all" only
+    if (finalVisibleTo.includes("all")) {
+      finalVisibleTo = ["all"];
+    } else {
+      // Add creator email if not already present
+      if (!finalVisibleTo.includes(creatorEmail)) {
+        finalVisibleTo.push(creatorEmail);
+      }
     }
 
     const event = await prisma.calendar_events.create({
