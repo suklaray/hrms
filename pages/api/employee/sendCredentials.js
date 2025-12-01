@@ -37,7 +37,7 @@ export default async function handler(req, res) {
         pass: process.env.EMAIL_PASS,
       },
     });
-
+    console.log("PROD SMTP:", process.env.SMTP_HOST, process.env.EMAIL_USER);
     // Email content
     const mailOptions = {
       from: `"HR Team" <${process.env.EMAIL_USER}>`,

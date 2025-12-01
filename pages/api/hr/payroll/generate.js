@@ -43,17 +43,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: `Payroll for ${month} ${year} already exists for this employee` });
     }
 
-    const bs = Number(basic_salary) || 0;
-    const h = Number(hra) || 0;
-    const d_a = Number(da) || 0;
-    const all = Number(allowances) || 0;
-    const bon = Number(bonus) || 0;
-    const ded = Number(deductions) || 0;
-    const pf_ded = Number(pf) || 0;
-    const pt_ded = Number(ptax) || 0;
-    const es_ded = Number(esic) || 0;
+    const bs = Math.round((Number(basic_salary) || 0) * 100) / 100;
+    const h = Math.round((Number(hra) || 0) * 100) / 100;
+    const d_a = Math.round((Number(da) || 0) * 100) / 100;
+    const all = Math.round((Number(allowances) || 0) * 100) / 100;
+    const bon = Math.round((Number(bonus) || 0) * 100) / 100;
+    const ded = Math.round((Number(deductions) || 0) * 100) / 100;
+    const pf_ded = Math.round((Number(pf) || 0) * 100) / 100;
+    const pt_ded = Math.round((Number(ptax) || 0) * 100) / 100;
+    const es_ded = Math.round((Number(esic) || 0) * 100) / 100;
 
-    const calculated_net_pay = bs + all + bon - ded;
+    const calculated_net_pay = Math.round((bs + all + bon - ded) * 100) / 100;
 
     const paymentDate = new Date();
 

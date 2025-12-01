@@ -37,10 +37,20 @@ export default function EmployeeCalendar() {
 
     try {
       const response = await fetch(
-        `/api/calendar/yearly-events?year=${currentYear}`
+        `/api/calendar/yearly-events?year=${currentYear}&t=${Date.now()}`
       );
       if (response.ok) {
         const data = await response.json();
+        // console.log('API Response:', data);
+        // console.log('Events received:', data.events);
+        
+        // // Debug each month's events
+        // Object.keys(data.events || {}).forEach(month => {
+        //   console.log(`Month ${month}:`, data.events[month]);
+        //   data.events[month].forEach(event => {
+        //     console.log(`  - ${event.type}: ${event.title} (${event.date})`);
+        //   });
+        // });
         setEvents(data.events || {});
       }
     } catch (error) {
@@ -393,40 +403,40 @@ export default function EmployeeCalendar() {
 
           <div className="p-6">
             {/* Legend */}
-           <div className="bg-white rounded-lg shadow p-4 mb-6">
-  <div className="flex items-center justify-between">
-    <div className="flex flex-wrap gap-4 text-xs">
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 rounded-full bg-indigo-400"></div>
-        <span className="text-gray-600">Birthday</span>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-        <span className="text-gray-600">Holiday</span>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 rounded-full bg-green-500"></div>
-        <span className="text-gray-600">Event</span>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-        <span className="text-gray-600">My Leave</span>
-      </div>
-      <div className="flex items-center space-x-2">
-        <div className="w-3 h-3 rounded-full bg-gray-300"></div>
-        <span className="text-gray-600">Day Off</span>
-      </div>
-    </div>
+            <div className="bg-white rounded-lg shadow p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-4 text-xs">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-indigo-400"></div>
+                    <span className="text-gray-600">Birthday</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                    <span className="text-gray-600">Holiday</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className="text-gray-600">Event</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span className="text-gray-600">My Leave</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-gray-300"></div>
+                    <span className="text-gray-600">Day Off</span>
+                  </div>
+                </div>
 
-    <button
-      onClick={downloadHolidaysPDF}
-      className="flex items-center gap-2 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium rounded-lg transition-colors"
-    >
-      <FaDownload className="w-3 h-3" />
-      Download Holidays PDF
-    </button>
-  </div>
-</div>
+                <button
+                  onClick={downloadHolidaysPDF}
+                  className="flex items-center gap-2 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 text-sm font-medium rounded-lg transition-colors"
+                >
+                  <FaDownload className="w-3 h-3" />
+                  Download Holidays PDF
+                </button>
+              </div>
+            </div>
 
             {loading ? (
               <div className="flex justify-center items-center mt-6">

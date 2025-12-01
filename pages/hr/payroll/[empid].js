@@ -141,13 +141,13 @@ export default function EmployeePayroll() {
                       <td className="py-3 sm:py-4 px-3 sm:px-6">
                         <div className="font-medium text-gray-900 text-xs sm:text-sm uppercase">{row.month} {row.year}</div>
                       </td>
-                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 font-medium text-xs sm:text-sm">₹{row.basic_salary}</td>
-                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 text-xs sm:text-sm">₹{row.hra}</td>
-                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 text-xs sm:text-sm">₹{row.da}</td>
-                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-green-600 font-medium text-xs sm:text-sm">₹{row.allowances}</td>
-                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-red-600 font-medium text-xs sm:text-sm">₹{row.deductions}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 font-medium text-xs sm:text-sm">₹{parseFloat(row.basic_salary).toFixed(2)}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 text-xs sm:text-sm">₹{parseFloat(row.hra).toFixed(2)}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-gray-700 text-xs sm:text-sm">₹{parseFloat(row.da).toFixed(2)}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-green-600 font-medium text-xs sm:text-sm">₹{parseFloat(row.allowances).toFixed(2)}</td>
+                      <td className="py-3 sm:py-4 px-3 sm:px-6 text-red-600 font-medium text-xs sm:text-sm">₹{parseFloat(row.deductions).toFixed(2)}</td>
                       <td className="py-3 sm:py-4 px-3 sm:px-6">
-                        <span className="text-sm sm:text-lg font-bold text-blue-600">₹{row.net_pay}</span>
+                        <span className="text-sm sm:text-lg font-bold text-blue-600">₹{parseFloat(row.net_pay).toFixed(2)}</span>
                       </td>
                       <td className="py-3 sm:py-4 px-3 sm:px-6">
                         <a

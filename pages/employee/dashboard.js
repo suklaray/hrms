@@ -261,7 +261,7 @@ useEffect(() => {
 
           {/* Work Status Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
                   <Clock className={`w-8 h-8 ${isWorking ? 'text-green-600' : 'text-gray-400'}`} />
@@ -308,7 +308,7 @@ useEffect(() => {
           </div>
 
           {/* Profile Overview */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {/* Profile Card */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="p-6 border-b border-gray-100">
@@ -316,7 +316,7 @@ useEffect(() => {
                 <p className="text-sm text-gray-600">Your personal information</p>
               </div>
               <div className="p-6">
-                <div className="flex items-start space-x-6">
+                <div className="flex space-x-6 flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-24 h-24 relative rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center border-4 border-indigo-200 overflow-hidden">
                       {user?.profile_photo ? (

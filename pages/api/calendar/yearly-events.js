@@ -83,10 +83,14 @@ export default async function handler(req, res) {
       visibilityFilter = {
         OR: [
           { visible_to: "all" },
+          { visible_to: { startsWith: "all," } },
           { visible_to: { contains: userEmail } },
         ],
       };
     }
+
+    // console.log('User:', userEmail, 'Role:', userRole);
+    // console.log('Visibility filter:', visibilityFilter);
 
     const calendarEvents = await prisma.calendar_events.findMany({
       where: {
@@ -105,6 +109,28 @@ export default async function handler(req, res) {
         visible_to: true,
       },
     });
+
+    // console.log('Found events:', calendarEvents.length);
+    // console.log('Query filter used:', JSON.stringify({
+    //   event_date: {
+    //     gte: new Date(targetYear, 0, 1),
+    //     lt: new Date(targetYear + 1, 0, 1),
+    //   },
+    //   ...visibilityFilter,
+    // }, null, 2));
+    
+    // calendarEvents.forEach(event => {
+    //   console.log(`Event: ${event.title}, Type: ${event.event_type}, Visible: ${event.visible_to}, Date: ${event.event_date}`);
+    // });
+    
+    // Also query all events to see what's in the database
+    // const allEvents = await prisma.calendar_events.findMany({
+    //   select: { id: true, title: true, event_type: true, visible_to: true, event_date: true }
+    // });
+    // // console.log('All events in database:', allEvents.length);
+    // allEvents.forEach(event => {
+    //   console.log(`DB Event: ${event.title}, Type: ${event.event_type}, Visible: ${event.visible_to}, Date: ${event.event_date}`);
+    // });
 
     const yearEvents = {};
 

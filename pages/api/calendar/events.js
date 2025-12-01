@@ -70,6 +70,7 @@ export default async function handler(req, res) {
       visibilityFilter = {
         OR: [
           { visible_to: "all" },
+          { visible_to: { startsWith: "all," } },
           { visible_to: { contains: userEmail } },
         ],
       };

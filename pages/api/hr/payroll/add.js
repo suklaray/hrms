@@ -23,16 +23,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
-  const bs   = parseFloat(basic_salary) || 0;
-  const h    = parseFloat(hra)          || 0;
-  const d_a  = parseFloat(da)           || 0;
-  const all  = parseFloat(allowances)   || 0;
-  const gen_ded = parseFloat(deductions) || 0;
-  const pf_ded  = parseFloat(pf)         || 0;
-  const pt_ded  = parseFloat(ptax)       || 0;
-  const es_ded  = parseFloat(esic)       || 0;
+  const bs   = Math.round((parseFloat(basic_salary) || 0) * 100) / 100;
+  const h    = Math.round((parseFloat(hra) || 0) * 100) / 100;
+  const d_a  = Math.round((parseFloat(da) || 0) * 100) / 100;
+  const all  = Math.round((parseFloat(allowances) || 0) * 100) / 100;
+  const gen_ded = Math.round((parseFloat(deductions) || 0) * 100) / 100;
+  const pf_ded  = Math.round((parseFloat(pf) || 0) * 100) / 100;
+  const pt_ded  = Math.round((parseFloat(ptax) || 0) * 100) / 100;
+  const es_ded  = Math.round((parseFloat(esic) || 0) * 100) / 100;
 
-  const net_pay = bs + h + d_a + all - (gen_ded + pf_ded + pt_ded + es_ded);
+  const net_pay = Math.round((bs + h + d_a + all - (gen_ded + pf_ded + pt_ded + es_ded)) * 100) / 100;
 
   try {
     await prisma.payroll.create({

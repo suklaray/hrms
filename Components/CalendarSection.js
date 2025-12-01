@@ -129,32 +129,39 @@ const getDotColor = (type) => {
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <FaCalendarAlt className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-medium text-gray-900">Calendar</h3>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => navigateMonth(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
-              disabled={loading}
-            >
-              <FaChevronLeft className="w-4 h-4 text-gray-600" />
-            </button>
-            <span className="text-gray-900 font-medium min-w-[140px] text-center text-sm sm:text-base">
-              {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-            </span>
-            <button
-              onClick={() => navigateMonth(1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
-              disabled={loading}
-            >
-              <FaChevronRight className="w-4 h-4 text-gray-600" />
-            </button>
-          </div>
-        </div>
-      </div>
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    
+    {/* Left side title */}
+    <div className="flex items-center space-x-3">
+      <FaCalendarAlt className="w-5 h-5 text-gray-600" />
+      <h3 className="text-lg font-medium text-gray-900">Calendar</h3>
+    </div>
+
+    {/* Month Navigation */}
+    <div className="flex items-center justify-center space-x-2 w-full sm:w-auto">
+      <button
+        onClick={() => navigateMonth(-1)}
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+        disabled={loading}
+      >
+        <FaChevronLeft className="w-4 h-4 text-gray-600" />
+      </button>
+
+      <span className="text-gray-900 font-medium text-center text-sm sm:text-base flex-1">
+        {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+      </span>
+
+      <button
+        onClick={() => navigateMonth(1)}
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+        disabled={loading}
+      >
+        <FaChevronRight className="w-4 h-4 text-gray-600" />
+      </button>
+    </div>
+  </div>
+</div>
+
       
       <div className="p-6">
         {/* Day Headers */}
@@ -273,7 +280,7 @@ const getDotColor = (type) => {
           {/* Link Button */}
           <Link
             href="/calendar/yearly-calendar"
-            className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap flex-shrink-0"
+            className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap flex-shrink-0 text-center "
           >
             View Calendar
           </Link>
