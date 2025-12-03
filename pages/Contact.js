@@ -114,7 +114,9 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-gray-800 font-semibold">Email Us</p>
-                      <p className="text-gray-600">info@raysoftwareservice.com</p>
+                      <a href="mailto:info@raysoftwareservice.com" className="text-blue-600 hover:text-blue-800 hover:underline transition-colors">
+                        info@raysoftwareservice.com
+                      </a>
                     </div>
                   </div>
                   
@@ -124,7 +126,9 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-gray-800 font-semibold">Call Us</p>
-                      <p className="text-gray-600">+1 (555) 123-4567</p>
+                      <a href="tel:+15551234567" className="text-green-600 hover:text-green-800 hover:underline transition-colors">
+                        +1 (555) 123-4567
+                      </a>
                     </div>
                   </div>
                   
@@ -134,7 +138,9 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="text-gray-800 font-semibold">Visit Us</p>
-                      <p className="text-gray-600">123 Business Ave, Tech City</p>
+                      <a href="https://maps.google.com/?q=123+Business+Ave,+Tech+City" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 hover:underline transition-colors">
+                        123 Business Ave, Tech City
+                      </a>
                     </div>
                   </div>
                 </div>
