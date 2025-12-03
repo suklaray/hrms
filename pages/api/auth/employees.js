@@ -54,6 +54,7 @@ export default async function handler(req, res) {
         empid: true,
         name: true,
         email: true,
+        contact_number: true,
         position: true,
         experience: true,
         role: true,
