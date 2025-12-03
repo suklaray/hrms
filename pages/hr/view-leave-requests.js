@@ -226,7 +226,7 @@ export default function ViewLeaveRequests() {
       const groupedData = pendingLeaves.reduce((acc, leave) => {
         if (
           !acc[leave.empid] ||
-          new Date(leave.created_at) > new Date(acc[leave.empid].created_at)
+          new Date(leave.applied_at) > new Date(acc[leave.empid].applied_at)
         ) {
           acc[leave.empid] = leave;
         }
@@ -454,6 +454,11 @@ export default function ViewLeaveRequests() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Duration
                       </th>
+                      {activeTab === "pending" && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Pending Count
+                        </th>
+                      )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
@@ -516,6 +521,16 @@ export default function ViewLeaveRequests() {
                                 </div>
                               </div>
                             </td>
+                            {activeTab === "pending" && (
+                              <td className="px-6 py-4">
+                                <span
+                                  className=" inline-flex items-center justify-center whitespace-nowrap px-3 py-1 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200 "
+                                >
+                                  {leave.pendingCount || 0} pending
+                                </span>
+                              </td>
+                            )}
+
                             <td className="px-6 py-4">
                               <span
                                 className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
@@ -552,7 +567,7 @@ export default function ViewLeaveRequests() {
                     {filteredData.length === 0 && (
                       <tr>
                         <td
-                          colSpan="5"
+                          colSpan="6"
                           className="px-6 py-12 text-center text-gray-500"
                         >
                           <div className="flex flex-col items-center">

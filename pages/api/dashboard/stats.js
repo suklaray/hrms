@@ -20,14 +20,14 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Define role-based filtering
+    // Define role-based filtering (exclude current user's role to match view-leave-requests)
     let roleFilter = [];
     if (decoded.role === 'hr') {
-      roleFilter = ['employee','hr'];
+      roleFilter = ['employee'];
     } else if (decoded.role === 'admin') {
-      roleFilter = ['hr', 'employee', 'admin'];
+      roleFilter = ['hr', 'employee'];
     } else if (decoded.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee','superadmin'];
+      roleFilter = ['admin', 'hr', 'employee'];
     }
 
     // Get basic counts with error handling

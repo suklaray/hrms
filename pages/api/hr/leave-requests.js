@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Define role-based filtering
+    // Define role-based filtering (exclude current user's role to prevent seeing own requests)
     let roleFilter = [];
     if (currentUser.role === 'hr') {
       roleFilter = ['employee'];
@@ -54,7 +54,23 @@ export default async function handler(req, res) {
       req.users.status !== 'Inactive' && roleFilter.includes(req.users.role)
     );
 
-    res.status(200).json({ success: true, data: filteredLeaveRequests });
+    // Add pending leave count for each employee
+    const leaveRequestsWithCount = await Promise.all(
+      filteredLeaveRequests.map(async (leave) => {
+        const pendingCount = await prisma.leave_requests.count({
+          where: {
+            empid: leave.empid,
+            status: 'Pending'
+          }
+        });
+        return {
+          ...leave,
+          pendingCount
+        };
+      })
+    );
+
+    res.status(200).json({ success: true, data: leaveRequestsWithCount });
   } catch (error) {
     console.error("Error fetching leave requests:", error);
     res.status(500).json({ success: false, error: "Server error" });
