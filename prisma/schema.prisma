@@ -66,6 +66,8 @@ model candidates {
   email                 String
   contact_number        String?
   interview_date        DateTime?
+  interview_time_from   String?
+  interview_time_to     String?
   resume                String?
   form_link             String?
   created_at            DateTime?          @default(now())
@@ -75,7 +77,6 @@ model candidates {
   status                candidates_status? @default(Pending)
   verification          Boolean?           @default(false)
   form_submitted        Boolean            @default(false)
-  interview_timing      String?
   device_info           String?
   ip_address            String?
   token_expiry          DateTime?

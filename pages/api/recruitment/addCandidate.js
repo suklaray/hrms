@@ -36,14 +36,16 @@ export default async function handler(req, res) {
         const name = getValue(fields.name);
         const email = getValue(fields.email);
         const interviewDate = getValue(fields.interviewDate);
-        const interviewTime = getValue(fields.interviewTime);
+        const interviewTimeFrom = getValue(fields.interviewTimeFrom);
+        const interviewTimeTo = getValue(fields.interviewTimeTo);
         const contact_number = getValue(fields.contact_number);
 
         if (
           !name ||
           !email ||
           !interviewDate ||
-          !interviewTime ||
+          !interviewTimeFrom ||
+          !interviewTimeTo ||
           !contact_number
         ) {
           return res.status(400).json({ error: "Missing required fields" });
@@ -158,7 +160,8 @@ export default async function handler(req, res) {
             email: email,
             contact_number: contact_number,
             interview_date: new Date(interviewDate),
-            interview_timing: interviewTime,
+            interview_time_from: interviewTimeFrom,
+            interview_time_to: interviewTimeTo,
             resume: resumePath,
             form_link: formLink,
             form_token: formToken, // ✅ new field for secure form access

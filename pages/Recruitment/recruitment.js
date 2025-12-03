@@ -251,7 +251,22 @@ export default function Candidates(user) {
       Email: c.email || "",
       Contact: c.contact_number || "",
       "Interview Date": c.interview_date ? c.interview_date.split("T")[0] : "",
-      "Interview Time": c.interview_timing || "",
+      "Interview Start Time": c.interview_time_from ? 
+        (() => {
+          const [hours, minutes] = c.interview_time_from.split(':');
+          const hour = parseInt(hours);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+          return `${hour12}:${minutes} ${ampm}`;
+        })() : "",
+      "Interview End Time": c.interview_time_to ? 
+        (() => {
+          const [hours, minutes] = c.interview_time_to.split(':');
+          const hour = parseInt(hours);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+          return `${hour12}:${minutes} ${ampm}`;
+        })() : "",
       Status: c.status || "Waiting",
       "Form Submission": c.form_submitted ? "Submitted" : "Not Submitted",
       "Verification Status": c.verification ? "Verified" : "Not Verified",
@@ -614,7 +629,18 @@ export default function Candidates(user) {
                               <div className="flex items-center text-sm sm:text-base text-gray-600">
                                 <Clock className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
                                 <span className="whitespace-nowrap">
-                                  {candidate.interview_timing || "Time not set"}
+                                  {candidate.interview_time_from && candidate.interview_time_to ? (
+                                    (() => {
+                                      const formatTime = (time24) => {
+                                        const [hours, minutes] = time24.split(':');
+                                        const hour = parseInt(hours);
+                                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                                        const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                                        return `${hour12}:${minutes} ${ampm}`;
+                                      };
+                                      return `${formatTime(candidate.interview_time_from)} - ${formatTime(candidate.interview_time_to)}`;
+                                    })()
+                                  ) : "Time not set"}
                                 </span>
                               </div>
                             </div>
