@@ -18,6 +18,9 @@ const PUBLIC_ROUTES = [
   "/employee/login",
   "/forgot-password",
   "/reset-password",
+  "/privacy-policy",
+  "/terms-of-service",
+  "/cookie-policy",
 ];
 
 const ALLOWED_PATHS = [
