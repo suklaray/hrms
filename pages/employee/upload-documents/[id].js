@@ -52,19 +52,9 @@ export default function EmployeeDocumentForm() {
 
   const fetchExistingData = async () => {
     try {
-      // Try HR/admin endpoint first, then fall back to employee endpoint
       let response;
       try {
-        response = await axios.get('/api/employee/get-documents/hr-admin', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          params: {
-            t: Date.now()
-          }
-        });
-      } catch (hrError) {
+      
         // Fall back to employee endpoint
         response = await axios.get(`/api/employee/get-documents/${id}`, {
           headers: {
@@ -75,6 +65,18 @@ export default function EmployeeDocumentForm() {
             t: Date.now()
           }
         });
+      } catch (hrError) {
+        toast.error("Error fetching existing data from HR/Admin endpoint, trying Employee endpoint...");
+        // Try HR/admin endpoint first, then fall back to employee endpoint
+        // response = await axios.get('/api/employee/get-documents/hr-admin', {
+        //   headers: {
+        //     'Cache-Control': 'no-cache',
+        //     'Pragma': 'no-cache'
+        //   },
+        //   params: {
+        //     t: Date.now()
+        //   }
+        // });
       }
       console.log('API Response:', response.data);
       if (response.data.exists) {
