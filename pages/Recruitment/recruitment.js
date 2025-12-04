@@ -328,7 +328,7 @@ export default function Candidates(user) {
     if (selectAll) {
       setSelectedCandidates([]);
     } else {
-      setSelectedCandidates(filteredCandidates.map((c) => c.candidate_id));
+      setSelectedCandidates(filteredCandidates.filter(c => !c.isEmployee).map((c) => c.candidate_id));
     }
     setSelectAll(!selectAll);
   };
@@ -575,7 +575,7 @@ export default function Candidates(user) {
                           className="hover:bg-gray-50 transition-colors"
                         >
                           <td className="px-6 py-4">
-                            {!candidate.isEmployee && (
+                            <div className="relative group">
                               <input
                                 type="checkbox"
                                 checked={selectedCandidates.includes(
@@ -584,9 +584,17 @@ export default function Candidates(user) {
                                 onChange={() =>
                                   handleSelectCandidate(candidate.candidate_id)
                                 }
-                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                disabled={candidate.isEmployee}
+                                className={`rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${
+                                  candidate.isEmployee ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
                               />
-                            )}
+                              {candidate.isEmployee && (
+                                <div className="absolute bottom-full left-0 mb-1 px-2 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
+                                  Protected record
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center">
@@ -715,13 +723,7 @@ export default function Candidates(user) {
                           </td>
                           {/* action buttons of add as employee is not shown when the candidate is added an employee */}
                           <td className="px-6 py-4">
-                            <div
-                              className={`flex items-center ${
-                                candidate.isEmployee
-                                  ? "justify-center"
-                                  : "justify-start space-x-2"
-                              }`}
-                            >
+                            <div className="flex items-center justify-start space-x-2">
                               {/* View Details */}
                               <Link
                                 href={`/Recruitment/${candidate.candidate_id}`}
@@ -733,29 +735,57 @@ export default function Candidates(user) {
                                   <Eye className="w-4 h-4" />
                                 </button>
                               </Link>
-                              {!candidate.isEmployee && (
-                                <Link
-                                  href={`/Recruitment/add/${candidate.candidate_id}`}
-                                >
-                                  <button
-                                    className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
-                                    title="Add as Employee"
+                              <div className="group relative inline-block">
+                                {candidate.isEmployee ? (
+                                  <>
+                                    <button
+                                      className="p-2 text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed opacity-50"
+                                      disabled
+                                    >
+                                      <UserPlus className="w-4 h-4" />
+                                    </button>
+                                    <div className="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
+                                      Already an employee
+                                    </div>
+                                  </>
+                                ) : (
+                                  <Link
+                                    href={`/Recruitment/add/${candidate.candidate_id}`}
                                   >
-                                    <UserPlus className="w-4 h-4" />
+                                    <button
+                                      className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
+                                      title="Add as Employee"
+                                    >
+                                      <UserPlus className="w-4 h-4" />
+                                    </button>
+                                  </Link>
+                                )}
+                              </div>
+                              <div className="group relative inline-block">
+                                {candidate.isEmployee ? (
+                                  <>
+                                    <button
+                                      className="p-2 text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed opacity-50"
+                                      disabled
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                    <div className="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
+                                      Employee protected
+                                    </div>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() =>
+                                      handleDelete(candidate.candidate_id)
+                                    }
+                                    className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
-                                </Link>
-                              )}
-                              {!candidate.isEmployee && (
-                                <button
-                                  onClick={() =>
-                                    handleDelete(candidate.candidate_id)
-                                  }
-                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </td>
                         </tr>
