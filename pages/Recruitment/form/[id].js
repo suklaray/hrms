@@ -452,18 +452,11 @@ export default function CandidateForm() {
     if (type === "file") {
       const file = files[0];
       if (file) {
-        // Validate file size (5KB minimum, 10MB maximum)
-        if (file.size <= 5 * 1024) {
+        // Validate file size (5MB maximum)
+        if (file.size >= 5 * 1024 * 1024) {
           setErrors((prev) => ({
             ...prev,
-            [name]: "❌ File size must be greater than 5KB",
-          }));
-          return;
-        }
-        if (file.size >= 10 * 1024 * 1024) {
-          setErrors((prev) => ({
-            ...prev,
-            [name]: "❌ File size must be less than 10MB",
+            [name]: "❌ File size must be less than 5MB",
           }));
           return;
         }
@@ -520,17 +513,10 @@ export default function CandidateForm() {
     if (!file) return;
 
     // Validate file first
-    if (file.size <= 5 * 1024) {
+    if (file.size > 5 * 1024 * 1024) {
       setErrors((prev) => ({
         ...prev,
-        [type]: "❌ File size must be greater than 5KB",
-      }));
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setErrors((prev) => ({
-        ...prev,
-        [type]: "❌ File size must be less than 10MB",
+        [type]: "❌ File size must be less than 5MB",
       }));
       return;
     }
@@ -1097,7 +1083,7 @@ export default function CandidateForm() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Min 5KB, Max 10MB, JPG/PNG/PDF only. Number will be
+                      Max 5MB, JPG/PNG/PDF only. Number will be
                       auto-extracted if possible.
                     </p>
                   </div>
@@ -1148,7 +1134,7 @@ export default function CandidateForm() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Min 5KB, Max 10MB, JPG/PNG/PDF only. Number will be
+                      Max 5MB, JPG/PNG/PDF only. Number will be
                       auto-extracted if possible.
                     </p>
                   </div>
@@ -1237,7 +1223,7 @@ export default function CandidateForm() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Min 5KB, Max 10MB, JPG/PNG/PDF only.
+                      Max 5MB, JPG/PNG/PDF only.
                     </p>
                   </div>
 
@@ -1261,7 +1247,7 @@ export default function CandidateForm() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Min 5KB, Max 10MB, JPG/PNG/PDF only.
+                      Max 5MB, JPG/PNG/PDF only.
                     </p>
                   </div>
 
@@ -1288,7 +1274,7 @@ export default function CandidateForm() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Min 5KB, Max 10MB, JPG/PNG/JPEG only.
+                      Max 5MB, JPG/PNG/JPEG only.
                     </p>
                   </div>
 
@@ -1312,7 +1298,7 @@ export default function CandidateForm() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Min 5KB, Max 10MB, JPG/PNG/PDF only.
+                      Max 5MB, JPG/PNG/PDF only.
                     </p>
                     <p className="text-blue-600 text-sm mt-1">
                       ⓘ This field is optional. Upload only if you have work
@@ -1499,7 +1485,7 @@ export default function CandidateForm() {
                       </p>
                     )}
                     <p className="text-gray-500 text-xs mt-1">
-                      Min 5KB, Max 10MB, JPG/PNG/PDF only.
+                      Max 5MB, JPG/PNG/PDF only.
                     </p>
                   </div>
                 </div>
