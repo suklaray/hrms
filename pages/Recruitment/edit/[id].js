@@ -73,10 +73,6 @@ export default function EditCandidate() {
     if (type === 'file') {
       const file = files[0];
       if (file) {
-        if (file.size < 5 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: 'File size must be greater than 5KB' }));
-          return;
-        }
         if (file.size > 5 * 1024 * 1024) {
           setErrors(prev => ({ ...prev, [name]: 'File size must be less than 5MB' }));
           return;
@@ -378,7 +374,7 @@ export default function EditCandidate() {
                     }`}
                   />
                   {errors.resume && <p className="text-red-500 text-sm mt-1">{errors.resume}</p>}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 5MB, PDF/JPG/PNG only</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, PDF/JPG/PNG only</p>
                 </div>
               </div>
 
