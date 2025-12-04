@@ -416,14 +416,13 @@ export default function EmployeeDocumentForm() {
         //   return;
         // }
         // Validate file size (5KB to 20MB)
-        const minSize = 5 * 1024; // 5KB
-        const maxSize = 20 * 1024 * 1024; // 20MB
-        if (file.size < minSize) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be at least 5KB' }));
-          return;
-        }
+        const maxSize = 5 * 1024 * 1024; // 20MB
+        // if (file.size < minSize) {
+        //   setErrors(prev => ({ ...prev, [name]: '❌ File size must be at least 5KB' }));
+        //   return;
+        // }
         if (file.size > maxSize) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 20MB' }));
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 5MB' }));
           return;
         }
         // Validate file type
@@ -836,7 +835,7 @@ export default function EmployeeDocumentForm() {
                       {errors.aadhar_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -898,7 +897,7 @@ export default function EmployeeDocumentForm() {
                       {errors.pan_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -990,7 +989,7 @@ export default function EmployeeDocumentForm() {
                       {errors.education_certificates}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -1023,7 +1022,7 @@ export default function EmployeeDocumentForm() {
                       {errors.resume}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -1057,7 +1056,7 @@ export default function EmployeeDocumentForm() {
                       {errors.profile_photo}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/JPEG only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/JPEG only.</p>
                 </div>
                 
                 <div className="md:col-span-2">
@@ -1088,7 +1087,7 @@ export default function EmployeeDocumentForm() {
                       {errors.experience_certificate}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                   <p className="text-blue-600 text-sm mt-1">ⓘ This field is optional. Upload only if you have work experience.</p>
                 </div>
               </div>
@@ -1249,7 +1248,7 @@ export default function EmployeeDocumentForm() {
                       {errors.bank_details}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                 </div>
               </div>
             </div>
