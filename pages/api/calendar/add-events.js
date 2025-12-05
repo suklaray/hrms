@@ -17,32 +17,55 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: "Invalid token" });
     }
 
-    const { title, description, event_date, event_type, visible_to } = req.body;
+    const { title, description, event_date, event_type, visible_to, selected_groups } = req.body;
 
     if (!title || !event_date || !event_type) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // ✅ Ensure creator's email is included in visible_to
-    let finalVisibleTo = [];
-
-    if (visible_to && typeof visible_to === "string") {
-      finalVisibleTo = visible_to.split(",").map((v) => v.trim());
-    } else if (Array.isArray(visible_to)) {
-      finalVisibleTo = visible_to.map((v) => v.trim());
-    }
-
     const creatorEmail = decoded.email;
-
     if (!creatorEmail) {
       return res.status(400).json({ message: "Creator email missing in token" });
     }
 
-    // If "all" is selected, keep it as "all" only
-    if (finalVisibleTo.includes("all")) {
+    let finalVisibleTo = [];
+
+    // Handle "all" selection
+    if (visible_to && visible_to.includes("all")) {
       finalVisibleTo = ["all"];
     } else {
-      // Add creator email if not already present
+      // Process individual employee selections
+      if (visible_to && Array.isArray(visible_to)) {
+        finalVisibleTo = [...visible_to.filter(email => email !== "all")];
+      }
+
+      // Process group selections
+      if (selected_groups && Array.isArray(selected_groups)) {
+        for (const group of selected_groups) {
+          const [groupType, groupValue] = group.key.split(":");
+          
+          let whereClause = { status: { not: 'Inactive' } };
+          
+          if (groupType === "role") {
+            whereClause.role = groupValue;
+          } else if (groupType === "position") {
+            whereClause.position = groupValue;
+          } else if (groupType === "employee_type") {
+            whereClause.employee_type = groupValue;
+          }
+          
+          const groupEmployees = await prisma.users.findMany({
+            where: whereClause,
+            select: { email: true }
+          });
+          
+          const groupEmails = groupEmployees.map(emp => emp.email);
+          finalVisibleTo = [...finalVisibleTo, ...groupEmails];
+        }
+      }
+
+      // Remove duplicates and add creator
+      finalVisibleTo = [...new Set(finalVisibleTo)];
       if (!finalVisibleTo.includes(creatorEmail)) {
         finalVisibleTo.push(creatorEmail);
       }
@@ -54,7 +77,7 @@ export default async function handler(req, res) {
         description: description || null,
         event_date: new Date(event_date),
         event_type,
-        visible_to: finalVisibleTo.join(","), // comma-separated
+        visible_to: finalVisibleTo.join(","),
         created_by: creatorEmail,
       },
     });

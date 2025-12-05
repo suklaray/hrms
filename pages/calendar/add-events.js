@@ -16,11 +16,15 @@ export default function AddEvent() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState({});
   const [isFormValid, setIsFormValid] = useState(false);
-    // Update the validation function
+  const [roles, setRoles] = useState([]);
+  const [employmentTypes, setEmploymentTypes] = useState([]);
+  const [positions, setPositions] = useState([]);
+  const [visibilityTouched, setVisibilityTouched] = useState(false);
   const validateForm = () => {
       const newErrors = {};
       
@@ -46,7 +50,6 @@ export default function AddEvent() {
         const tenYearsFromNow = new Date();
         tenYearsFromNow.setFullYear(today.getFullYear() + 10);
         
-        // Reset time for accurate comparison
         today.setHours(0, 0, 0, 0);
         selectedDate.setHours(0, 0, 0, 0);
         
@@ -56,7 +59,6 @@ export default function AddEvent() {
           newErrors.event_date = 'Event date cannot be more than 10 years in the future';
         }
       }
-
       
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
@@ -75,9 +77,10 @@ export default function AddEvent() {
                    formData.title.length <= 100 && 
                    formData.event_date && 
                    formData.description.length <= 200 &&
-                   (!formData.description.trim() || formData.description.trim().length >= 3);
+                   (!formData.description.trim() || formData.description.trim().length >= 3) &&
+                   (selectedEmployees.length > 0 || selectedGroups.length > 0);
     setIsFormValid(isValid);
-  }, [formData]);
+  }, [formData, selectedEmployees, selectedGroups]);
 
   useEffect(() => {
     fetchEmployees();
@@ -98,7 +101,43 @@ export default function AddEvent() {
       const res = await fetch('/api/task-management/tasks');
       if (res.ok) {
         const data = await res.json();
-        setEmployees(data.employees || []);
+        const employeeList = data.employees || [];
+        setEmployees(employeeList);
+        
+        // Extract unique roles, employment types, and positions with proper deduplication
+        const allRoles = employeeList.map(emp => emp.role).filter(Boolean);
+        const allEmploymentTypes = employeeList.map(emp => emp.employee_type).filter(Boolean);
+        const allPositions = employeeList.map(emp => emp.position).filter(Boolean);
+        
+        // Create a Map to store unique values (case-insensitive key, original value)
+        const roleMap = new Map();
+        const employmentTypeMap = new Map();
+        const positionMap = new Map();
+        
+        allRoles.forEach(role => {
+          const key = role.toLowerCase();
+          if (!roleMap.has(key)) {
+            roleMap.set(key, role);
+          }
+        });
+        
+        allEmploymentTypes.forEach(type => {
+          const key = type.toLowerCase();
+          if (!employmentTypeMap.has(key)) {
+            employmentTypeMap.set(key, type);
+          }
+        });
+        
+        allPositions.forEach(pos => {
+          const key = pos.toLowerCase();
+          if (!positionMap.has(key)) {
+            positionMap.set(key, pos);
+          }
+        });
+        
+        setRoles(Array.from(roleMap.values()));
+        setEmploymentTypes(Array.from(employmentTypeMap.values()));
+        setPositions(Array.from(positionMap.values()));
       }
     } catch (error) {
       console.error('Error fetching employees:', error);
@@ -111,6 +150,12 @@ export default function AddEvent() {
     if (!validateForm()) {
       return;
     }
+
+    // Validate visibility selection
+    if (selectedEmployees.length === 0 && selectedGroups.length === 0) {
+      setMessage('Please select at least one employee or group for visibility');
+      return;
+    }
     
     setLoading(true);
     setMessage('');
@@ -121,7 +166,8 @@ export default function AddEvent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          visible_to: formData.visible_to.join(',')
+          visible_to: formData.visible_to,
+          selected_groups: selectedGroups
         })
       });
 
@@ -131,7 +177,9 @@ export default function AddEvent() {
         setMessage('Event added successfully!');
         setFormData({ title: '', description: '', event_date: '', event_type: 'event', visible_to: [] });
         setSelectedEmployees([]);
+        setSelectedGroups([]);
         setErrors({});
+        setVisibilityTouched(false);
       } else {
         setMessage(data.message || 'Failed to add event');
       }
@@ -164,11 +212,13 @@ export default function AddEvent() {
     visible_to: []
   };
 
-  const filteredEmployees = employees.filter(emp => 
+  const filteredEmployees = searchTerm.length >= 3 ? employees.filter(emp => 
     emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.empid.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
+
+  const shouldShowGroups = searchTerm.length >= 2; // Allow 2 chars for roles like 'hr'
 
   const handleEmployeeSelect = (employee) => {
     // Don't allow individual selection if "All Employees" is selected
@@ -189,8 +239,28 @@ export default function AddEvent() {
     setSearchTerm('');
   };
 
+  const handleGroupSelect = (groupType, groupValue) => {
+    // Don't allow group selection if "All Employees" is selected
+    if (selectedEmployees.some(emp => emp.empid === 'all')) {
+      return;
+    }
+    
+    const groupKey = `${groupType}:${groupValue}`;
+    const isSelected = selectedGroups.some(group => group.key === groupKey);
+    
+    if (isSelected) {
+      const updated = selectedGroups.filter(group => group.key !== groupKey);
+      setSelectedGroups(updated);
+    } else {
+      const updated = [...selectedGroups, { key: groupKey, type: groupType, value: groupValue, display: `${groupType}: ${groupValue}` }];
+      setSelectedGroups(updated);
+    }
+    setSearchTerm('');
+  };
+
   const handleAllSelect = () => {
     setSelectedEmployees([{ empid: 'all', name: 'All Employees', email: 'all' }]);
+    setSelectedGroups([]);
     setFormData({ ...formData, visible_to: ['all'] });
     setSearchTerm('');
     setShowDropdown(false);
@@ -200,6 +270,11 @@ export default function AddEvent() {
     const updated = selectedEmployees.filter(emp => emp.empid !== empidToRemove);
     setSelectedEmployees(updated);
     setFormData({ ...formData, visible_to: updated.map(emp => emp.email) });
+  };
+
+  const removeGroup = (groupKeyToRemove) => {
+    const updated = selectedGroups.filter(group => group.key !== groupKeyToRemove);
+    setSelectedGroups(updated);
   };
 
   return (
@@ -315,7 +390,7 @@ export default function AddEvent() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Visible To *
                     </label>
-                    <div className="relative">
+                    <div className="relative w-full">
                       <div className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[42px] flex flex-wrap gap-1 items-center">
                         {selectedEmployees.map((employee) => (
                           <span key={employee.empid} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm flex items-center gap-1">
@@ -329,52 +404,217 @@ export default function AddEvent() {
                             </button>
                           </span>
                         ))}
+                        {selectedGroups.map((group) => (
+                          <span key={group.key} className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm flex items-center gap-1">
+                            {group.display}
+                            <button
+                              type="button"
+                              onClick={() => removeGroup(group.key)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
                         <input
                           type="text"
                           value={searchTerm}
                           onChange={(e) => {
                             setSearchTerm(e.target.value);
-                            setShowDropdown(e.target.value.trim() !== '');
+                            setShowDropdown(true);
                           }}
-                          onFocus={() => setShowDropdown(searchTerm.trim() !== '')}
+                          onFocus={() => {
+                            setShowDropdown(true);
+                            setVisibilityTouched(true);
+                          }}
                           disabled={selectedEmployees.some(emp => emp.empid === 'all')}
                           className="flex-1 min-w-[120px] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          placeholder={selectedEmployees.some(emp => emp.empid === 'all') ? "All employees selected" : "Search employees..."}
+                          placeholder={selectedEmployees.some(emp => emp.empid === 'all') ? "All employees selected" : "Type to search (min 3 characters)..."}
                         />
                       </div>
                       
                       {showDropdown && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                          <div
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b"
-                            onClick={handleAllSelect}
-                          >
-                            <div className="font-medium">All Employees</div>
-                            <div className="text-sm text-gray-500">Visible to everyone</div>
+                          {/* Everyone Option */}
+                          <div className="border-b">
+                            <div
+                              className="px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center gap-3"
+                              onClick={handleAllSelect}
+                            >
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 text-sm font-bold">All</span>
+                              </div>
+                              <div>
+                                <div className="font-medium text-blue-700">Everyone</div>
+                                <div className="text-xs text-gray-500">All employees can see this event</div>
+                              </div>
+                            </div>
                           </div>
+
                           {!selectedEmployees.some(emp => emp.empid === 'all') && (
                             <>
-                              {filteredEmployees.map((employee) => (
-                                <div
-                                  key={employee.email}
-                                  className={`px-3 py-2 hover:bg-gray-100 cursor-pointer ${
-                                    selectedEmployees.some(emp => emp.email === employee.email) ? 'bg-blue-50' : ''
-                                  }`}
-                                  onClick={() => handleEmployeeSelect(employee)}
-                                >
-                                  <div className="font-medium">{employee.name}</div>
-                                  <div className="text-sm text-gray-500">{employee.email} • {employee.empid} • {employee.role}</div>
+                              {searchTerm.length < 2 ? (
+                                <div className="px-4 py-6 text-center text-gray-500">
+                                  <div className="text-sm">Type at least 2 characters to search for groups or 3 for employees</div>
                                 </div>
-                              ))}
-                              {filteredEmployees.length === 0 && searchTerm && (
-                                <div className="px-3 py-2 text-gray-500">No employees found</div>
+                              ) : (
+                                <>
+                                  {/* Quick Groups */}
+                                  {shouldShowGroups && (() => {
+                                    const lowerSearch = searchTerm.toLowerCase();
+                                    return roles.some(r => r.toLowerCase().includes(lowerSearch)) ||
+                                           positions.some(p => p.toLowerCase().includes(lowerSearch)) ||
+                                           employmentTypes.some(t => t.toLowerCase().includes(lowerSearch));
+                                  })() && (
+                                    <div className="border-b">
+                                      <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide">Groups</div>
+                                      
+                                      {(() => {
+                                        const lowerSearch = searchTerm.toLowerCase();
+                                        const matchedRoles = roles.filter(r => r.toLowerCase().includes(lowerSearch));
+                                        const matchedPositions = positions.filter(p => p.toLowerCase().includes(lowerSearch));
+                                        const matchedTypes = employmentTypes.filter(t => t.toLowerCase().includes(lowerSearch));
+                                        
+                                        // Create a set to track shown values (case-insensitive)
+                                        const shownValues = new Set();
+                                        const results = [];
+                                        
+                                        // Add roles first
+                                        matchedRoles.forEach(role => {
+                                          const lowerValue = role.toLowerCase();
+                                          if (!shownValues.has(lowerValue)) {
+                                            shownValues.add(lowerValue);
+                                            results.push({ type: 'role', value: role });
+                                          }
+                                        });
+                                        
+                                        // Add positions only if not already shown
+                                        matchedPositions.forEach(position => {
+                                          const lowerValue = position.toLowerCase();
+                                          if (!shownValues.has(lowerValue)) {
+                                            shownValues.add(lowerValue);
+                                            results.push({ type: 'position', value: position });
+                                          }
+                                        });
+                                        
+                                        // Add employment types only if not already shown
+                                        matchedTypes.forEach(type => {
+                                          const lowerValue = type.toLowerCase();
+                                          if (!shownValues.has(lowerValue)) {
+                                            shownValues.add(lowerValue);
+                                            results.push({ type: 'employee_type', value: type });
+                                          }
+                                        });
+                                        
+                                        return results;
+                                      })().map((item) => {
+                                        if (item.type === 'role') {
+                                          return (
+                                            <div
+                                              key={`role-${item.value}`}
+                                              className={`px-4 py-3 hover:bg-green-50 cursor-pointer flex items-center gap-3 ${
+                                                selectedGroups.some(group => group.key === `role:${item.value}`) ? 'bg-green-50 border-l-4 border-green-400' : ''
+                                              }`}
+                                              onClick={() => handleGroupSelect('role', item.value)}
+                                            >
+                                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                <span className="text-green-600 text-xs font-bold">R</span>
+                                              </div>
+                                              <div>
+                                                <div className="font-medium uppercase">{item.value}</div>
+                                                <div className="text-xs text-gray-500">All {item.value} employees</div>
+                                              </div>
+                                            </div>
+                                          );
+                                        } else if (item.type === 'position') {
+                                          return (
+                                            <div
+                                              key={`position-${item.value}`}
+                                              className={`px-4 py-3 hover:bg-purple-50 cursor-pointer flex items-center gap-3 ${
+                                                selectedGroups.some(group => group.key === `position:${item.value}`) ? 'bg-purple-50 border-l-4 border-purple-400' : ''
+                                              }`}
+                                              onClick={() => handleGroupSelect('position', item.value)}
+                                            >
+                                              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                                <span className="text-purple-600 text-xs font-bold">P</span>
+                                              </div>
+                                              <div>
+                                                <div className="font-medium">{item.value}</div>
+                                                <div className="text-xs text-gray-500">All {item.value} employees</div>
+                                              </div>
+                                            </div>
+                                          );
+                                        } else {
+                                          return (
+                                            <div
+                                              key={`employment-${item.value}`}
+                                              className={`px-4 py-3 hover:bg-orange-50 cursor-pointer flex items-center gap-3 ${
+                                                selectedGroups.some(group => group.key === `employee_type:${item.value}`) ? 'bg-orange-50 border-l-4 border-orange-400' : ''
+                                              }`}
+                                              onClick={() => handleGroupSelect('employee_type', item.value)}
+                                            >
+                                              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                                                <span className="text-orange-600 text-xs font-bold">E</span>
+                                              </div>
+                                              <div>
+                                                <div className="font-medium">{item.value} Staff</div>
+                                                <div className="text-xs text-gray-500">All {item.value.toLowerCase()} employees</div>
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+                                      })}
+
+                                    </div>
+                                  )}
+                                  
+                                  {/* Individual Employees */}
+                                  {filteredEmployees.length > 0 && (
+                                    <div>
+                                      <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide">Individual Employees</div>
+                                      {filteredEmployees.map((employee) => (
+                                        <div
+                                          key={employee.email}
+                                          className={`px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center gap-3 ${
+                                            selectedEmployees.some(emp => emp.email === employee.email) ? 'bg-blue-50 border-l-4 border-blue-400' : ''
+                                          }`}
+                                          onClick={() => handleEmployeeSelect(employee)}
+                                        >
+                                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <span className="text-blue-600 text-xs font-bold">{employee.name.charAt(0)}</span>
+                                          </div>
+                                          <div>
+                                            <div className="font-medium">{employee.name}</div>
+                                            <div className="text-xs text-gray-500">{employee.email}</div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  
+                                  {filteredEmployees.length === 0 && 
+                                   (!shouldShowGroups || (() => {
+                                     const lowerSearch = searchTerm.toLowerCase();
+                                     const hasRoleMatch = roles.some(r => r.toLowerCase().includes(lowerSearch));
+                                     const hasPositionMatch = positions.some(p => p.toLowerCase().includes(lowerSearch));
+                                     const hasTypeMatch = employmentTypes.some(t => t.toLowerCase().includes(lowerSearch));
+                                     return !hasRoleMatch && !hasPositionMatch && !hasTypeMatch;
+                                   })()) && (
+                                    <div className="px-4 py-6 text-center text-gray-500">
+                                      <div className="text-sm">No matches found for "{searchTerm}"</div>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </>
                           )}
                         </div>
                       )}
                     </div>
-                    <p className="text-gray-500 text-xs mt-1">Select specific employees or choose &quot;All Employees&quot;</p>
+                    <p className="text-gray-500 text-xs mt-1">Choose who can see this event - select groups or individual employees *</p>
+                    {visibilityTouched && selectedEmployees.length === 0 && selectedGroups.length === 0 && (
+                      <p className="text-red-500 text-xs mt-1">Please select at least one employee or group</p>
+                    )}
                   </div>
 
                   {message && (
@@ -399,8 +639,11 @@ export default function AddEvent() {
                         type="button"
                         onClick={() => {
                           setFormData(initialFormState); 
+                          setSelectedEmployees([]);
+                          setSelectedGroups([]);
                           setErrors({}); 
-                          setMessage(''); 
+                          setMessage('');
+                          setVisibilityTouched(false);
                         }}
                         className="w-full sm:w-auto px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
                       >
