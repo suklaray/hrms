@@ -718,7 +718,7 @@ export default function Candidates(user) {
                                   : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
                               }`}
                             >
-                              {candidate.verification ? "Verified" : "Verify"}
+                              {candidate.verification ? "Verified" : "Pending Verification"}
                             </button>
                           </td>
                           {/* action buttons of add as employee is not shown when the candidate is added an employee */}
