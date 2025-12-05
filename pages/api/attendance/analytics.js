@@ -112,32 +112,89 @@ export default async function handler(req, res) {
 
     // Average check-in/out
     // Get first check-in and last check-out per employee per day
-    const dailyTimes = {};
-    attendanceData.forEach(record => {
-      const dateKey = record.date.toDateString();
-      const empKey = `${record.empid}-${dateKey}`;
-      
-      if (!dailyTimes[empKey]) {
-        dailyTimes[empKey] = { checkin: null, checkout: null };
-      }
-      
-      // First check-in of the day
-      if (record.check_in && (!dailyTimes[empKey].checkin || record.check_in < dailyTimes[empKey].checkin)) {
-        dailyTimes[empKey].checkin = record.check_in;
-      }
-      
-      // Last check-out of the day
-      if (record.check_out && (!dailyTimes[empKey].checkout || record.check_out > dailyTimes[empKey].checkout)) {
-        dailyTimes[empKey].checkout = record.check_out;
-      }
-    });
+   function extractDailyTimes(attendance) {
+  const map = new Map();
 
-    const firstCheckins = Object.values(dailyTimes).map(d => d.checkin).filter(Boolean);
-    const lastCheckouts = Object.values(dailyTimes).map(d => d.checkout).filter(Boolean);
+  attendance.forEach(record => {
+    const dateKey = record.date.toISOString().split("T")[0]; // prevents timezone issues
+    const key = `${record.empid}-${dateKey}`;
 
-    const avgCheckinTime = calculateAverageTime(firstCheckins);
-    const avgCheckoutTime = calculateAverageTime(lastCheckouts);
+    if (!map.has(key)) {
+      map.set(key, {
+        checkin: record.check_in ? new Date(record.check_in) : null,
+        checkout: record.check_out ? new Date(record.check_out) : null,
+      });
+    } else {
+      const entry = map.get(key);
 
+      // earliest check-in
+      if (record.check_in) {
+        const ci = new Date(record.check_in);
+        if (!entry.checkin || ci < entry.checkin) {
+          entry.checkin = ci;
+        }
+      }
+
+      // latest check-out
+      if (record.check_out) {
+        const co = new Date(record.check_out);
+        if (!entry.checkout || co > entry.checkout) {
+          entry.checkout = co;
+        }
+      }
+    }
+  });
+
+  return Array.from(map.values());
+}
+
+// Convert date → minutes
+function toMinutes(dateObj) {
+  return dateObj.getHours() * 60 + dateObj.getMinutes();
+}
+
+// Convert minutes →  "HH:MM"
+function formatTime(minutes) {
+  const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+  const m = String(minutes % 60).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+// Get median from an array of numbers
+function median(values) {
+  if (!values || values.length === 0) return "--";
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 !== 0) {
+    return formatTime(sorted[mid]);
+  }
+
+  // average of two middle values for even count
+  return formatTime(Math.round((sorted[mid - 1] + sorted[mid]) / 2));
+}
+
+// ---- MAIN FLOW ----
+
+// Build structured per-day times
+const daily = extractDailyTimes(attendanceData);
+
+// Extract check-in minutes
+const checkInMinutes = daily
+  .filter(d => d.checkin)
+  .map(d => toMinutes(d.checkin));
+
+// Extract check-out minutes
+const checkOutMinutes = daily
+  .filter(d => d.checkout)
+  .map(d => toMinutes(d.checkout));
+
+// Final median check-in/out times
+const medianCheckinTime = median(checkInMinutes);
+const medianCheckoutTime = median(checkOutMinutes);
+    const avgCheckinTime = medianCheckinTime || '--';
+    const avgCheckoutTime = medianCheckoutTime || '--';
 
     // Average working hours
     const workingHoursRecords = attendanceData.filter(a => a.total_hours);
