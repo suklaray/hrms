@@ -109,14 +109,16 @@ export default function PayrollView() {
       amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
       periodText = `${currentMonth} ${currentYear}`;
     } else {
-      // Default to current month when nothing is selected
-      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-      const currentYear = new Date().getFullYear();
-      amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
-      periodText = `${currentMonth} ${currentYear}`;
+      // Show total for all months when no specific filter is applied
+      amountData = payrolls;
+      periodText = 'All Months';
     }
     
-    const totalAmount = Math.round(amountData.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0) * 100) / 100;
+    // Fix rounding precision by using proper decimal arithmetic
+    const totalAmount = parseFloat(amountData.reduce((sum, item) => {
+      return sum + (parseFloat(item.net_pay) || 0);
+    }, 0).toFixed(2));
+    
     return { total, thisMonth, totalAmount, periodText };
   };
 
@@ -303,7 +305,7 @@ export default function PayrollView() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-green-600">
-                            {`₹${parseFloat(item.net_pay).toFixed(2)}`}
+                            ₹{parseFloat(item.net_pay).toFixed(2)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
