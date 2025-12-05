@@ -106,6 +106,9 @@ export default async function handler(req, res) {
 
     const attendanceData = results.map((user) => {
       const attendance_status = (user.today_total_seconds || 0) >= 14400 ? "Present" : "Absent";
+      
+      // Determine attendance status based on check-in/check-out state
+      const attendanceSessionStatus = user.today_checkin ? "Logged In" : "Logged Out";
 
       return {
         empid: user.empid,
@@ -119,7 +122,7 @@ export default async function handler(req, res) {
         today_total_seconds: user.today_total_seconds || 0,
         total_hours: formatDuration(user.today_total_seconds || 0),
         attendance_status,
-        status: user.status,
+        status: attendanceSessionStatus,
       };
     });
 
