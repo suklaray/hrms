@@ -1,6 +1,7 @@
 // Update the dashboard stats API
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { getAccessibleRoles } from '@/lib/roleBasedAccess';
 
 const prisma = new PrismaClient();
 
@@ -20,15 +21,8 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Define role-based filtering
-    let roleFilter = [];
-    if (decoded.role === 'hr') {
-      roleFilter = ['employee','hr'];
-    } else if (decoded.role === 'admin') {
-      roleFilter = ['hr', 'employee', 'admin'];
-    } else if (decoded.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee','superadmin'];
-    }
+    // Define role-based filtering using standardized function
+    const roleFilter = getAccessibleRoles(decoded.role);
 
     // Get basic counts with error handling
     let totalEmployees = 0;
