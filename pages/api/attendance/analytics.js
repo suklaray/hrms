@@ -195,11 +195,43 @@ const medianCheckoutTime = median(checkOutMinutes);
     const avgCheckinTime = medianCheckinTime || '--';
     const avgCheckoutTime = medianCheckoutTime || '--';
 
-    // Average working hours
-    const workingHoursRecords = attendanceData.filter(a => a.total_hours);
-    const avgWorkingHours = workingHoursRecords.length > 0
-      ? Math.round(workingHoursRecords.reduce((sum, a) => sum + parseFloat(a.total_hours || 0), 0) / workingHoursRecords.length * 10) / 10
-      : 0;
+    // Average working hours - calculate real-time from attendance data
+    const currentTime = new Date();
+    const realTimeHours = [];
+    
+    // Group attendance by employee-day and calculate real-time hours
+    const hoursEmployeeDayMap = new Map();
+    attendanceData.forEach(record => {
+      const dateKey = record.date.toDateString();
+      const empDayKey = `${record.empid}-${dateKey}`;
+      
+      if (!hoursEmployeeDayMap.has(empDayKey)) {
+        hoursEmployeeDayMap.set(empDayKey, []);
+      }
+      hoursEmployeeDayMap.get(empDayKey).push(record);
+    });
+    
+    // Calculate total hours for each employee-day
+    hoursEmployeeDayMap.forEach(dayRecords => {
+      let totalSeconds = 0;
+      dayRecords.forEach(record => {
+        if (record.check_in) {
+          const checkIn = new Date(record.check_in);
+          const checkOut = record.check_out ? new Date(record.check_out) : currentTime;
+          totalSeconds += (checkOut - checkIn) / 1000;
+        }
+      });
+      if (totalSeconds > 0) {
+        realTimeHours.push(totalSeconds / 3600);
+      }
+    });
+    
+    const avgWorkingHours = realTimeHours.length > 0
+      ? (realTimeHours.reduce((a, b) => a + b, 0) / realTimeHours.length).toFixed(1)
+      : '0';
+    
+    console.log('Analytics - realTimeHours:', realTimeHours);
+    console.log('Analytics - avgWorkingHours:', avgWorkingHours);
 
     // Leave utilization
     const leaveRequests = await prisma.leave_requests.findMany({
