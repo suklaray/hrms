@@ -39,11 +39,13 @@ export default async function handler(req, res) {
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
     const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-    // Get all users with role filtering
+    // Get all users with role filtering + current user
     const users = await prisma.users.findMany({
       where: {
-        role: { in: roleFilter },
-        status: { not: 'Inactive' }
+        OR: [
+          { role: { in: roleFilter }, status: { not: 'Inactive' } },
+          { empid: currentUser.empid, status: { not: 'Inactive' } }
+        ]
       },
       select: {
         empid: true,
@@ -54,24 +56,37 @@ export default async function handler(req, res) {
       }
     });
 
-    // Get attendance data for same period as analytics (today for attendance page)
+    // Get attendance data using same logic as dashboard
     const attendanceData = await prisma.attendance.findMany({
       where: {
         date: { gte: startOfDay, lte: endOfDay },
-        empid: { in: users.map(u => u.empid) }
+        check_in: { not: null },
+        check_out: null
       },
-      orderBy: [{ empid: 'asc' }, { check_in: 'asc' }]
+      select: {
+        empid: true,
+        check_in: true,
+        check_out: true,
+        date: true,
+        total_hours: true,
+        attendance_status: true
+      }
     });
+    
+    // Filter by role permissions
+    const roleFilteredAttendance = attendanceData.filter(record => 
+      users.some(u => u.empid === record.empid)
+    );
 
     const results = users.map(user => {
-      const userAttendance = attendanceData.filter(a => a.empid === user.empid);
+      const userAttendance = roleFilteredAttendance.filter(a => a.empid === user.empid);
       
       // Get first check-in and last check-out
       const firstCheckIn = userAttendance.find(a => a.check_in)?.check_in;
       const lastCheckOut = userAttendance.filter(a => a.check_out).pop()?.check_out;
       
-      // Check if currently logged in (has check-in without check-out)
-      const currentlyLoggedIn = userAttendance.some(a => a.check_in && !a.check_out);
+      // Check if currently logged in (same logic as dashboard)
+      const currentlyLoggedIn = userAttendance.length > 0;
       
       // Calculate total seconds (real-time for logged in users)
       let totalSeconds = 0;
@@ -144,7 +159,7 @@ export default async function handler(req, res) {
     // console.log('Attendance - avgWorkingHours:', avgWorkingHours);
 
     const finalAttendanceData = results.map((user) => {
-      const userAttendance = attendanceData.filter(a => a.empid === user.empid);
+      const userAttendance = roleFilteredAttendance.filter(a => a.empid === user.empid);
       const attendance_status = (user.today_total_seconds || 0) >= 14400 ? "Present" : "Absent";
       
       // Determine attendance status based on check-in/check-out state

@@ -140,7 +140,7 @@ export default function AttendanceList() {
   const stats = {
     total: data.length,
     present: data.filter(u => u.attendance_status === "Present").length,
-    loggedIn: data.filter(u => u.today_checkin && !u.last_logout).length,
+    loggedIn: data.filter(u => u.status === "Logged In").length,
     avgHours: apiAvgHours
   };
 
