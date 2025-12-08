@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
+import { getAccessibleRoles } from "@/lib/roleBasedAccess";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -25,15 +26,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Define role-based filtering
-    let roleFilter = [];
-    if (currentUser.role === 'hr') {
-      roleFilter = ['employee'];
-    } else if (currentUser.role === 'admin') {
-      roleFilter = ['hr', 'employee'];
-    } else if (currentUser.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
-    }
+    // Define role-based filtering using standardized function
+    const roleFilter = getAccessibleRoles(currentUser.role);
 
     const { role } = req.query;
 

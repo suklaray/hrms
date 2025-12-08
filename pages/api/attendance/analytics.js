@@ -37,17 +37,16 @@ export default async function handler(req, res) {
     const workingDays = period === 'today' ? 1 : calculateWorkingDays(startDate, endDate);
 
     // Get total employees based on role permissions
-    // Get total employees based on role permissions (excluding self)
+    // Get total employees based on role permissions
     let totalEmployees = await prisma.users.count({
       where: { 
         status: { not: 'Inactive' },
-        role: { in: getAccessibleRoles(user.role) },
-        empid: { not: user.empid }  // Exclude current user
+        role: { in: getAccessibleRoles(user.role) }
       }
     });
     if (totalEmployees === 0) {
       totalEmployees = await prisma.users.count({
-        where: { empid: { not: user.empid } }  // Exclude current user from fallback too
+        where: { status: { not: 'Inactive' } }
       });
     }
 
