@@ -78,7 +78,7 @@ export default async function handler(req, res) {
 
       const employees = await prisma.users.findMany({
         where: whereClause,
-        select: { empid: true, name: true, email: true, role: true },
+        select: { empid: true, name: true, email: true, role: true, employee_type: true, position: true },
         orderBy: { name: 'asc' }
       });
       console.log('Found employees:', employees.length);

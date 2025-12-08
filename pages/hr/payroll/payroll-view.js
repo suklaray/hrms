@@ -48,29 +48,28 @@ export default function PayrollView() {
   useEffect(() => {
     let filtered = payrolls;
 
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(item => 
-        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.empid?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Filter by date
-    if (dateFilter.month) {
-      filtered = filtered.filter(item => item.month === dateFilter.month);
-    }
-    if (dateFilter.year) {
-      filtered = filtered.filter(item => item.year.toString() === dateFilter.year);
-    }
-
-    // Filter by tab
     if (activeTab === 'recent') {
+      // Current Month tab: always show actual current month, ignore all filters
       const currentMonth = new Date().toLocaleString('default', { month: 'long' });
       const currentYear = new Date().getFullYear();
       filtered = filtered.filter(item => {
         return item.month === currentMonth && item.year === currentYear;
       });
+    } else {
+      // All Payrolls tab: apply search and date filters
+      if (searchTerm) {
+        filtered = filtered.filter(item => 
+          item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.empid?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+
+      if (dateFilter.month) {
+        filtered = filtered.filter(item => item.month === dateFilter.month);
+      }
+      if (dateFilter.year) {
+        filtered = filtered.filter(item => item.year.toString() === dateFilter.year);
+      }
     }
 
     setFilteredPayrolls(filtered);
@@ -88,20 +87,40 @@ export default function PayrollView() {
 
   const getStats = () => {
     const total = payrolls.length;
-    const thisMonth = payrolls.filter(item => {
+    
+    // Calculate current month stats for card (changes with month filter)
+    let cardMonthData;
+    let cardMonthLabel;
+    
+    if (dateFilter.month && activeTab === 'all') {
+      // If month filter is applied on All tab, show that month's data in card
+      const year = dateFilter.year || new Date().getFullYear();
+      cardMonthData = payrolls.filter(item => item.month === dateFilter.month && item.year.toString() === year.toString());
+      cardMonthLabel = `${dateFilter.month} ${year}`;
+    } else {
+      // Default to actual current month
       const currentMonth = new Date().toLocaleString('default', { month: 'long' });
       const currentYear = new Date().getFullYear();
-      return item.month === currentMonth && item.year === currentYear;
-    }).length;
+      cardMonthData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
+      cardMonthLabel = 'Current Month';
+    }
     
-    // Calculate total amount based on current filters
+    const cardMonthCount = cardMonthData.length;
+    
+    // Always calculate actual current month for tab count (never changes)
+    const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+    const currentYear = new Date().getFullYear();
+    const actualCurrentMonthData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
+    const tabCurrentMonthCount = actualCurrentMonthData.length;
+    
+    // Calculate total amount based on current view
     let amountData;
     let periodText;
     
-    // If month filter is applied, show monthly amount
     if (dateFilter.month) {
-      const year = dateFilter.year || new Date().getFullYear();
+      // If month filter is applied, use filtered data
       amountData = filteredPayrolls;
+      const year = dateFilter.year || new Date().getFullYear();
       periodText = `${dateFilter.month} ${year}`;
     } else if (activeTab === 'recent') {
       const currentMonth = new Date().toLocaleString('default', { month: 'long' });
@@ -109,15 +128,17 @@ export default function PayrollView() {
       amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
       periodText = `${currentMonth} ${currentYear}`;
     } else {
-      // Default to current month when nothing is selected
-      const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-      const currentYear = new Date().getFullYear();
-      amountData = payrolls.filter(item => item.month === currentMonth && item.year === currentYear);
-      periodText = `${currentMonth} ${currentYear}`;
+      // Show total for all months when no specific filter is applied
+      amountData = payrolls;
+      periodText = 'All Months';
     }
     
-    const totalAmount = Math.round(amountData.reduce((sum, item) => sum + (parseFloat(item.net_pay) || 0), 0) * 100) / 100;
-    return { total, thisMonth, totalAmount, periodText };
+    // Fix rounding precision by using proper decimal arithmetic
+    const totalAmount = parseFloat(amountData.reduce((sum, item) => {
+      return sum + (parseFloat(item.net_pay) || 0);
+    }, 0).toFixed(2));
+    
+    return { total, cardMonthCount, cardMonthLabel, tabCurrentMonthCount, totalAmount, periodText };
   };
 
   const stats = getStats();
@@ -165,8 +186,8 @@ export default function PayrollView() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Current Month</p>
-                  <p className="text-3xl font-bold text-green-600">{stats.thisMonth}</p>
+                  <p className="text-sm font-medium text-gray-600">{stats.cardMonthLabel}</p>
+                  <p className="text-3xl font-bold text-green-600">{stats.cardMonthCount}</p>
                 </div>
                 <div className="p-3 bg-green-100 rounded-lg">
                   <Calendar className="w-6 h-6 text-green-600" />
@@ -193,7 +214,10 @@ export default function PayrollView() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
             <div className="flex border-b border-gray-200">
               <button
-                onClick={() => setActiveTab('all')}
+                onClick={() => {
+                  setActiveTab('all');
+                  setDateFilter({ month: '', year: '' });
+                }}
                 className={`px-6 py-3 text-sm font-medium transition-colors ${
                   activeTab === 'all'
                     ? 'text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50'
@@ -210,7 +234,7 @@ export default function PayrollView() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Current Month ({stats.thisMonth})
+                Current Month ({stats.tabCurrentMonthCount})
               </button>
             </div>
           </div>
@@ -303,7 +327,7 @@ export default function PayrollView() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-green-600">
-                            {`₹${parseFloat(item.net_pay).toFixed(2)}`}
+                            ₹{parseFloat(item.net_pay).toFixed(2)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

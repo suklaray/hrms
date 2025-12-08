@@ -1,6 +1,7 @@
 // Update the dashboard stats API
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import { getAccessibleRoles } from '@/lib/roleBasedAccess';
 
 const prisma = new PrismaClient();
 
@@ -20,15 +21,8 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Define role-based filtering
-    let roleFilter = [];
-    if (decoded.role === 'hr') {
-      roleFilter = ['employee','hr'];
-    } else if (decoded.role === 'admin') {
-      roleFilter = ['hr', 'employee', 'admin'];
-    } else if (decoded.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee','superadmin'];
-    }
+    // Define role-based filtering using standardized function
+    const roleFilter = getAccessibleRoles(decoded.role);
 
     // Get basic counts with error handling
     let totalEmployees = 0;
@@ -41,8 +35,10 @@ export default async function handler(req, res) {
     try {
       totalEmployees = await prisma.users.count({
         where: {
-          role: { in: roleFilter },
-          status: { not: 'Inactive' }
+          OR: [
+            { role: { in: roleFilter }, status: { not: 'Inactive' } },
+            { empid: decoded.empid || decoded.id, status: { not: 'Inactive' } }
+          ]
         }
       });
     } catch (e) {
@@ -57,48 +53,49 @@ export default async function handler(req, res) {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
-      // Get attendance records for today where checked in but not checked out
-      const attendanceRecords = await prisma.attendance.findMany({
+      // Get all users with role filtering + current user
+      const users = await prisma.users.findMany({
         where: {
-          date: {
-            gte: today,
-            lt: tomorrow
-          },
-          check_in: { not: null },
-          check_out: null
+          OR: [
+            { role: { in: roleFilter }, status: { not: 'Inactive' } },
+            { empid: decoded.empid || decoded.id, status: { not: 'Inactive' } }
+          ]
         },
         select: {
           empid: true,
-          check_in: true
+          name: true,
+          role: true,
+          position: true,
+          profile_photo: true
         }
       });
 
-      // Get user details for those empids
-      if (attendanceRecords.length > 0) {
-        const empids = attendanceRecords.map(record => record.empid);
-        const users = await prisma.users.findMany({
-          where: {
-            empid: { in: empids },
-            role: { in: roleFilter }
-          },
-          select: {
-            empid: true,
-            name: true,
-            role: true,
-            position: true,
-            profile_photo: true
-          }
-        });
+      // Get today's attendance for these users
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: {
+          date: { gte: today, lt: tomorrow },
+          empid: { in: users.map(u => u.empid) }
+        },
+        orderBy: [{ empid: 'asc' }, { check_in: 'asc' }]
+      });
 
-        // Combine attendance and user data
-        currentlyOnline = attendanceRecords.map(attendance => {
-          const user = users.find(u => u.empid === attendance.empid);
-          return user ? {
-            ...attendance,
+      // Find users who are currently logged in (same logic as attendance API)
+      const loggedInUsers = [];
+      users.forEach(user => {
+        const userAttendance = attendanceRecords.filter(a => a.empid === user.empid);
+        const currentlyLoggedIn = userAttendance.some(a => a.check_in && !a.check_out);
+        
+        if (currentlyLoggedIn) {
+          const firstCheckIn = userAttendance.find(a => a.check_in)?.check_in;
+          loggedInUsers.push({
+            empid: user.empid,
+            check_in: firstCheckIn,
             users: user
-          } : null;
-        }).filter(Boolean);
-      }
+          });
+        }
+      });
+      
+      currentlyOnline = loggedInUsers;
       
 
       

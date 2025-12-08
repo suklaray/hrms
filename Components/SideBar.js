@@ -31,6 +31,23 @@ export default function Sidebar({ user: propUser }) {
     formSubmitted: propUser?.form_submitted || false,
   });
 
+  // Helper function to check if path is active
+  const isActivePath = (path) => {
+    if (path === '/dashboard') {
+      return router.pathname === '/dashboard';
+    }
+    // Exact match for specific paths to avoid conflicts
+    if (path === '/hr/attendance') {
+      return router.pathname === '/hr/attendance';
+    }
+    return router.pathname.startsWith(path);
+  };
+
+  // Helper function to check if dropdown should be open based on active path
+  const shouldDropdownBeOpen = (paths) => {
+    return paths.some(path => isActivePath(path));
+  };
+
   useEffect(() => {
     if (propUser) {
       setUser(propUser);
@@ -88,6 +105,15 @@ export default function Sidebar({ user: propUser }) {
   const [performanceOpen, setPerformanceOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [employeeOpen, setEmployeeOpen] = useState(false);
+
+  // Auto-open dropdowns based on current path
+  useEffect(() => {
+    setEmployeeOpen(shouldDropdownBeOpen(['/registerEmployee', '/employeeList']));
+    setAttendanceOpen(shouldDropdownBeOpen(['/hr/attendance', '/hr/view-leave-requests', '/attendance/analytics']) && !router.pathname.startsWith('/hr/attendance/my-attendance'));
+    setPayrollOpen(shouldDropdownBeOpen(['/hr/payroll']));
+    setComplianceOpen(shouldDropdownBeOpen(['/compliance']));
+    setSettingsOpen(shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task']));
+  }, [router.pathname]);
   const [checkedIn, setCheckedIn] = useState(false);
 
   const role = user?.role?.toLowerCase() || "hr";
@@ -172,7 +198,11 @@ export default function Sidebar({ user: propUser }) {
                 {canAccess ? (
                   <Link href={item.path}>
                     <div
-                      className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                      className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
+                        isActivePath(item.path)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-800 hover:bg-indigo-600'
+                      }`}
                       title={isCollapsed ? item.name : ""}
                     >
                       <IconComponent size={18} className="flex-shrink-0" />
@@ -210,7 +240,9 @@ export default function Sidebar({ user: propUser }) {
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
                 isAccessEnabled
-                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  ? (shouldDropdownBeOpen(['/registerEmployee', '/employeeList'])
+                    ? 'bg-indigo-600 text-white cursor-pointer'
+                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
               title={isCollapsed ? (isAccessEnabled ? "Employee Management" : "Employee Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
@@ -238,10 +270,11 @@ export default function Sidebar({ user: propUser }) {
                   <li key={subItem.name}>
                     <Link href={subItem.path}>
                       <span
-                        className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace(
-                          "600",
-                          "500"
-                        )} transition cursor-pointer`}
+                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          isActivePath(subItem.path)
+                            ? 'bg-indigo-500 text-white'
+                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
+                        }`}
                       >
                         {subItem.name}
                       </span>
@@ -264,7 +297,9 @@ export default function Sidebar({ user: propUser }) {
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
                 isAccessEnabled
-                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  ? (shouldDropdownBeOpen(['/hr/attendance', '/hr/view-leave-requests', '/attendance/analytics'])
+                    ? 'bg-indigo-600 text-white cursor-pointer'
+                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
               title={isCollapsed ? (isAccessEnabled ? "Attendance & Leave" : "Attendance & Leave (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
@@ -292,10 +327,11 @@ export default function Sidebar({ user: propUser }) {
                   <li key={subItem.name}>
                     <Link href={subItem.path}>
                       <span
-                        className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace(
-                          "600",
-                          "500"
-                        )} transition cursor-pointer`}
+                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          isActivePath(subItem.path)
+                            ? 'bg-indigo-500 text-white'
+                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
+                        }`}
                       >
                         {subItem.name}
                       </span>
@@ -318,7 +354,9 @@ export default function Sidebar({ user: propUser }) {
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
                 isAccessEnabled
-                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  ? (shouldDropdownBeOpen(['/hr/payroll'])
+                    ? 'bg-indigo-600 text-white cursor-pointer'
+                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
               title={isCollapsed ? (isAccessEnabled ? "Payroll Management" : "Payroll Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
@@ -346,10 +384,11 @@ export default function Sidebar({ user: propUser }) {
                   <li key={subItem.name}>
                     <Link href={subItem.path}>
                       <span
-                        className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace(
-                          "600",
-                          "500"
-                        )} transition cursor-pointer`}
+                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          isActivePath(subItem.path)
+                            ? 'bg-indigo-500 text-white'
+                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
+                        }`}
                       >
                         {subItem.name}
                       </span>
@@ -372,7 +411,9 @@ export default function Sidebar({ user: propUser }) {
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
                 isAccessEnabled
-                  ? "bg-gray-800 hover:bg-indigo-600 cursor-pointer"
+                  ? (shouldDropdownBeOpen(['/compliance'])
+                    ? 'bg-indigo-600 text-white cursor-pointer'
+                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
               title={isCollapsed ? (isAccessEnabled ? "Compliance Management" : "Compliance Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
@@ -400,10 +441,11 @@ export default function Sidebar({ user: propUser }) {
                   <li key={subItem.name}>
                     <Link href={subItem.path}>
                       <span
-                        className={`block text-sm px-3 py-2 bg-gray-700 rounded-lg ${hoverColor.replace(
-                          "600",
-                          "500"
-                        )} transition cursor-pointer`}
+                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          isActivePath(subItem.path)
+                            ? 'bg-indigo-500 text-white'
+                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
+                        }`}
                       >
                         {subItem.name}
                       </span>
@@ -419,7 +461,11 @@ export default function Sidebar({ user: propUser }) {
             {isAccessEnabled ? (
               <Link href="/task-management/manage-tasks">
                 <div
-                  className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
+                    isActivePath('/task-management/manage-tasks')
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-800 hover:bg-indigo-600'
+                  }`}
                   title={isCollapsed ? "Task Management" : ""}
                 >
                   <ListChecks size={19} className="flex-shrink-0" />
@@ -448,7 +494,11 @@ export default function Sidebar({ user: propUser }) {
             {isAccessEnabled ? (
               <Link href="/customer-connect">
                 <div
-                  className="w-full text-left px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer flex items-center gap-3"
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
+                    isActivePath('/customer-connect')
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-800 hover:bg-indigo-600'
+                  }`}
                   title={isCollapsed ? "Customer Connect" : ""}
                 >
                   <Phone size={18} className="flex-shrink-0" />
@@ -480,7 +530,11 @@ export default function Sidebar({ user: propUser }) {
                   ? () => router.push("/settings/profile")
                   : toggleSettingsMenu
               }
-              className="w-full text-left flex justify-between items-center px-3 py-2.5 bg-gray-800 rounded-lg hover:bg-indigo-600 transition cursor-pointer"
+              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition cursor-pointer ${
+                shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task'])
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-800 hover:bg-indigo-600'
+              }`}
               title={isCollapsed ? "Settings" : ""}
             >
               <div className="flex items-center gap-3">
@@ -502,7 +556,11 @@ export default function Sidebar({ user: propUser }) {
               <ul className="pl-6 pt-2 space-y-2">
                 <li>
                   <Link href="/settings/profile">
-                    <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                    <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                      isActivePath('/settings/profile')
+                        ? 'bg-indigo-500 text-white'
+                        : 'bg-gray-700 hover:bg-indigo-500'
+                    }`}>
                       Profile Management
                     </span>
                   </Link>
@@ -515,7 +573,11 @@ export default function Sidebar({ user: propUser }) {
                     {["hr", "admin", "superadmin"].includes(role) && (
                       <li>
                         <Link href="/hr/attendance/my-attendance">
-                          <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                          <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                            isActivePath('/hr/attendance/my-attendance')
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-gray-700 hover:bg-indigo-500'
+                          }`}>
                             My Attendance
                           </span>
                         </Link>
@@ -523,14 +585,22 @@ export default function Sidebar({ user: propUser }) {
                     )}
                     <li>
                       <Link href="/settings/bot-settings">
-                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          router.pathname === '/settings/bot-settings'
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-gray-700 hover:bg-indigo-500'
+                        }`}>
                           Bot Settings
                         </span>
                       </Link>
                     </li>
                     <li>
                       <Link href="/settings/position-management">
-                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          router.pathname === '/settings/position-management'
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-gray-700 hover:bg-indigo-500'
+                        }`}>
                           Add Position
                         </span>
                       </Link>
@@ -545,7 +615,11 @@ export default function Sidebar({ user: propUser }) {
                     {role !== "superadmin" && (
                       <li>
                         <Link href="/leave-request/leave-request">
-                          <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                          <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                            isActivePath('/leave-request')
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-gray-700 hover:bg-indigo-500'
+                          }`}>
                             Leave Requests
                           </span>
                         </Link>
@@ -553,14 +627,22 @@ export default function Sidebar({ user: propUser }) {
                     )}
                     <li>
                       <Link href="/payslip/payslip-lists">
-                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          isActivePath('/payslip')
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-gray-700 hover:bg-indigo-500'
+                        }`}>
                           Payslip & Documents
                         </span>
                       </Link>
                     </li>
                     <li>
                       <Link href="/task-management/user-task">
-                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
+                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          isActivePath('/task-management/user-task')
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-gray-700 hover:bg-indigo-500'
+                        }`}>
                           Manage Tasks
                         </span>
                       </Link>

@@ -51,15 +51,23 @@ export default function AttendanceList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [apiAvgHours, setApiAvgHours] = useState('0');
   const router = useRouter();
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetch("/api/hr/attendance")
       .then((res) => res.json())
-      .then((data) => {
-        setData(data);
-        setFilteredData(data);
+      .then((response) => {
+        // Check if response has avgHours property (from API calculation)
+        if (response.avgHours !== undefined) {
+          setApiAvgHours(response.avgHours);
+          setData(response.data || response);
+          setFilteredData(response.data || response);
+        } else {
+          setData(response);
+          setFilteredData(response);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -132,8 +140,8 @@ export default function AttendanceList() {
   const stats = {
     total: data.length,
     present: data.filter(u => u.attendance_status === "Present").length,
-    loggedIn: data.filter(u => u.today_checkin && !u.last_logout).length,
-    avgHours: data.length > 0 ? (data.reduce((acc, u) => acc + parseFloat(u.total_hours || 0), 0) / data.length).toFixed(1) : 0
+    loggedIn: data.filter(u => u.status === "Logged In").length,
+    avgHours: apiAvgHours
   };
 
   if (loading) {

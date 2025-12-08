@@ -37,17 +37,16 @@ export default async function handler(req, res) {
     const workingDays = period === 'today' ? 1 : calculateWorkingDays(startDate, endDate);
 
     // Get total employees based on role permissions
-    // Get total employees based on role permissions (excluding self)
+    // Get total employees based on role permissions
     let totalEmployees = await prisma.users.count({
       where: { 
         status: { not: 'Inactive' },
-        role: { in: getAccessibleRoles(user.role) },
-        empid: { not: user.empid }  // Exclude current user
+        role: { in: getAccessibleRoles(user.role) }
       }
     });
     if (totalEmployees === 0) {
       totalEmployees = await prisma.users.count({
-        where: { empid: { not: user.empid } }  // Exclude current user from fallback too
+        where: { status: { not: 'Inactive' } }
       });
     }
 
@@ -112,38 +111,127 @@ export default async function handler(req, res) {
 
     // Average check-in/out
     // Get first check-in and last check-out per employee per day
-    const dailyTimes = {};
+   function extractDailyTimes(attendance) {
+  const map = new Map();
+
+  attendance.forEach(record => {
+    const dateKey = record.date.toISOString().split("T")[0]; // prevents timezone issues
+    const key = `${record.empid}-${dateKey}`;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        checkin: record.check_in ? new Date(record.check_in) : null,
+        checkout: record.check_out ? new Date(record.check_out) : null,
+      });
+    } else {
+      const entry = map.get(key);
+
+      // earliest check-in
+      if (record.check_in) {
+        const ci = new Date(record.check_in);
+        if (!entry.checkin || ci < entry.checkin) {
+          entry.checkin = ci;
+        }
+      }
+
+      // latest check-out
+      if (record.check_out) {
+        const co = new Date(record.check_out);
+        if (!entry.checkout || co > entry.checkout) {
+          entry.checkout = co;
+        }
+      }
+    }
+  });
+
+  return Array.from(map.values());
+}
+
+// Convert date → minutes
+function toMinutes(dateObj) {
+  return dateObj.getHours() * 60 + dateObj.getMinutes();
+}
+
+// Convert minutes →  "HH:MM"
+function formatTime(minutes) {
+  const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+  const m = String(minutes % 60).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+// Get median from an array of numbers
+function median(values) {
+  if (!values || values.length === 0) return "--";
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+
+  if (sorted.length % 2 !== 0) {
+    return formatTime(sorted[mid]);
+  }
+
+  // average of two middle values for even count
+  return formatTime(Math.round((sorted[mid - 1] + sorted[mid]) / 2));
+}
+
+// ---- MAIN FLOW ----
+
+// Build structured per-day times
+const daily = extractDailyTimes(attendanceData);
+
+// Extract check-in minutes
+const checkInMinutes = daily
+  .filter(d => d.checkin)
+  .map(d => toMinutes(d.checkin));
+
+// Extract check-out minutes
+const checkOutMinutes = daily
+  .filter(d => d.checkout)
+  .map(d => toMinutes(d.checkout));
+
+// Final median check-in/out times
+const medianCheckinTime = median(checkInMinutes);
+const medianCheckoutTime = median(checkOutMinutes);
+    const avgCheckinTime = medianCheckinTime || '--';
+    const avgCheckoutTime = medianCheckoutTime || '--';
+
+    // Average working hours - calculate real-time from attendance data
+    const currentTime = new Date();
+    const realTimeHours = [];
+    
+    // Group attendance by employee-day and calculate real-time hours
+    const hoursEmployeeDayMap = new Map();
     attendanceData.forEach(record => {
       const dateKey = record.date.toDateString();
-      const empKey = `${record.empid}-${dateKey}`;
+      const empDayKey = `${record.empid}-${dateKey}`;
       
-      if (!dailyTimes[empKey]) {
-        dailyTimes[empKey] = { checkin: null, checkout: null };
+      if (!hoursEmployeeDayMap.has(empDayKey)) {
+        hoursEmployeeDayMap.set(empDayKey, []);
       }
-      
-      // First check-in of the day
-      if (record.check_in && (!dailyTimes[empKey].checkin || record.check_in < dailyTimes[empKey].checkin)) {
-        dailyTimes[empKey].checkin = record.check_in;
-      }
-      
-      // Last check-out of the day
-      if (record.check_out && (!dailyTimes[empKey].checkout || record.check_out > dailyTimes[empKey].checkout)) {
-        dailyTimes[empKey].checkout = record.check_out;
+      hoursEmployeeDayMap.get(empDayKey).push(record);
+    });
+    
+    // Calculate total hours for each employee-day
+    hoursEmployeeDayMap.forEach(dayRecords => {
+      let totalSeconds = 0;
+      dayRecords.forEach(record => {
+        if (record.check_in) {
+          const checkIn = new Date(record.check_in);
+          const checkOut = record.check_out ? new Date(record.check_out) : currentTime;
+          totalSeconds += (checkOut - checkIn) / 1000;
+        }
+      });
+      if (totalSeconds > 0) {
+        realTimeHours.push(totalSeconds / 3600);
       }
     });
-
-    const firstCheckins = Object.values(dailyTimes).map(d => d.checkin).filter(Boolean);
-    const lastCheckouts = Object.values(dailyTimes).map(d => d.checkout).filter(Boolean);
-
-    const avgCheckinTime = calculateAverageTime(firstCheckins);
-    const avgCheckoutTime = calculateAverageTime(lastCheckouts);
-
-
-    // Average working hours
-    const workingHoursRecords = attendanceData.filter(a => a.total_hours);
-    const avgWorkingHours = workingHoursRecords.length > 0
-      ? Math.round(workingHoursRecords.reduce((sum, a) => sum + parseFloat(a.total_hours || 0), 0) / workingHoursRecords.length * 10) / 10
-      : 0;
+    
+    const avgWorkingHours = realTimeHours.length > 0
+      ? (realTimeHours.reduce((a, b) => a + b, 0) / realTimeHours.length).toFixed(1)
+      : '0';
+    
+    console.log('Analytics - realTimeHours:', realTimeHours);
+    console.log('Analytics - avgWorkingHours:', avgWorkingHours);
 
     // Leave utilization
     const leaveRequests = await prisma.leave_requests.findMany({
@@ -178,33 +266,44 @@ export default async function handler(req, res) {
           : 0;
 
   
-    const trendData = await generateRealTrendData(period, startDate, endDate, prisma);
+    const trendData = await generateRealTrendData(period, startDate, endDate, prisma, totalEmployees);
 
     // Department-wise attendance
     const departmentData = await getDepartmentAttendance(startDate, endDate, prisma);
 
-    // Pie chart
+    // Pie chart - use same logic as trend data for accuracy
+    const expectedTotalDays = totalEmployees * workingDays;
+    const actualPresentDays = await prisma.attendance.count({
+      where: {
+        date: { gte: startDate, lte: endDate },
+        attendance_status: 'Present'
+      }
+    });
+    
+    const pieAttendanceRate = expectedTotalDays ? Math.round((actualPresentDays / expectedTotalDays) * 100) : 0;
+    const pieAbsenteeismRate = Math.max(0, 100 - pieAttendanceRate);
+    
     const pieData = [
-      { name: 'Present', value: avgAttendance },
-      { name: 'Absent', value: absenteeismRate },
+      { name: 'Present', value: pieAttendanceRate },
+      { name: 'Absent', value: pieAbsenteeismRate },
     ];
 
     const analytics = {
       workingDays,
       totalEmployees,
-      avgAttendance,
-      absenteeismRate,
+      avgAttendance: pieAttendanceRate,
+      absenteeismRate: pieAbsenteeismRate,
       avgCheckinTime,
       avgCheckoutTime: avgCheckoutTime || '--',
       avgWorkingHours,
       leaveUtilization,
       totalLeaveDays: period === 'today' ? employeesOnLeaveToday : totalLeaveDays,
-      presentCount,
-      absentCount,
-      lateCount: Math.floor(presentCount * 0.15),
-      presentPercent: avgAttendance,
-      absentPercent: absenteeismRate,
-      latePercent: Math.max(0, 100 - avgAttendance - absenteeismRate),
+      presentCount: actualPresentDays,
+      absentCount: expectedTotalDays - actualPresentDays,
+      lateCount: Math.floor(actualPresentDays * 0.15),
+      presentPercent: pieAttendanceRate,
+      absentPercent: pieAbsenteeismRate,
+      latePercent: Math.max(0, 100 - pieAttendanceRate - pieAbsenteeismRate),
       trendData,
       departmentData,
       yearlyPieData: pieData
@@ -220,11 +319,21 @@ export default async function handler(req, res) {
 // ------------------ Helper Functions ------------------
 
 function calculateWorkingDays(startDate, endDate) {
+  // Common holidays (you can expand this list)
+  const holidays = [
+    '2024-01-01', '2024-01-26', '2024-08-15', '2024-10-02', '2024-12-25'
+  ];
+  
   let count = 0;
   const current = new Date(startDate);
   while (current <= endDate) {
     const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+    const dateStr = current.toISOString().split('T')[0];
+    
+    // Skip weekends and holidays
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
+      count++;
+    }
     current.setDate(current.getDate() + 1);
   }
   return count;
@@ -243,80 +352,91 @@ function calculateAverageTime(times) {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 }
 
-async function generateRealTrendData(period, startDate, endDate, prisma) {
+async function generateRealTrendData(period, startDate, endDate, prisma, totalEmployees) {
   const data = [];
+  startDate = new Date(startDate);
+  endDate = new Date(endDate);
 
-  if (period === 'year') {
-    const current = new Date(startDate);
-    while (current <= endDate) {
-      const periodStart = new Date(current.getFullYear(), current.getMonth(), 1, 0, 0, 0, 0);
+  if (period === "year") {
+    let current = new Date(startDate);
+
+    for (let i = 0; i < 12 && current <= endDate; i++) {
+      const periodStart = new Date(current.getFullYear(), current.getMonth(), 1);
       const periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
-      const attendanceRecords = await prisma.attendance.findMany({
-        where: { date: { gte: periodStart, lte: periodEnd } }
-      });
       
-      // Use employee-day logic for consistency
-      const employeeDayMap = new Map();
-      attendanceRecords.forEach(record => {
-        const dateKey = record.date.toDateString();
-        const empDayKey = `${record.empid}-${dateKey}`;
-        if (!employeeDayMap.has(empDayKey)) {
-          employeeDayMap.set(empDayKey, record.attendance_status);
-        } else if (record.attendance_status === 'Present') {
-          employeeDayMap.set(empDayKey, 'Present');
+      const workingDays = calculateWorkingDays(periodStart, periodEnd);
+      const expectedAttendanceDays = totalEmployees * workingDays;
+
+      const presentCount = await prisma.attendance.count({
+        where: {
+          date: { gte: periodStart, lte: periodEnd },
+          attendance_status: 'Present'
         }
       });
-      
-      const presentCount = Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
-      const totalCount = employeeDayMap.size;
-      data.push({ period: current.toLocaleDateString('en-US', { month: 'short' }), attendance: totalCount ? Math.round((presentCount / totalCount) * 100) : 0 });
+
+      data.push({
+        period: current.toLocaleString("en-US", { month: "short" }),
+        attendance: expectedAttendanceDays ? Math.round((presentCount / expectedAttendanceDays) * 100) : 0,
+      });
+
       current.setMonth(current.getMonth() + 1);
-      if (data.length >= 12) break;
     }
-  } else if (period === 'month') {
-    const current = new Date(startDate);
-    let weekNum = 1;
-    while (current <= endDate) {
+  }
+  else if (period === "month") {
+    let current = new Date(startDate);
+    let week = 1;
+
+    while (current <= endDate && week <= 5) {
       const weekStart = new Date(current);
       const weekEnd = new Date(current);
       weekEnd.setDate(weekEnd.getDate() + 6);
       if (weekEnd > endDate) weekEnd.setTime(endDate.getTime());
-      const attendanceRecords = await prisma.attendance.findMany({
-        where: { date: { gte: weekStart, lte: weekEnd } }
-      });
       
-      // Use employee-day logic for consistency
-      const employeeDayMap = new Map();
-      attendanceRecords.forEach(record => {
-        const dateKey = record.date.toDateString();
-        const empDayKey = `${record.empid}-${dateKey}`;
-        if (!employeeDayMap.has(empDayKey)) {
-          employeeDayMap.set(empDayKey, record.attendance_status);
-        } else if (record.attendance_status === 'Present') {
-          employeeDayMap.set(empDayKey, 'Present');
+      const workingDays = calculateWorkingDays(weekStart, weekEnd);
+      const expectedAttendanceDays = totalEmployees * workingDays;
+
+      const presentCount = await prisma.attendance.count({
+        where: {
+          date: { gte: weekStart, lte: weekEnd },
+          attendance_status: 'Present'
         }
       });
-      
-      const presentCount = Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
-      const totalCount = employeeDayMap.size;
-      data.push({ period: `Week ${weekNum}`, attendance: totalCount ? Math.round((presentCount / totalCount) * 100) : 0 });
-      current.setDate(current.getDate() + 7);
-      weekNum++;
-      if (weekNum > 5) break;
-    }
-  } else {
-    const hours = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
-    for (const hour of hours) {
-      const hourStart = new Date(startDate);
-      hourStart.setHours(hour, 0, 0, 0);
-      const hourEnd = new Date(startDate);
-      hourEnd.setHours(hour, 59, 59, 999);
-      const attendanceRecords = await prisma.attendance.findMany({
-        where: { date: { gte: startDate, lte: endDate }, check_in: { gte: hourStart, lte: hourEnd } }
+
+      data.push({
+        period: `Week ${week}`,
+        attendance: expectedAttendanceDays ? Math.round((presentCount / expectedAttendanceDays) * 100) : 0,
       });
-      const checkedInCount = attendanceRecords.length;
-      const label = hour > 12 ? `${hour - 12} PM` : `${hour} ${hour === 12 ? 'PM' : 'AM'}`;
-      data.push({ period: label, attendance: checkedInCount });
+
+      current.setDate(current.getDate() + 7);
+      week++;
+    }
+  }
+  else {
+    // Daily attendance by hour ranges
+    const timeRanges = [
+      { start: 0, end: 8, label: "Before 9 AM" },
+      { start: 9, end: 10, label: "9-10 AM" },
+      { start: 11, end: 12, label: "11-12 PM" },
+      { start: 13, end: 14, label: "1-2 PM" },
+      { start: 15, end: 16, label: "3-4 PM" },
+      { start: 17, end: 23, label: "After 5 PM" }
+    ];
+
+    for (const range of timeRanges) {
+      const rangeStart = new Date(startDate);
+      rangeStart.setHours(range.start, 0, 0, 0);
+      const rangeEnd = new Date(startDate);
+      rangeEnd.setHours(range.end, 59, 59, 999);
+
+      const attendanceCount = await prisma.attendance.count({
+        where: {
+          date: { gte: startDate, lte: endDate },
+          attendance_status: 'Present',
+          check_in: { gte: rangeStart, lte: rangeEnd }
+        }
+      });
+
+      data.push({ period: range.label, attendance: attendanceCount });
     }
   }
 

@@ -36,6 +36,7 @@ export default function ViewEmployee() {
   const [isOpen2, setIsOpen2] = useState(false);
   const [isOpen3, setIsOpen3] = useState(false);
   const [positions, setPositions] = useState([]);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   useEffect(() => {
     const fetchEverything = async () => {
@@ -73,6 +74,7 @@ export default function ViewEmployee() {
           const empRes = await axios.get(`/api/auth/employee/view/${id}`);
           setData(empRes.data);
           setPosition(empRes.data?.user?.position || "");
+          setPhoneNumber(empRes.data?.user?.contact_number || "");
         }
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -483,7 +485,7 @@ export default function ViewEmployee() {
                     <Detail label="Email" value={email} />
                     <Detail
                       label="Contact No"
-                      value={employees?.contact_no || "N/A"}
+                      value={employees?.contact_no || phoneNumber || "N/A"}
                     />
                     <Detail
                       label="DOB"

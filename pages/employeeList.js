@@ -192,7 +192,7 @@ export default function EmployeeListPage({ user }) {
       "Employee ID": emp.empid || "",
       "Name": emp.name || "",
       "Email": emp.email || "",
-      "Contact": emp.contact || emp.phone || "",
+      "Contact": emp.contact_number || "",
       "Role": emp.role || "",
       "Position": emp.position || "",
       "Date of Joining": emp.date_of_joining 
