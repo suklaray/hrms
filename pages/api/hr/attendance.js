@@ -60,8 +60,7 @@ export default async function handler(req, res) {
     const attendanceData = await prisma.attendance.findMany({
       where: {
         date: { gte: startOfDay, lte: endOfDay },
-        check_in: { not: null },
-        check_out: null
+        check_in: { not: null }
       },
       select: {
         empid: true,
@@ -81,18 +80,22 @@ export default async function handler(req, res) {
     const results = users.map(user => {
       const userAttendance = roleFilteredAttendance.filter(a => a.empid === user.empid);
       
-      // Get first check-in and last check-out
-      const firstCheckIn = userAttendance.find(a => a.check_in)?.check_in;
-      const lastCheckOut = userAttendance.filter(a => a.check_out).pop()?.check_out;
+      // Sort by check_in time to process sessions in order
+      const sortedAttendance = userAttendance.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
       
-      // Check if currently logged in (same logic as dashboard)
-      const currentlyLoggedIn = userAttendance.length > 0;
+      // Get first check-in and last check-out
+      const firstCheckIn = sortedAttendance.find(a => a.check_in)?.check_in;
+      const lastCheckOut = sortedAttendance.filter(a => a.check_out).reverse()[0]?.check_out;
+      
+      // Check if currently logged in (has ANY check_in without check_out in ANY session)
+      const hasOpenSession = sortedAttendance.some(a => a.check_in && !a.check_out);
       
       // Calculate total seconds (real-time for logged in users)
       let totalSeconds = 0;
       let completedSeconds = 0;
+      let currentSessionCheckIn = null; // Track the CURRENT open session check-in
       
-      userAttendance.forEach(record => {
+      sortedAttendance.forEach(record => {
         if (record.check_in) {
           const checkIn = new Date(record.check_in);
           const checkOut = record.check_out ? new Date(record.check_out) : new Date();
@@ -102,6 +105,9 @@ export default async function handler(req, res) {
           
           if (record.check_out) {
             completedSeconds += sessionSeconds;
+          } else {
+            // This is the open session - store its check-in time
+            currentSessionCheckIn = record.check_in;
           }
         }
       });
@@ -113,10 +119,11 @@ export default async function handler(req, res) {
         role: user.role,
         last_login: firstCheckIn,
         today_checkout: lastCheckOut,
-        today_checkin: currentlyLoggedIn ? firstCheckIn : null,
+        current_session_checkin: currentSessionCheckIn, // NEW: Current open session
         today_total_seconds: Math.floor(totalSeconds),
         today_completed_seconds: Math.floor(completedSeconds),
-        status: user.status
+        status: user.status,
+        has_open_session: hasOpenSession
       };
     });
 
@@ -124,10 +131,10 @@ export default async function handler(req, res) {
     const currentTime = new Date();
     const realTimeHours = [];
     
-    // Group attendance by employee-day (EXACT same as analytics)
+    // Group attendance by employee-day
     const hoursEmployeeDayMap = new Map();
     attendanceData.forEach(record => {
-      const dateKey = record.date.toDateString(); // EXACT same as analytics
+      const dateKey = record.date.toDateString();
       const empDayKey = `${record.empid}-${dateKey}`;
       
       if (!hoursEmployeeDayMap.has(empDayKey)) {
@@ -136,7 +143,7 @@ export default async function handler(req, res) {
       hoursEmployeeDayMap.get(empDayKey).push(record);
     });
     
-    // Calculate total hours for each employee-day (EXACT same as analytics)
+    // Calculate total hours for each employee-day
     hoursEmployeeDayMap.forEach(dayRecords => {
       let totalSeconds = 0;
       dayRecords.forEach(record => {
@@ -154,16 +161,10 @@ export default async function handler(req, res) {
     const avgWorkingHours = realTimeHours.length > 0
       ? (realTimeHours.reduce((a, b) => a + b, 0) / realTimeHours.length).toFixed(1)
       : '0';
-    
-    // console.log('Attendance - realTimeHours:', realTimeHours);
-    // console.log('Attendance - avgWorkingHours:', avgWorkingHours);
 
     const finalAttendanceData = results.map((user) => {
       const userAttendance = roleFilteredAttendance.filter(a => a.empid === user.empid);
       const attendance_status = (user.today_total_seconds || 0) >= 14400 ? "Present" : "Absent";
-      
-      // Determine attendance status based on check-in/check-out state
-      const attendanceSessionStatus = user.today_checkin ? "Logged In" : "Logged Out";
       
       // Use EXACT same calculation as analytics for individual user hours
       let userTotalSeconds = 0;
@@ -183,12 +184,12 @@ export default async function handler(req, res) {
         role: user.role,
         last_login: user.last_login ? user.last_login.toISOString() : null,
         last_logout: user.today_checkout ? user.today_checkout.toISOString() : null,
-        today_checkin: user.today_checkin ? user.today_checkin.toISOString() : null,
+        current_checkin: user.current_session_checkin ? user.current_session_checkin.toISOString() : null,
         today_completed_seconds: user.today_completed_seconds || 0,
         today_total_seconds: user.today_total_seconds || 0,
         total_hours: userRealTimeHours.toFixed(1),
         attendance_status,
-        status: attendanceSessionStatus,
+        is_logged_in: user.has_open_session
       };
     });
 
