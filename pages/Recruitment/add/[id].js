@@ -50,15 +50,50 @@ const AddEmployee = () => {
   const [positions, setPositions] = useState([]);
   const [candidate, setCandidate] = useState(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState(['employee', 'hr', 'admin']); // Default fallback
+  const [currentUserRole, setCurrentUserRole] = useState('');
 
   useEffect(() => {
-    // Fetch positions
+    // Fetch positions and get current user role
     axios.get('/api/settings/positions')
       .then((res) => {
         setPositions(res.data);
       })
       .catch((err) => {
         console.error('Error fetching positions:', err);
+      });
+
+    // Get current user role and set available roles
+    axios.get('/api/auth/me')
+      .then((res) => {
+        // console.log('User data:', res.data);
+        const userRole = res.data.user.role?.toLowerCase();
+        // console.log("role",userRole);
+        
+        setCurrentUserRole(userRole);
+        
+        // Set available roles based on user role
+        let roles = [];
+        switch (userRole) {
+          case 'hr':
+            roles = ['employee'];
+            break;
+          case 'admin':
+            roles = ['employee', 'hr'];
+            break;
+          case 'superadmin':
+            roles = ['employee', 'hr', 'admin'];
+            break;
+          default:
+            roles = ['employee']; // fallback
+        }
+        // console.log('Available roles:', roles);
+        setAvailableRoles(roles);
+      })
+      .catch((err) => {
+        console.error('Error fetching user role:', err);
+        // Fallback to employee role if API fails
+        setAvailableRoles(['employee']);
       });
 
     if (id) {
@@ -522,9 +557,11 @@ const AddEmployee = () => {
                       <option value="" disabled>
                         Select Role
                       </option>
-                      <option value="hr">HR</option>
-                      <option value="employee">Employee</option>
-                      <option value="admin">Admin</option>
+                      {availableRoles.map((role) => (
+                        <option key={role} value={role}>
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </option>
+                      ))}
                     </select>
                     {errors.role && (
                       <p className="text-red-500 text-sm mt-1">{errors.role}</p>
