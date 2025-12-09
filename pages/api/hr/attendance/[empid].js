@@ -91,6 +91,7 @@ export default async function handler(req, res) {
       const validCheckOuts = sessions.map(s => new Date(s.check_out)).filter(d => !isNaN(d));
 
       const firstCheckIn = validCheckIns.length ? new Date(Math.min(...validCheckIns)) : null;
+      const lastCheckIn = validCheckIns.length ? new Date(Math.max(...validCheckIns)) : null;
       const lastCheckOut = validCheckOuts.length ? new Date(Math.max(...validCheckOuts)) : null;
 
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
@@ -105,6 +106,7 @@ export default async function handler(req, res) {
       return {
         date: formattedDate,
         check_in: formatTime(firstCheckIn),
+        last_check_in: formatTime(lastCheckIn),
         check_out: check_out_display,
         total_hours: formatted,
         login_status,
