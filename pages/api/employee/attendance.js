@@ -1,122 +1,139 @@
 import { verifyEmployeeToken } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import prisma from "@/lib/prisma";
+import { format } from 'date-fns';
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
+// ---------------- Format Time ----------------
+const formatTime = (date) => {
+  if (!date || isNaN(new Date(date))) return '';
+  const opts = { hour: 'numeric', minute: 'numeric', hour12: true };
+  return new Intl.DateTimeFormat('en-US', opts).format(new Date(date));
+};
+
+// ---------------- Total Working Hours ----------------
+const calculateTotalWorkingHours = (sessions) => {
+  let totalSeconds = 0;
+
+  const validSessions = sessions.filter(s => s.check_in && s.check_out);
+  
+  for (let s of validSessions) {
+    const checkIn = new Date(s.check_in);
+    const checkOut = new Date(s.check_out);
+    totalSeconds += (checkOut - checkIn) / 1000;
   }
 
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s2 = Math.floor(totalSeconds % 60);
+
+  return {
+    totalSeconds,
+    formatted: `${h.toString().padStart(2, '0')}:${m
+      .toString()
+      .padStart(2, '0')}:${s2.toString().padStart(2, '0')}`
+  };
+};
+
+// ---------------- Attendance / Login Status ----------------
+const calculateAttendanceStatus = (total) =>
+  total >= 14400 ? "Present" : "Absent";
+
+const getLoginStatus = (sessions) => {
+  const hasIn = sessions.some(s => s.check_in);
+  const allOut = sessions.every(s => s.check_out);
+
+  if (hasIn && allOut) return "Logged Out";
+  if (hasIn && !allOut) return "Logged In";
+  return "Not Logged In";
+};
+
+// ---------------- MAIN API ----------------
+export default async function handler(req, res) {
+  if (req.method !== 'GET')
+    return res.status(405).json({ message: "Method not allowed" });
+
   try {
+    // Authenticate employee
     const user = await verifyEmployeeToken(req);
-    if (!user) {
-      return res.status(401).json({ message: 'Unauthorized access' });
-    }
+    if (!user)
+      return res.status(401).json({ message: "Unauthorized access" });
 
     const { month, year } = req.query;
-    
-    // Validate month and year
     const targetMonth = month ? parseInt(month) - 1 : new Date().getMonth();
     const targetYear = year ? parseInt(year) : new Date().getFullYear();
-    
-    if (targetMonth < 0 || targetMonth > 11) {
-      return res.status(400).json({ message: 'Invalid month. Must be between 1-12' });
-    }
-    
-    if (targetYear < 2020 || targetYear > 2030) {
-      return res.status(400).json({ message: 'Invalid year. Must be between 2020-2030' });
-    }
 
-    // Get target month's attendance records for the authenticated employee only
+    // Month range
     const startOfMonth = new Date(targetYear, targetMonth, 1);
-    const endOfMonth = new Date(targetYear, targetMonth + 1, 0);
+    startOfMonth.setHours(0, 0, 0, 0);
 
-    const attendanceRecords = await prisma.attendance.findMany({
+    const endOfMonth = new Date(targetYear, targetMonth + 1, 1);
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // Fetch attendance for this employee
+    const rows = await prisma.attendance.findMany({
       where: {
         empid: user.empid,
-        date: {
-          gte: startOfMonth,
-          lte: endOfMonth,
-        },
+        date: { gte: startOfMonth, lt: endOfMonth }
       },
-      select: {
-        date: true,
-        check_in: true,
-        check_out: true,
-        total_hours: true,
-        attendance_status: true,
-      },
-      orderBy: {
-        date: 'desc',
-      },
+      orderBy: { date: "asc" }
     });
 
-    // Group by date and aggregate multiple check-ins/check-outs
-    const groupedAttendance = {};
-    
-    attendanceRecords.forEach(record => {
-      const dateKey = record.date.toISOString().split('T')[0];
-      
-      if (!groupedAttendance[dateKey]) {
-        groupedAttendance[dateKey] = {
-          date: record.date,
-          attendance_status: record.attendance_status,
-          check_ins: [],
-          check_outs: [],
-        };
-      }
-      
-      if (record.check_in) {
-        groupedAttendance[dateKey].check_ins.push(record.check_in);
-      }
-      if (record.check_out) {
-        groupedAttendance[dateKey].check_outs.push(record.check_out);
-      }
-    });
+    // Group by date
+    const grouped = rows.reduce((acc, row) => {
+      const dateKey = new Date(row.date).toISOString().split("T")[0];
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(row);
+      return acc;
+    }, {});
 
-    // Process aggregated data
-    const processedAttendance = Object.values(groupedAttendance).map(dayRecord => {
-      const firstCheckIn = dayRecord.check_ins.length > 0 
-        ? new Date(Math.min(...dayRecord.check_ins.map(time => new Date(time))))
-        : null;
-      
-      const lastCheckOut = dayRecord.check_outs.length > 0
-        ? new Date(Math.max(...dayRecord.check_outs.map(time => new Date(time))))
-        : null;
-      
-      // Calculate total working time from all check-in/check-out pairs
-      let totalWorkingMinutes = 0;
-      const sortedCheckIns = dayRecord.check_ins.sort();
-      const sortedCheckOuts = dayRecord.check_outs.sort();
-      
-      for (let i = 0; i < Math.min(sortedCheckIns.length, sortedCheckOuts.length); i++) {
-        const checkIn = new Date(sortedCheckIns[i]);
-        const checkOut = new Date(sortedCheckOuts[i]);
-        totalWorkingMinutes += (checkOut - checkIn) / (1000 * 60);
-      }
-      
+    // Process sessions
+    const attendance = Object.entries(grouped).map(([date, sessions]) => {
+      const formattedDate = format(new Date(date), "dd-MM-yyyy");
+      const login_status = getLoginStatus(sessions);
+
+      const validIns = sessions.map(s => new Date(s.check_in)).filter(x => !isNaN(x));
+      const validOuts = sessions.map(s => new Date(s.check_out)).filter(x => !isNaN(x));
+
+      const firstCheckIn = validIns.length ? new Date(Math.min(...validIns)) : null;
+      const lastCheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
+
+      const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
+      const attendance_status = calculateAttendanceStatus(totalSeconds);
+
+      const isToday = date === today;
+
       return {
-        date: dayRecord.date,
-        attendance_status: dayRecord.attendance_status,
-        check_in: firstCheckIn,
-        check_out: lastCheckOut,
-        total_hours: dayRecord.total_hours || (totalWorkingMinutes / 60),
-        total_working_minutes: totalWorkingMinutes,
-        status: dayRecord.attendance_status || ((totalWorkingMinutes >= 240) ? 'Present' : 'Absent'),
+        date: formattedDate,
+        check_in: formatTime(firstCheckIn),
+        check_out:lastCheckOut && (!isToday || lastCheckOut < new Date()) ? formatTime(lastCheckOut) : '',
+        total_hours: formatted,
+        login_status,
+        attendance_status,
       };
     });
 
-    res.status(200).json(processedAttendance);
-  } catch (error) {
-    console.error('Error fetching employee attendance:', error);
-    
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Invalid authentication token' });
-    }
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Authentication token expired' });
-    }
-    
-    res.status(500).json({ message: 'Internal server error while fetching attendance' });
+    // Summary Calc
+    const presentDays = attendance.filter(a => a.attendance_status === "Present").length;
+
+    const profile = await prisma.users.findUnique({
+      where: { empid: user.empid },
+      select: { name: true, email: true }
+    });
+
+    res.status(200).json({
+      employee: {
+        empid: user.empid,
+        name: profile?.name || "--",
+        email: profile?.email || "--",
+        daysPresent: presentDays,
+        daysAbsent: attendance.length - presentDays,
+        totalDays: attendance.length
+      },
+      attendance
+    });
+
+  } catch (err) {
+    console.error("Attendance Error:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 }
