@@ -86,6 +86,8 @@ export default function EmployeeLogin() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email or username"
                   required
+                  autoComplete="off"
+                  autoCorrect="off"
                 />
               </div>
 
@@ -99,6 +101,7 @@ export default function EmployeeLogin() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   required
+                  autoComplete="off"
                   style={{
                     WebkitTextSecurity: 'none',
                     MsRevealButton: 'none'
