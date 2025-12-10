@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
@@ -61,8 +61,9 @@ export default function LeaveRequest({ user }) {
     leave_type: "Sick Leave",
     attachment: ""
   });
-    const [selectedReason, setSelectedReason] = useState(null);
-
+  const [selectedReason, setSelectedReason] = useState(null);
+  const [errors, setErrors] = useState({});
+const fileInputRef = useRef(null);
 
 
 
@@ -94,10 +95,70 @@ export default function LeaveRequest({ user }) {
     }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Date validations
+    if (!formData.from_date) {
+      newErrors.from_date = "From date is required";
+    } else {
+      const fromDate = new Date(formData.from_date);
+      if (fromDate < today) {
+        newErrors.from_date = "From date cannot be in the past";
+      }
+    }
+    
+    if (!formData.to_date) {
+      newErrors.to_date = "To date is required";
+    } else if (formData.from_date) {
+      const fromDate = new Date(formData.from_date);
+      const toDate = new Date(formData.to_date);
+      if (toDate < fromDate) {
+        newErrors.to_date = "To date must be after from date";
+      }
+    }
+    
+    // Reason validation
+    if (!formData.reason.trim()) {
+      newErrors.reason = "Reason is required";
+    } else if (formData.reason.trim().length < 10) {
+      newErrors.reason = "Reason must be at least 10 characters";
+    } else if (formData.reason.trim().length > 500) {
+      newErrors.reason = "Reason cannot exceed 500 characters";
+    }
+    
+    // File validation
+    if (formData.attachment && typeof formData.attachment === 'object') {
+      const file = formData.attachment;
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'];
+      
+      if (file.size > maxSize) {
+        newErrors.attachment = "File size cannot exceed 5MB";
+      }
+      
+      if (!allowedTypes.includes(file.type)) {
+        newErrors.attachment = "Only PDF, DOC, DOCX, JPG, JPEG, PNG files are allowed";
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
   e.preventDefault();
+  
+  if (!validateForm()) {
+    setMessage("Please fix the errors below");
+    return;
+  }
+  
   setLoading(true);
   setMessage("");
+  setErrors({});
 
   try {
     let attachmentData = "";
@@ -137,6 +198,9 @@ export default function LeaveRequest({ user }) {
         leave_type: "Sick Leave",
         attachment: ""
       });
+      if (fileInputRef.current) {
+    fileInputRef.current.value = "";
+  }
     } else {
       setMessage(data.message || "Failed to submit leave request.");
     }
@@ -186,7 +250,13 @@ export default function LeaveRequest({ user }) {
 
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: "" });
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -347,9 +417,18 @@ export default function LeaveRequest({ user }) {
                           name="from_date"
                           value={formData.from_date}
                           onChange={handleChange}
+                          min={new Date().toISOString().split('T')[0]}
                           required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
+                            errors.from_date ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
                         />
+                        {errors.from_date && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            {errors.from_date}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -362,9 +441,17 @@ export default function LeaveRequest({ user }) {
                           value={formData.to_date}
                           onChange={handleChange}
                           required
-                          min={formData.from_date}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                          min={formData.from_date || new Date().toISOString().split('T')[0]}
+                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
+                            errors.to_date ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
                         />
+                        {errors.to_date && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            {errors.to_date}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -372,17 +459,30 @@ export default function LeaveRequest({ user }) {
                           Attachment (Optional)
                         </label>
                         <input
-                          type="file"
-                          name="attachment"
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              setFormData({ ...formData, attachment: file });
-                            }
-                          }}
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
-                        />
+  type="file"
+  name="attachment"
+  ref={fileInputRef}
+  onChange={(e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData({ ...formData, attachment: file });
+      if (errors.attachment) {
+        setErrors({ ...errors, attachment: "" });
+      }
+    }
+  }}
+  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+  className={`w-full px-4 py-3 border rounded-xl ${
+    errors.attachment ? 'border-red-300 bg-red-50' : 'border-gray-300'
+  }`}
+/>
+                        <p className="mt-1 text-xs text-gray-500">Max file size: 5MB. Allowed: PDF, DOC, DOCX, JPG, PNG</p>
+                        {errors.attachment && (
+                          <p className="mt-1 text-sm text-red-600 flex items-center">
+                            <AlertCircle className="w-4 h-4 mr-1" />
+                            {errors.attachment}
+                          </p>
+                        )}
                         {formData.attachment && (
                           <div className="mt-2 p-2 bg-gray-50 rounded-lg">
                             <p className="text-sm text-gray-600">Selected: {formData.attachment.name}</p>
@@ -423,9 +523,27 @@ export default function LeaveRequest({ user }) {
                         onChange={handleChange}
                         required
                         rows={4}
-                        placeholder="Please provide a reason for your leave request..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        maxLength={500}
+                        placeholder="Please provide a reason for your leave request (minimum 10 characters)..."
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
+                          errors.reason ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                        }`}
                       />
+                      <div className="flex justify-between mt-1">
+                        <div>
+                          {errors.reason && (
+                            <p className="text-sm text-red-600 flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {errors.reason}
+                            </p>
+                          )}
+                        </div>
+                        <p className={`text-xs ${
+                          formData.reason.length > 450 ? 'text-red-500' : 'text-gray-500'
+                        }`}>
+                          {formData.reason.length}/500 characters
+                        </p>
+                      </div>
                     </div>
 
                     <button
@@ -503,7 +621,24 @@ export default function LeaveRequest({ user }) {
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {request.attachment ? (
                                   <button
-                                    onClick={() => window.open(request.attachment, '_blank')}
+                                    onClick={() => {
+                                      try {
+                                        const byteCharacters = atob(request.attachment.split(',')[1]);
+                                        const byteNumbers = new Array(byteCharacters.length);
+                                        for (let i = 0; i < byteCharacters.length; i++) {
+                                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                        }
+                                        const byteArray = new Uint8Array(byteNumbers);
+                                        const mimeType = request.attachment.split(',')[0].split(':')[1].split(';')[0];
+                                        const blob = new Blob([byteArray], { type: mimeType });
+                                        const url = URL.createObjectURL(blob);
+                                        window.open(url, '_blank');
+                                        setTimeout(() => URL.revokeObjectURL(url), 1000);
+                                      } catch (error) {
+                                        console.error('Error opening attachment:', error);
+                                        alert('Unable to open attachment');
+                                      }
+                                    }}
                                     className="flex items-center text-indigo-600 hover:text-indigo-800"
                                   >
                                     <Eye className="w-4 h-4 mr-1" />
