@@ -288,7 +288,11 @@ export default function TaskManagement({ user }) {
                             ))}
                           </div>
                         )}
-
+{showDropdown && searchTerm.trim() !== "" && filteredEmployees.length === 0 && (
+  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 text-red-600 text-sm">
+    No matching employee found
+  </div>
+)}
                           
                           {selectedEmployee && (
                             <div className="mt-2 p-2 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-between">
