@@ -197,8 +197,9 @@ export default function MyAttendance() {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check In</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check Out</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Check In</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Check In</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Check Out</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hours</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Login Status</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance Status</th>
@@ -215,35 +216,34 @@ export default function MyAttendance() {
                                                 return (
                                                     <tr key={index} className="hover:bg-gray-50">
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {new Date(record.date).toLocaleDateString('en-US', { 
-                                                                weekday: 'short', 
-                                                                day: 'numeric', 
-                                                                month: 'short' 
-                                                            })}
+                                                            {record.date}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {formatTime(record.check_in)}
+                                                            {record.first_check_in || '--'}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {formatTime(record.check_out)}
+                                                            {record.last_check_in || '--'}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {totalHours > 0 ? `${totalHours.toFixed(1)} hrs` : '--'}
+                                                            {record.check_out || '--'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {record.total_hours || '--'}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                                loginStatus === 'Logged Out' ? 'bg-gray-100 text-gray-800' :
-                                                                loginStatus === 'Logged In' ? 'bg-blue-100 text-blue-800' :
+                                                                record.login_status === 'Logged Out' ? 'bg-gray-100 text-gray-800' :
+                                                                record.login_status === 'Logged In' ? 'bg-green-100 text-green-800' :
                                                                 'bg-red-100 text-red-800'
                                                             }`}>
-                                                                {loginStatus}
+                                                                {record.login_status}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                                attendanceStatus === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                                record.attendance_status === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                                             }`}>
-                                                                {attendanceStatus}
+                                                                {record.attendance_status}
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -251,7 +251,7 @@ export default function MyAttendance() {
                                             })
                                         ) : (
                                             <tr>
-                                                <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                                                <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
                                                     No attendance records found for {monthNames[currentMonth]} {currentYear}
                                                 </td>
                                             </tr>

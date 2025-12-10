@@ -307,10 +307,13 @@ const attendanceRate = workingDays.length > 0
                         Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Check In Time
+                        First Check In Time
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Check Out Time
+                        Last Check In Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Check Out Time
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Total Time
@@ -326,7 +329,7 @@ const attendanceRate = workingDays.length > 0
                         // Parse dd-MM-yyyy format to get month
                         const dateParts = record.date.split('-');
                         const monthIndex = parseInt(dateParts[1]) - 1;
-                        
+                         console.log('Rendering record:', record);
                         return (
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -336,7 +339,10 @@ const attendanceRate = workingDays.length > 0
                               {record.date}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {record.check_in || '--'}
+                              {record.first_check_in || '--'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {record.last_check_in || '--'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {record.check_out || '--'}

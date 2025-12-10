@@ -87,7 +87,7 @@ export default async function handler(req, res) {
     }, {});
 
     // Process sessions
-    const attendance = Object.entries(grouped).map(([date, sessions]) => {
+    const attendance = Object.entries(grouped).reverse().map(([date, sessions]) => {
       const formattedDate = format(new Date(date), "dd-MM-yyyy");
       const login_status = getLoginStatus(sessions);
 
@@ -95,7 +95,8 @@ export default async function handler(req, res) {
       const validOuts = sessions.map(s => new Date(s.check_out)).filter(x => !isNaN(x));
 
       const firstCheckIn = validIns.length ? new Date(Math.min(...validIns)) : null;
-      const lastCheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
+      const lastCheckIn = validIns.length ? new Date(Math.max(...validIns)) : null;
+      const CheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
 
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
       const attendance_status = calculateAttendanceStatus(totalSeconds);
@@ -104,8 +105,9 @@ export default async function handler(req, res) {
 
       return {
         date: formattedDate,
-        check_in: formatTime(firstCheckIn),
-        check_out:lastCheckOut && (!isToday || lastCheckOut < new Date()) ? formatTime(lastCheckOut) : '',
+        first_check_in: formatTime(firstCheckIn),
+        last_check_in: formatTime(lastCheckIn),
+        check_out: isToday && login_status === 'Logged In' ? '--' : formatTime(CheckOut),
         total_hours: formatted,
         login_status,
         attendance_status,
