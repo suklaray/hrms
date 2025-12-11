@@ -402,14 +402,22 @@ const Header = () => {
               <div className="flex items-center space-x-4">
                 <Link
                   href="/login"
-                  className="flex items-center space-x-2 px-4 py-2 text-white hover:text-yellow-300 hover:bg-white/10 rounded-lg transition-all duration-200 font-medium"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                    router.pathname === '/login'
+                      ? 'text-yellow-300 bg-white/20'
+                      : 'text-white hover:text-yellow-300 hover:bg-white/10'
+                  }`}
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>Admin Login</span>
                 </Link>
                 <Link
                   href="/employee/login"
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-all duration-200 font-medium"
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                    router.pathname === '/employee/login'
+                      ? 'text-yellow-300 bg-white/20'
+                      : 'text-white '
+                  }`}
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>Employee Login</span>
@@ -513,7 +521,11 @@ const Header = () => {
               <div className="space-y-2 pt-2 border-t border-white/20">
                 <Link
                   href="/login"
-                  className="flex items-center space-x-3 px-4 py-3 text-white hover:text-yellow-300 hover:bg-white/10 rounded-lg transition-all duration-200"
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    router.pathname === '/login'
+                      ? 'text-yellow-300 bg-white/20'
+                      : 'text-white hover:text-yellow-300 hover:bg-white/10'
+                  }`}
                   onClick={() => setMenuOpen(false)}
                 >
                   <UserPlus className="w-5 h-5" />
@@ -521,7 +533,11 @@ const Header = () => {
                 </Link>
                 <Link
                   href="/employee/login"
-                  className="flex items-center space-x-3 px-4 py-3 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-all duration-200"
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    router.pathname === '/employee/login'
+                      ? 'text-yellow-300 bg-white/20'
+                      : 'text-white hover:text-yellow-300 hover:bg-white/10'
+                  }`}
                   onClick={() => setMenuOpen(false)}
                 >
                   <UserPlus className="w-5 h-5" />
@@ -532,7 +548,7 @@ const Header = () => {
             {user && (
               <div className="flex px-4">
                 <button
-                  className="relative flex items-center space-x-2 px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 transition-all duration-200"
+                  className="relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200"
                   onClick={() => setShowModal(true)}
                 >
                   <Bell className="w-5 h-5 text-white" />
