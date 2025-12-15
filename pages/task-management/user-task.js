@@ -86,17 +86,40 @@ const calculateStats = useCallback(() => {
     }
   };
 
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedHours = hours.toString().padStart(2, '0');
+    
+    return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm}`;
+  };
+
   const getDeadlineStatus = (deadline, status) => {
     if (status === 'Completed') return null;
-    
-    const today = new Date();
+    const now = new Date();
     const dueDate = new Date(deadline);
-    const diffTime = dueDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Compare exact datetime, not just dates
+    const diffTime = dueDate.getTime() - now.getTime();
+    const diffMinutes = Math.floor(diffTime / (1000 * 60));
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    if (diffDays < 0) {
-      return { text: `Overdue by ${Math.abs(diffDays)} day(s)`, color: 'text-red-600', bg: 'bg-red-50' };
+    if (diffTime < 0) {
+      return { text: 'Overdue', color: 'text-red-600', bg: 'bg-red-50' };
     } else if (diffDays === 0) {
+      // Due today - check remaining hours
+      if (diffHours < 2) {
+        return { text: `Due in ${diffHours === 0 ? Math.max(1, diffMinutes) + ' minute(s)' : diffHours + ' hour(s)'}`, color: 'text-red-600', bg: 'bg-red-50' };
+      }
       return { text: 'Due today', color: 'text-orange-600', bg: 'bg-orange-50' };
     } else if (diffDays === 1) {
       return { text: 'Due tomorrow', color: 'text-yellow-600', bg: 'bg-yellow-50' };
@@ -321,7 +344,7 @@ const calculateStats = useCallback(() => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
-                                {new Date(task.deadline).toLocaleDateString()}
+                                {formatDateTime(task.deadline)}
                               </div>
                               {deadlineStatus && (
                                 <div className={`text-xs mt-1 px-2 py-1 rounded-full inline-block ${deadlineStatus.bg} ${deadlineStatus.color}`}>

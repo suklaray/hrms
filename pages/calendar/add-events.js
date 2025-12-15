@@ -601,7 +601,7 @@ export default function AddEvent() {
                                      return !hasRoleMatch && !hasPositionMatch && !hasTypeMatch;
                                    })()) && (
                                     <div className="px-4 py-6 text-center text-gray-500">
-                                      <div className="text-sm">No matches found for "{searchTerm}"</div>
+                                      <div className="text-sm">No matches found for &quot;{searchTerm}&quot;</div>
                                     </div>
                                   )}
                                 </>

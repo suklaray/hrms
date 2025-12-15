@@ -151,7 +151,7 @@ useEffect(() => {
             <div className="max-w-4xl mx-auto text-center">
               <div className="bg-red-50 border border-red-200 rounded-lg p-8">
                 <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-                <p className="text-red-700 mb-4">You don't have permission to access this page.</p>
+                <p className="text-red-700 mb-4">You don&apos;t have permission to access this page.</p>
                 {/* <p className="text-gray-600">Only Super Administrators can access Bot Settings.</p> */}
                 <button
                   onClick={() => router.push('/dashboard')}

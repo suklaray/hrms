@@ -36,6 +36,20 @@ export default async function handler(req, res) {
     const startDate = new Date(parseInt(year), monthNumber - 1, 1);
     const endDate = new Date(parseInt(year), monthNumber, 0);
 
+    // Fetch leave types to get paid status
+    const leaveTypes = await prisma.leave_types.findMany({
+      select: {
+        type_name: true,
+        paid: true
+      }
+    });
+
+    // Create a map for quick lookup
+    const leaveTypeMap = leaveTypes.reduce((acc, type) => {
+      acc[type.type_name.toLowerCase()] = type.paid;
+      return acc;
+    }, {});   
+
     // Fetch leave requests for the employee in the specified month
     const leaves = await prisma.leave_requests.findMany({
       where: {
@@ -66,10 +80,12 @@ export default async function handler(req, res) {
       }
     });
 
-    // Categorize leaves
+    // Categorize leaves based on actual leave type configuration
     const approvedLeaves = leaves.filter(leave => leave.status === 'Approved');
-    const paidLeaves = approvedLeaves.filter(leave => leave.leave_type !== 'Unpaid Leave');
-    const unpaidLeaves = approvedLeaves.filter(leave => leave.leave_type === 'Unpaid Leave');
+    const paidLeaves = approvedLeaves.filter(leave => leaveTypeMap[leave.leave_type.toLowerCase()] === true);
+    const unpaidLeaves = approvedLeaves.filter(leave => leaveTypeMap[leave.leave_type.toLowerCase()] === false);
+    console.log('Leave Type Map:', leaveTypeMap);
+    console.log('Approved Leaves:', approvedLeaves.map(l => ({ type: l.leave_type, paid: leaveTypeMap[l.leave_type] })));
 
     res.status(200).json({
       approved: {

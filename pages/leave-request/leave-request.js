@@ -147,21 +147,20 @@ export default function LeaveRequest({ user }) {
   }
 };
 
-
-
-  const fetchLeaveTypes = async () => {
-    try {
-      const response = await fetch("/api/leave/types", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setLeaveTypes(data || []);
-      }
-    } catch (error) {
-      console.error("Failed to fetch leave types:", error);
+const fetchLeaveTypes = async () => {
+  try {
+    const response = await fetch("/api/leave/balances", {
+      credentials: "include",
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setLeaveTypes(data || []);
     }
-  };
+  } catch (error) {
+    console.error("Failed to fetch leave balances:", error);
+  }
+};
+
 
   const calculateDays = useCallback(() => {
     if (formData.from_date && formData.to_date) {
@@ -234,36 +233,41 @@ export default function LeaveRequest({ user }) {
                 <h3 className="text-lg font-semibold text-gray-900">Leave Types</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {leaveTypes.map((type, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {type.type_name?.replace(/_/g, ' ')}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {type.max_days || 0}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {type.max_days || 0}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {leaveTypes.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">No leave types found</p>
-                  </div>
-                )}
-              </div>
+  <table className="w-full">
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Used</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
+      </tr>
+    </thead>
+    <tbody className="divide-y divide-gray-200">
+      {leaveTypes.map((type, index) => (
+        <tr key={index} className="hover:bg-gray-50">
+          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+            {type.type_name?.replace(/_/g, ' ')}
+          </td>
+          <td className="px-6 py-4 text-sm text-gray-900">
+            {type.max_days || 0}
+          </td>
+          <td className="px-6 py-4 text-sm text-gray-900">
+            {type.used || 0}
+          </td>
+          <td className="px-6 py-4 text-sm text-gray-900">
+            {type.remaining || 0}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  {leaveTypes.length === 0 && (
+    <div className="text-center py-8">
+      <p className="text-gray-500">No leave types found</p>
+    </div>
+  )}
+</div>
+
             </div>
 
             {/* Tabs */}

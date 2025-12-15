@@ -118,7 +118,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Deadline is required' });
       }
 
-      // Validate date format
+      // Validate and parse date format (treat as local time)
       const deadlineDate = new Date(deadline);
       if (isNaN(deadlineDate.getTime())) {
         console.error('Invalid deadline format:', deadline);
