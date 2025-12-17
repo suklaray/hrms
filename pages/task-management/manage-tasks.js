@@ -262,7 +262,14 @@ export default function TaskManagement({ user }) {
                             onChange={(e) => {
                               setSearchTerm(e.target.value);
                               setShowDropdown(e.target.value.trim() !== "");
+                              
+                              // Clear selected employee when search term is cleared
+                              if (e.target.value.trim() === "") {
+                                setSelectedEmployee(null);
+                                setFormData({ ...formData, assigned_to: "" });
+                              }
                             }}
+
                             placeholder="Search by name, email or ID..."
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />

@@ -36,7 +36,7 @@ export default function EmployeePayroll() {
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <SideBar />
 
-      <main className="flex-1 p-8">
+      <main className="flex-1 p-8 overflow-auto">
         {/* Modern Header */}
         <div className="mb-8">
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">

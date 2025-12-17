@@ -164,9 +164,9 @@ export default async function handler(req, res) {
             interview_time_to: interviewTimeTo,
             resume: resumePath,
             form_link: formLink,
-            form_token: formToken, // ✅ new field for secure form access
+            form_token: formToken, // new field for secure form access
             form_submitted: false,
-            status: "Pending",
+            status: "Waiting",// changed Pending to Waiting
           },
         });
 

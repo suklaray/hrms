@@ -3,7 +3,8 @@ import prisma from "@/lib/prisma";
 import crypto from "crypto";
 
 export default async function handler(req, res) {
-  if (req.method !== "PUT") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "PUT")
+    return res.status(405).json({ error: "Method not allowed" });
 
   const { candidateId } = req.body;
 
@@ -12,7 +13,8 @@ export default async function handler(req, res) {
       where: { candidate_id: candidateId },
     });
 
-    if (!candidate) return res.status(404).json({ error: "Candidate not found" });
+    if (!candidate)
+      return res.status(404).json({ error: "Candidate not found" });
 
     // Generate token and update form link if not exists
     let formLink = candidate.form_link;
@@ -22,13 +24,13 @@ export default async function handler(req, res) {
       const host = req.headers.host;
       const baseUrl = `${protocol}://${host}`;
       formLink = `${baseUrl}/Recruitment/form/${token}`;
-      
+
       await prisma.candidates.update({
         where: { candidate_id: candidateId },
-        data: { 
+        data: {
           form_link: formLink,
-          form_token: token 
-        }
+          form_token: token,
+        },
       });
     }
 
@@ -56,10 +58,13 @@ export default async function handler(req, res) {
 
     await transporter.sendMail(mailOptions);
 
-    res.status(200).json({ message: "Form submission email sent successfully." });
-
+    res
+      .status(200)
+      .json({ message: "Form submission email sent successfully." });
   } catch (error) {
-    console.error("Error sending form mail:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("FULL PROD ERROR:", error);
+    return res
+      .status(500)
+      .json({ error: error.toString(), stack: error.stack });
   }
 }

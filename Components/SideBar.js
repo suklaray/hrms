@@ -583,17 +583,20 @@ export default function Sidebar({ user: propUser }) {
                         </Link>
                       </li>
                     )}
-                    <li>
-                      <Link href="/settings/bot-settings">
-                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          router.pathname === '/settings/bot-settings'
-                            ? 'bg-indigo-500 text-white'
-                            : 'bg-gray-700 hover:bg-indigo-500'
-                        }`}>
-                          Bot Settings
-                        </span>
-                      </Link>
-                    </li>
+                    {/* Bot Settings - Only for superadmin */}
+                    {role === "superadmin" && (
+                      <li>
+                        <Link href="/settings/bot-settings">
+                          <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                            router.pathname === '/settings/bot-settings'
+                              ? 'bg-indigo-500 text-white'
+                              : 'bg-gray-700 hover:bg-indigo-500'
+                          }`}>
+                            Bot Settings
+                          </span>
+                        </Link>
+                      </li>
+                    )}
                     <li>
                       <Link href="/settings/position-management">
                         <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${

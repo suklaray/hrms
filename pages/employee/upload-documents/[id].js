@@ -45,6 +45,7 @@ export default function EmployeeDocumentForm() {
   const [extracting, setExtracting] = useState({ aadhar: false, pan: false });
   const [existingData, setExistingData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isFormSubmitted, setIsFormSubmitted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -129,6 +130,13 @@ export default function EmployeeDocumentForm() {
           name: decodeURIComponent(prefillName),
           email: decodeURIComponent(prefillEmail)
         });
+        axios.get(`/api/employee/get-employee/${id}`)
+          .then((res) => {
+            if (res.data.form_submitted) {
+              setIsFormSubmitted(true);
+            }
+          })
+          .catch((err) => console.error("Error fetching employee:", err));
       } else {
         // Fetch employee data
         axios.get(`/api/employee/get-employee/${id}`, {
@@ -142,6 +150,9 @@ export default function EmployeeDocumentForm() {
         })
           .then((res) => {
             setEmployee(res.data);
+            if (res.data.form_submitted) {
+              setIsFormSubmitted(true);
+            }
           })
           .catch((err) => console.error("Error fetching employee:", err));
       }
@@ -573,8 +584,29 @@ export default function EmployeeDocumentForm() {
       </Head>
       <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
+        {isFormSubmitted && (
+          <div style={{
+            padding: '1rem',
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: '0.5rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <CheckCircle size={20} color="#0ea5e9" />
+            <span style={{ color: '#0ea5e9', fontWeight: '500' }}>
+              Documents already submitted - View only
+            </span>
+          </div>
+        )}
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
+          <div style={{ 
+            pointerEvents: isFormSubmitted ? 'none' : 'auto', 
+            opacity: isFormSubmitted ? 0.6 : 1 
+          }}>
+            <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
             {/* Personal Information Section */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
@@ -827,6 +859,7 @@ export default function EmployeeDocumentForm() {
                         rel="noopener noreferrer"
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
                         title="View current document"
+                        style={{ pointerEvents: 'auto' }}
                       >
                         <Eye size={20} />
                       </a>
@@ -1255,7 +1288,8 @@ export default function EmployeeDocumentForm() {
               </div>
             </div>
             
-            {/* Confirmation */}
+            {/* Confirmation - Only show if not submitted*/}
+            {!isFormSubmitted && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <input 
@@ -1275,7 +1309,8 @@ export default function EmployeeDocumentForm() {
                 )}
               </div>
             </div>
-
+            )}
+            {!isFormSubmitted && (
             <button 
               type="submit" 
               disabled={isSubmitting}
@@ -1290,7 +1325,9 @@ export default function EmployeeDocumentForm() {
                 'Submit Documents'
               )}
             </button>
-          </form>
+            )}
+            </form>
+          </div>
         </div>
       </div>
     </div>

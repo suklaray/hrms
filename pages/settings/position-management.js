@@ -4,7 +4,7 @@ import SideBar from "@/Components/SideBar";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Plus, Trash2, Briefcase, Edit } from "lucide-react";
-
+import { swalConfirm } from "@/utils/confirmDialog";
 export default function PositionManagement() {
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +67,8 @@ export default function PositionManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (confirm("Are you sure you want to delete this position?")) {
+    const confirmed = await swalConfirm("Are you sure you want to delete this position?");
+    if (confirmed) {
       try {
         await axios.delete(`/api/settings/positions?id=${id}`);
         toast.success("Position deleted successfully");

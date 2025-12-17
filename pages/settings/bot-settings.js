@@ -7,19 +7,29 @@ import axios from 'axios';
 export default function BotSettings() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const router = useRouter();
   
-  useEffect(() => {
-    axios.get('/api/auth/settings/user-profile')
-      .then((res) => {
-        setUser(res.data);
+
+useEffect(() => {
+  axios.get('/api/auth/settings/user-profile')
+    .then((res) => {
+      setUser(res.data);
+      
+      // Check if user is superadmin
+      if (res.data.role !== 'superadmin') {
+        setAccessDenied(true);
         setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-        router.push('/dashboard');
-      });
-  }, [router]);
+        return;
+      }
+      
+      setLoading(false);
+    })
+    .catch(() => {
+      setLoading(false);
+      router.push('/dashboard');
+    });
+}, [router]);
 
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -129,7 +139,33 @@ export default function BotSettings() {
   };
 
   if (loading) return <div>Loading...</div>;
-
+  if (accessDenied) {
+    return (
+      <>
+        <Head>
+          <title>Access Denied - HRMS</title>
+        </Head>
+        <div className="flex min-h-screen">
+          <SideBar />
+          <div className="flex-1 bg-gradient-to-b from-white to-gray-100 p-10">
+            <div className="max-w-4xl mx-auto text-center">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-8">
+                <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+                <p className="text-red-700 mb-4">You don&apos;t have permission to access this page.</p>
+                {/* <p className="text-gray-600">Only Super Administrators can access Bot Settings.</p> */}
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
   return (
     <>
       <Head>
