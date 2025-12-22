@@ -55,7 +55,7 @@ export default function Candidates(user) {
       const waiting = data.filter(
         (c) =>
           !c.status ||
-          c.status === "Pending" ||
+          // c.status === "Pending" ||
           c.status === "Waiting" ||
           c.status === "Mail Sent" ||
           c.status === "Document Submitted"
@@ -166,8 +166,9 @@ export default function Candidates(user) {
     } else if (statusFilter === "Waiting") {
       matchesStatus =
         !candidate.status ||
-        candidate.status === "Waiting" ||
-        candidate.status === "Pending";
+        candidate.status === "Waiting" 
+        // ||
+        // candidate.status === "Pending";
     } else if (statusFilter === "form_submitted") {
       matchesStatus = candidate.form_submitted === true;
     } else if (statusFilter === "form_not_submitted") {
