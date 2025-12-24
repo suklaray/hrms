@@ -447,23 +447,31 @@ export default function PayrollForm() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <SideBar />
-      
+
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           {/* Breadcrumb Navigation */}
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-            <button onClick={() => router.push('/hr/payroll/payroll-view')} className="hover:text-indigo-600 transition-colors">
+            <button
+              onClick={() => router.push("/hr/payroll/payroll-view")}
+              className="hover:text-indigo-600 transition-colors"
+            >
               Payroll Management
             </button>
             <span>/</span>
-            <button onClick={() => router.push('/hr/payroll/generate')} className="hover:text-indigo-600 transition-colors">
+            <button
+              onClick={() => router.push("/hr/payroll/generate")}
+              className="hover:text-indigo-600 transition-colors"
+            >
               Generate Payroll
             </button>
             <span>/</span>
-            <span className="text-gray-900 font-medium">{employee?.name || empid}</span>
+            <span className="text-gray-900 font-medium">
+              {employee?.name || empid}
+            </span>
           </nav>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -477,7 +485,9 @@ export default function PayrollForm() {
                   <Calculator className="w-6 h-6 text-indigo-600" />
                   Generate Payroll
                 </h1>
-                <p className="text-gray-600">Create salary slip for {employee?.name}</p>
+                <p className="text-gray-600">
+                  Create salary slip for {employee?.name}
+                </p>
               </div>
             </div>
           </div>
@@ -491,45 +501,63 @@ export default function PayrollForm() {
                 <User className="w-5 h-5 text-indigo-600" />
                 Employee Information
               </h2>
-              
+
               {/* Last Generated Message */}
-              {message && message.includes('Last payroll generated') && (
+              {message && message.includes("Last payroll generated") && (
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800 font-medium">{message}</p>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                   <User className="w-5 h-5 text-gray-500 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Employee ID</p>
-                    <p className="font-medium text-gray-900 truncate">{employee.empid}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">
+                      Employee ID
+                    </p>
+                    <p className="font-medium text-gray-900 truncate">
+                      {employee.empid}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                   <User className="w-5 h-5 text-gray-500 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Full Name</p>
-                    <p className="font-medium text-gray-900 truncate">{employee.name}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">
+                      Full Name
+                    </p>
+                    <p className="font-medium text-gray-900 break-words whitespace-normal">
+                      {employee.name}
+                    </p>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                   <Mail className="w-5 h-5 text-gray-500 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Email Address</p>
-                    <p className="font-medium text-gray-900 truncate">{employee.email}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">
+                      Email Address
+                    </p>
+                    <p className="font-medium text-gray-900 break-words whitespace-normal">
+                      {employee.email}
+                    </p>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                   <Phone className="w-5 h-5 text-gray-500 flex-shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wide">Contact Number</p>
-                    <p className="font-medium text-gray-900 truncate">{employee.contact_no || 'Not provided'}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">
+                      Contact Number
+                    </p>
+                    <p className="font-medium text-gray-900 truncate">
+                      {employee.contact_no || "Not provided"}
+                    </p>
                   </div>
                 </div>
               </div>
-              
+
               {/* Bank Details */}
               {employee.bankDetails && (
                 <div>
@@ -540,42 +568,64 @@ export default function PayrollForm() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Account Holder</p>
-                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.account_holder_name}</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                          Account Holder
+                        </p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {employee.bankDetails.account_holder_name}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Name</p>
-                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.bank_name}</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                          Bank Name
+                        </p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {employee.bankDetails.bank_name}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Account Number</p>
-                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.account_number}</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                          Account Number
+                        </p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {employee.bankDetails.account_number}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">IFSC Code</p>
-                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.ifsc_code}</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                          IFSC Code
+                        </p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {employee.bankDetails.ifsc_code}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">Branch Name</p>
-                        <p className="font-medium text-gray-900 truncate">{employee.bankDetails.branch_name || 'Not provided'}</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                          Branch Name
+                        </p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {employee.bankDetails.branch_name || "Not provided"}
+                        </p>
                       </div>
                     </div>
                     {employee.bankDetails.checkbook_document && (
                       <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs text-gray-500 uppercase tracking-wide">Bank Document</p>
-                          <a 
-                            href={employee.bankDetails.checkbook_document} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <p className="text-xs text-gray-500 uppercase tracking-wide">
+                            Bank Document
+                          </p>
+                          <a
+                            href={employee.bankDetails.checkbook_document}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
                           >
                             <Eye className="w-4 h-4" />
@@ -598,42 +648,69 @@ export default function PayrollForm() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Approved Leaves Card */}
-                  <div 
-                    onClick={() => openLeaveModal(leaveData?.approved?.leaves || [], 'Approved Leaves')}
+                  <div
+                    onClick={() =>
+                      openLeaveModal(
+                        leaveData?.approved?.leaves || [],
+                        "Approved Leaves"
+                      )
+                    }
                     className="bg-green-50 border border-green-200 rounded-lg p-4 cursor-pointer hover:bg-green-100 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-green-800">Approved Leaves</p>
-                        <p className="text-2xl font-bold text-green-900">{leaveData?.approved?.count || 0}</p>
+                        <p className="text-sm font-medium text-green-800">
+                          Approved Leaves
+                        </p>
+                        <p className="text-2xl font-bold text-green-900">
+                          {leaveData?.approved?.count || 0}
+                        </p>
                       </div>
                       <CheckCircle className="w-8 h-8 text-green-600" />
                     </div>
                   </div>
 
                   {/* Paid Leaves Card */}
-                  <div 
-                    onClick={() => openLeaveModal(leaveData?.paid?.leaves || [], 'Paid Leaves')}
+                  <div
+                    onClick={() =>
+                      openLeaveModal(
+                        leaveData?.paid?.leaves || [],
+                        "Paid Leaves"
+                      )
+                    }
                     className="bg-blue-50 border border-blue-200 rounded-lg p-4 cursor-pointer hover:bg-blue-100 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-blue-800">Paid Leaves</p>
-                        <p className="text-2xl font-bold text-blue-900">{leaveData?.paid?.count || 0}</p>
+                        <p className="text-sm font-medium text-blue-800">
+                          Paid Leaves
+                        </p>
+                        <p className="text-2xl font-bold text-blue-900">
+                          {leaveData?.paid?.count || 0}
+                        </p>
                       </div>
                       <DollarSign className="w-8 h-8 text-blue-600" />
                     </div>
                   </div>
 
                   {/* Unpaid Leaves Card */}
-                  <div 
-                    onClick={() => openLeaveModal(leaveData?.unpaid?.leaves || [], 'Unpaid Leaves')}
+                  <div
+                    onClick={() =>
+                      openLeaveModal(
+                        leaveData?.unpaid?.leaves || [],
+                        "Unpaid Leaves"
+                      )
+                    }
                     className="bg-red-50 border border-red-200 rounded-lg p-4 cursor-pointer hover:bg-red-100 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-red-800">Unpaid Leaves</p>
-                        <p className="text-2xl font-bold text-red-900">{leaveData?.unpaid?.count || 0}</p>
+                        <p className="text-sm font-medium text-red-800">
+                          Unpaid Leaves
+                        </p>
+                        <p className="text-2xl font-bold text-red-900">
+                          {leaveData?.unpaid?.count || 0}
+                        </p>
                       </div>
                       <XCircle className="w-8 h-8 text-red-600" />
                     </div>
@@ -663,10 +740,23 @@ export default function PayrollForm() {
                       required
                     >
                       <option value="">Select Month</option>
-                      {['January', 'February', 'March', 'April', 'May', 'June',
-                        'July', 'August', 'September', 'October', 'November', 'December'
+                      {[
+                        "January",
+                        "February",
+                        "March",
+                        "April",
+                        "May",
+                        "June",
+                        "July",
+                        "August",
+                        "September",
+                        "October",
+                        "November",
+                        "December",
                       ].map((m) => (
-                        <option key={m} value={m}>{m}</option>
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -688,7 +778,9 @@ export default function PayrollForm() {
                       Basic Salary (₹) <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">₹</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">
+                        ₹
+                      </span>
                       <input
                         type="number"
                         name="basic_salary"
@@ -711,7 +803,7 @@ export default function PayrollForm() {
                   <Plus className="w-5 h-5 text-green-600" />
                   Allowances
                 </h3>
-                
+
                 {/* Fixed Allowances */}
                 <div className="space-y-4 mb-6">
                   <div className="hidden md:grid grid-cols-4 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide px-4">
@@ -720,8 +812,11 @@ export default function PayrollForm() {
                     <div className="text-center">Percentage</div>
                     <div className="text-center">Amount</div>
                   </div>
-                  {['hra', 'da'].map((key) => (
-                    <div key={key} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  {["hra", "da"].map((key) => (
+                    <div
+                      key={key}
+                      className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-green-50 rounded-lg border border-green-200"
+                    >
                       <input
                         type="checkbox"
                         checked={formData[`${key}_include`]}
@@ -735,15 +830,21 @@ export default function PayrollForm() {
                       />
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                         <div className="md:hidden">
-                          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                            Name
+                          </label>
                         </div>
                         <div>
                           <p className="font-medium text-gray-900 text-sm md:text-base">
-                            {key === 'hra' ? 'House Rent Allowance (HRA)' : 'Dearness Allowance (DA)'}
+                            {key === "hra"
+                              ? "House Rent Allowance (HRA)"
+                              : "Dearness Allowance (DA)"}
                           </p>
                         </div>
                         <div>
-                          <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                          <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                            Percentage
+                          </label>
                           <div className="relative">
                             <input
                               type="number"
@@ -753,19 +854,30 @@ export default function PayrollForm() {
                               className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                               placeholder="0"
                             />
-                            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                              %
+                            </span>
                           </div>
                         </div>
                         <div>
-                          <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                          <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                            Amount
+                          </label>
                           <input
                             type="number"
-                            value={calculateAmount(formData[`${key}_percent`]).toFixed(2)}
-                            onChange={(e) => handleAmountChange('allowance', key, e.target.value)}
+                            value={calculateAmount(
+                              formData[`${key}_percent`]
+                            ).toFixed(2)}
+                            onChange={(e) =>
+                              handleAmountChange(
+                                "allowance",
+                                key,
+                                e.target.value
+                              )
+                            }
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                             placeholder="0.00"
                           />
-
                         </div>
                       </div>
                     </div>
@@ -783,14 +895,18 @@ export default function PayrollForm() {
                       <div></div>
                     </div>
                     {formData.allowances.map((allowance, index) => (
-                      <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div
+                        key={index}
+                        className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
+                      >
                         <input
                           type="checkbox"
                           checked={allowance.include}
                           onChange={() => {
-                            setFormData(prev => {
+                            setFormData((prev) => {
                               const updatedAllowances = [...prev.allowances];
-                              updatedAllowances[index].include = !updatedAllowances[index].include;
+                              updatedAllowances[index].include =
+                                !updatedAllowances[index].include;
                               return { ...prev, allowances: updatedAllowances };
                             });
                           }}
@@ -798,7 +914,9 @@ export default function PayrollForm() {
                         />
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                           <div>
-                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                              Name
+                            </label>
                             <input
                               type="text"
                               name="name"
@@ -809,29 +927,45 @@ export default function PayrollForm() {
                             />
                           </div>
                           <div>
-                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                              Percentage
+                            </label>
                             <div className="relative">
                               <input
                                 type="number"
                                 name="percent"
                                 value={allowance.percent}
-                                onChange={(e) => handleAllowanceChange(index, e)}
+                                onChange={(e) =>
+                                  handleAllowanceChange(index, e)
+                                }
                                 placeholder="0"
                                 className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               />
-                              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                %
+                              </span>
                             </div>
                           </div>
                           <div>
-                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                              Amount
+                            </label>
                             <input
                               type="number"
-                              value={calculateAmount(parseFloat(allowance.percent || 0)).toFixed(2)}
-                              onChange={(e) => handleAmountChange('allowance', null, e.target.value, index)}
+                              value={calculateAmount(
+                                parseFloat(allowance.percent || 0)
+                              ).toFixed(2)}
+                              onChange={(e) =>
+                                handleAmountChange(
+                                  "allowance",
+                                  null,
+                                  e.target.value,
+                                  index
+                                )
+                              }
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               placeholder="0.00"
                             />
-
                           </div>
                         </div>
                         <button
@@ -845,7 +979,7 @@ export default function PayrollForm() {
                     ))}
                   </div>
                 )}
-                
+
                 <button
                   type="button"
                   onClick={handleAddAllowance}
@@ -862,7 +996,7 @@ export default function PayrollForm() {
                   <Minus className="w-5 h-5 text-red-600" />
                   Deductions
                 </h3>
-                
+
                 {/* Fixed Deductions */}
                 <div className="space-y-4 mb-6">
                   <div className="hidden md:grid grid-cols-4 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide px-4">
@@ -871,7 +1005,7 @@ export default function PayrollForm() {
                     <div className="text-center">Percentage</div>
                     <div className="text-center">Amount</div>
                   </div>
-                  
+
                   {/* PF - Editable */}
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
                     <input
@@ -887,11 +1021,17 @@ export default function PayrollForm() {
                     />
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
-                        <p className="font-medium text-gray-900 text-sm md:text-base">Provident Fund (PF)</p>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Name
+                        </label>
+                        <p className="font-medium text-gray-900 text-sm md:text-base">
+                          Provident Fund (PF)
+                        </p>
                       </div>
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Percentage
+                        </label>
                         <div className="relative">
                           <input
                             type="number"
@@ -902,23 +1042,34 @@ export default function PayrollForm() {
                             placeholder="0"
                           />
 
-                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                            %
+                          </span>
                         </div>
                       </div>
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Amount
+                        </label>
                         <input
                           type="number"
-                          value={calculateAmount(formData.pf_percent).toFixed(2)}
-                          onChange={(e) => handleAmountChange('deduction', 'pf', e.target.value)}
+                          value={calculateAmount(formData.pf_percent).toFixed(
+                            2
+                          )}
+                          onChange={(e) =>
+                            handleAmountChange(
+                              "deduction",
+                              "pf",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                           placeholder="0.00"
                         />
-
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* PTAX - Editable */}
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
                     <input
@@ -934,11 +1085,17 @@ export default function PayrollForm() {
                     />
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
-                        <p className="font-medium text-gray-900 text-sm md:text-base">Professional Tax (PTAX)</p>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Name
+                        </label>
+                        <p className="font-medium text-gray-900 text-sm md:text-base">
+                          Professional Tax (PTAX)
+                        </p>
                       </div>
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Percentage
+                        </label>
                         <div className="relative">
                           <input
                             type="number"
@@ -948,23 +1105,34 @@ export default function PayrollForm() {
                             className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                             placeholder="0"
                           />
-                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                            %
+                          </span>
                         </div>
                       </div>
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Amount
+                        </label>
                         <input
                           type="number"
-                          value={calculateAmount(formData.ptax_percent).toFixed(2)}
-                          onChange={(e) => handleAmountChange('deduction', 'ptax', e.target.value)}
+                          value={calculateAmount(formData.ptax_percent).toFixed(
+                            2
+                          )}
+                          onChange={(e) =>
+                            handleAmountChange(
+                              "deduction",
+                              "ptax",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                           placeholder="0.00"
                         />
-
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* ESIC - Editable */}
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-red-50 rounded-lg border border-red-200">
                     <input
@@ -980,11 +1148,17 @@ export default function PayrollForm() {
                     />
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
-                        <p className="font-medium text-gray-900 text-sm md:text-base">Employee State Insurance (ESIC)</p>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Name
+                        </label>
+                        <p className="font-medium text-gray-900 text-sm md:text-base">
+                          Employee State Insurance (ESIC)
+                        </p>
                       </div>
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Percentage
+                        </label>
                         <div className="relative">
                           <input
                             type="number"
@@ -994,19 +1168,30 @@ export default function PayrollForm() {
                             className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                             placeholder="0"
                           />
-                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                            %
+                          </span>
                         </div>
                       </div>
                       <div>
-                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                        <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                          Amount
+                        </label>
                         <input
                           type="number"
-                          value={calculateAmount(formData.esic_percent).toFixed(2)}
-                          onChange={(e) => handleAmountChange('deduction', 'esic', e.target.value)}
+                          value={calculateAmount(formData.esic_percent).toFixed(
+                            2
+                          )}
+                          onChange={(e) =>
+                            handleAmountChange(
+                              "deduction",
+                              "esic",
+                              e.target.value
+                            )
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                           placeholder="0.00"
                         />
-
                       </div>
                     </div>
                   </div>
@@ -1023,14 +1208,18 @@ export default function PayrollForm() {
                       <div></div>
                     </div>
                     {formData.deductions.map((deduction, index) => (
-                      <div key={index} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div
+                        key={index}
+                        className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
+                      >
                         <input
                           type="checkbox"
                           checked={deduction.include}
                           onChange={() => {
-                            setFormData(prev => {
+                            setFormData((prev) => {
                               const updatedDeductions = [...prev.deductions];
-                              updatedDeductions[index].include = !updatedDeductions[index].include;
+                              updatedDeductions[index].include =
+                                !updatedDeductions[index].include;
                               return { ...prev, deductions: updatedDeductions };
                             });
                           }}
@@ -1038,7 +1227,9 @@ export default function PayrollForm() {
                         />
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
                           <div>
-                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Name</label>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                              Name
+                            </label>
                             <input
                               type="text"
                               name="name"
@@ -1049,29 +1240,45 @@ export default function PayrollForm() {
                             />
                           </div>
                           <div>
-                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Percentage</label>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                              Percentage
+                            </label>
                             <div className="relative">
                               <input
                                 type="number"
                                 name="percent"
                                 value={deduction.percent}
-                                onChange={(e) => handleDeductionChange(index, e)}
+                                onChange={(e) =>
+                                  handleDeductionChange(index, e)
+                                }
                                 placeholder="0"
                                 className="w-full px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               />
-                              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
+                              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
+                                %
+                              </span>
                             </div>
                           </div>
                           <div>
-                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Amount</label>
+                            <label className="block md:hidden text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                              Amount
+                            </label>
                             <input
                               type="number"
-                              value={calculateAmount(parseFloat(deduction.percent || 0)).toFixed(2)}
-                              onChange={(e) => handleAmountChange('deduction', null, e.target.value, index)}
+                              value={calculateAmount(
+                                parseFloat(deduction.percent || 0)
+                              ).toFixed(2)}
+                              onChange={(e) =>
+                                handleAmountChange(
+                                  "deduction",
+                                  null,
+                                  e.target.value,
+                                  index
+                                )
+                              }
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                               placeholder="0.00"
                             />
-
                           </div>
                         </div>
                         <button
@@ -1085,7 +1292,7 @@ export default function PayrollForm() {
                     ))}
                   </div>
                 )}
-                
+
                 <button
                   type="button"
                   onClick={handleAddDeduction}
@@ -1108,7 +1315,9 @@ export default function PayrollForm() {
                       Bonus Amount (₹)
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">₹</span>
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">
+                        ₹
+                      </span>
                       <input
                         type="number"
                         name="bonus"
@@ -1138,14 +1347,16 @@ export default function PayrollForm() {
 
               {/* Success Message and Actions */}
               {message && (
-                <div className={`p-4 rounded-lg mb-6 ${
-                  message.includes('successfully') 
-                    ? 'bg-green-50 border border-green-200 text-green-800' 
-                    : 'bg-red-50 border border-red-200 text-red-800'
-                }`}>
+                <div
+                  className={`p-4 rounded-lg mb-6 ${
+                    message.includes("successfully")
+                      ? "bg-green-50 border border-green-200 text-green-800"
+                      : "bg-red-50 border border-red-200 text-red-800"
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {message.includes('successfully') ? (
+                      {message.includes("successfully") ? (
                         <CheckCircle className="w-5 h-5 text-green-600" />
                       ) : (
                         <XCircle className="w-5 h-5 text-red-600" />
@@ -1154,7 +1365,9 @@ export default function PayrollForm() {
                     </div>
                     {employeeData?.payslipUrl && (
                       <button
-                        onClick={() => window.open(employeeData.payslipUrl, '_blank')}
+                        onClick={() =>
+                          window.open(employeeData.payslipUrl, "_blank")
+                        }
                         className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
@@ -1174,11 +1387,15 @@ export default function PayrollForm() {
                 >
                   Cancel
                 </button>
-                
+
                 {payrollExists ? (
                   <button
                     type="button"
-                    onClick={() => router.push(`/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`)}
+                    onClick={() =>
+                      router.push(
+                        `/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`
+                      )
+                    }
                     className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 cursor-pointer"
                   >
                     <Eye className="w-4 h-4" />
@@ -1205,13 +1422,14 @@ export default function PayrollForm() {
                 ) : (
                   <div className="px-6 py-3 bg-gray-400 text-white rounded-lg cursor-not-allowed flex items-center gap-2">
                     <XCircle className="w-4 h-4" />
-                    {!formData.month || !formData.year ? 'Select Month & Year' : 
-                    payrollExists ? 'Payroll Already Generated' : 
-                    'Cannot Generate for Future Months'}
+                    {!formData.month || !formData.year
+                      ? "Select Month & Year"
+                      : payrollExists
+                      ? "Payroll Already Generated"
+                      : "Cannot Generate for Future Months"}
                   </div>
                 )}
               </div>
-
             </form>
           </div>
         </div>
@@ -1222,7 +1440,9 @@ export default function PayrollForm() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">{modalTitle}</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {modalTitle}
+              </h3>
               <button
                 onClick={closeLeaveModal}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -1234,35 +1454,60 @@ export default function PayrollForm() {
               {selectedLeaves.length > 0 ? (
                 <div className="space-y-4">
                   {selectedLeaves.map((leave, index) => (
-                    <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div
+                      key={index}
+                      className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                    >
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Leave Type</p>
-                          <p className="font-medium text-gray-900">{leave.leave_type}</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                            Leave Type
+                          </p>
+                          <p className="font-medium text-gray-900">
+                            {leave.leave_type}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">From Date</p>
-                          <p className="font-medium text-gray-900">{new Date(leave.from_date).toLocaleDateString()}</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                            From Date
+                          </p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(leave.from_date).toLocaleDateString()}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">To Date</p>
-                          <p className="font-medium text-gray-900">{new Date(leave.to_date).toLocaleDateString()}</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                            To Date
+                          </p>
+                          <p className="font-medium text-gray-900">
+                            {new Date(leave.to_date).toLocaleDateString()}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Status</p>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            leave.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                            leave.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-yellow-100 text-yellow-800'
-                          }`}>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                            Status
+                          </p>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              leave.status === "Approved"
+                                ? "bg-green-100 text-green-800"
+                                : leave.status === "Rejected"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
                             {leave.status}
                           </span>
                         </div>
                       </div>
                       {leave.reason && (
                         <div className="mt-3">
-                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Reason</p>
-                          <p className="text-sm text-gray-700">{leave.reason}</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                            Reason
+                          </p>
+                          <p className="text-sm text-gray-700">
+                            {leave.reason}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1271,7 +1516,9 @@ export default function PayrollForm() {
               ) : (
                 <div className="text-center py-8">
                   <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No leaves found for this category</p>
+                  <p className="text-gray-500">
+                    No leaves found for this category
+                  </p>
                 </div>
               )}
             </div>

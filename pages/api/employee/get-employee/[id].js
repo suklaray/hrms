@@ -21,7 +21,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         empid: user.empid,
         name: user.name,
-        email: user.email
+        email: user.email,
+        form_submitted: user.form_submitted
       });
     }
 

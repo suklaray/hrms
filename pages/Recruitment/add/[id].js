@@ -48,9 +48,13 @@ const AddEmployee = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [positions, setPositions] = useState([]);
+  const [candidate, setCandidate] = useState(null);
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState(['employee', 'hr', 'admin']); // Default fallback
+  const [currentUserRole, setCurrentUserRole] = useState('');
 
   useEffect(() => {
-    // Fetch positions
+    // Fetch positions and get current user role
     axios.get('/api/settings/positions')
       .then((res) => {
         setPositions(res.data);
@@ -59,12 +63,47 @@ const AddEmployee = () => {
         console.error('Error fetching positions:', err);
       });
 
+    // Get current user role and set available roles
+    axios.get('/api/auth/me')
+      .then((res) => {
+        // console.log('User data:', res.data);
+        const userRole = res.data.user.role?.toLowerCase();
+        // console.log("role",userRole);
+        
+        setCurrentUserRole(userRole);
+        
+        // Set available roles based on user role
+        let roles = [];
+        switch (userRole) {
+          case 'hr':
+            roles = ['employee'];
+            break;
+          case 'admin':
+            roles = ['employee', 'hr'];
+            break;
+          case 'superadmin':
+            roles = ['employee', 'hr', 'admin'];
+            break;
+          default:
+            roles = ['employee']; // fallback
+        }
+        // console.log('Available roles:', roles);
+        setAvailableRoles(roles);
+      })
+      .catch((err) => {
+        console.error('Error fetching user role:', err);
+        // Fallback to employee role if API fails
+        setAvailableRoles(['employee']);
+      });
+
     if (id) {
       setLoading(true);
       axios
         .get(`/api/candidate/${id}`)
         .then((res) => {
-          const { name, email, profile_photo } = res.data;
+          const { name, email, profile_photo, form_submitted } = res.data;
+          setCandidate(res.data);
+          setFormSubmitted(form_submitted || false);
           setForm((prev) => ({
             ...prev,
             name,
@@ -394,6 +433,31 @@ const AddEmployee = () => {
                   </div>
                 )}
 
+                {!formSubmitted && !existingEmployee && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-xl mb-6">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg
+                          className="h-5 w-5 text-red-400"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-red-700 font-medium">
+                          Candidate has not submitted their form yet, so candidate cannot be converted to employee.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {existingEmployee && !isEditing && (
                   <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-xl mb-6">
                     <div className="flex items-center">
@@ -405,7 +469,7 @@ const AddEmployee = () => {
                         >
                           <path
                             fillRule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 00-1-1H9z"
                             clipRule="evenodd"
                           />
                         </svg>
@@ -493,9 +557,11 @@ const AddEmployee = () => {
                       <option value="" disabled>
                         Select Role
                       </option>
-                      <option value="hr">HR</option>
-                      <option value="employee">Employee</option>
-                      <option value="admin">Admin</option>
+                      {availableRoles.map((role) => (
+                        <option key={role} value={role}>
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </option>
+                      ))}
                     </select>
                     {errors.role && (
                       <p className="text-red-500 text-sm mt-1">{errors.role}</p>
@@ -665,7 +731,8 @@ const AddEmployee = () => {
                         emailExists ||
                         (existingEmployee && !isEditing) ||
                         submitting ||
-                        Object.keys(errors).length > 0
+                        Object.keys(errors).length > 0 ||
+                        !formSubmitted
                       }
                     >
                       {submitting ? (
@@ -673,6 +740,8 @@ const AddEmployee = () => {
                           <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
                           {isEditing ? "Updating..." : "Adding Employee..."}
                         </div>
+                      ) : !formSubmitted ? (
+                        "Form Not Submitted"
                       ) : existingEmployee && !isEditing ? (
                         "Employee Already Added"
                       ) : isEditing ? (

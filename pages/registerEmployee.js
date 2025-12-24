@@ -106,7 +106,8 @@ export default function RegisterEmployee() {
                 return [
                     { value: 'employee', label: 'Employee' },
                     { value: 'hr', label: 'HR' },
-                    { value: 'admin', label: 'Admin' }
+                    { value: 'admin', label: 'Admin' },
+                    { value: 'superadmin', label: 'Superadmin' }
                 ];
             default:
                 return [{ value: 'employee', label: 'Employee' }];

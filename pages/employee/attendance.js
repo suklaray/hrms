@@ -84,10 +84,10 @@ export default function EmployeeAttendance() {
       const res = await fetch(`/api/employee/attendance?month=${currentMonth + 1}&year=${currentYear}`, {
         credentials: 'include',
       });
-      
       if (res.ok) {
         const data = await res.json();
-        setAttendance(data);
+        console.log('Attendance response:', data.attendance);
+        setAttendance(data.attendance || []);
       } else {
         const errorData = await res.json();
         setError(errorData.message || 'Failed to fetch attendance records');
@@ -129,9 +129,51 @@ export default function EmployeeAttendance() {
       month: 'short'
     });
   };
+// Get working days of selected month
+const getWorkingDays = () => {
+  const days = [];
+  const start = new Date(currentYear, currentMonth, 1);
+  const end = new Date(currentYear, currentMonth + 1, 0);
 
-  const presentDays = attendance.filter(record => record.attendance_status === 'Present').length;
-  const totalDays = attendance.length;
+  const today = new Date();
+
+  for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+    const day = new Date(d);
+
+    // ⛔ If month == current month AND day > today → skip it
+    if (
+      day.getMonth() === today.getMonth() &&
+      day.getFullYear() === today.getFullYear() &&
+      day > today
+    ) {
+      continue;
+    }
+
+    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+
+    const formatted = day.toISOString().slice(0, 10).split("-").reverse().join("-");
+    const isHoliday = holidays.some(h => h.date === formatted);
+
+    if (!isWeekend && !isHoliday) {
+      days.push(formatted);
+    }
+  }
+
+  return days;
+};
+
+const workingDays = getWorkingDays();
+
+// Count Present
+const presentDays = attendance.filter(rec => rec.attendance_status === "Present").length;
+
+// Absent Days = Working Days - Present Days
+const absentDays = workingDays.length - presentDays;
+
+// Attendance Rate
+const attendanceRate = workingDays.length > 0 
+  ? Math.round((presentDays / workingDays.length) * 100)
+  : 0;
 
   if (!user) {
     return (
@@ -221,7 +263,7 @@ export default function EmployeeAttendance() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Absent Days</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {error ? 'Unable to load' : (totalDays > 0 ? totalDays - presentDays : 'No records')}
+                    {error ? 'Unable to load' : (absentDays || 'No records')}
                   </p>
                 </div>
               </div>
@@ -233,7 +275,7 @@ export default function EmployeeAttendance() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Attendance Rate</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {error ? 'Unable to load' : (totalDays > 0 ? `${Math.round((presentDays / totalDays) * 100)}%` : 'No data')}
+                    {error ? 'Unable to load' : (`${attendanceRate}%` || 'No data')}
                   </p>
                 </div>
               </div>
@@ -265,10 +307,13 @@ export default function EmployeeAttendance() {
                         Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Check In Time
+                        First Check In Time
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Check Out Time
+                        Last Check In Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Check Out Time
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Total Time
@@ -279,68 +324,39 @@ export default function EmployeeAttendance() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {attendance.length > 0 ? (
+                    {Array.isArray(attendance) && attendance.length > 0 ? (
                       attendance.map((record, index) => {
-                        const workingHours = record.total_hours > 0
-                          ? record.total_hours.toFixed(1)
-                          : '--';
-                        
-                        const attendanceStatus = record.attendance_status || (workingHours >= 4 ? 'Present' : 'Absent');
-                        
-                        // Format dates to show proper login/logout dates
-                        const checkInDate = record.check_in ? new Date(record.check_in) : null;
-                        const checkOutDate = record.check_out ? new Date(record.check_out) : null;
-                        
-                        const formatDateTime = (date) => {
-                          if (!date) return '--';
-                          return date.toLocaleString('en-US', {
-                            month: '2-digit',
-                            day: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          });
-                        };
-                        
+                        // Parse dd-MM-yyyy format to get month
+                        const dateParts = record.date.split('-');
+                        const monthIndex = parseInt(dateParts[1]) - 1;
+                         console.log('Rendering record:', record);
                         return (
                           <tr key={index} className="hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {monthNames[new Date(record.date).getMonth()]}
+                              {monthNames[monthIndex]}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {new Date(record.date).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              {record.date}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <div className="flex flex-col">
-                                <span>{formatTime(record.check_in)}</span>
-                                {checkInDate && (
-                                  <span className="text-xs text-gray-500">
-                                    {checkInDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })}
-                                  </span>
-                                )}
-                              </div>
+                              {record.first_check_in || '--'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              <div className="flex flex-col">
-                                <span>{formatTime(record.check_out)}</span>
-                                {checkOutDate && (
-                                  <span className="text-xs text-gray-500">
-                                    {checkOutDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })}
-                                  </span>
-                                )}
-                              </div>
+                              {record.last_check_in || '--'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {workingHours !== '--' ? `${workingHours} hrs` : '--'}
+                              {record.check_out || '--'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {record.total_hours || '--'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                attendanceStatus === 'Present'
+                                record.attendance_status === 'Present'
                                   ? 'bg-green-100 text-green-800'
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {attendanceStatus}
+                                {record.attendance_status}
                               </span>
                             </td>
                           </tr>

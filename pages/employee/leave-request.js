@@ -4,6 +4,7 @@ import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { set } from 'date-fns';
 
 export default function LeaveRequest() {
   const [form, setForm] = useState({
@@ -80,13 +81,27 @@ export default function LeaveRequest() {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     
-    if (name === 'attachment') {
-      const file = files[0];
-      if (file && file.type !== 'application/pdf') {
-        setErrors(prev => ({ ...prev, attachment: 'Only PDF files are allowed' }));
-        return;
-      }
-      setForm(prev => ({ ...prev, attachment: file }));
+   if (name === 'attachment') {
+  const file = files?.[0];
+
+  if (!file) {
+    setForm(prev => ({ ...prev, attachment: null }));
+    return;
+  }
+
+  if (file.type !== 'application/pdf') {
+    setErrors(prev => ({ ...prev, attachment: 'Only PDF files are allowed' }));
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    setErrors(prev => ({ ...prev, attachment: 'File size must be under 5MB' }));
+    return;
+  }
+
+  // VALID FILE
+  setErrors(prev => ({ ...prev, attachment: '' }));
+  setForm(prev => ({ ...prev, attachment: file }));
     } else if (name === 'leave_type') {
       const selectedType = leaveTypes.find(type => type.type_name.replace(/_/g, ' ') === value);
       setSelectedLeaveType(selectedType);
@@ -118,7 +133,15 @@ export default function LeaveRequest() {
     if (!form.to_date) newErrors.to_date = 'To date is required';
     if (!form.reason.trim()) newErrors.reason = 'Reason is required';
     if (form.reason.length > 200) newErrors.reason = 'Reason cannot exceed 200 characters';
-    
+     const file = form.attachment;
+  if (file) {
+    if (file.type !== 'application/pdf') {
+      newErrors.attachment = 'Only PDF files are allowed';
+    } else if (file.size > 5 * 1024 * 1024) {
+      newErrors.attachment = 'File size should be less than 5MB';
+    }
+  }
+  if (errors.attachment) return false;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

@@ -67,6 +67,18 @@ export default async function handler(req, res) {
           ifsc_code: getValue(fields.ifsc_code),
         };
 
+        // Security check: Prevent resubmission if already submitted
+        const existingUser = await prisma.users.findUnique({
+          where: { empid: body.empid },
+          select: { form_submitted: true }
+        });
+
+        if (existingUser?.form_submitted) {
+          return res.status(400).json({ 
+            error: 'Documents already submitted. No further changes allowed.' 
+          });
+        }
+
         // Create uploads directory if it doesn't exist
         const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
         if (!fs.existsSync(uploadsDir)) {

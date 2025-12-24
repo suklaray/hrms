@@ -45,6 +45,7 @@ export default function EmployeeDocumentForm() {
   const [extracting, setExtracting] = useState({ aadhar: false, pan: false });
   const [existingData, setExistingData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isFormSubmitted, setIsFormSubmitted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -52,19 +53,9 @@ export default function EmployeeDocumentForm() {
 
   const fetchExistingData = async () => {
     try {
-      // Try HR/admin endpoint first, then fall back to employee endpoint
       let response;
       try {
-        response = await axios.get('/api/employee/get-documents/hr-admin', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          },
-          params: {
-            t: Date.now()
-          }
-        });
-      } catch (hrError) {
+      
         // Fall back to employee endpoint
         response = await axios.get(`/api/employee/get-documents/${id}`, {
           headers: {
@@ -75,6 +66,18 @@ export default function EmployeeDocumentForm() {
             t: Date.now()
           }
         });
+      } catch (hrError) {
+        toast.error("Error fetching existing data from HR/Admin endpoint, trying Employee endpoint...");
+        // Try HR/admin endpoint first, then fall back to employee endpoint
+        // response = await axios.get('/api/employee/get-documents/hr-admin', {
+        //   headers: {
+        //     'Cache-Control': 'no-cache',
+        //     'Pragma': 'no-cache'
+        //   },
+        //   params: {
+        //     t: Date.now()
+        //   }
+        // });
       }
       console.log('API Response:', response.data);
       if (response.data.exists) {
@@ -127,6 +130,13 @@ export default function EmployeeDocumentForm() {
           name: decodeURIComponent(prefillName),
           email: decodeURIComponent(prefillEmail)
         });
+        axios.get(`/api/employee/get-employee/${id}`)
+          .then((res) => {
+            if (res.data.form_submitted) {
+              setIsFormSubmitted(true);
+            }
+          })
+          .catch((err) => console.error("Error fetching employee:", err));
       } else {
         // Fetch employee data
         axios.get(`/api/employee/get-employee/${id}`, {
@@ -140,6 +150,9 @@ export default function EmployeeDocumentForm() {
         })
           .then((res) => {
             setEmployee(res.data);
+            if (res.data.form_submitted) {
+              setIsFormSubmitted(true);
+            }
           })
           .catch((err) => console.error("Error fetching employee:", err));
       }
@@ -416,14 +429,13 @@ export default function EmployeeDocumentForm() {
         //   return;
         // }
         // Validate file size (5KB to 20MB)
-        const minSize = 5 * 1024; // 5KB
-        const maxSize = 20 * 1024 * 1024; // 20MB
-        if (file.size < minSize) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be at least 5KB' }));
-          return;
-        }
+        const maxSize = 5 * 1024 * 1024; // 20MB
+        // if (file.size < minSize) {
+        //   setErrors(prev => ({ ...prev, [name]: '❌ File size must be at least 5KB' }));
+        //   return;
+        // }
         if (file.size > maxSize) {
-          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 20MB' }));
+          setErrors(prev => ({ ...prev, [name]: '❌ File size must be less than 5MB' }));
           return;
         }
         // Validate file type
@@ -572,8 +584,29 @@ export default function EmployeeDocumentForm() {
       </Head>
       <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
+        {isFormSubmitted && (
+          <div style={{
+            padding: '1rem',
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: '0.5rem',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <CheckCircle size={20} color="#0ea5e9" />
+            <span style={{ color: '#0ea5e9', fontWeight: '500' }}>
+              Documents already submitted - View only
+            </span>
+          </div>
+        )}
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
+          <div style={{ 
+            pointerEvents: isFormSubmitted ? 'none' : 'auto', 
+            opacity: isFormSubmitted ? 0.6 : 1 
+          }}>
+            <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
             {/* Personal Information Section */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
@@ -826,6 +859,7 @@ export default function EmployeeDocumentForm() {
                         rel="noopener noreferrer"
                         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
                         title="View current document"
+                        style={{ pointerEvents: 'auto' }}
                       >
                         <Eye size={20} />
                       </a>
@@ -836,7 +870,7 @@ export default function EmployeeDocumentForm() {
                       {errors.aadhar_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -898,7 +932,7 @@ export default function EmployeeDocumentForm() {
                       {errors.pan_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
                 </div>
                 
                 <div>
@@ -990,7 +1024,7 @@ export default function EmployeeDocumentForm() {
                       {errors.education_certificates}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -1023,7 +1057,7 @@ export default function EmployeeDocumentForm() {
                       {errors.resume}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                 </div>
                 
                 <div>
@@ -1057,7 +1091,7 @@ export default function EmployeeDocumentForm() {
                       {errors.profile_photo}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/JPEG only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/JPEG only.</p>
                 </div>
                 
                 <div className="md:col-span-2">
@@ -1088,7 +1122,7 @@ export default function EmployeeDocumentForm() {
                       {errors.experience_certificate}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                   <p className="text-blue-600 text-sm mt-1">ⓘ This field is optional. Upload only if you have work experience.</p>
                 </div>
               </div>
@@ -1249,12 +1283,13 @@ export default function EmployeeDocumentForm() {
                       {errors.bank_details}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5KB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
                 </div>
               </div>
             </div>
             
-            {/* Confirmation */}
+            {/* Confirmation - Only show if not submitted*/}
+            {!isFormSubmitted && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <input 
@@ -1274,7 +1309,8 @@ export default function EmployeeDocumentForm() {
                 )}
               </div>
             </div>
-
+            )}
+            {!isFormSubmitted && (
             <button 
               type="submit" 
               disabled={isSubmitting}
@@ -1289,7 +1325,9 @@ export default function EmployeeDocumentForm() {
                 'Submit Documents'
               )}
             </button>
-          </form>
+            )}
+            </form>
+          </div>
         </div>
       </div>
     </div>

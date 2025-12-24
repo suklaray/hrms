@@ -23,14 +23,15 @@ const Footer = () => {
             </p>
             <div className="flex space-x-4">
               {[
-                { icon: Facebook, href: "#", label: "Facebook" },
-                { icon: Twitter, href: "#", label: "Twitter" },
-                { icon: Instagram, href: "#", label: "Instagram" },
-                { icon: Linkedin, href: "#", label: "LinkedIn" }
+                { icon: Facebook, href: "https://facebook.com", label: "Facebook" },
+                { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
+                { icon: Instagram, href: "https://instagram.com", label: "Instagram" },
+                { icon: Linkedin, href: "https://linkedin.com", label: "LinkedIn" }
               ].map(({ icon: Icon, href, label }) => (
                 <Link
                   key={label}
                   href={href}
+                  target='_blank'
                   className="p-2 bg-gray-800 hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 rounded-lg transition-all duration-300 group"
                   aria-label={label}
                 >

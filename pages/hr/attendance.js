@@ -5,32 +5,35 @@ import { Clock, Users, Search, Calendar, TrendingUp, Eye, ChevronLeft, ChevronRi
 import { useRouter } from "next/router";
 
 // Live Timer Component
-function LiveTimer({ checkInTime, isLoggedIn, totalHours, completedSeconds }) {
+function LiveTimer({ currentCheckInTime, isLoggedIn, totalHours, completedSeconds }) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !currentCheckInTime) return;
     
     const interval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isLoggedIn]);
+  }, [isLoggedIn, currentCheckInTime]);
 
-  if (!isLoggedIn || !checkInTime) {
+  if (!isLoggedIn || !currentCheckInTime) {
     return <span className="text-sm font-mono text-gray-900">{totalHours || "000:00:00"}</span>;
   }
 
-  const checkIn = new Date(checkInTime);
+  const checkIn = new Date(currentCheckInTime);
   
   // Only validate if checkIn is invalid
   if (isNaN(checkIn.getTime())) {
     return <span className="text-sm font-mono text-gray-900">{totalHours || "000:00:00"}</span>;
   }
 
+  // Calculate time from current open session start to now
   const currentSessionSeconds = (currentTime - checkIn) / 1000;
   const completedTime = Number(completedSeconds) || 0;
+  
+  // Total = all completed sessions + current session
   const totalSecondsToday = completedTime + currentSessionSeconds;
   
   const hours = Math.floor(totalSecondsToday / 3600);
@@ -51,15 +54,23 @@ export default function AttendanceList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("all");
+  const [apiAvgHours, setApiAvgHours] = useState('0');
   const router = useRouter();
   const itemsPerPage = 10;
 
   useEffect(() => {
     fetch("/api/hr/attendance")
       .then((res) => res.json())
-      .then((data) => {
-        setData(data);
-        setFilteredData(data);
+      .then((response) => {
+        // Check if response has avgHours property (from API calculation)
+        if (response.avgHours !== undefined) {
+          setApiAvgHours(response.avgHours);
+          setData(response.data || response);
+          setFilteredData(response.data || response);
+        } else {
+          setData(response);
+          setFilteredData(response);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -75,7 +86,8 @@ export default function AttendanceList() {
     if (activeFilter === "present") {
       filtered = filtered.filter(user => user.attendance_status === "Present");
     } else if (activeFilter === "online") {
-      filtered = filtered.filter(user => user.today_checkin && !user.last_logout);
+      // Fixed: Check is_logged_in instead of checking today_checkin && !last_logout
+      filtered = filtered.filter(user => user.is_logged_in === true);
     }
     
     // Apply search filter
@@ -96,15 +108,15 @@ export default function AttendanceList() {
   };
 
   const formatTime = (timeString) => {
-  if (!timeString) return '--';
-  return new Date(timeString).toLocaleString('en-US', {
-    month: '2-digit',
-    day: '2-digit', 
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+    if (!timeString) return '--';
+    return new Date(timeString).toLocaleString('en-US', {
+      month: '2-digit',
+      day: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
 
   // Pagination logic
@@ -132,8 +144,8 @@ export default function AttendanceList() {
   const stats = {
     total: data.length,
     present: data.filter(u => u.attendance_status === "Present").length,
-    loggedIn: data.filter(u => u.today_checkin && !u.last_logout).length,
-    avgHours: data.length > 0 ? (data.reduce((acc, u) => acc + parseFloat(u.total_hours || 0), 0) / data.length).toFixed(1) : 0
+    loggedIn: data.filter(u => u.is_logged_in === true).length,
+    avgHours: apiAvgHours
   };
 
   if (loading) {
@@ -305,8 +317,8 @@ export default function AttendanceList() {
                           <div className="flex items-center">
                             <Clock className="w-4 h-4 text-gray-400 mr-2" />
                             <LiveTimer 
-                              checkInTime={user.today_checkin}
-                              isLoggedIn={user.status === "Logged In"}
+                              currentCheckInTime={user.current_checkin}
+                              isLoggedIn={user.is_logged_in}
                               totalHours={user.total_hours}
                               completedSeconds={user.today_completed_seconds}
                             />
@@ -323,14 +335,14 @@ export default function AttendanceList() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user.status === "Logged In"
+                            user.is_logged_in
                               ? "bg-emerald-100 text-emerald-800"
                               : "bg-gray-100 text-gray-800"
                           }`}>
                             <div className={`w-2 h-2 rounded-full mr-1 ${
-                              user.status === "Logged In" ? "bg-emerald-500" : "bg-gray-400"
+                              user.is_logged_in ? "bg-emerald-500" : "bg-gray-400"
                             }`}></div>
-                            {user.status}
+                            {user.is_logged_in ? "Logged In" : "Logged Out"}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -356,8 +368,6 @@ export default function AttendanceList() {
                 </tbody>
               </table>
             </div>
-            
-            
           </div>
 
           {/* Pagination */}

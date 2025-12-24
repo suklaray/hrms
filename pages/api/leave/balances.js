@@ -1,11 +1,18 @@
 import prisma from "@/lib/prisma";
-import { verifyEmployeeToken } from '@/lib/auth';
+import jwt from "jsonwebtoken";
 
 export default async function handler(req, res) {
-  const user = await verifyEmployeeToken(req);
-  if (!user) return res.status(401).json({ message: 'Unauthorized' });
-
   try {
+    const token = req.cookies.token;
+    if (!token) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
     // Get all leave types
     const leaveTypes = await prisma.leave_types.findMany({
       select: {
@@ -15,10 +22,10 @@ export default async function handler(req, res) {
       }
     });
 
-    // Get approved leaves for this employee
+    // Get approved leaves for this user
     const approvedLeaves = await prisma.leave_requests.findMany({
       where: {
-        empid: user.empid,
+        empid: decoded.empid,
         status: 'Approved'
       },
       select: {
@@ -32,7 +39,6 @@ export default async function handler(req, res) {
     const balances = leaveTypes.map(leaveType => {
       const displayName = leaveType.type_name.replace(/_/g, ' ');
       
-      // Calculate used days for this leave type
       const usedDays = approvedLeaves
         .filter(leave => leave.leave_type === displayName)
         .reduce((total, leave) => {

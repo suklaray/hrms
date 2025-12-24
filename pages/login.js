@@ -91,6 +91,8 @@ export default function Login() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="Enter your email"
                                     required
+                                    autoComplete="off"
+                                    autoCorrect="off"
                                 />
                             </div>
 
@@ -108,6 +110,7 @@ export default function Login() {
                                     }}
                                     placeholder="Enter your password"
                                     required
+                                    autoComplete="off"
                                 />
                                 <span
                                     className="absolute right-0 cursor-pointer pr-2 text-gray-500"

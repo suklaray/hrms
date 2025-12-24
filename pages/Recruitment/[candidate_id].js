@@ -141,13 +141,30 @@ export default function CandidateDetails() {
                 <div className={`px-4 py-2 rounded-full border-2 font-semibold mr-3 ${getStatusColor(candidate.status)}`}>
                   {candidate.status || 'Pending'}
                 </div>
-                <button 
-                  onClick={() => router.push(`/Recruitment/edit/${candidate.candidate_id}`)}
-                  className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors cursor-pointer"
-                >
-                  <FaEdit className="mr-2" />
-                  Edit Profile
-                </button>
+                <div className="group relative inline-block">
+                  {employee ? (
+                    <>
+                      <button 
+                        disabled
+                        className="flex items-center px-4 py-2 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed opacity-50"
+                      >
+                        <FaEdit className="mr-2" />
+                        Edit Profile
+                      </button>
+                      <div className="absolute top-full mb-1 right-0 px-2 py-1 bg-white text-purple-600 text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
+                        Protected - Employee record cannot be edited
+                      </div>
+                    </>
+                  ) : (
+                    <button 
+                      onClick={() => router.push(`/Recruitment/edit/${candidate.candidate_id}`)}
+                      className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors cursor-pointer"
+                    >
+                      <FaEdit className="mr-2" />
+                      Edit Profile
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

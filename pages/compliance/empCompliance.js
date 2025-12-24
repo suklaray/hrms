@@ -311,7 +311,6 @@ export default function ComplianceDashboard() {
                 <option value="admin">Admin</option>
                 <option value="hr">HR</option>
                 <option value="employee">Employee</option>
-                <option value="superadmin">SuperAdmin</option>
               </select>
 
               <div className="ml-auto text-sm text-gray-600">

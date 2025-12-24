@@ -66,16 +66,17 @@ model candidates {
   email                 String
   contact_number        String?
   interview_date        DateTime?
+  interview_time_from   String?
+  interview_time_to     String?
   resume                String?
   form_link             String?
   created_at            DateTime?          @default(now())
   form_token            String?            @unique
   interview_mail_status String?            @default("Not Sent")
   form_status           String?            @default("Mail Not Sent")
-  status                candidates_status? @default(Pending)
+  status                candidates_status? @default(Waiting)
   verification          Boolean?           @default(false)
   form_submitted        Boolean            @default(false)
-  interview_timing      String?
   device_info           String?
   ip_address            String?
   token_expiry          DateTime?
@@ -384,12 +385,13 @@ enum attendance_attendance_status {
 }
 
 enum candidates_status {
+  Waiting
   Pending
   Mail_Sent          @map("Mail Sent")
   Document_Submitted @map("Document Submitted")
   Selected
   Rejected
-  Waiting
+  
 }
 
 enum users_role {

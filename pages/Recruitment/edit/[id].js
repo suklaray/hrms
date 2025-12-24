@@ -4,7 +4,7 @@ import Head from 'next/head';
 import axios from "axios";
 import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
-import { FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaSave, FaTimes, FaFileAlt } from "react-icons/fa";
+import { FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaSave, FaTimes, FaFileAlt, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { toast } from "react-toastify";
 
 export default function EditCandidate() {
@@ -16,9 +16,24 @@ export default function EditCandidate() {
     email: "",
     contact_number: "",
     interview_date: "",
-    interview_timing: "",
+    interview_time_from: "",
+    interview_time_to: "",
     resume: null
   });
+  const [openTimeFrom, setOpenTimeFrom] = useState(false);
+  const [openTimeTo, setOpenTimeTo] = useState(false);
+
+  // Generate time options
+  const times = Array.from({ length: 24 }, (_, i) => {
+    const hour24 = i;
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    const ampm = hour24 < 12 ? 'AM' : 'PM';
+    const hour24Str = hour24.toString().padStart(2, '0');
+    return [
+      { value: `${hour24Str}:00`, display: `${hour12}:00 ${ampm}` },
+      { value: `${hour24Str}:30`, display: `${hour12}:30 ${ampm}` }
+    ];
+  }).flat();
   const [errors, setErrors] = useState({});
   const [originalEmail, setOriginalEmail] = useState("");
   const [loading, setLoading] = useState(true);
@@ -35,7 +50,8 @@ export default function EditCandidate() {
         email: res.data.email || "",
         contact_number: res.data.contact_number || "",
         interview_date: res.data.interview_date ? res.data.interview_date.split('T')[0] : "",
-        interview_timing: res.data.interview_timing || "",
+        interview_time_from: res.data.interview_time_from || "",
+        interview_time_to: res.data.interview_time_to || "",
         resume: null
       });
       setLoading(false);
@@ -57,12 +73,8 @@ export default function EditCandidate() {
     if (type === 'file') {
       const file = files[0];
       if (file) {
-        if (file.size < 5 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: 'File size must be greater than 5KB' }));
-          return;
-        }
-        if (file.size > 10 * 1024 * 1024) {
-          setErrors(prev => ({ ...prev, [name]: 'File size must be less than 10MB' }));
+        if (file.size > 5 * 1024 * 1024) {
+          setErrors(prev => ({ ...prev, [name]: 'File size must be less than 5MB' }));
           return;
         }
         const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -110,6 +122,12 @@ export default function EditCandidate() {
           }
         }
         break;
+        
+      case 'interview_time_to':
+        if (value && formData.interview_time_from && value <= formData.interview_time_from) {
+          error = 'End time must be after start time';
+        }
+        break;
     }
     
     setErrors(prev => ({ ...prev, [name]: error }));
@@ -130,7 +148,8 @@ export default function EditCandidate() {
       submitData.append('candidate_id', id);
       submitData.append('contact_number', formData.contact_number);
       submitData.append('interview_date', formData.interview_date);
-      submitData.append('interview_timing', formData.interview_timing);
+      submitData.append('interview_time_from', formData.interview_time_from);
+      submitData.append('interview_time_to', formData.interview_time_to);
       if (formData.resume) {
         submitData.append('resume', formData.resume);
       }
@@ -263,15 +282,81 @@ export default function EditCandidate() {
                 <div className="space-y-2">
                   <label className="flex items-center text-sm font-medium text-gray-700">
                     <FaCalendarAlt className="mr-2 text-indigo-500" />
-                    Interview Time
+                    Interview Start Time
                   </label>
-                  <input
-                    type="time"
-                    name="interview_timing"
-                    value={formData.interview_timing}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenTimeFrom(!openTimeFrom)}
+                      className={`w-full px-4 py-3 border rounded-lg flex justify-between items-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        errors.interview_time_from ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                    >
+                      <span className={formData.interview_time_from ? 'text-gray-900' : 'text-gray-500'}>
+                        {formData.interview_time_from ? times.find(t => t.value === formData.interview_time_from)?.display : "Select start time"}
+                      </span>
+                      {openTimeFrom ? <FaChevronUp className="text-gray-400 w-4 h-4" /> : <FaChevronDown className="text-gray-400 w-4 h-4" />}
+                    </button>
+
+                    {openTimeFrom && (
+                      <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                        {times.map((time, i) => (
+                          <li
+                            key={i}
+                            onClick={() => {
+                              setFormData({ ...formData, interview_time_from: time.value });
+                              setOpenTimeFrom(false);
+                              validateField('interview_time_from', time.value);
+                            }}
+                            className="px-4 py-2 hover:bg-indigo-100 cursor-pointer text-sm"
+                          >
+                            {time.display}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {errors.interview_time_from && <p className="text-red-500 text-sm mt-1">{errors.interview_time_from}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-gray-700">
+                    <FaCalendarAlt className="mr-2 text-indigo-500" />
+                    Interview End Time
+                  </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenTimeTo(!openTimeTo)}
+                      className={`w-full px-4 py-3 border rounded-lg flex justify-between items-center focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+                        errors.interview_time_to ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                      }`}
+                    >
+                      <span className={formData.interview_time_to ? 'text-gray-900' : 'text-gray-500'}>
+                        {formData.interview_time_to ? times.find(t => t.value === formData.interview_time_to)?.display : "Select end time"}
+                      </span>
+                      {openTimeTo ? <FaChevronUp className="text-gray-400 w-4 h-4" /> : <FaChevronDown className="text-gray-400 w-4 h-4" />}
+                    </button>
+
+                    {openTimeTo && (
+                      <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                        {times.map((time, i) => (
+                          <li
+                            key={i}
+                            onClick={() => {
+                              setFormData({ ...formData, interview_time_to: time.value });
+                              setOpenTimeTo(false);
+                              validateField('interview_time_to', time.value);
+                            }}
+                            className="px-4 py-2 hover:bg-indigo-100 cursor-pointer text-sm"
+                          >
+                            {time.display}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {errors.interview_time_to && <p className="text-red-500 text-sm mt-1">{errors.interview_time_to}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -289,7 +374,7 @@ export default function EditCandidate() {
                     }`}
                   />
                   {errors.resume && <p className="text-red-500 text-sm mt-1">{errors.resume}</p>}
-                  <p className="text-gray-500 text-xs mt-1">Min 5KB, Max 10MB, PDF/JPG/PNG only</p>
+                  <p className="text-gray-500 text-xs mt-1">Max 5MB, PDF/JPG/PNG only</p>
                 </div>
               </div>
 
