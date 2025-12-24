@@ -47,7 +47,7 @@ export default function CookiePolicy() {
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Authentication Cookies</h3>
                     <p className="text-gray-700">
-                      These cookies help us remember that you're logged in and keep your session secure 
+                      These cookies help us remember that you&apos;re logged in and keep your session secure 
                       while you navigate through the platform.
                     </p>
                   </div>
@@ -77,7 +77,7 @@ export default function CookiePolicy() {
                 </p>
                 <ul className="list-disc pl-6 text-gray-700 space-y-2">
                   <li>Browser settings: Most browsers allow you to refuse or accept cookies</li>
-                  <li>Delete existing cookies through your browser's privacy settings</li>
+                  <li>Delete existing cookies through your browser&apos;s privacy settings</li>
                   <li>Set your browser to notify you when cookies are being sent</li>
                   <li>Use private/incognito browsing mode</li>
                 </ul>
