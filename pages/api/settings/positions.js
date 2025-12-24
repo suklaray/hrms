@@ -67,7 +67,35 @@ export default async function handler(req, res) {
     try {
       const { id } = req.query;
       
-      await prisma.$queryRaw`DELETE FROM positions WHERE id = ${parseInt(id)}`;
+      // Get position name first
+      const position = await prisma.positions.findUnique({
+        where: { id: parseInt(id) },
+        select: { position_name: true }
+      });
+      
+      if (!position) {
+        return res.status(404).json({ error: "Position not found" });
+      }
+      
+      // Check if any active employees have this position
+      const employeesWithPosition = await prisma.users.count({
+        where: {
+          position: position.position_name,
+          status: "Active"
+        }
+      });
+      
+      if (employeesWithPosition > 0) {
+        return res.status(400).json({ 
+          error: "Cannot delete position", 
+          message: `${employeesWithPosition} active employee(s) are assigned to this position. Please reassign them first.`,
+          hasEmployees: true
+        });
+      }
+      
+      await prisma.positions.delete({
+        where: { id: parseInt(id) }
+      });
       
       res.status(200).json({ message: "Position deleted successfully" });
     } catch (error) {
