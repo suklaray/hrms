@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import {
   ChevronDown,
@@ -44,9 +44,9 @@ export default function Sidebar({ user: propUser }) {
   };
 
   // Helper function to check if dropdown should be open based on active path
-  const shouldDropdownBeOpen = (paths) => {
+  const shouldDropdownBeOpen = useCallback((paths) => {
     return paths.some(path => isActivePath(path));
-  };
+  }, [router.pathname]);
 
   useEffect(() => {
     if (propUser) {
@@ -113,7 +113,7 @@ export default function Sidebar({ user: propUser }) {
     setPayrollOpen(shouldDropdownBeOpen(['/hr/payroll']));
     setComplianceOpen(shouldDropdownBeOpen(['/compliance']));
     setSettingsOpen(shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task']));
-  }, [router.pathname,shouldDropdownBeOpen]);
+  }, [router.pathname, shouldDropdownBeOpen]);
   const [checkedIn, setCheckedIn] = useState(false);
 
   const role = user?.role?.toLowerCase() || "hr";

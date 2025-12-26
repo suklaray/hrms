@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { X, User, Mail, Briefcase } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -16,13 +16,7 @@ export default function EmployeeReassignmentModal({
   const [reassigning, setReassigning] = useState({});
   const [selectedPositions, setSelectedPositions] = useState({});
 
-  useEffect(() => {
-    if (isOpen && positionName) {
-      fetchEmployees();
-    }
-  }, [isOpen, positionName,fetchEmployees]);
-
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/settings/position-employees?positionName=${encodeURIComponent(positionName)}`);
@@ -36,7 +30,13 @@ export default function EmployeeReassignmentModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [positionName]);
+
+  useEffect(() => {
+    if (isOpen && positionName) {
+      fetchEmployees();
+    }
+  }, [isOpen, positionName, fetchEmployees]);
 
 const canReassignEmployee = (employee) => {
   if (userRole === "superadmin") return true;

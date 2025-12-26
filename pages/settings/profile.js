@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
@@ -10,7 +10,7 @@ function DocumentUploadForm({ user }) {
   const [documentsSubmitted, setDocumentsSubmitted] = useState(false);
   const [documentsLoading, setDocumentsLoading] = useState(true);
 
-  const checkDocumentStatus = async () => {
+  const checkDocumentStatus = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -23,11 +23,11 @@ function DocumentUploadForm({ user }) {
     } finally {
       setDocumentsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     checkDocumentStatus();
-  }, [user,checkDocumentStatus]);
+  }, [checkDocumentStatus]);
 
   const handleDocumentSubmission = () => {
     if (!user) return;

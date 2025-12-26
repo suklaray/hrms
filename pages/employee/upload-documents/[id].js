@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import axios from "axios";
@@ -51,7 +51,7 @@ export default function EmployeeDocumentForm() {
     setMounted(true);
   }, []);
 
-  const fetchExistingData = async () => {
+  const fetchExistingData = useCallback(async () => {
     try {
       let response;
       try {
@@ -112,7 +112,7 @@ export default function EmployeeDocumentForm() {
     } catch (error) {
       console.error("Error fetching existing data:", error);
     }
-  };
+  }, [id]);
 
 
 
@@ -157,7 +157,7 @@ export default function EmployeeDocumentForm() {
           .catch((err) => console.error("Error fetching employee:", err));
       }
     }
-  }, [mounted, id,fetchExistingData]);
+  }, [mounted, id, fetchExistingData]);
 
   // Debug formData changes
   useEffect(() => {
