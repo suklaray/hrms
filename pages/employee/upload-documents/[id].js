@@ -157,7 +157,7 @@ export default function EmployeeDocumentForm() {
           .catch((err) => console.error("Error fetching employee:", err));
       }
     }
-  }, [mounted, id]);
+  }, [mounted, id,fetchExistingData]);
 
   // Debug formData changes
   useEffect(() => {

@@ -113,7 +113,7 @@ export default function Sidebar({ user: propUser }) {
     setPayrollOpen(shouldDropdownBeOpen(['/hr/payroll']));
     setComplianceOpen(shouldDropdownBeOpen(['/compliance']));
     setSettingsOpen(shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task']));
-  }, [router.pathname]);
+  }, [router.pathname,shouldDropdownBeOpen]);
   const [checkedIn, setCheckedIn] = useState(false);
 
   const role = user?.role?.toLowerCase() || "hr";

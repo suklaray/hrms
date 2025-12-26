@@ -20,7 +20,7 @@ export default function EmployeeReassignmentModal({
     if (isOpen && positionName) {
       fetchEmployees();
     }
-  }, [isOpen, positionName]);
+  }, [isOpen, positionName,fetchEmployees]);
 
   const fetchEmployees = async () => {
     setLoading(true);

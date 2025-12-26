@@ -27,7 +27,7 @@ function DocumentUploadForm({ user }) {
 
   useEffect(() => {
     checkDocumentStatus();
-  }, [user]);
+  }, [user,checkDocumentStatus]);
 
   const handleDocumentSubmission = () => {
     if (!user) return;
