@@ -105,7 +105,17 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error sending credentials:', error);
-    res.status(500).json({ error: 'Failed to send credentials' });
+    return res.status(500).json({
+    success: false,
+    error: {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      command: error.command,
+      response: error.response,
+      responseCode: error.responseCode,
+      stack: error.stack,
+    }, });
   } finally {
     await prisma.$disconnect();
   }
