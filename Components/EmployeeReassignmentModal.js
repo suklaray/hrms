@@ -30,7 +30,7 @@ export default function EmployeeReassignmentModal({
     } finally {
       setLoading(false);
     }
-  }, [positionName]);
+  }, [positionName,userRole]);
 
   useEffect(() => {
     if (isOpen && positionName) {
