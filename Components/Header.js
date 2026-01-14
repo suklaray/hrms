@@ -289,12 +289,24 @@ const Header = () => {
 
   // notification function called on check-in
   useEffect(() => {
-    // Check work status from backend
-
+    if (!user) return; // Don't run if no user
+    
     const fetchStatus = async () => {
       try {
-        const checkInStatus = await fetch("/api/employee/work-status");
-        if (!checkInStatus.ok) return;
+        const checkInStatus = await fetch("/api/employee/work-status", {
+          method: 'GET',
+          credentials: 'include'
+        });
+        
+        if (!checkInStatus.ok) {
+          if (checkInStatus.status === 401) {
+            // User not authenticated, clear notifications
+            setNotifications([]);
+            localStorage.removeItem("workSessionNotifications");
+            localStorage.removeItem("currentNotifications");
+          }
+          return;
+        }
 
         const statusData = await checkInStatus.json();
         const hasNotifications = localStorage.getItem("workSessionNotifications");
@@ -317,13 +329,15 @@ const Header = () => {
         }
       } catch (error) {
         console.error("Error checking status:", error);
+        // Don't clear notifications on network errors
       }
     };
 
+    // Only fetch once initially, then set a longer interval
     fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
+    const interval = setInterval(fetchStatus, 60000); // Reduced to 1 minute
     return () => clearInterval(interval);
-  }, []);
+  }, [user]); // Only depend on user, not router changes
 
   return (
     <header className="bg-gradient-to-r from-indigo-700 to-purple-600 sticky top-0 z-50 shadow-lg">
