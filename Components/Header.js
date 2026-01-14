@@ -287,8 +287,11 @@ const Header = () => {
     router.reload();
   };
 
-  // notification function called on check-in
+  // notification function called on check-in - DISABLED FOR PRODUCTION
   useEffect(() => {
+    // Temporarily disabled to fix production reload loop
+    return;
+    
     if (!user) return; // Don't run if no user
     
     const fetchStatus = async () => {
