@@ -47,3 +47,4 @@ next-env.d.ts
 /uploads
 .env*.local
 /next.config.js
+deploy
