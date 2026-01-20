@@ -13,13 +13,25 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const positions = await prisma.$queryRaw`
-        SELECT p.*, u.name as created_by_name 
-        FROM positions p 
-        LEFT JOIN users u ON p.created_by = u.empid 
-        ORDER BY p.created_at DESC
-      `;
-      res.status(200).json(positions);
+      const positions = await prisma.positions.findMany({
+        include: {
+          users: {
+            select: {
+              name: true
+            }
+          }
+        },
+        orderBy: {
+          created_at: 'desc'
+        }
+      });
+      
+      const formattedPositions = positions.map(pos => ({
+        ...pos,
+        created_by_name: pos.users.name
+      }));
+      
+      res.status(200).json(formattedPositions);
     } catch (error) {
       console.error("Error fetching positions:", error);
       res.status(500).json({ error: "Failed to fetch positions" });
@@ -32,13 +44,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Position name is required" });
       }
 
-      const position = await prisma.$queryRaw`
-        INSERT INTO positions (position_name, description, created_by, created_at)
-        VALUES (${position_name}, ${description || null}, ${user.empid}, NOW())
-        RETURNING *
-      `;
+      const position = await prisma.positions.create({
+        data: {
+          position_name,
+          description: description || null,
+          created_by: user.empid
+        }
+      });
 
-      res.status(201).json({ message: "Position created successfully", position: position[0] });
+      res.status(201).json({ message: "Position created successfully", position });
     } catch (error) {
       console.error("Error creating position:", error);
       res.status(500).json({ error: "Failed to create position" });
@@ -52,11 +66,13 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Position name is required" });
       }
 
-      await prisma.$queryRaw`
-        UPDATE positions 
-        SET position_name = ${position_name}, description = ${description || null}
-        WHERE id = ${parseInt(id)}
-      `;
+      await prisma.positions.update({
+        where: { id: parseInt(id) },
+        data: {
+          position_name,
+          description: description || null
+        }
+      });
 
       res.status(200).json({ message: "Position updated successfully" });
     } catch (error) {

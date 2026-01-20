@@ -21,6 +21,7 @@ const PUBLIC_ROUTES = [
   "/privacy-policy",
   "/terms-of-service",
   "/cookie-policy",
+  "/setup/super-admin",
 ];
 
 const ALLOWED_PATHS = [
