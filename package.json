@@ -9,6 +9,7 @@
     "lint": "next lint",
     "lint:security": "eslint .",
     "security:scan": "npm run lint:security ",
+    "postinstall": "prisma generate",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "seed": "node prisma/seed.mjs",
     "vercel-seed": "dotenv -e .env.production -- npx prisma db seed",
