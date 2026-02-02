@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "lint:security": "eslint .",
@@ -47,7 +47,7 @@
     "next": "15.2.4",
     "next-auth": "^4.24.11",
     "next-connect": "^1.0.0",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^6.9.15",
     "openai": "^5.23.1",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.2.5",
