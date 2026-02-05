@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../../lib/prisma';
 import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
-
-const prisma = new PrismaClient();
 
 export const config = {
   api: {

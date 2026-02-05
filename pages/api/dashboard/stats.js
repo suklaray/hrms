@@ -1,9 +1,7 @@
-// Update the dashboard stats API
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../../lib/prisma';
 import jwt from 'jsonwebtoken';
 import { getAccessibleRoles } from '@/lib/roleBasedAccess';
 
-const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

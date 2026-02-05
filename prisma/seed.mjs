@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-
-const prisma = new PrismaClient();
 
 // Generate secure random password (8 characters)
 function generateRandomPassword() {
