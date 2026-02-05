@@ -1,6 +1,6 @@
 // /pages/api/recruitment/addEmployeeFromCandidate.js
 import prisma from "@/lib/prisma";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { generateRandomPassword } from "@/utils/helpers";
 
 export default async function handler(req, res) {

@@ -1,7 +1,7 @@
-import prisma from '../../../lib/prisma';
+// Update the dashboard stats API
+import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import { getAccessibleRoles } from '@/lib/roleBasedAccess';
-
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
