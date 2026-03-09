@@ -251,6 +251,7 @@ model users {
   createdTasks     tasks[]                  @relation("TaskCreator")
   assignedTasks    tasks[]                  @relation("TaskAssignee")
   positions        positions[]
+  daily_work_reports daily_work_reports[]
 }
 
 model payroll {
@@ -361,6 +362,21 @@ model positions {
   users         users    @relation(fields: [created_by], references: [empid])
 
   @@index([created_by])
+}
+
+model daily_work_reports {
+  id              Int      @id @default(autoincrement())
+  empid           String
+  report_date     DateTime @default(now())
+  tasks_completed String   @db.Text
+  tasks_tomorrow  String   @db.Text
+  issues          String?  @db.Text
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  users           users    @relation(fields: [empid], references: [empid], onDelete: Cascade)
+
+  @@index([empid])
+  @@index([report_date])
 }
 
 enum EventType {

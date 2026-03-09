@@ -34,6 +34,7 @@ export default async function handler(req, res) {
         email: true,
         contact_number: true,
         role: true,
+        position: true,
         status: true,
         created_at: true
       }

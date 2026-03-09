@@ -105,6 +105,7 @@ export default function Sidebar({ user: propUser }) {
   const [performanceOpen, setPerformanceOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [employeeOpen, setEmployeeOpen] = useState(false);
+  const [taskManagementOpen, setTaskManagementOpen] = useState(false);
 
   // Auto-open dropdowns based on current path
   useEffect(() => {
@@ -112,6 +113,7 @@ export default function Sidebar({ user: propUser }) {
     setAttendanceOpen(shouldDropdownBeOpen(['/hr/attendance', '/hr/view-leave-requests', '/attendance/analytics']) && !router.pathname.startsWith('/hr/attendance/my-attendance'));
     setPayrollOpen(shouldDropdownBeOpen(['/hr/payroll']));
     setComplianceOpen(shouldDropdownBeOpen(['/compliance']));
+    setTaskManagementOpen(shouldDropdownBeOpen(['/task-management']) && !router.pathname.startsWith('/task-management/user-task'));
     setSettingsOpen(shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task']));
   }, [router.pathname, shouldDropdownBeOpen]);
   const [checkedIn, setCheckedIn] = useState(false);
@@ -127,6 +129,7 @@ export default function Sidebar({ user: propUser }) {
   const togglePerformanceMenu = () => setPerformanceOpen(!performanceOpen);
   const toggleSettingsMenu = () => setSettingsOpen(!settingsOpen);
   const toggleEmployeeMenu = () => setEmployeeOpen(!employeeOpen);
+  const toggleTaskManagementMenu = () => setTaskManagementOpen(!taskManagementOpen);
   const hoverColor =
     role === "superadmin"
       ? "hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600"
@@ -165,6 +168,11 @@ export default function Sidebar({ user: propUser }) {
     //{ name: "Policy Acknowledgements", path: "/compliance/policyAcknowledge" },
     //{ name: "Audit Logs", path: "/compliance/auditLog" },
     //{ name: "Reports & Filings", path: "/compliance/ReportFillings" },
+  ];
+
+  const taskManagementSubItems = [
+    { name: "Task Management", path: "/task-management/manage-tasks" },
+    { name: "Daily Reports", path: "/task-management/daily-reports" },
   ];
 
   return (
@@ -456,36 +464,60 @@ export default function Sidebar({ user: propUser }) {
             )}
           </li>
 
-          {/* Task Management */}
+          {/* Task Management Dropdown */}
           <li>
-            {isAccessEnabled ? (
-              <Link href="/task-management/manage-tasks">
-                <div
-                  className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
-                    isActivePath('/task-management/manage-tasks')
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-800 hover:bg-indigo-600'
-                  }`}
-                  title={isCollapsed ? "Task Management" : ""}
-                >
-                  <ListChecks size={19} className="flex-shrink-0" />
-                  {!isCollapsed && (
-                    <span className="text-sm font-medium">Task Management</span>
-                  )}
-                </div>
-              </Link>
-            ) : (
-              <div
-                className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
-                title={isCollapsed ? "Task Management (Locked)" : "Complete verification and form submission to access"}
-              >
+            <button
+              onClick={
+                isAccessEnabled
+                  ? (isCollapsed
+                    ? () => router.push("/task-management")
+                      : toggleTaskManagementMenu)
+                  : undefined
+              }
+              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
+                isAccessEnabled
+                  ? (shouldDropdownBeOpen(['/task-management']) && !router.pathname.startsWith('/task-management/user-task')
+                    ? 'bg-indigo-600 text-white cursor-pointer'
+                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              }`}
+              title={isCollapsed ? (isAccessEnabled ? "Task Management" : "Task Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
+              disabled={!isAccessEnabled}
+            >
+              <div className="flex items-center gap-3">
                 <ListChecks size={19} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
-                    Task Management <span className="ml-2 text-xs">(🔒)</span>
+                    Task Management
+                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
+              {!isCollapsed && isAccessEnabled &&
+                (taskManagementOpen ? (
+                  <ChevronUp size={16} />
+                ) : (
+                  <ChevronDown size={16} />
+                ))}
+            </button>
+            {!isCollapsed && taskManagementOpen && isAccessEnabled && (
+              <ul className="pl-6 pt-2 space-y-2">
+                {taskManagementSubItems.map((subItem) => (
+                  <li key={subItem.name}>
+                    <Link href={subItem.path}>
+                      <span
+                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          isActivePath(subItem.path)
+                            ? 'bg-indigo-500 text-white'
+                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
+                        }`}
+                      >
+                        {subItem.name}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             )}
           </li>
 
