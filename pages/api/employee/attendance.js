@@ -5,8 +5,13 @@ import { format } from 'date-fns';
 // ---------------- Format Time ----------------
 const formatTime = (date) => {
   if (!date || isNaN(new Date(date))) return '';
-  const opts = { hour: 'numeric', minute: 'numeric', hour12: true };
-  return new Intl.DateTimeFormat('en-US', opts).format(new Date(date));
+  const opts = { 
+    hour: 'numeric', 
+    minute: 'numeric', 
+    hour12: true,
+    timeZone: 'Asia/Kolkata'
+  };
+  return new Intl.DateTimeFormat('en-IN', opts).format(new Date(date));
 };
 
 // ---------------- Total Working Hours ----------------

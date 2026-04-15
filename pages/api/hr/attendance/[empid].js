@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 
 const formatTime = (date) => {
   if (!date || isNaN(new Date(date))) return '';
-  const options = { hour: 'numeric', minute: 'numeric', hour12: true };
+  const options = { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: 'Asia/Kolkata' };
   return new Intl.DateTimeFormat('en-US', options).format(new Date(date));
 };
 

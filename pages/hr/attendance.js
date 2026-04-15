@@ -109,14 +109,21 @@ export default function AttendanceList() {
 
   const formatTime = (timeString) => {
     if (!timeString) return '--';
-    return new Date(timeString).toLocaleString('en-US', {
-      month: '2-digit',
-      day: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    
+    try {
+      return new Date(timeString).toLocaleString('en-IN', {
+        month: '2-digit',
+        day: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '--';
+    }
   };
 
   // Pagination logic

@@ -109,17 +109,47 @@ export default function EmployeeAttendance() {
     }
   }, [user, fetchAttendance]);
 
+  // Generate dynamic year options (current year and 2 years back)
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = 2; i >= 0; i--) {
+      years.push(currentYear - i);
+    }
+    return years;
+  };
+
+  const yearOptions = getYearOptions();
+
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  // Fix timezone formatting for check-in/checkout times
   const formatTime = (timeString) => {
-    if (!timeString) return '--';
-    return new Date(timeString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!timeString || timeString === '--') return '--';
+    
+    // If it's already formatted (contains AM/PM), return as is
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      return timeString;
+    }
+    
+    try {
+      // Create date object and format with Indian timezone
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) return '--';
+      
+      return date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '--';
+    }
   };
 
   const formatDate = (dateString) => {
@@ -220,7 +250,7 @@ const attendanceRate = workingDays.length > 0
                   onChange={(e) => setCurrentYear(parseInt(e.target.value))}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {[2023, 2024, 2025].map(year => (
+                  {yearOptions.map(year => (
                     <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
