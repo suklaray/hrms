@@ -103,14 +103,10 @@ const calculateStats = useCallback(() => {
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const year = date.getFullYear();
     
-    let hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const formattedHours = hours.toString().padStart(2, '0');
+    const options = { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: 'Asia/Kolkata' };
+    const timeString = new Intl.DateTimeFormat('en-US', options).format(date);
     
-    return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm}`;
+    return `${day}/${month}/${year} ${timeString}`;
   };
 
   const getDeadlineStatus = (deadline, status) => {
