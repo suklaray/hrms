@@ -19,6 +19,27 @@ const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [sseConnected, setSseConnected] = useState(false);
+
+  // Debug: Log notification changes
+  // useEffect(() => {
+  //   console.log('Notifications state changed:', notifications.length, notifications.map(n => ({ id: n.id, title: n.title, type: n.type })));
+  // }, [notifications]);
+
+  // Load existing notifications from localStorage on mount
+  useEffect(() => {
+    const storedNotifications = localStorage.getItem("currentNotifications");
+    if (storedNotifications) {
+      try {
+        const parsed = JSON.parse(storedNotifications);
+        // console.log('Loading stored notifications:', parsed.length);
+        setNotifications(parsed);
+      } catch (error) {
+        console.error('Error parsing stored notifications:', error);
+        localStorage.removeItem("currentNotifications");
+      }
+    }
+  }, []);
 
   const showCheckInNotifications = async () => {
     try {
@@ -247,13 +268,185 @@ const Header = () => {
     }
   };
 
+  // Function to check for recent notifications that might have been missed
+  const checkRecentNotifications = async () => {
+    try {
+      // console.log('SSE: Checking for recent notifications...');
+      const response = await fetch('/api/notifications/recent', {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // console.log(`SSE: Found ${data.count} recent notifications`);
+        
+        if (data.notifications && data.notifications.length > 0) {
+          data.notifications.forEach(notification => {
+            mergeNotification(notification);
+          });
+          
+          // Show modal if there are new notifications
+          setTimeout(() => setShowModal(true), 500);
+        }
+      }
+    } catch (error) {
+      console.error('SSE: Error checking recent notifications:', error);
+    }
+  };
+
+  // Function to merge new notification with existing ones (deduplication)
+  const mergeNotification = (newNotification) => {
+    // console.log('SSE: mergeNotification called with:', newNotification.title, 'Type:', newNotification.type);
+    setNotifications(prevNotifications => {
+      // console.log('SSE: Current notifications count:', prevNotifications.length);
+      
+      // Check for duplicates by id
+      const exists = prevNotifications.some(n => n.id === newNotification.id);
+      if (exists) {
+        // console.log('SSE: Duplicate notification ignored:', newNotification.id);
+        return prevNotifications;
+      }
+      
+      // Add new notification
+      // console.log('SSE: Adding new notification:', newNotification.title);
+      const updatedNotifications = [...prevNotifications, newNotification];
+      // console.log('SSE: Updated notifications count:', updatedNotifications.length);
+      
+      // Update localStorage
+      localStorage.setItem("currentNotifications", JSON.stringify(updatedNotifications));
+      
+      return updatedNotifications;
+    });
+  };
+  // SSE Real-time Notifications
+  useEffect(() => {
+    if (!user) return;
+
+    // console.log('SSE: Setting up EventSource for user:', user.empid);
+    let eventSource;
+    let reconnectTimeout;
+    let isConnecting = false;
+    
+    const connectSSE = () => {
+      // Prevent multiple simultaneous connections
+      if (isConnecting) {
+        // console.log('SSE: Connection already in progress, skipping...');
+        return;
+      }
+      
+      isConnecting = true;
+      
+      try {
+        // Close existing connection if any
+        if (eventSource) {
+          // console.log('SSE: Closing existing connection');
+          eventSource.close();
+        }
+        
+        // console.log('SSE: Creating new EventSource connection');
+        eventSource = new EventSource('/api/notifications/stream');
+        
+        eventSource.onopen = () => {
+          // console.log('SSE: Connection opened for user:', user.empid);
+          setSseConnected(true);
+          isConnecting = false;
+          
+          // Clear any reconnection timeout
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+            reconnectTimeout = null;
+          }
+          
+          // Check for recent notifications that might have been missed
+          setTimeout(() => {
+            checkRecentNotifications();
+          }, 1000);
+        };
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const notification = JSON.parse(event.data);
+            // console.log('SSE: Received notification:', notification.type, notification.title);
+            
+            // Skip heartbeat messages
+            if (notification.type === 'heartbeat') {
+              return;
+            }
+            
+            // Skip system connection messages
+            if (notification.type === 'system' && notification.id === 'sse-connected') {
+              // console.log('SSE: Connection confirmed:', notification.message);
+              return;
+            }
+            
+            // Process all other notifications
+            // console.log('SSE: Processing notification:', notification.type, notification.title);
+            mergeNotification(notification);
+            
+            // Force modal to show for new notifications
+            if (notification.type !== 'system' && notification.type !== 'heartbeat') {
+              // console.log('SSE: Auto-showing modal for new notification');
+              setTimeout(() => setShowModal(true), 100);
+            }
+            
+          } catch (error) {
+            console.error('SSE: Error parsing notification:', error, 'Raw data:', event.data);
+          }
+        };
+        
+        eventSource.onerror = (error) => {
+          console.error('SSE: Connection error:', error);
+          setSseConnected(false);
+          isConnecting = false;
+          
+          // Only reconnect if we don't have a pending reconnection
+          if (!reconnectTimeout) {
+            // console.log('SSE: Scheduling reconnection in 3 seconds...');
+            reconnectTimeout = setTimeout(() => {
+              // console.log('SSE: Attempting reconnection...');
+              connectSSE();
+            }, 3000);
+          }
+        };
+        
+      } catch (error) {
+        // console.error('SSE: Failed to create EventSource:', error);
+        setSseConnected(false);
+        isConnecting = false;
+        
+        // Retry connection after 5 seconds
+        if (!reconnectTimeout) {
+          reconnectTimeout = setTimeout(() => {
+            // console.log('SSE: Retrying connection after error...');
+            connectSSE();
+          }, 5000);
+        }
+      }
+    };
+    
+    // Initial connection
+    connectSSE();
+    
+    // Cleanup on unmount or user change
+    return () => {
+      // console.log('SSE: Cleaning up connection for user:', user.empid);
+      isConnecting = false;
+      
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      setSseConnected(false);
+    };
+  }, [user]);
+
   const dismissNotification = (notificationId) => {
     const updatedNotifications = notifications.filter((n) => n.id !== notificationId);
     setNotifications(updatedNotifications);
     localStorage.setItem("currentNotifications", JSON.stringify(updatedNotifications));
   };
-
-  // Persistent notifications - no auto-dismiss during work session
 
   const router = useRouter();
   useEffect(() => {
@@ -287,60 +480,12 @@ const Header = () => {
     router.reload();
   };
 
-  // notification function called on check-in - DISABLED FOR PRODUCTION
+  // notification function called on check-in - DISABLED FOR SSE
   useEffect(() => {
-    // Temporarily disabled to fix production reload loop
+    // Disabled in favor of SSE real-time notifications
+    // The old polling logic has been replaced with SSE
     return;
-    
-    if (!user) return; // Don't run if no user
-    
-    const fetchStatus = async () => {
-      try {
-        const checkInStatus = await fetch("/api/employee/work-status", {
-          method: 'GET',
-          credentials: 'include'
-        });
-        
-        if (!checkInStatus.ok) {
-          if (checkInStatus.status === 401) {
-            // User not authenticated, clear notifications
-            setNotifications([]);
-            localStorage.removeItem("workSessionNotifications");
-            localStorage.removeItem("currentNotifications");
-          }
-          return;
-        }
-
-        const statusData = await checkInStatus.json();
-        const hasNotifications = localStorage.getItem("workSessionNotifications");
-
-        if (statusData.isWorking) {
-          if (!hasNotifications) {
-            console.log("User checked in, showing notifications");
-            showCheckInNotifications();
-            localStorage.setItem("workSessionNotifications", "true");
-          } else {
-            const storedNotifications = localStorage.getItem("currentNotifications");
-            if (storedNotifications) {
-              setNotifications(JSON.parse(storedNotifications));
-            }
-          }
-        } else {
-          setNotifications([]);
-          localStorage.removeItem("workSessionNotifications");
-          localStorage.removeItem("currentNotifications");
-        }
-      } catch (error) {
-        console.error("Error checking status:", error);
-        // Don't clear notifications on network errors
-      }
-    };
-
-    // Only fetch once initially, then set a longer interval
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 60000); // Reduced to 1 minute
-    return () => clearInterval(interval);
-  }, [user]); // Only depend on user, not router changes
+  }, [user]);
 
   return (
     <header className="bg-gradient-to-r from-indigo-700 to-purple-600 sticky top-0 z-50 shadow-lg">
@@ -444,11 +589,20 @@ const Header = () => {
             {user && (
               <button
                 className="relative flex items-center justify-center w-10 h-10 bg-white/20 rounded-full hover:bg-white/30 transition-all duration-200"
-                onClick={() => setShowModal(true)}
+                onClick={() => {
+                  // console.log('Bell clicked, notifications:', notifications.length);
+                  setShowModal(true);
+                }}
+                title={`${notifications.length} notifications • ${sseConnected ? 'Real-time notifications active' : 'Notifications (polling mode)'}`}
               >
                 <Bell className="w-5 h-5 text-white" />
                 {notifications.length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                  <>
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                      {notifications.length > 9 ? '9+' : notifications.length}
+                    </span>
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                  </>
                 )}
               </button>
             )}
@@ -571,7 +725,9 @@ const Header = () => {
                   <Bell className="w-5 h-5 text-white" />
                   <span className="text-white font-medium">Notifications</span>
                   {notifications.length > 0 && (
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                      {notifications.length > 9 ? '9+' : notifications.length}
+                    </span>
                   )}
                 </button>
               </div>
@@ -597,23 +753,30 @@ const Header = () => {
             {/* Notifications list */}
             {notifications.length > 0 ? (
               <div className="space-y-4 max-h-96 overflow-y-auto">
+                <div className="text-sm text-gray-500 mb-2">
+                  {notifications.length} notification{notifications.length > 1 ? 's' : ''} • SSE: {sseConnected ? 'Connected' : 'Disconnected'}
+                </div>
                 {notifications.map((n) => (
                   <div
                     key={n.id}
                     className={`p-4 rounded-lg border ${n.bgColor} ${n.borderColor} text-white`}
                   >
-                    <h3 className="font-semibold">{n.title}</h3>
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold">{n.title}</h3>
+                      <span className="text-xs opacity-75">{n.type}</span>
+                    </div>
                     <p className="text-sm whitespace-pre-line">{n.message}</p>
-                    <button
-                      onClick={() =>
-                        setNotifications((prev) =>
-                          prev.filter((x) => x.id !== n.id)
-                        )
-                      }
-                      className="mt-2 text-xs underline text-white/90 hover:text-white"
-                    >
-                      Dismiss
-                    </button>
+                    <div className="flex justify-between items-center mt-3">
+                      <span className="text-xs opacity-75">
+                        {n.timestamp ? new Date(n.timestamp).toLocaleTimeString() : 'Now'}
+                      </span>
+                      <button
+                        onClick={() => dismissNotification(n.id)}
+                        className="text-xs underline text-white/90 hover:text-white px-2 py-1 rounded"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
