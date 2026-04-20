@@ -26,6 +26,7 @@ export default function Sidebar({ user: propUser }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [user, setUser] = useState(propUser || null);
+  const [loading, setLoading] = useState(!propUser); // Only loading if no propUser
   const [userStatus, setUserStatus] = useState({
     verified: propUser?.verified === "verified" || false,
     formSubmitted: propUser?.form_submitted || false,
@@ -48,32 +49,38 @@ export default function Sidebar({ user: propUser }) {
     return paths.some(path => isActivePath(path));
   }, [router.pathname]);
 
-  useEffect(() => {
-    if (propUser) {
-      setUser(propUser);
-      setUserStatus({
-        verified: propUser.verified === "verified",
-        formSubmitted: propUser.form_submitted || false,
-      });
-    } else {
-      const fetchUser = async () => {
-        try {
-          const res = await fetch("/api/auth/me");
-          if (res.ok) {
-            const userData = await res.json();
-            setUser(userData.user);
-            setUserStatus({
-              verified: userData.user?.verified === 'verified',
-              formSubmitted: userData.user?.form_submitted || false
-            });
-          }
-        } catch (error) {
-          console.error("Failed to fetch user:", error);
+ useEffect(() => {
+  const initUser = async () => {
+    try {
+      if (propUser) {
+        // User already provided, no need to fetch
+        setUser(propUser);
+        setUserStatus({
+          verified: propUser.verified === "verified",
+          formSubmitted: propUser.form_submitted || false,
+        });
+        setLoading(false);
+      } else {
+        // Only fetch if no propUser provided
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData.user);
+          setUserStatus({
+            verified: userData.user?.verified === "verified",
+            formSubmitted: userData.user?.form_submitted || false,
+          });
         }
-      };
-      fetchUser();
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+      setLoading(false);
     }
-  }, [propUser]);
+  };
+
+  initUser();
+}, [propUser]);
 
   const handleLogout = async () => {
     try {
@@ -123,6 +130,34 @@ export default function Sidebar({ user: propUser }) {
   const isAccessEnabled = isSuperAdmin || (userStatus.verified && userStatus.formSubmitted);
   // console.log("User Role:", role, "Is Super Admin:", isSuperAdmin, "Access Enabled:", isAccessEnabled);
 
+  // Show loading skeleton while user data is being fetched
+  if (loading) {
+    return (
+      <div
+        className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${
+          isCollapsed ? "w-16" : "w-72"
+        } ${isMobile && !isCollapsed ? "absolute z-50 h-full" : ""}`}
+      >
+        {/* Header Skeleton */}
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex items-center justify-between">
+            {!isCollapsed && <div className="h-8 bg-gray-700 rounded w-32 animate-pulse"></div>}
+            <div className="h-8 w-8 bg-gray-700 rounded animate-pulse"></div>
+          </div>
+        </div>
+        
+        {/* Menu Items Skeleton */}
+        <div className="p-4">
+          <div className="space-y-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-10 bg-gray-700 rounded animate-pulse"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const toggleAttendanceMenu = () => setAttendanceOpen(!attendanceOpen);
   const togglePayrollMenu = () => setPayrollOpen(!payrollOpen);
   const toggleComplianceMenu = () => setComplianceOpen(!complianceOpen);
@@ -141,6 +176,51 @@ export default function Sidebar({ user: propUser }) {
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, allowUnverified: true },
     { name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck, allowUnverified: false },
   ];
+
+  // Memoize access control to prevent recalculation
+  const getItemAccess = (allowUnverified = false) => {
+    return isAccessEnabled || allowUnverified;
+  };
+
+  const renderNavItem = (item) => {
+    const IconComponent = item.icon;
+    const canAccess = getItemAccess(item.allowUnverified);
+    
+    if (canAccess) {
+      return (
+        <Link href={item.path} key={item.name}>
+          <div
+            className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
+              isActivePath(item.path)
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-800 hover:bg-indigo-600'
+            }`}
+            title={isCollapsed ? item.name : ""}
+          >
+            <IconComponent size={18} className="flex-shrink-0" />
+            {!isCollapsed && (
+              <span className="text-sm font-medium">{item.name}</span>
+            )}
+          </div>
+        </Link>
+      );
+    } else {
+      return (
+        <div
+          key={item.name}
+          className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
+          title={isCollapsed ? `${item.name} (Locked)` : "Complete verification and form submission to access"}
+        >
+          <IconComponent size={18} className="flex-shrink-0" />
+          {!isCollapsed && (
+            <span className="text-sm font-medium">
+              {item.name} <span className="ml-2 text-xs">(🔒)</span>
+            </span>
+          )}
+        </div>
+      );
+    }
+  };
 
   const employeeSubItems = [
     { name: "Register Employee", path: "/registerEmployee" },
@@ -174,7 +254,6 @@ export default function Sidebar({ user: propUser }) {
     { name: "Task Management", path: "/task-management/manage-tasks" },
     { name: "Daily Reports", path: "/task-management/daily-reports" },
   ];
-
   return (
     <div
       className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${
@@ -198,70 +277,38 @@ export default function Sidebar({ user: propUser }) {
 
       <div className="p-4">
         <ul className="space-y-4">
-          {navItems.map((item) => {
-            const IconComponent = item.icon;
-            const canAccess = isAccessEnabled || item.allowUnverified;
-            return (
-              <li key={item.name}>
-                {canAccess ? (
-                  <Link href={item.path}>
-                    <div
-                      className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
-                        isActivePath(item.path)
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-gray-800 hover:bg-indigo-600'
-                      }`}
-                      title={isCollapsed ? item.name : ""}
-                    >
-                      <IconComponent size={18} className="flex-shrink-0" />
-                      {!isCollapsed && (
-                        <span className="text-sm font-medium">{item.name}</span>
-                      )}
-                    </div>
-                  </Link>
-                ) : (
-                  <div
-                    className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
-                    title={isCollapsed ? `${item.name} (Locked)` : "Complete verification and form submission to access"}
-                  >
-                    <IconComponent size={18} className="flex-shrink-0" />
-                    {!isCollapsed && (
-                      <span className="text-sm font-medium">
-                        {item.name} <span className="ml-2 text-xs">(🔒)</span>
-                      </span>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
+          {navItems.map((item) => (
+            <li key={item.name}>
+              {renderNavItem(item)}
+            </li>
+          ))}
 
           {/* Employee Management Dropdown */}
           <li>
             <button
               onClick={
-                isAccessEnabled
+                getItemAccess()
                   ? (isCollapsed
                     ? () => router.push("/employeeList")
                       : toggleEmployeeMenu)
                   : undefined
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                isAccessEnabled
+                getItemAccess()
                   ? (shouldDropdownBeOpen(['/registerEmployee', '/employeeList'])
                     ? 'bg-indigo-600 text-white cursor-pointer'
                     : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
-              title={isCollapsed ? (isAccessEnabled ? "Employee Management" : "Employee Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
-              disabled={!isAccessEnabled}
+              title={isCollapsed ? (getItemAccess() ? "Employee Management" : "Employee Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
+              disabled={!getItemAccess()}
             >
               <div className="flex items-center gap-3">
                 <Users size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Employee Management
-                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
+                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
@@ -272,7 +319,7 @@ export default function Sidebar({ user: propUser }) {
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && employeeOpen && isAccessEnabled && (
+            {!isCollapsed && employeeOpen && getItemAccess() && (
               <ul className="pl-6 pt-2 space-y-2">
                 {employeeSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -297,39 +344,39 @@ export default function Sidebar({ user: propUser }) {
           <li>
             <button
               onClick={
-                isAccessEnabled
+                getItemAccess()
                   ? (isCollapsed
                     ? () => router.push("/hr/attendance")
                       : toggleAttendanceMenu)
                   : undefined
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                isAccessEnabled
+                getItemAccess()
                   ? (shouldDropdownBeOpen(['/hr/attendance', '/hr/view-leave-requests', '/attendance/analytics'])
                     ? 'bg-indigo-600 text-white cursor-pointer'
                     : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
-              title={isCollapsed ? (isAccessEnabled ? "Attendance & Leave" : "Attendance & Leave (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
-              disabled={!isAccessEnabled}
+              title={isCollapsed ? (getItemAccess() ? "Attendance & Leave" : "Attendance & Leave (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
+              disabled={!getItemAccess()}
             >
               <div className="flex items-center gap-3">
                 <Clock size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Attendance & Leave
-                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
+                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
-              {!isCollapsed && isAccessEnabled &&
+              {!isCollapsed && getItemAccess() &&
                 (attendanceOpen ? (
                   <ChevronUp size={16} />
                 ) : (
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && attendanceOpen && isAccessEnabled && (
+            {!isCollapsed && attendanceOpen && getItemAccess() && (
               <ul className="pl-6 pt-2 space-y-2">
                 {attendanceSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -354,39 +401,39 @@ export default function Sidebar({ user: propUser }) {
           <li>
             <button
               onClick={
-                isAccessEnabled
+                getItemAccess()
                   ? (isCollapsed
                     ? () => router.push("/hr/payroll/payroll-view")
                       : togglePayrollMenu)
                   : undefined
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                isAccessEnabled
+                getItemAccess()
                   ? (shouldDropdownBeOpen(['/hr/payroll'])
                     ? 'bg-indigo-600 text-white cursor-pointer'
                     : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
-              title={isCollapsed ? (isAccessEnabled ? "Payroll Management" : "Payroll Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
-              disabled={!isAccessEnabled}
+              title={isCollapsed ? (getItemAccess() ? "Payroll Management" : "Payroll Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
+              disabled={!getItemAccess()}
             >
               <div className="flex items-center gap-3">
                 <DollarSign size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Payroll Management
-                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
+                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
-              {!isCollapsed && isAccessEnabled &&
+              {!isCollapsed && getItemAccess() &&
                 (payrollOpen ? (
                   <ChevronUp size={16} />
                 ) : (
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && payrollOpen && isAccessEnabled && (
+            {!isCollapsed && payrollOpen && getItemAccess() && (
               <ul className="pl-6 pt-2 space-y-2">
                 {payrollSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -411,39 +458,39 @@ export default function Sidebar({ user: propUser }) {
           <li>
             <button
               onClick={
-                isAccessEnabled
+                getItemAccess()
                   ? (isCollapsed
                     ? () => router.push("/compliance/empCompliance")
                       : toggleComplianceMenu)
                   : undefined
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                isAccessEnabled
+                getItemAccess()
                   ? (shouldDropdownBeOpen(['/compliance'])
                     ? 'bg-indigo-600 text-white cursor-pointer'
                     : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
-              title={isCollapsed ? (isAccessEnabled ? "Compliance Management" : "Compliance Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
-              disabled={!isAccessEnabled}
+              title={isCollapsed ? (getItemAccess() ? "Compliance Management" : "Compliance Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
+              disabled={!getItemAccess()}
             >
               <div className="flex items-center gap-3">
                 <Shield size={18} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Compliance
-                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
+                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
-              {!isCollapsed && isAccessEnabled &&
+              {!isCollapsed && getItemAccess() &&
                 (complianceOpen ? (
                   <ChevronUp size={16} />
                 ) : (
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && complianceOpen && isAccessEnabled && (
+            {!isCollapsed && complianceOpen && getItemAccess() && (
               <ul className="pl-6 pt-2 space-y-2">
                 {complianceSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -468,39 +515,39 @@ export default function Sidebar({ user: propUser }) {
           <li>
             <button
               onClick={
-                isAccessEnabled
+                getItemAccess()
                   ? (isCollapsed
                     ? () => router.push("/task-management")
                       : toggleTaskManagementMenu)
                   : undefined
               }
               className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                isAccessEnabled
+                getItemAccess()
                   ? (shouldDropdownBeOpen(['/task-management']) && !router.pathname.startsWith('/task-management/user-task')
                     ? 'bg-indigo-600 text-white cursor-pointer'
                     : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
               }`}
-              title={isCollapsed ? (isAccessEnabled ? "Task Management" : "Task Management (Locked)") : (isAccessEnabled ? "" : "Complete verification and form submission to access")}
-              disabled={!isAccessEnabled}
+              title={isCollapsed ? (getItemAccess() ? "Task Management" : "Task Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
+              disabled={!getItemAccess()}
             >
               <div className="flex items-center gap-3">
                 <ListChecks size={19} className="flex-shrink-0" />
                 {!isCollapsed && (
                   <span className="text-sm font-medium">
                     Task Management
-                    {!isAccessEnabled && <span className="ml-2 text-xs">(🔒)</span>}
+                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
                   </span>
                 )}
               </div>
-              {!isCollapsed && isAccessEnabled &&
+              {!isCollapsed && getItemAccess() &&
                 (taskManagementOpen ? (
                   <ChevronUp size={16} />
                 ) : (
                   <ChevronDown size={16} />
                 ))}
             </button>
-            {!isCollapsed && taskManagementOpen && isAccessEnabled && (
+            {!isCollapsed && taskManagementOpen && getItemAccess() && (
               <ul className="pl-6 pt-2 space-y-2">
                 {taskManagementSubItems.map((subItem) => (
                   <li key={subItem.name}>
@@ -523,7 +570,7 @@ export default function Sidebar({ user: propUser }) {
 
           {/* Customer Connect */}
           <li>
-            {isAccessEnabled ? (
+            {getItemAccess() ? (
               <Link href="/customer-connect">
                 <div
                   className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
@@ -599,7 +646,7 @@ export default function Sidebar({ user: propUser }) {
                 </li>
 
                 {/* Other settings - only accessible if verified and form submitted */}
-                {isAccessEnabled && (
+                {getItemAccess() && (
                   <>
                     {/* Users own attendance */}
                     {["hr", "admin", "superadmin"].includes(role) && (
@@ -640,13 +687,6 @@ export default function Sidebar({ user: propUser }) {
                         </span>
                       </Link>
                     </li>
-                    {/* <li>
-                      <Link href="/leave-request/leave-request">
-                        <span className="block text-sm px-3 py-2 bg-gray-700 rounded-lg hover:bg-indigo-500 transition cursor-pointer">
-                          Leave Requests
-                        </span>
-                      </Link>
-                    </li> */}
                     {role !== "superadmin" && (
                       <li>
                         <Link href="/leave-request/leave-request">
@@ -686,7 +726,7 @@ export default function Sidebar({ user: propUser }) {
                 )}
 
                 {/* Show locked items for non-verified users */}
-                {!isAccessEnabled && (
+                {!getItemAccess() && (
                   <>
                     <li>
                       <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
