@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import SideBar from "@/Components/SideBar";
-import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, FileText, Filter } from 'lucide-react';
+import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, FileText, Filter, X } from 'lucide-react';
 import moment from 'moment';
 
 export default function EmployeeLeaveSummary() {
@@ -78,6 +78,7 @@ export default function EmployeeLeaveSummary() {
     switch (status) {
       case 'Approved': return 'bg-green-100 text-green-800 border-green-200';
       case 'Rejected': return 'bg-red-100 text-red-800 border-red-200';
+      case 'Cancelled': return 'bg-gray-100 text-gray-800 border-gray-200';
       default: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     }
   };
@@ -342,6 +343,7 @@ export default function EmployeeLeaveSummary() {
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(leave.status)}`}>
                             {leave.status === 'Approved' && <CheckCircle className="w-3 h-3 mr-1" />}
                             {leave.status === 'Rejected' && <XCircle className="w-3 h-3 mr-1" />}
+                            {leave.status === 'Cancelled' && <X className="w-3 h-3 mr-1" />}
                             {leave.status === 'Pending' && <AlertCircle className="w-3 h-3 mr-1" />}
                             {leave.status}
                           </span>

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
-import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import swalConfirm from '@/utils/swalConfirm';
+import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { set } from 'date-fns';
 
@@ -27,6 +28,9 @@ export default function LeaveRequest() {
   const itemsPerPage = 10;
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [dayCount, setDayCount] = useState(0);
+  const [cancellingLeave, setCancellingLeave] = useState(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [leaveToCancel, setLeaveToCancel] = useState(null);
 
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));
@@ -200,6 +204,39 @@ export default function LeaveRequest() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelLeave = async (leaveId) => {
+    setLeaveToCancel(leaveId);
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancelLeave = async () => {
+    if (!leaveToCancel) return;
+
+    setCancellingLeave(leaveToCancel);
+    setShowCancelDialog(false);
+    
+    try {
+      await axios.post('/api/leave/cancel', { leaveId: leaveToCancel }, { withCredentials: true });
+      toast.success('Leave request cancelled successfully!');
+      
+      // Refresh the leave status list
+      const res = await axios.get('/api/leave/status', { withCredentials: true });
+      setLeaveStatusList(res.data);
+    } catch (err) {
+      console.error(err);
+      const errorMessage = err.response?.data?.message || 'Failed to cancel leave request';
+      toast.error(errorMessage);
+    } finally {
+      setCancellingLeave(null);
+      setLeaveToCancel(null);
+    }
+  };
+
+  const handleCancelDialogClose = () => {
+    setShowCancelDialog(false);
+    setLeaveToCancel(null);
   };
 
 
@@ -500,6 +537,7 @@ export default function LeaveRequest() {
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Applied On</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Document</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -523,6 +561,13 @@ export default function LeaveRequest() {
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                 <XCircle className="w-3 h-3 mr-1" />
                                 Rejected
+                              </span>
+                            );
+                          } else if (status === 'Cancelled') {
+                            return (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <X className="w-3 h-3 mr-1" />
+                                Cancelled
                               </span>
                             );
                           } else if (status === 'Leave Completed') {
@@ -604,6 +649,36 @@ export default function LeaveRequest() {
                                   </>
                                 ) : (
                                   <span className="text-gray-400 text-xs">No document</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-2">
+                                {leave.status === 'Pending' && fromDate > new Date() ? (
+                                  <button
+                                    onClick={() => handleCancelLeave(leave.id)}
+                                    disabled={cancellingLeave === leave.id}
+                                    className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 border border-red-300 rounded hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    title="Cancel Leave Request"
+                                  >
+                                    {cancellingLeave === leave.id ? (
+                                      <>
+                                        <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                                        Cancelling...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <X className="w-3 h-3 mr-1" />
+                                        Cancel
+                                      </>
+                                    )}
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">
+                                    {leave.status === 'Pending' && fromDate <= new Date() 
+                                      ? 'Cannot cancel' 
+                                      : 'No actions'}
+                                  </span>
                                 )}
                               </div>
                             </td>

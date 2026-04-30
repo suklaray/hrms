@@ -17,6 +17,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
@@ -120,6 +121,8 @@ export default function ViewLeaveRequests() {
         return "bg-green-100 text-green-800 border-green-200";
       case "Rejected":
         return "bg-red-100 text-red-800 border-red-200";
+      case "Cancelled":
+        return "bg-gray-100 text-gray-800 border-gray-200";
       case "On Leave":
         return "bg-blue-100 text-blue-800 border-blue-200";
       default:
@@ -542,6 +545,9 @@ export default function ViewLeaveRequests() {
                                 )}
                                 {currentStatus === "Rejected" && (
                                   <XCircle className="w-3 h-3 mr-1" />
+                                )}
+                                {currentStatus === "Cancelled" && (
+                                  <X className="w-3 h-3 mr-1" />
                                 )}
                                 {currentStatus === "Pending" && (
                                   <AlertCircle className="w-3 h-3 mr-1" />
