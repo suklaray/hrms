@@ -19,6 +19,8 @@ export default function UserTasks() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('tasks');
   const [workReports, setWorkReports] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM format
+  const [filteredReports, setFilteredReports] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -27,6 +29,7 @@ export default function UserTasks() {
     overdue: 0
   });
   const [showWorkReportModal, setShowWorkReportModal] = useState(false);
+  const [showMonthDropdown, setShowMonthDropdown] = useState(false);
 
 const calculateStats = useCallback(() => {
   const total = tasks.length;
@@ -42,9 +45,21 @@ const calculateStats = useCallback(() => {
     fetchUserAndTasks();
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     calculateStats();
-    }, [tasks, calculateStats]);
+  }, [tasks, calculateStats]);
+
+  // Filter reports by selected month
+  useEffect(() => {
+    if (workReports.length > 0) {
+      const filtered = workReports.filter(report => {
+        const reportDate = new Date(report.report_date);
+        const reportMonth = reportDate.toISOString().slice(0, 7);
+        return reportMonth === selectedMonth;
+      });
+      setFilteredReports(filtered);
+    }
+  }, [workReports, selectedMonth]);
 
 
   const fetchUserAndTasks = async () => {
@@ -191,36 +206,50 @@ const calculateStats = useCallback(() => {
         </div>
         );
     }
-   const generateReportRows = () => {
-  const daysToShow = 10; // number of working days you want
-  const rows = [];
-  let i = 0;
+  // Generate all days in the selected month for work reports
+  const generateMonthlyReportRows = () => {
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    const rows = [];
 
-  while (rows.length < daysToShow) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
+    for (let date = new Date(firstDay); date <= lastDay; date.setDate(date.getDate() + 1)) {
+      const dayOfWeek = date.getDay();
+      
+      // Skip weekends (Saturday = 6, Sunday = 0)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        const report = filteredReports.find(
+          r => new Date(r.report_date).toDateString() === date.toDateString()
+        );
 
-    const day = date.getDay();
-
-    // Skip Saturday (6) and Sunday (0)
-    if (day !== 0 && day !== 6) {
-      const report = workReports.find(
-        r => new Date(r.report_date).toDateString() === date.toDateString()
-      );
-
-      rows.push({
-        date,
-        report
-      });
+        rows.push({
+          date: new Date(date),
+          report
+        });
+      }
     }
 
-    i++;
-  }
+    // Sort by date descending (most recent first)
+    return rows.sort((a, b) => b.date - a.date);
+  };
 
-  return rows;
-};
+  const monthlyReportRows = generateMonthlyReportRows();
 
-const reportRows = generateReportRows();
+  // Get available months - show all 12 months of current year
+  const getAvailableMonths = () => {
+    const currentYear = new Date().getFullYear();
+    const months = [];
+    
+    // Generate all 12 months for current year
+    for (let month = 1; month <= 12; month++) {
+      const monthStr = `${currentYear}-${month.toString().padStart(2, '0')}`;
+      months.push(monthStr);
+    }
+    
+    return months;
+  };
+
+  const availableMonths = getAvailableMonths();
     return (
         <>
         <Head>
@@ -488,8 +517,55 @@ const reportRows = generateReportRows();
                     /* Work Reports History Tab */
                     <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-200">
-                            <h3 className="text-lg font-medium text-gray-900">Work Reports History</h3>
-                            <p className="text-sm text-gray-600">View your past daily work reports</p>
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                                <div>
+                                    <h3 className="text-lg font-medium text-gray-900">Work Reports History</h3>
+                                    <p className="text-sm text-gray-600">View your past daily work reports</p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <label className="text-sm font-medium text-gray-700">Month:</label>
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMonthDropdown(!showMonthDropdown)}
+                                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm w-32 text-left flex items-center justify-between"
+                                        >
+                                            <span>
+                                                {(() => {
+                                                    const [year, monthNum] = selectedMonth.split('-');
+                                                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                                    return `${monthNames[parseInt(monthNum) - 1]} ${year}`;
+                                                })()}
+                                            </span>
+                                            <ChevronRight className={`w-4 h-4 text-gray-400 transform transition-transform ${showMonthDropdown ? 'rotate-90' : ''}`} />
+                                        </button>
+                                        {showMonthDropdown && (
+                                            <div className="absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                                                {availableMonths.map(month => {
+                                                    const [year, monthNum] = month.split('-');
+                                                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                                    const label = `${monthNames[parseInt(monthNum) - 1]} ${year}`;
+                                                    return (
+                                                        <button
+                                                            key={month}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setSelectedMonth(month);
+                                                                setShowMonthDropdown(false);
+                                                            }}
+                                                            className={`w-full px-3 py-1.5 text-left text-sm hover:bg-gray-100 ${
+                                                                month === selectedMonth ? 'bg-blue-50 text-blue-600' : 'text-gray-900'
+                                                            }`}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
@@ -510,7 +586,7 @@ const reportRows = generateReportRows();
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-  {reportRows.map((row, index) => (
+  {monthlyReportRows.map((row, index) => (
     <tr key={index} className="hover:bg-gray-50">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
         {new Date(row.date).toLocaleDateString()}
