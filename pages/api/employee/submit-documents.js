@@ -2,6 +2,7 @@ import { formidable } from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/prisma';
+import { sendNotificationToUser } from '@/lib/notificationEmitter';
 
 export const config = {
   api: {
@@ -67,16 +68,21 @@ export default async function handler(req, res) {
           ifsc_code: getValue(fields.ifsc_code),
         };
 
-        // Security check: Prevent resubmission if already submitted
-        const existingUser = await prisma.users.findUnique({
-          where: { empid: body.empid },
-          select: { form_submitted: true }
-        });
-
-        if (existingUser?.form_submitted) {
-          return res.status(400).json({ 
-            error: 'Documents already submitted. No further changes allowed.' 
+        // Check if this is a resubmission request (allow updates for resubmission)
+        const isResubmission = getValue(fields.isResubmission) === 'true';
+        
+        // Security check: Prevent resubmission if already submitted (unless it's a resubmission request)
+        if (!isResubmission) {
+          const existingUser = await prisma.users.findUnique({
+            where: { empid: body.empid },
+            select: { form_submitted: true }
           });
+
+          if (existingUser?.form_submitted) {
+            return res.status(400).json({ 
+              error: 'Documents already submitted. No further changes allowed.' 
+            });
+          }
         }
 
         // Create uploads directory if it doesn't exist
@@ -105,14 +111,20 @@ export default async function handler(req, res) {
         const bankPath = processFile(files.bank_details?.[0] || files.bank_details) || getValue(fields.existing_bank_details);
 
         // Update users table with form details
+        const userUpdateData = { 
+          name: body.name,
+          contact_number: body.contact_no,
+          ...(profilePath && { profile_photo: profilePath })
+        };
+        
+        // Only set form_submitted to true if it's not already submitted or if it's a resubmission
+        if (!isResubmission) {
+          userUpdateData.form_submitted = true;
+        }
+        
         await prisma.users.updateMany({
           where: { email: body.email },
-          data: { 
-            name: body.name,
-            contact_number: body.contact_no,
-            form_submitted: true,
-            ...(profilePath && { profile_photo: profilePath })
-          }
+          data: userUpdateData
         });
         // Get user data to fetch empid and candidate_id
         const user = await prisma.users.findUnique({
@@ -223,6 +235,81 @@ export default async function handler(req, res) {
               pincode: body.pincode,
             }
           });
+        }
+
+        // Mark resubmission requests as completed for uploaded documents
+        const documentsToCheck = [
+          { type: 'aadhar_card', uploaded: !!aadharPath, name: 'Aadhar Card' },
+          { type: 'pan_card', uploaded: !!panPath, name: 'PAN Card' },
+          { type: 'education_certificates', uploaded: !!educationPath, name: 'Education Certificates' },
+          { type: 'resume', uploaded: !!resumePath, name: 'Resume' },
+          { type: 'experience_certificate', uploaded: !!experiencePath, name: 'Experience Certificate' },
+          { type: 'profile_photo', uploaded: !!profilePath, name: 'Profile Photo' },
+          { type: 'checkbook_document', uploaded: !!bankPath, name: 'Bank Details Document' }
+        ];
+
+        const completedDocuments = [];
+        for (const doc of documentsToCheck) {
+          if (doc.uploaded) {
+            const updatedRequests = await prisma.document_resubmission_requests.updateMany({
+              where: {
+                employee_empid: body.empid,
+                document_type: doc.type,
+                status: 'pending'
+              },
+              data: {
+                status: 'completed',
+                completed_at: new Date()
+              }
+            });
+            
+            // If any requests were updated, add to completed list
+            if (updatedRequests.count > 0) {
+              completedDocuments.push(doc.name);
+            }
+          }
+        }
+
+        // Send notifications to HR/Admin for completed resubmissions
+        if (completedDocuments.length > 0) {
+          const hrAdminUsers = await prisma.users.findMany({
+            where: {
+              role: { in: ['hr', 'admin', 'superadmin'] }
+            },
+            select: { empid: true }
+          });
+
+          const notificationMessage = `${body.name} (${body.empid}) has resubmitted: ${completedDocuments.join(', ')}`;
+          
+          // Create database notification
+          await prisma.notifications.create({
+            data: {
+              recipient_type: 'role',
+              recipient_id: 'hr,admin,superadmin',
+              title: 'Documents Resubmitted',
+              message: notificationMessage,
+              type: 'document_resubmission_completed',
+              metadata: JSON.stringify({
+                empid: body.empid,
+                employeeName: body.name,
+                completedDocuments: completedDocuments
+              }),
+              created_at: new Date(),
+              is_read: false
+            }
+          });
+
+          // Send real-time notifications
+          for (const hrUser of hrAdminUsers) {
+            await sendNotificationToUser(hrUser.empid, {
+              type: 'document_resubmission_completed',
+              title: 'Documents Resubmitted',
+              message: notificationMessage,
+              empid: body.empid,
+              employeeName: body.name,
+              completedDocuments: completedDocuments
+            });
+          }
         }
 
         // Don't refresh JWT tokens to avoid session conflicts between different users/tabs

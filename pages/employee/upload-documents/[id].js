@@ -46,6 +46,29 @@ export default function EmployeeDocumentForm() {
   const [existingData, setExistingData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
+  const [specificDocument, setSpecificDocument] = useState(null);
+  const [pendingResubmissions, setPendingResubmissions] = useState([]);
+
+  const getDocumentDisplayName = (docType) => {
+    const names = {
+      'aadhar_card': 'Aadhar Card',
+      'pan_card': 'PAN Card',
+      'resume': 'Resume',
+      'experience_certificate': 'Experience Certificate',
+      'education_certificates': 'Education Certificates',
+      'profile_photo': 'Profile Photo',
+      'checkbook_document': 'Bank Details Document'
+    };
+    return names[docType] || docType;
+  };
+
+  const isDocumentPendingResubmission = (documentType) => {
+    return Array.isArray(pendingResubmissions) && pendingResubmissions.some(req => req.document_type === documentType);
+  };
+
+  const getPendingResubmissionInfo = (documentType) => {
+    return Array.isArray(pendingResubmissions) ? pendingResubmissions.find(req => req.document_type === documentType) : null;
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -114,15 +137,33 @@ export default function EmployeeDocumentForm() {
     }
   }, [id]);
 
+  const fetchPendingResubmissions = useCallback(async () => {
+    try {
+      const response = await axios.get(`/api/employee/request-resubmission?empid=${id}`);
+      if (response.data.success) {
+        setPendingResubmissions(response.data.requests || []);
+      }
+    } catch (error) {
+      console.error("Error fetching pending resubmissions:", error);
+    }
+  }, [id]);
+
 
 
   useEffect(() => {
     if (mounted && id) {
       fetchExistingData();
+      fetchPendingResubmissions();
       
       const urlParams = new URLSearchParams(window.location.search);
       const prefillName = urlParams.get('name');
       const prefillEmail = urlParams.get('email');
+      const documentType = urlParams.get('document');
+      
+      // Store document type for specific document upload
+      if (documentType) {
+        setSpecificDocument(documentType);
+      }
       
       if (prefillName && prefillEmail) {
         setEmployee({
@@ -157,7 +198,7 @@ export default function EmployeeDocumentForm() {
           .catch((err) => console.error("Error fetching employee:", err));
       }
     }
-  }, [mounted, id, fetchExistingData]);
+  }, [mounted, id, fetchExistingData, fetchPendingResubmissions]);
 
   // Debug formData changes
   useEffect(() => {
@@ -483,6 +524,11 @@ export default function EmployeeDocumentForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Handle specific document upload
+    if (specificDocument) {
+      return handleSpecificDocumentUpload();
+    }
+    
     // Debug: Log current errors
     console.log('Current errors:', errors);
     console.log('Form data:', formData);
@@ -556,14 +602,55 @@ export default function EmployeeDocumentForm() {
     data.append("empid", id);
     data.append("name", employee.name);
     data.append("email", employee.email);
+    data.append("isResubmission", isEditing ? "true" : "false");
 
     try {
       const response = await axios.post("/api/employee/submit-documents", data);
-      toast.success('Documents submitted successfully! You can close this window.');
-      window.close();
+      toast.success(isEditing ? 'Documents updated successfully!' : 'Documents submitted successfully!');
+      
+      // Refresh pending resubmissions to remove completed ones
+      await fetchPendingResubmissions();
+      
+      // Don't close window, allow user to continue editing
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
       console.error("Error submitting documents:", error);
       toast.error(error.response?.data?.error || "Failed to submit documents");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSpecificDocumentUpload = async () => {
+    const fileField = specificDocument === 'checkbook_document' ? 'bank_details' : specificDocument;
+    const file = formData[fileField];
+    
+    if (!file) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const data = new FormData();
+    data.append('document', file);
+    data.append('documentType', specificDocument);
+
+    try {
+      const response = await axios.post('/api/employee/upload-document', data);
+      toast.success('Document uploaded successfully!');
+      
+      // Refresh pending resubmissions to remove completed ones
+      await fetchPendingResubmissions();
+      
+      setTimeout(() => {
+        window.close();
+      }, 1500);
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      toast.error(error.response?.data?.error || 'Failed to upload document');
     } finally {
       setIsSubmitting(false);
     }
@@ -577,10 +664,65 @@ export default function EmployeeDocumentForm() {
     );
   }
 
+  // Render specific document upload form
+  if (specificDocument) {
+    return (
+      <>
+        <Head>
+          <title>Upload Document - HRMS</title>
+        </Head>
+        <div className="min-h-screen bg-gray-50 py-8 px-4">
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+              <div className="bg-blue-600 text-white p-6">
+                <h1 className="text-2xl font-bold">Upload {getDocumentDisplayName(specificDocument)}</h1>
+                <p className="text-blue-100 mt-2">Employee: {employee.name} ({employee.empid})</p>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {getDocumentDisplayName(specificDocument)} *
+                  </label>
+                  <input
+                    type="file"
+                    name={specificDocument === 'checkbook_document' ? 'bank_details' : specificDocument}
+                    accept={specificDocument === 'profile_photo' ? 'image/jpeg,image/png,image/jpg' : 'image/*,application/pdf'}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="text-gray-500 text-xs mt-1">
+                    Max 15MB, {specificDocument === 'profile_photo' ? 'JPG/PNG/JPEG only' : 'JPG/PNG/PDF only'}
+                  </p>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="w-full py-3 px-6 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 transform hover:scale-[1.02] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                      Uploading...
+                    </div>
+                  ) : (
+                    'Upload Document'
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Head>
-        <title>Employee Document Form - HRMS</title>
+        <title>{specificDocument ? 'Upload Document' : 'Employee Document Form'} - HRMS</title>
       </Head>
       <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -602,11 +744,7 @@ export default function EmployeeDocumentForm() {
           </div>
         )}
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-          <div style={{ 
-            pointerEvents: isFormSubmitted ? 'none' : 'auto', 
-            opacity: isFormSubmitted ? 0.6 : 1 
-          }}>
-            <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
+          <form onSubmit={handleSubmit} className="p-8 space-y-8" encType="multipart/form-data">
             {/* Personal Information Section */}
             <div className="bg-gray-50 rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
@@ -646,9 +784,10 @@ export default function EmployeeDocumentForm() {
                     required
                     maxLength={10}
                     placeholder="Enter 10-digit contact number"
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.contact_no ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.contact_no && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -671,9 +810,10 @@ export default function EmployeeDocumentForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.dob ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.dob && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -690,9 +830,10 @@ export default function EmployeeDocumentForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.gender ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -725,9 +866,10 @@ export default function EmployeeDocumentForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.address_line_1 ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.address_line_1 && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -743,7 +885,8 @@ export default function EmployeeDocumentForm() {
                     name="address_line_2"
                     value={formData.address_line_2}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={isFormSubmitted}
+                    className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                 </div>
                 
@@ -756,9 +899,10 @@ export default function EmployeeDocumentForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.city ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.city && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -776,9 +920,10 @@ export default function EmployeeDocumentForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.state ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.state && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -797,9 +942,10 @@ export default function EmployeeDocumentForm() {
                     onBlur={handleBlur}
                     required
                     maxLength={6}
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.pincode ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.pincode && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -817,9 +963,10 @@ export default function EmployeeDocumentForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.country ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.country && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -839,7 +986,25 @@ export default function EmployeeDocumentForm() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Aadhar Card *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Aadhar Card *
+                    {isDocumentPendingResubmission('aadhar_card') && (
+                      <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        Resubmission Required
+                      </span>
+                    )}
+                  </label>
+                  {isDocumentPendingResubmission('aadhar_card') && (
+                    <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-orange-800 text-sm font-medium">📄 Document Resubmission Required</p>
+                      <p className="text-orange-700 text-xs mt-1">
+                        Reason: {getPendingResubmissionInfo('aadhar_card')?.reason || 'Document verification failed'}
+                      </p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Requested by: {getPendingResubmissionInfo('aadhar_card')?.requestor?.name || 'HR/Admin'}
+                      </p>
+                    </div>
+                  )}
                   <div className="relative">
                     <input
                       type="file"
@@ -847,10 +1012,15 @@ export default function EmployeeDocumentForm() {
                       accept="image/*,application/pdf"
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      required={!existingData?.aadhar_card}
+                      required={!existingData?.aadhar_card || isDocumentPendingResubmission('aadhar_card')}
+                      disabled={!isDocumentPendingResubmission('aadhar_card') && existingData?.aadhar_card}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.aadhar_card ? 'border-red-500' : 'border-gray-300'
-                      } ${existingData?.aadhar_card ? 'pr-12' : ''}`}
+                        errors.aadhar_card ? 'border-red-500' : 
+                        isDocumentPendingResubmission('aadhar_card') ? 'border-orange-500 bg-orange-50' :
+                        'border-gray-300'
+                      } ${existingData?.aadhar_card ? 'pr-12' : ''} ${
+                        !isDocumentPendingResubmission('aadhar_card') && existingData?.aadhar_card ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                     {existingData?.aadhar_card && (
                       <a
@@ -870,7 +1040,12 @@ export default function EmployeeDocumentForm() {
                       {errors.aadhar_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.
+                    {!isDocumentPendingResubmission('aadhar_card') && existingData?.aadhar_card && (
+                      <span className="text-blue-600 ml-1">✓ Already uploaded - disabled unless resubmission required</span>
+                    )}
+                  </p>
                 </div>
                 
                 <div>
@@ -884,9 +1059,10 @@ export default function EmployeeDocumentForm() {
                       onChange={handleChange}
                       required
                       maxLength={12}
+                      disabled={isFormSubmitted}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.aadhar_number ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
                     {extracting.aadhar && (
                       <div className="absolute right-3 top-3">
@@ -902,7 +1078,25 @@ export default function EmployeeDocumentForm() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">PAN Card *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    PAN Card *
+                    {isDocumentPendingResubmission('pan_card') && (
+                      <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        Resubmission Required
+                      </span>
+                    )}
+                  </label>
+                  {isDocumentPendingResubmission('pan_card') && (
+                    <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-orange-800 text-sm font-medium">📄 Document Resubmission Required</p>
+                      <p className="text-orange-700 text-xs mt-1">
+                        Reason: {getPendingResubmissionInfo('pan_card')?.reason || 'Document verification failed'}
+                      </p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Requested by: {getPendingResubmissionInfo('pan_card')?.requestor?.name || 'HR/Admin'}
+                      </p>
+                    </div>
+                  )}
                   <div className="relative">
                     <input
                       type="file"
@@ -910,10 +1104,15 @@ export default function EmployeeDocumentForm() {
                       accept="image/*,application/pdf"
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      required={!existingData?.pan_card}
+                      required={!existingData?.pan_card || isDocumentPendingResubmission('pan_card')}
+                      disabled={!isDocumentPendingResubmission('pan_card') && existingData?.pan_card}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.pan_card ? 'border-red-500' : 'border-gray-300'
-                      } ${existingData?.pan_card ? 'pr-12' : ''}`}
+                        errors.pan_card ? 'border-red-500' : 
+                        isDocumentPendingResubmission('pan_card') ? 'border-orange-500 bg-orange-50' :
+                        'border-gray-300'
+                      } ${existingData?.pan_card ? 'pr-12' : ''} ${
+                        !isDocumentPendingResubmission('pan_card') && existingData?.pan_card ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                     {existingData?.pan_card && (
                       <a
@@ -932,7 +1131,12 @@ export default function EmployeeDocumentForm() {
                       {errors.pan_card}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Max 5MB, JPG/PNG/PDF only. Number will be auto-extracted if possible.
+                    {!isDocumentPendingResubmission('pan_card') && existingData?.pan_card && (
+                      <span className="text-blue-600 ml-1">✓ Already uploaded - disabled unless resubmission required</span>
+                    )}
+                  </p>
                 </div>
                 
                 <div>
@@ -947,9 +1151,10 @@ export default function EmployeeDocumentForm() {
                       required
                       maxLength={10}
                       style={{ textTransform: 'uppercase' }}
+                      disabled={isFormSubmitted}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.pan_number ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                     />
                     {extracting.pan && (
                       <div className="absolute right-3 top-3">
@@ -983,9 +1188,10 @@ export default function EmployeeDocumentForm() {
                     onChange={handleChange}
                     onBlur={handleBlur}
                     required
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       errors.highest_qualification ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.highest_qualification && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -995,17 +1201,40 @@ export default function EmployeeDocumentForm() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Educational Certificates *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Educational Certificates *
+                    {isDocumentPendingResubmission('education_certificates') && (
+                      <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        Resubmission Required
+                      </span>
+                    )}
+                  </label>
+                  {isDocumentPendingResubmission('education_certificates') && (
+                    <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-orange-800 text-sm font-medium">📄 Document Resubmission Required</p>
+                      <p className="text-orange-700 text-xs mt-1">
+                        Reason: {getPendingResubmissionInfo('education_certificates')?.reason || 'Document verification failed'}
+                      </p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Requested by: {getPendingResubmissionInfo('education_certificates')?.requestor?.name || 'HR/Admin'}
+                      </p>
+                    </div>
+                  )}
                   <div className="relative">
                     <input
                       type="file"
                       name="education_certificates"
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      required={!existingData?.education_certificates}
+                      required={!existingData?.education_certificates || isDocumentPendingResubmission('education_certificates')}
+                      disabled={!isDocumentPendingResubmission('education_certificates') && existingData?.education_certificates}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.education_certificates ? 'border-red-500' : 'border-gray-300'
-                      } ${existingData?.education_certificates ? 'pr-12' : ''}`}
+                        errors.education_certificates ? 'border-red-500' : 
+                        isDocumentPendingResubmission('education_certificates') ? 'border-orange-500 bg-orange-50' :
+                        'border-gray-300'
+                      } ${existingData?.education_certificates ? 'pr-12' : ''} ${
+                        !isDocumentPendingResubmission('education_certificates') && existingData?.education_certificates ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                     {existingData?.education_certificates && (
                       <a
@@ -1024,21 +1253,49 @@ export default function EmployeeDocumentForm() {
                       {errors.education_certificates}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Max 5MB, JPG/PNG/PDF only.
+                    {!isDocumentPendingResubmission('education_certificates') && existingData?.education_certificates && (
+                      <span className="text-blue-600 ml-1">✓ Already uploaded - disabled unless resubmission required</span>
+                    )}
+                  </p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Resume *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Resume *
+                    {isDocumentPendingResubmission('resume') && (
+                      <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        Resubmission Required
+                      </span>
+                    )}
+                  </label>
+                  {isDocumentPendingResubmission('resume') && (
+                    <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-orange-800 text-sm font-medium">📄 Document Resubmission Required</p>
+                      <p className="text-orange-700 text-xs mt-1">
+                        Reason: {getPendingResubmissionInfo('resume')?.reason || 'Document verification failed'}
+                      </p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Requested by: {getPendingResubmissionInfo('resume')?.requestor?.name || 'HR/Admin'}
+                      </p>
+                    </div>
+                  )}
                   <div className="relative">
                     <input
                       type="file"
                       name="resume"
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      required={!existingData?.resume}
+                      required={!existingData?.resume || isDocumentPendingResubmission('resume')}
+                      disabled={!isDocumentPendingResubmission('resume') && existingData?.resume}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.resume ? 'border-red-500' : 'border-gray-300'
-                      } ${existingData?.resume ? 'pr-12' : ''}`}
+                        errors.resume ? 'border-red-500' : 
+                        isDocumentPendingResubmission('resume') ? 'border-orange-500 bg-orange-50' :
+                        'border-gray-300'
+                      } ${existingData?.resume ? 'pr-12' : ''} ${
+                        !isDocumentPendingResubmission('resume') && existingData?.resume ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                     {existingData?.resume && (
                       <a
@@ -1057,11 +1314,34 @@ export default function EmployeeDocumentForm() {
                       {errors.resume}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Max 5MB, JPG/PNG/PDF only.
+                    {!isDocumentPendingResubmission('resume') && existingData?.resume && (
+                      <span className="text-blue-600 ml-1">✓ Already uploaded - disabled unless resubmission required</span>
+                    )}
+                  </p>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Profile Photo *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Profile Photo *
+                    {isDocumentPendingResubmission('profile_photo') && (
+                      <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        Resubmission Required
+                      </span>
+                    )}
+                  </label>
+                  {isDocumentPendingResubmission('profile_photo') && (
+                    <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-orange-800 text-sm font-medium">📄 Document Resubmission Required</p>
+                      <p className="text-orange-700 text-xs mt-1">
+                        Reason: {getPendingResubmissionInfo('profile_photo')?.reason || 'Document verification failed'}
+                      </p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Requested by: {getPendingResubmissionInfo('profile_photo')?.requestor?.name || 'HR/Admin'}
+                      </p>
+                    </div>
+                  )}
                   <div className="relative">
                     <input
                       type="file"
@@ -1069,10 +1349,15 @@ export default function EmployeeDocumentForm() {
                       accept="image/jpeg,image/png,image/jpg"
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      required={!existingData?.profile_photo}
+                      required={!existingData?.profile_photo || isDocumentPendingResubmission('profile_photo')}
+                      disabled={!isDocumentPendingResubmission('profile_photo') && existingData?.profile_photo}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.profile_photo ? 'border-red-500' : 'border-gray-300'
-                      } ${existingData?.profile_photo ? 'pr-12' : ''}`}
+                        errors.profile_photo ? 'border-red-500' : 
+                        isDocumentPendingResubmission('profile_photo') ? 'border-orange-500 bg-orange-50' :
+                        'border-gray-300'
+                      } ${existingData?.profile_photo ? 'pr-12' : ''} ${
+                        !isDocumentPendingResubmission('profile_photo') && existingData?.profile_photo ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                     {existingData?.profile_photo && (
                       <a
@@ -1091,7 +1376,12 @@ export default function EmployeeDocumentForm() {
                       {errors.profile_photo}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/JPEG only.</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Max 5MB, JPG/PNG/JPEG only.
+                    {!isDocumentPendingResubmission('profile_photo') && existingData?.profile_photo && (
+                      <span className="text-blue-600 ml-1">✓ Already uploaded - disabled unless resubmission required</span>
+                    )}
+                  </p>
                 </div>
                 
                 <div className="md:col-span-2">
@@ -1146,11 +1436,12 @@ export default function EmployeeDocumentForm() {
                     onBlur={(e) => validateField('account_holder_name', e.target.value)}
                     required
                     placeholder="Enter full name as per bank records"
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.account_holder_name ? 'border-red-500 bg-red-50' : 
                       formData.account_holder_name && !errors.account_holder_name ? 'border-green-500 bg-green-50' :
                       'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.account_holder_name && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -1169,11 +1460,12 @@ export default function EmployeeDocumentForm() {
                     onBlur={(e) => validateField('bank_name', e.target.value)}
                     required
                     placeholder="Enter bank name (e.g., State Bank of India)"
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.bank_name ? 'border-red-500 bg-red-50' : 
                       formData.bank_name && !errors.bank_name ? 'border-green-500 bg-green-50' :
                       'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.bank_name && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -1192,11 +1484,12 @@ export default function EmployeeDocumentForm() {
                     onBlur={(e) => validateField('branch_name', e.target.value)}
                     required
                     placeholder="Enter branch name (e.g., Main Branch, Mumbai)"
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.branch_name ? 'border-red-500 bg-red-50' : 
                       formData.branch_name && !errors.branch_name ? 'border-green-500 bg-green-50' :
                       'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.branch_name && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -1216,11 +1509,12 @@ export default function EmployeeDocumentForm() {
                     required
                     maxLength={20}
                     placeholder="Enter account number (9-18 digits)"
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.account_number ? 'border-red-500 bg-red-50' : 
                       formData.account_number && !errors.account_number ? 'border-green-500 bg-green-50' :
                       'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.account_number && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -1240,11 +1534,12 @@ export default function EmployeeDocumentForm() {
                     required
                     maxLength={11}
                     placeholder="Enter IFSC code (e.g., SBIN0001234)"
+                    disabled={isFormSubmitted}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                       errors.ifsc_code ? 'border-red-500 bg-red-50' : 
                       formData.ifsc_code && !errors.ifsc_code ? 'border-green-500 bg-green-50' :
                       'border-gray-300'
-                    }`}
+                    } ${isFormSubmitted ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                   />
                   {errors.ifsc_code && (
                     <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
@@ -1254,17 +1549,40 @@ export default function EmployeeDocumentForm() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bank Details File *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Bank Details File *
+                    {isDocumentPendingResubmission('checkbook_document') && (
+                      <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                        Resubmission Required
+                      </span>
+                    )}
+                  </label>
+                  {isDocumentPendingResubmission('checkbook_document') && (
+                    <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <p className="text-orange-800 text-sm font-medium">📄 Document Resubmission Required</p>
+                      <p className="text-orange-700 text-xs mt-1">
+                        Reason: {getPendingResubmissionInfo('checkbook_document')?.reason || 'Document verification failed'}
+                      </p>
+                      <p className="text-orange-600 text-xs mt-1">
+                        Requested by: {getPendingResubmissionInfo('checkbook_document')?.requestor?.name || 'HR/Admin'}
+                      </p>
+                    </div>
+                  )}
                   <div className="relative">
                     <input
                       type="file"
                       name="bank_details"
                       onChange={handleChange}
                       onBlur={handleBlur}
-                      required={!existingData?.bank_details}
+                      required={!existingData?.bank_details || isDocumentPendingResubmission('checkbook_document')}
+                      disabled={!isDocumentPendingResubmission('checkbook_document') && existingData?.bank_details}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.bank_details ? 'border-red-500' : 'border-gray-300'
-                      } ${existingData?.bank_details ? 'pr-12' : ''}`}
+                        errors.bank_details ? 'border-red-500' : 
+                        isDocumentPendingResubmission('checkbook_document') ? 'border-orange-500 bg-orange-50' :
+                        'border-gray-300'
+                      } ${existingData?.bank_details ? 'pr-12' : ''} ${
+                        !isDocumentPendingResubmission('checkbook_document') && existingData?.bank_details ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
                     />
                     {existingData?.bank_details && (
                       <a
@@ -1283,13 +1601,17 @@ export default function EmployeeDocumentForm() {
                       {errors.bank_details}
                     </div>
                   )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Max 5MB, JPG/PNG/PDF only.
+                    {!isDocumentPendingResubmission('checkbook_document') && existingData?.bank_details && (
+                      <span className="text-blue-600 ml-1">✓ Already uploaded - disabled unless resubmission required</span>
+                    )}
+                  </p>
                 </div>
               </div>
             </div>
             
-            {/* Confirmation - Only show if not submitted*/}
-            {!isFormSubmitted && (
+            {/* Confirmation */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-start space-x-3">
                 <input 
@@ -1309,25 +1631,22 @@ export default function EmployeeDocumentForm() {
                 )}
               </div>
             </div>
-            )}
-            {!isFormSubmitted && (
+            
             <button 
               type="submit" 
-              disabled={isSubmitting}
+              disabled={isSubmitting || (specificDocument && !formData[specificDocument === 'checkbook_document' ? 'bank_details' : specificDocument])}
               className="w-full py-4 px-6 rounded-lg font-semibold text-lg transition-all duration-200 shadow-lg bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 transform hover:scale-[1.02] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center">
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                  Submitting...
+                  {specificDocument ? 'Uploading...' : (isEditing ? 'Updating...' : 'Submitting...')}
                 </div>
               ) : (
-                'Submit Documents'
+                specificDocument ? 'Upload Document' : (isEditing ? 'Update Documents' : 'Submit Documents')
               )}
             </button>
-            )}
             </form>
-          </div>
         </div>
       </div>
     </div>

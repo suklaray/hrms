@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
-import swalConfirm from '@/utils/swalConfirm';
+import { swalConfirm } from '@/utils/confirmDialog';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { set } from 'date-fns';

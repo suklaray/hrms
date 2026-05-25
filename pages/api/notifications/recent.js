@@ -2,6 +2,20 @@ import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from '@/lib/prisma';
 
+function getDocumentDisplayName(documentType) {
+  const names = {
+    'aadhar_card': 'Aadhar Card',
+    'pan_card': 'PAN Card',
+    'resume': 'Resume',
+    'experience_certificate': 'Experience Certificate',
+    'education_certificates': 'Education Certificates',
+    'profile_photo': 'Profile Photo',
+    'checkbook_document': 'Bank Details Document'
+  };
+  
+  return names[documentType] || documentType;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -160,6 +174,36 @@ recentPayrolls.forEach(payroll => {
     timestamp: payroll.generated_on.toISOString()
   });
 });
+
+  // Check for recent document resubmission requests (only pending ones)
+  const recentDocumentRequests = await prisma.document_resubmission_requests.findMany({
+    where: {
+      employee_empid: userId,
+      created_at: {
+        gte: oneHourAgo
+      },
+      status: 'pending' // Only show pending requests
+    },
+    orderBy: { created_at: 'desc' }
+  });
+
+  // document resubmission notifications (only for pending requests)
+  recentDocumentRequests.forEach((doc) => {
+    notifications.push({
+      id: `doc-${doc.id}`,
+      type: 'document',
+      status: 'pending',
+      priority: 1,
+      title: '📄 Document Resubmission Required',
+      message: `Please upload your ${getDocumentDisplayName(doc.document_type)} again.\n\nReason: ${
+        doc.reason || 'Document verification failed'
+      }\n\n📍 Go to Documents Section`,
+      bgColor: 'bg-gradient-to-br from-orange-400 via-amber-500 to-red-500',
+      borderColor: 'border-orange-300/80',
+      autoDismiss: false, 
+      timestamp: doc.created_at.toISOString()
+    });
+  });
     // Sort notifications by timestamp (newest first)
     notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 

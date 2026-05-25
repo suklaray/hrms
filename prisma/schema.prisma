@@ -253,6 +253,8 @@ model users {
   assignedTasks    tasks[]                  @relation("TaskAssignee")
   positions        positions[]
   daily_work_reports daily_work_reports[]
+  resubmissionRequests document_resubmission_requests[] @relation("ResubmissionEmployee")
+  requestedResubmissions document_resubmission_requests[] @relation("ResubmissionRequestor")
 }
 
 model payroll {
@@ -378,6 +380,37 @@ model daily_work_reports {
 
   @@index([empid])
   @@index([report_date])
+}
+
+model document_resubmission_requests {
+  id               Int      @id @default(autoincrement())
+  employee_empid   String
+  document_type    String
+  requested_by     String
+  reason           String?
+  status           String   @default("pending")
+  created_at       DateTime @default(now())
+  completed_at     DateTime?
+  employee         users    @relation("ResubmissionEmployee", fields: [employee_empid], references: [empid], onDelete: Cascade)
+  requestor        users    @relation("ResubmissionRequestor", fields: [requested_by], references: [empid], onDelete: Cascade)
+
+  @@index([employee_empid])
+  @@index([requested_by])
+}
+
+model notifications {
+  id             Int      @id @default(autoincrement())
+  recipient_type String   // 'user' or 'role'
+  recipient_id   String   // empid for user, role name for role
+  title          String
+  message        String   @db.Text
+  type           String?
+  metadata       String?  @db.Text
+  is_read        Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  @@index([recipient_type, recipient_id])
+  @@index([created_at])
 }
 
 enum EventType {

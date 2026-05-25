@@ -14,9 +14,11 @@ import {
   ChevronDown,
   ChevronUp,
   CheckCircle,
+  Upload,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
+import { swalConfirm } from '@/utils/confirmDialog';
 
 //import toast from "react-hot-toast";
 export default function ViewEmployee() {
@@ -38,6 +40,7 @@ export default function ViewEmployee() {
   const [positions, setPositions] = useState([]);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [resubmitStates, setResubmitStates] = useState({});
   useEffect(() => {
     const fetchEverything = async () => {
       try {
@@ -274,6 +277,119 @@ export default function ViewEmployee() {
       toast.error("Failed to send credentials. Please try again.");
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleRequestResubmission = async (documentType) => {
+    const confirmed = await swalConfirm(
+      `Are you sure you want to request resubmission of ${getDocumentDisplayName(documentType)}?\n\nThis will notify the employee to upload a new document.`
+    );
+    
+    if (!confirmed) {
+      return;
+    }
+
+    setResubmitStates(prev => ({ ...prev, [documentType]: true }));
+
+    try {
+      const response = await fetch('/api/employee/request-resubmission', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          empid: empid,
+          documentType: documentType
+        }),
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Resubmission request sent to ${result.employeeName}`);
+        
+        // Keep the button in "Request Sent" state
+        setTimeout(() => {
+          setResubmitStates(prev => ({ ...prev, [documentType]: 'sent' }));
+        }, 1000);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to send resubmission request');
+        setResubmitStates(prev => ({ ...prev, [documentType]: false }));
+      }
+    } catch (error) {
+      console.error('Error requesting resubmission:', error);
+      toast.error('Failed to send resubmission request');
+      setResubmitStates(prev => ({ ...prev, [documentType]: false }));
+    }
+  };
+
+  const getDocumentDisplayName = (documentType) => {
+    const names = {
+      'aadhar_card': 'Aadhar Card',
+      'pan_card': 'PAN Card',
+      'resume': 'Resume',
+      'experience_certificate': 'Experience Certificate',
+      'education_certificates': 'Education Certificates',
+      'profile_photo': 'Profile Photo',
+      'checkbook_document': 'Checkbook Document'
+    };
+    
+    return names[documentType] || documentType;
+  };
+
+  const handleResubmitDocument = async (documentType, file) => {
+    if (!file) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    setResubmitStates(prev => ({ ...prev, [documentType]: true }));
+
+    try {
+      const formData = new FormData();
+      formData.append('document', file);
+      formData.append('empid', empid);
+      formData.append('documentType', documentType);
+
+      const response = await fetch('/api/employee/upload-document', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success('Document resubmitted successfully!');
+        
+        // Update the local data to reflect the new document
+        setData(prev => {
+          const newData = { ...prev };
+          if (documentType === 'checkbook_document') {
+            if (newData.bankDetails && newData.bankDetails[0]) {
+              newData.bankDetails[0][documentType] = result.filePath;
+            }
+          } else {
+            if (newData.employee) {
+              newData.employee[documentType] = result.filePath;
+            }
+          }
+          return newData;
+        });
+        
+        // Reset file input
+        const fileInput = document.getElementById(`file-${documentType}`);
+        if (fileInput) fileInput.value = '';
+        
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Failed to resubmit document');
+      }
+    } catch (error) {
+      console.error('Error resubmitting document:', error);
+      toast.error('Failed to resubmit document');
+    } finally {
+      setResubmitStates(prev => ({ ...prev, [documentType]: false }));
     }
   };
 
@@ -684,20 +800,54 @@ export default function ViewEmployee() {
                       <FileDetail
                         label="Aadhar Card"
                         file={employees?.aadhar_card}
+                        documentType="aadhar_card"
+                        empid={empid}
+                        onResubmit={handleResubmitDocument}
+                        onRequestResubmission={handleRequestResubmission}
+                        isResubmitting={resubmitStates.aadhar_card}
+                        userRole={role}
+                        resubmitStates={resubmitStates}
                       />
                       <Detail
                         label="Aadhar Number"
                         value={employees?.aadhar_number || "N/A"}
                       />
-                      <FileDetail label="PAN Card" file={employees?.pan_card} />
+                      <FileDetail 
+                        label="PAN Card" 
+                        file={employees?.pan_card}
+                        documentType="pan_card"
+                        empid={empid}
+                        onResubmit={handleResubmitDocument}
+                        onRequestResubmission={handleRequestResubmission}
+                        isResubmitting={resubmitStates.pan_card}
+                        userRole={role}
+                        resubmitStates={resubmitStates}
+                      />
                       <Detail
                         label="PAN Number"
                         value={employees?.pan_number || "N/A"}
                       />
-                      <FileDetail label="Resume" file={employees?.resume} />
+                      <FileDetail 
+                        label="Resume" 
+                        file={employees?.resume}
+                        documentType="resume"
+                        empid={empid}
+                        onResubmit={handleResubmitDocument}
+                        onRequestResubmission={handleRequestResubmission}
+                        isResubmitting={resubmitStates.resume}
+                        userRole={role}
+                        resubmitStates={resubmitStates}
+                      />
                       <FileDetail
                         label="Experience Certificate"
                         file={employees?.experience_certificate}
+                        documentType="experience_certificate"
+                        empid={empid}
+                        onResubmit={handleResubmitDocument}
+                        onRequestResubmission={handleRequestResubmission}
+                        isResubmitting={resubmitStates.experience_certificate}
+                        userRole={role}
+                        resubmitStates={resubmitStates}
                       />
                     </div>
                   </div>
@@ -734,6 +884,13 @@ export default function ViewEmployee() {
                       <FileDetail
                         label="Education Certificates"
                         file={employees?.education_certificates}
+                        documentType="education_certificates"
+                        empid={empid}
+                        onResubmit={handleResubmitDocument}
+                        onRequestResubmission={handleRequestResubmission}
+                        isResubmitting={resubmitStates.education_certificates}
+                        userRole={role}
+                        resubmitStates={resubmitStates}
                       />
                     </div>
                   </div>
@@ -788,6 +945,13 @@ export default function ViewEmployee() {
                         <FileDetail
                           label="Checkbook Document"
                           file={bankDetails[0]?.checkbook_document}
+                          documentType="checkbook_document"
+                          empid={empid}
+                          onResubmit={handleResubmitDocument}
+                          onRequestResubmission={handleRequestResubmission}
+                          isResubmitting={resubmitStates.checkbook_document}
+                          userRole={role}
+                          resubmitStates={resubmitStates}
                         />
                       </div>
                     ) : (
@@ -902,23 +1066,114 @@ function Detail({ label, value }) {
   );
 }
 
-function FileDetail({ label, file }) {
+function FileDetail({ label, file, documentType, empid, onResubmit, onRequestResubmission, isResubmitting, userRole, resubmitStates }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showResubmit, setShowResubmit] = useState(false);
+
+  const handleFileSelect = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
+
+  const handleResubmitClick = () => {
+    if (selectedFile) {
+      onResubmit(documentType, selectedFile);
+      setSelectedFile(null);
+      setShowResubmit(false);
+    }
+  };
+
+  const handleRequestResubmission = () => {
+    onRequestResubmission(documentType);
+  };
+
+  const isEmployee = userRole === 'employee';
+  const isAdminHR = ['admin', 'hr', 'superadmin'].includes(userRole);
+  const canInteract = empid && documentType && onResubmit;
+
   return (
     <div>
       <p className="text-sm font-medium text-gray-700 mb-1">{label}</p>
-      {file ? (
-        <a
-          href={file}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
-        >
-          <FileText className="w-4 h-4 mr-1" />
-          View Document
-        </a>
-      ) : (
-        <p className="text-gray-900 font-medium">N/A</p>
-      )}
+      <div className="space-y-2">
+        {file ? (
+          <a
+            href={file}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+          >
+            <FileText className="w-4 h-4 mr-1" />
+            View Document
+          </a>
+        ) : (
+          <p className="text-gray-900 font-medium">N/A</p>
+        )}
+        
+        {canInteract && isEmployee && (
+          <div className="mt-2">
+            {!showResubmit ? (
+              <button
+                onClick={() => setShowResubmit(true)}
+                className="inline-flex items-center px-3 py-1 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors"
+              >
+                <Upload className="w-3 h-3 mr-1" />
+                Resubmit
+              </button>
+            ) : (
+              <div className="space-y-2 p-3 bg-gray-50 rounded-md">
+                <input
+                  id={`file-${documentType}`}
+                  type="file"
+                  onChange={handleFileSelect}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleResubmitClick}
+                    disabled={!selectedFile || isResubmitting}
+                    className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded transition-colors"
+                  >
+                    {isResubmitting ? 'Uploading...' : 'Upload'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowResubmit(false);
+                      setSelectedFile(null);
+                    }}
+                    className="px-3 py-1 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {canInteract && isAdminHR && (
+          <div className="mt-2">
+            <button
+              onClick={handleRequestResubmission}
+              disabled={isResubmitting || resubmitStates?.[documentType] === 'sent'}
+              className={`inline-flex items-center px-3 py-1 text-sm rounded-md transition-colors ${
+                resubmitStates?.[documentType] === 'sent'
+                  ? 'bg-green-100 text-green-700 cursor-default'
+                  : isResubmitting
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-red-100 hover:bg-red-200 text-red-700'
+              }`}
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              {resubmitStates?.[documentType] === 'sent'
+                ? 'Request Sent'
+                : isResubmitting
+                ? 'Sending...'
+                : 'Request Resubmission'
+              }
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
