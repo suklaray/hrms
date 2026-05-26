@@ -29,8 +29,6 @@ export default function LeaveRequest() {
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [dayCount, setDayCount] = useState(0);
   const [cancellingLeave, setCancellingLeave] = useState(null);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [leaveToCancel, setLeaveToCancel] = useState(null);
 
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));
@@ -207,18 +205,16 @@ export default function LeaveRequest() {
   };
 
   const handleCancelLeave = async (leaveId) => {
-    setLeaveToCancel(leaveId);
-    setShowCancelDialog(true);
-  };
+    const confirmed = await swalConfirm(
+      'Are you sure you want to cancel this leave request? This action cannot be undone.'
+    );
 
-  const confirmCancelLeave = async () => {
-    if (!leaveToCancel) return;
+    if (!confirmed) return;
 
-    setCancellingLeave(leaveToCancel);
-    setShowCancelDialog(false);
+    setCancellingLeave(leaveId);
     
     try {
-      await axios.post('/api/leave/cancel', { leaveId: leaveToCancel }, { withCredentials: true });
+      await axios.post('/api/leave/cancel', { leaveId }, { withCredentials: true });
       toast.success('Leave request cancelled successfully!');
       
       // Refresh the leave status list
@@ -230,13 +226,7 @@ export default function LeaveRequest() {
       toast.error(errorMessage);
     } finally {
       setCancellingLeave(null);
-      setLeaveToCancel(null);
     }
-  };
-
-  const handleCancelDialogClose = () => {
-    setShowCancelDialog(false);
-    setLeaveToCancel(null);
   };
 
 
@@ -751,6 +741,7 @@ export default function LeaveRequest() {
         </div>
       </div>
     </div>
+
     </>
   );
 }

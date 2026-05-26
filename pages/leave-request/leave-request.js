@@ -4,6 +4,8 @@ import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Calendar, Clock, FileText, Plus, Eye, AlertCircle, CheckCircle, XCircle, X } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
+import { toast } from "react-toastify";
+import { swalConfirm } from '@/utils/confirmDialog';
 import prisma from "@/lib/prisma";
 
 export async function getServerSideProps(context) {
@@ -63,6 +65,7 @@ export default function LeaveRequest({ user }) {
   });
   const [selectedReason, setSelectedReason] = useState(null);
   const [errors, setErrors] = useState({});
+  const [cancellingLeave, setCancellingLeave] = useState(null);
 const fileInputRef = useRef(null);
 
 
@@ -270,7 +273,42 @@ const fetchLeaveTypes = async () => {
     switch (status) {
       case "Approved": return "bg-green-100 text-green-800";
       case "Rejected": return "bg-red-100 text-red-800";
+      case "Cancelled": return "bg-gray-100 text-gray-800";
       default: return "bg-yellow-100 text-yellow-800";
+    }
+  };
+
+  const handleCancelLeave = async (leaveId) => {
+    const confirmed = await swalConfirm(
+      'Are you sure you want to cancel this leave request? This action cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    setCancellingLeave(leaveId);
+    
+    try {
+      const response = await fetch('/api/hr/cancel-leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leaveId }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Leave request cancelled successfully!');
+        // Refresh the leave requests list
+        fetchLeaveRequests();
+      } else {
+        toast.error(data.message || 'Failed to cancel leave request');
+      }
+    } catch (error) {
+      console.error('Error cancelling leave:', error);
+      toast.error('Failed to cancel leave request');
+    } finally {
+      setCancellingLeave(null);
     }
   };
 
@@ -588,6 +626,7 @@ const fetchLeaveTypes = async () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied Date</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attachment</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
 
                           </tr>
                         </thead>
@@ -652,6 +691,36 @@ const fetchLeaveTypes = async () => {
                                   <span className="text-gray-400">No attachment</span>
                                 )}
                               </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center space-x-2">
+                                  {request.status === 'Pending' && new Date(request.from_date) > new Date() ? (
+                                    <button
+                                      onClick={() => handleCancelLeave(request.id)}
+                                      disabled={cancellingLeave === request.id}
+                                      className="inline-flex items-center px-2 py-1 text-xs font-medium text-red-700 bg-red-100 border border-red-300 rounded hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                      title="Cancel Leave Request"
+                                    >
+                                      {cancellingLeave === request.id ? (
+                                        <>
+                                          <div className="w-3 h-3 border border-red-600 border-t-transparent rounded-full animate-spin mr-1"></div>
+                                          Cancelling...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <X className="w-3 h-3 mr-1" />
+                                          Cancel
+                                        </>
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">
+                                      {request.status === 'Pending' && new Date(request.from_date) <= new Date() 
+                                        ? 'Cannot cancel' 
+                                        : 'No actions'}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -677,6 +746,7 @@ const fetchLeaveTypes = async () => {
             </div>
           </div>
         )}
+
       </div>
     </>
   );
