@@ -74,11 +74,28 @@ export default function MyAttendance() {
     };
 
     const formatTime = (timeString) => {
-        if (!timeString) return '--';
-        return new Date(timeString).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        if (!timeString || timeString === '--') return '--';
+        
+        // If it's already formatted (contains AM/PM), return as is
+        if (timeString.includes('AM') || timeString.includes('PM')) {
+            return timeString;
+        }
+        
+        try {
+            // Create date object and format with Indian timezone
+            const date = new Date(timeString);
+            if (isNaN(date.getTime())) return '--';
+            
+            return date.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
+            });
+        } catch (error) {
+            console.error('Error formatting time:', error);
+            return '--';
+        }
     };
 
     const presentDays = attendance.filter(record => record.attendance_status === 'Present').length;
@@ -219,13 +236,13 @@ export default function MyAttendance() {
                                                             {record.date}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {record.first_check_in || '--'}
+                                                            {formatTime(record.first_check_in)}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {record.last_check_in || '--'}
+                                                            {formatTime(record.last_check_in)}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {record.check_out || '--'}
+                                                            {formatTime(record.check_out)}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                             {record.total_hours || '--'}
