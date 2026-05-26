@@ -5,7 +5,7 @@ import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import EmpSideBar from '@/Components/empSidebar';
 import WorkReportModal from '@/Components/WorkReportModal';
-import { CheckCircle, Clock, AlertCircle, Calendar, User, Filter, ChevronLeft, ChevronRight, AlertTriangle, FileText } from 'lucide-react';
+import { CheckCircle, Clock, AlertCircle, Calendar, User, Filter, ChevronLeft, ChevronRight, AlertTriangle, FileText, X } from 'lucide-react';
 
 export default function UserTasks() {
   const router = useRouter();
@@ -30,6 +30,8 @@ export default function UserTasks() {
   });
   const [showWorkReportModal, setShowWorkReportModal] = useState(false);
   const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [selectedTaskDescription, setSelectedTaskDescription] = useState({ title: '', description: '' });
 
 const calculateStats = useCallback(() => {
   const total = tasks.length;
@@ -186,6 +188,14 @@ const calculateStats = useCallback(() => {
     const handleLogout = () => {
         localStorage.removeItem("user");
         window.location.href = "/login";
+    };
+
+    const handleDescriptionClick = (task) => {
+        setSelectedTaskDescription({
+            title: task.title,
+            description: task.description || 'No description available'
+        });
+        setShowDescriptionModal(true);
     };
 
     const handleWorkReportSubmit = (result) => {
@@ -435,10 +445,18 @@ const calculateStats = useCallback(() => {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                           <div className="text-sm font-medium text-gray-900">{task.title}</div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                          <div className="text-sm text-gray-900 max-w-xs truncate">
-                                            {task.description || 'No description'}
-                                          </div>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                          {task.description && task.description.length > 50 ? (
+                                            <span 
+                                              className="cursor-pointer transition-colors truncate max-w-xs block"
+                                              onClick={() => handleDescriptionClick(task)}
+                                              title="Click to view full description"
+                                            >
+                                              {task.description.substring(0, 50)}...
+                                            </span>
+                                          ) : (
+                                            <span>{task.description || 'No description'}</span>
+                                          )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                           <select
@@ -628,6 +646,41 @@ const calculateStats = useCallback(() => {
         onClose={() => setShowWorkReportModal(false)}
         onSubmit={handleWorkReportSubmit}
       />
+
+      {/* Description Modal */}
+      {showDescriptionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Task Description</h3>
+                <p className="text-sm text-gray-600 mt-1">{selectedTaskDescription.title}</p>
+              </div>
+              <button
+                onClick={() => setShowDescriptionModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div className="prose max-w-none">
+                <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  {selectedTaskDescription.description}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={() => setShowDescriptionModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
