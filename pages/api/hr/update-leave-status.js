@@ -51,17 +51,17 @@ export default async function handler(req, res) {
     // Hierarchical approval validation
     if (requesterRole === 'employee') {
       // Employee leaves can be approved by HR, admin, or superadmin
-      if (!['HR', 'admin', 'superadmin'].includes(approver.role)) {
+      if (!['hr', 'admin', 'superadmin'].includes(approver.role.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Insufficient permissions' });
       }
-    } else if (requesterRole === 'HR') {
+    } else if (requesterRole === 'hr') {
       // HR leaves can only be approved by admin or superadmin
-      if (!['admin', 'superadmin'].includes(approver.role)) {
+      if (!['admin', 'superadmin'].includes(approver.role.toLowerCase())) {
         return res.status(403).json({ success: false, error: 'Only admin or superadmin can approve HR leaves' });
       }
     } else if (requesterRole === 'admin') {
       // Admin leaves can only be approved by superadmin
-      if (approver.role !== 'superadmin') {
+      if (approver.role.toLowerCase() !== 'superadmin') {
         return res.status(403).json({ success: false, error: 'Only superadmin can approve admin leaves' });
       }
     }
