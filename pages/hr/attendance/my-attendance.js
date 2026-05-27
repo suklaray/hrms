@@ -38,6 +38,18 @@ export default function MyAttendance() {
         fetchAttendance();
     }, [fetchAttendance]);
 
+    // Generate dynamic year options (current year and 2 years back)
+  const getYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = 2; i >= 0; i--) {
+      years.push(currentYear - i);
+    }
+    return years;
+  };
+
+  const yearOptions = getYearOptions();
+
     const monthNames = [
         'January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'
@@ -140,8 +152,8 @@ export default function MyAttendance() {
                                     onChange={(e) => setCurrentYear(parseInt(e.target.value))}
                                     className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 >
-                                    {[2023, 2024, 2025].map(year => (
-                                        <option key={year} value={year}>{year}</option>
+                                    {yearOptions.map(year => (
+                                       <option key={year} value={year}>{year}</option>
                                     ))}
                                 </select>
                             </div>
