@@ -111,7 +111,7 @@ export default function AttendanceList() {
     if (!timeString) return '--';
     
     try {
-      return new Date(timeString).toLocaleString('en-IN', {
+      const formatted = new Date(timeString).toLocaleString('en-IN', {
         month: '2-digit',
         day: '2-digit', 
         year: 'numeric',
@@ -120,6 +120,9 @@ export default function AttendanceList() {
         hour12: true,
         timeZone: 'Asia/Kolkata'
       });
+      
+      // Convert AM/PM to uppercase
+      return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
     } catch (error) {
       console.error('Error formatting time:', error);
       return '--';

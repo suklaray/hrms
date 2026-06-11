@@ -2,17 +2,17 @@ import { verifyEmployeeToken } from '@/lib/auth';
 import prisma from "@/lib/prisma";
 import { format } from 'date-fns';
 
-// ---------------- Format Time ----------------
-const formatTime = (date) => {
-  if (!date || isNaN(new Date(date))) return '';
-  const opts = { 
-    hour: 'numeric', 
-    minute: 'numeric', 
-    hour12: true,
-    timeZone: 'Asia/Kolkata'
-  };
-  return new Intl.DateTimeFormat('en-IN', opts).format(new Date(date));
-};
+// // ---------------- Format Time ----------------
+// const formatTime = (date) => {
+//   if (!date || isNaN(new Date(date))) return '';
+//   const opts = { 
+//     hour: 'numeric', 
+//     minute: 'numeric', 
+//     hour12: true,
+//     timeZone: 'Asia/Kolkata'
+//   };
+//   return new Intl.DateTimeFormat('en-IN', opts).format(new Date(date));
+// };
 
 // ---------------- Total Working Hours ----------------
 const calculateTotalWorkingHours = (sessions) => {
@@ -110,9 +110,9 @@ export default async function handler(req, res) {
 
       return {
         date: formattedDate,
-        first_check_in: formatTime(firstCheckIn),
-        last_check_in: formatTime(lastCheckIn),
-        check_out: isToday && login_status === 'Logged In' ? '--' : formatTime(CheckOut),
+        first_check_in: firstCheckIn,
+        last_check_in:lastCheckIn,
+        check_out: isToday && login_status === 'Logged In' ? '--' :CheckOut,
         total_hours: formatted,
         login_status,
         attendance_status,

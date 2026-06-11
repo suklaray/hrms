@@ -98,12 +98,15 @@ export default function MyAttendance() {
             const date = new Date(timeString);
             if (isNaN(date.getTime())) return '--';
             
-            return date.toLocaleTimeString('en-IN', {
+            const formatted = date.toLocaleTimeString('en-IN', {
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: true,
                 timeZone: 'Asia/Kolkata'
             });
+            
+            // Convert AM/PM to uppercase
+            return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
         } catch (error) {
             console.error('Error formatting time:', error);
             return '--';

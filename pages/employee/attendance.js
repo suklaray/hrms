@@ -127,6 +127,7 @@ export default function EmployeeAttendance() {
   ];
 
   // Fix timezone formatting for check-in/checkout times
+  // Fix timezone formatting for check-in/checkout times
   const formatTime = (timeString) => {
     if (!timeString || timeString === '--') return '--';
     
@@ -140,12 +141,15 @@ export default function EmployeeAttendance() {
       const date = new Date(timeString);
       if (isNaN(date.getTime())) return '--';
       
-      return date.toLocaleTimeString('en-IN', {
+      const formatted = date.toLocaleTimeString('en-IN', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
         timeZone: 'Asia/Kolkata'
       });
+      
+      // Convert AM/PM to uppercase
+      return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
     } catch (error) {
       console.error('Error formatting time:', error);
       return '--';
@@ -369,13 +373,13 @@ const attendanceRate = workingDays.length > 0
                               {record.date}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {record.first_check_in || '--'}
+                              {formatTime(record.first_check_in || '--')}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {record.last_check_in || '--'}
+                              {formatTime(record.last_check_in || '--')}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {record.check_out || '--'}
+                              {formatTime(record.check_out || '--')}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {record.total_hours || '--'}

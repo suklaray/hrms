@@ -207,6 +207,35 @@ const ViewAttendance = () => {
     setCurrentPage(page);
   };
 
+  // Fix timezone formatting for check-in/checkout times
+  const formatTime = (timeString) => {
+    if (!timeString || timeString === '--') return '--';
+    
+    // If it's already formatted (contains AM/PM), return as is
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      return timeString;
+    }
+    
+    try {
+      // Create date object and format with Indian timezone
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) return '--';
+      
+      const formatted = date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+      });
+      
+      // Convert AM/PM to uppercase
+      return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return '--';
+    }
+  };
+
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
@@ -391,13 +420,13 @@ const ViewAttendance = () => {
                           <div className="text-sm font-medium text-gray-900">{attendance.date}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{attendance.check_in || '--'}</div>
+                          <div className="text-sm text-gray-900">{formatTime(attendance.check_in)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{attendance.last_check_in || '--'}</div>
+                          <div className="text-sm text-gray-900">{formatTime(attendance.last_check_in)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{attendance.check_out || '--'}</div>
+                          <div className="text-sm text-gray-900">{formatTime(attendance.check_out)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{attendance.total_hours}</div>
