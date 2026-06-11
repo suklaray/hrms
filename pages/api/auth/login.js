@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { rateLimiter } from "@/lib/rateLimiter";
+import { createSession, SESSION_CONFIG } from "@/lib/authMiddleware";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -63,13 +64,18 @@ export default async function handler(req, res) {
       form_submitted: hasFormSubmitted,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { 
+      expiresIn: "12h" // 12 hours consistent with middleware
+    });
+
+    // Create server-side session with user type
+    createSession(user.id, user.role === 'employee' ? 'employee' : 'admin');
 
     res.setHeader("Set-Cookie", cookie.serialize("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 60 * 60 * 24,
+      maxAge: SESSION_CONFIG.JWT_EXPIRY / 1000, // Match JWT expiry
       path: "/",
     }));
 

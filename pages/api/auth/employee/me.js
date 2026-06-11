@@ -1,20 +1,15 @@
-import jwt from "jsonwebtoken";
-import cookie from "cookie";
+import { withSessionTimeout } from "@/lib/authMiddleware";
 import prisma from "@/lib/prisma";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   try {
-    // 1. Read token from cookies
-    const { token } = cookie.parse(req.headers.cookie || "");
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
+    const decoded = req.user; // User info from middleware
 
-    // 2. Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (decoded.role !== "employee") {
       return res.status(403).json({ error: "Access denied" });
     }
 
-    // 3. Fetch basic employee details from `users` table
+    // Fetch basic employee details from `users` table
     const user = await prisma.users.findUnique({
       where: { id: decoded.id },
       select: {
@@ -48,7 +43,7 @@ export default async function handler(req, res) {
     const isWorking = !!(attendance?.check_in && !attendance?.check_out);
     const workStartTime = attendance?.check_in || null;
 
-    // 5. Return user info + attendance status + JWT fields
+    // Return user info + attendance status + JWT fields
     res.status(200).json({
       user: {
         ...user,
@@ -60,6 +55,8 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error("Auth error in /me:", err);
-    res.status(401).json({ error: "Invalid token" });
+    res.status(500).json({ error: "Internal server error" });
   }
 }
+
+export default withSessionTimeout(handler);

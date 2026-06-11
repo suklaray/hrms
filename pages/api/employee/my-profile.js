@@ -1,5 +1,4 @@
-import jwt from 'jsonwebtoken';
-import cookie from 'cookie';
+import { verifyEmployeeToken } from '@/lib/auth';
 import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
@@ -8,26 +7,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get token from cookies (same as dashboard)
-    const cookies = cookie.parse(req.headers.cookie || '');
-    const token = cookies.token;
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized - No token' });
+    const user = await verifyEmployeeToken(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Verify employee token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Ensure this is an employee role
-    if (decoded.role !== 'employee') {
-      return res.status(403).json({ error: 'Access denied - Employee only' });
-    }
-
-    // Find user by id (same as dashboard) to ensure consistency
+    // Find user by id to ensure consistency and include verification fields
     const employee = await prisma.users.findUnique({
       where: { 
-        id: decoded.id 
+        id: user.id 
       },
       select: {
         empid: true,
@@ -37,13 +25,17 @@ export default async function handler(req, res) {
         position: true,
         date_of_joining: true,
         contact_number: true,
-        role: true
+        role: true,
+        verified: true, // Add verification status
+        form_submitted: true // Add form submission status
       }
     });
 
     if (!employee) {
       return res.status(404).json({ error: 'Employee not found' });
     }
+
+    console.log(`Employee profile fetched: ${employee.name} - Verified: ${employee.verified}, Form Submitted: ${employee.form_submitted}`);
 
     res.status(200).json(employee);
   } catch (error) {
