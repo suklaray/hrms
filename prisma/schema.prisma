@@ -344,7 +344,7 @@ model assistant_learning {
 model tasks {
   id          Int      @id @default(autoincrement())
   title       String
-  description String?
+  description String? @db.VarChar(500)
   assigned_to String
   assigned_by String
   deadline    DateTime
