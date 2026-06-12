@@ -56,7 +56,7 @@ const calculateStats = useCallback(() => {
     if (workReports.length > 0) {
       const filtered = workReports.filter(report => {
         const reportDate = new Date(report.report_date);
-        const reportMonth = reportDate.toISOString().slice(0, 7);
+        const reportMonth =`${reportDate.getFullYear()}-${String(reportDate.getMonth()+1).padStart(2,'0')}`;
         return reportMonth === selectedMonth;
       });
       setFilteredReports(filtered);
@@ -250,13 +250,17 @@ const calculateStats = useCallback(() => {
     const currentYear = new Date().getFullYear();
     const months = [];
     
-    // Generate all 12 months for current year
-    for (let month = 1; month <= 12; month++) {
-      const monthStr = `${currentYear}-${month.toString().padStart(2, '0')}`;
-      months.push(monthStr);
-    }
+    // available month from work reports
+    const availableMonths = [
+  ...new Set(
+    workReports.map(report => {
+      const d = new Date(report.report_date);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    })
+  )
+].sort().reverse();
     
-    return months;
+    return availableMonths.length > 0 ? availableMonths : Array.from({ length: 12 }, (_, i) => `${currentYear}-${String(i + 1).padStart(2, '0')}`);
   };
 
   const availableMonths = getAvailableMonths();

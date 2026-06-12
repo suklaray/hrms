@@ -65,7 +65,6 @@ export default async function handler(req, res) {
       const reports = await prisma.daily_work_reports.findMany({
         where: { empid: decoded.empid },
         orderBy: { report_date: 'desc' },
-        take: 10
       });
       return res.status(200).json(reports);
     }
