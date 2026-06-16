@@ -66,6 +66,9 @@ export default function LeaveRequest({ user }) {
   const [selectedReason, setSelectedReason] = useState(null);
   const [errors, setErrors] = useState({});
   const [cancellingLeave, setCancellingLeave] = useState(null);
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [pendingLeaveId, setPendingLeaveId] = useState(null);
 const fileInputRef = useRef(null);
 
 
@@ -279,39 +282,51 @@ const fetchLeaveTypes = async () => {
   };
 
   const handleCancelLeave = async (leaveId) => {
-    const confirmed = await swalConfirm(
-      'Are you sure you want to cancel this leave request? This action cannot be undone.'
-    );
+  setPendingLeaveId(leaveId);
+  setCancelReason('');
+  setShowReasonModal(true);
+};
+const submitCancellation = async () => {
+  if (!cancelReason.trim()) {
+    toast.error('Please enter a cancellation reason');
+    return;
+  }
 
-    if (!confirmed) return;
+  setCancellingLeave(pendingLeaveId);
 
-    setCancellingLeave(leaveId);
-    
-    try {
-      const response = await fetch('/api/hr/cancel-leave', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leaveId }),
-        credentials: 'include'
-      });
+  try {
+    const response = await fetch('/api/hr/cancel-leave', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        leaveId: pendingLeaveId,
+        reason_to_cancel: cancelReason
+      })
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (response.ok) {
-        toast.success('Leave request cancelled successfully!');
-        // Refresh the leave requests list
-        fetchLeaveRequests();
-      } else {
-        toast.error(data.message || 'Failed to cancel leave request');
-      }
-    } catch (error) {
-      console.error('Error cancelling leave:', error);
-      toast.error('Failed to cancel leave request');
-    } finally {
-      setCancellingLeave(null);
+    if (response.ok) {
+      toast.success('Leave request cancelled successfully!');
+
+      setShowReasonModal(false);
+      setCancelReason('');
+      setPendingLeaveId(null);
+
+      fetchLeaveRequests();
+    } else {
+      toast.error(data.message || 'Failed to cancel leave request');
     }
-  };
-
+  } catch (error) {
+    console.error(error);
+    toast.error('Failed to cancel leave request');
+  } finally {
+    setCancellingLeave(null);
+  }
+};
   return (
     <>
       <Head>
@@ -623,6 +638,8 @@ const fetchLeaveTypes = async () => {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">From Date</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">To Date</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason for Rejection</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason for Cancellation</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Applied Date</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attachment</th>
@@ -643,13 +660,30 @@ const fetchLeaveTypes = async () => {
                                 {new Date(request.to_date).toLocaleDateString()}
                               </td>
                               <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
-  <div 
-    className="truncate cursor-pointer hover:text-indigo-600" 
-    onClick={() => setSelectedReason(request.reason)}
-  >
-    {request.reason}
-  </div>
-</td>
+                                <div
+                                  className="truncate cursor-pointer hover:text-indigo-600"
+                                  onClick={() => setSelectedReason(request.reason)}
+                                >
+                                  {request.reason}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                <div
+                                  className="truncate cursor-pointer hover:text-indigo-600"
+                                  onClick={() => setSelectedReason(request.resoan_to_reject
+                                  )}
+                                >
+                                  {request.resoan_to_reject || '-'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                                <div
+                                  className="truncate cursor-pointer hover:text-indigo-600"
+                                  onClick={() => setSelectedReason(request.reason_to_cancel)}
+                                >
+                                  {request.reason_to_cancel || '-'}
+                                </div>
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center">
                                   {getStatusIcon(request.status)}
@@ -746,7 +780,43 @@ const fetchLeaveTypes = async () => {
             </div>
           </div>
         )}
+        {showReasonModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Reason for Cancellation
+              </h3>
 
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                rows={4}
+                className="w-full border rounded p-2"
+                placeholder="Enter cancellation reason..."
+              />
+
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => {
+                    setShowReasonModal(false);
+                    setCancelReason('');
+                    setPendingLeaveId(null);
+                  }}
+                  className="px-4 py-2 border rounded"
+                >
+                  Close
+                </button>
+
+                <button
+                  onClick={submitCancellation}
+                  className="px-4 py-2 bg-red-600 text-white rounded"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

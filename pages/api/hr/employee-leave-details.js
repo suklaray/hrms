@@ -38,6 +38,8 @@ export default async function handler(req, res) {
         reason: true,
         status: true,
         attachment: true,
+        resoan_to_reject: true,
+        reason_to_cancel: true,
       }
     });
 

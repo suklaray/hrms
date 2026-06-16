@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
-import { swalConfirm } from '@/utils/confirmDialog';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { set } from 'date-fns';
 
 export default function LeaveRequest() {
   const [form, setForm] = useState({
@@ -29,7 +27,9 @@ export default function LeaveRequest() {
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [dayCount, setDayCount] = useState(0);
   const [cancellingLeave, setCancellingLeave] = useState(null);
-
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [pendingLeaveId, setPendingLeaveId] = useState(null);
   useEffect(() => {
     axios.get('/api/leave/types').then(res => setLeaveTypes(res.data));
     
@@ -204,32 +204,52 @@ export default function LeaveRequest() {
     }
   };
 
-  const handleCancelLeave = async (leaveId) => {
-    const confirmed = await swalConfirm(
-      'Are you sure you want to cancel this leave request? This action cannot be undone.'
-    );
+  const handleCancelLeave = (leaveId,reason_to_cancel) => {
+    setPendingLeaveId(leaveId);
+    setCancelReason('');
+    setShowReasonModal(true);
+  };
+  const submitCancellation = async () => {
+    if (!cancelReason.trim()) {
+      toast.error('Please enter a cancellation reason');
+      return;
+    }
 
-    if (!confirmed) return;
+    setCancellingLeave(pendingLeaveId);
 
-    setCancellingLeave(leaveId);
-    
     try {
-      await axios.post('/api/leave/cancel', { leaveId }, { withCredentials: true });
-      toast.success('Leave request cancelled successfully!');
-      
-      // Refresh the leave status list
-      const res = await axios.get('/api/leave/status', { withCredentials: true });
+      await axios.post(
+        '/api/leave/cancel',
+        {
+          leaveId: pendingLeaveId,
+          reason_to_cancel: cancelReason
+        },
+        {
+          withCredentials: true
+        }
+      );
+
+      toast.success('Leave request cancelled successfully');
+
+      const res = await axios.get('/api/leave/status', {
+        withCredentials: true
+      });
+
       setLeaveStatusList(res.data);
+      setShowReasonModal(false);
+      setCancelReason('');
+      setPendingLeaveId(null);
+
     } catch (err) {
-      console.error(err);
-      const errorMessage = err.response?.data?.message || 'Failed to cancel leave request';
+      const errorMessage =
+        err.response?.data?.message ||
+        'Failed to cancel leave request';
+
       toast.error(errorMessage);
     } finally {
       setCancellingLeave(null);
     }
   };
-
-
 
   return (
     <>
@@ -526,12 +546,15 @@ export default function LeaveRequest() {
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Applied On</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason for Rejection</th>
+                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Reason for Cancellation</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Document</th>
                         <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedLeaves.map((leave, index) => {
+                        console.log('Leave Record:', leave); // Debugging line
                         const fromDate = new Date(leave.from_date);
                         const toDate = new Date(leave.to_date);
                         const today = new Date();
@@ -611,6 +634,16 @@ export default function LeaveRequest() {
                             <td className="px-6 py-4">
                               <div className="text-sm text-gray-900 max-w-xs truncate" title={leave.reason}>
                                 {leave.reason || 'No reason provided'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900 max-w-xs truncate" title={leave.reason}>
+                                {leave.resoan_to_reject || '-'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm text-gray-900 max-w-xs truncate" title={leave.reason}>
+                                {leave.reason_to_cancel || '-'}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -741,7 +774,40 @@ export default function LeaveRequest() {
         </div>
       </div>
     </div>
+   {/* reason modal */}
+      {showReasonModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">
+              Reason for Cancellation
+            </h3>
 
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={4}
+              className="w-full border rounded p-2"
+              placeholder="Enter reason..."
+            />
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setShowReasonModal(false)}
+                className="px-4 py-2 border rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={submitCancellation}
+                className="px-4 py-2 bg-red-600 text-white rounded"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

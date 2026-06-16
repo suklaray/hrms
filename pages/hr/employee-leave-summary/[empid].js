@@ -12,7 +12,8 @@ export default function EmployeeLeaveSummary() {
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState({ from: '', to: '' });
-
+  const [selectedReason, setSelectedReason] = useState('');
+  const [showViewReasonModal, setShowViewReasonModal] = useState(false);
   useEffect(() => {
     if (empid) {
       fetch(`/api/hr/employee-leave-details?empid=${empid}`)
@@ -318,6 +319,9 @@ export default function EmployeeLeaveSummary() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">From Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">To Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Duration</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason for Rejection</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason for Cancellation</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Document</th>
                   </tr>
@@ -339,6 +343,41 @@ export default function EmployeeLeaveSummary() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {duration} day{duration > 1 ? 's' : ''}
                         </td>
+                          <td className="px-6 py-4">
+                            <div 
+                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
+                              title="Click to view full reason"
+                              onClick={() => {
+                                setSelectedReason(leave.reason);
+                                setShowViewReasonModal(true);
+                              }}
+                            >
+                              {leave.reason || "-"}
+                            </div>
+                          </td> 
+                          <td className="px-6 py-4">
+                            <div 
+                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
+                              title="Click to view full reason"
+                              onClick={() => {
+                                setSelectedReason(leave.resoan_to_reject);
+                                setShowViewReasonModal(true);
+                              }}
+                            >
+                              {leave.resoan_to_reject || "-"}
+                            </div>
+                          </td> <td className="px-6 py-4">
+                            <div 
+                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
+                              title="Click to view full reason"
+                              onClick={() => {
+                                setSelectedReason(leave.reason_to_cancel);
+                                setShowViewReasonModal(true);
+                              }}
+                            >
+                              {leave.reason_to_cancel || "-"}
+                            </div>
+                          </td> 
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(leave.status)}`}>
                             {leave.status === 'Approved' && <CheckCircle className="w-3 h-3 mr-1" />}
@@ -380,6 +419,25 @@ export default function EmployeeLeaveSummary() {
           </div>
         </div>
       </div>
+      {/* View Reason Modal */}
+      {showViewReasonModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/90 backdrop-blur-lg rounded-3xl border border-gray-200 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg max-h-80 sm:max-h-96 overflow-hidden shadow-xl">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200/50">
+              <h3 className="text-lg font-bold text-gray-800">Reason Details</h3>
+              <button
+                onClick={() => setShowViewReasonModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100/80 hover:bg-gray-200/80 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-all"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 text-sm text-gray-800 whitespace-pre-wrap overflow-y-auto max-h-64">
+              {selectedReason}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

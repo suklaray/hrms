@@ -23,6 +23,8 @@ export default async function handler(req, res) {
           from_date: true,
           to_date: true,
           reason: true,
+          resoan_to_reject: true,
+          reason_to_cancel: true,
           leave_type: true,
           status: true,
           applied_at: true,

@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ message: 'Unauthorized - Insufficient permissions' });
   }
 
-  const { leaveId } = req.body;
+  const { leaveId , reason_to_cancel} = req.body;
 
   if (!leaveId) {
     return res.status(400).json({ message: 'Leave ID is required' });
@@ -35,7 +35,11 @@ export default async function handler(req, res) {
     if (!leaveRequest) {
       return res.status(404).json({ message: 'Leave request not found' });
     }
-
+     if (!reason_to_cancel?.trim()) {
+      return res.status(400).json({
+        message: 'Cancellation reason is required'
+      });
+    }
     // Check if leave can be cancelled (only pending leaves that haven't started)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -58,7 +62,9 @@ export default async function handler(req, res) {
     // Update the leave request status to Cancelled
     await prisma.leave_requests.update({
       where: { id: parseInt(leaveId) },
-      data: { status: 'Cancelled' }
+      data: { status: 'Cancelled',
+      reason_to_cancel: reason_to_cancel.trim()
+       }
     });
 
     res.status(200).json({ message: 'Leave request cancelled successfully' });

@@ -25,10 +25,18 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  const { id, status } = req.body;
+  const { id, status, reason } = req.body;
 
   if (!id || !status) {
     return res.status(400).json({ success: false, error: 'Missing ID or status' });
+  }
+
+  // Validate reason for Rejected and Cancelled status
+  if ((status === 'Rejected' || status === 'Cancelled') && (!reason || reason.trim() === '')) {
+    return res.status(400).json({ 
+      success: false, 
+      error: `Reason is required when ${status.toLowerCase()} a leave request` 
+    });
   }
 
   try {
@@ -66,12 +74,29 @@ export default async function handler(req, res) {
       }
     }
 
+    // Prepare update data based on status
+    let updateData = { status };
+    
+    if (status === 'Rejected') {
+      updateData.resoan_to_reject = reason;
+      // Clear any previous cancellation reason
+      updateData.reason_to_cancel = null;
+    } else if (status === 'Cancelled') {
+      updateData.reason_to_cancel = reason;
+      // Clear any previous rejection reason
+      updateData.resoan_to_reject = null;
+    } else if (status === 'Approved') {
+      // Clear both reason fields when approving
+      updateData.resoan_to_reject = null;
+      updateData.reason_to_cancel = null;
+    }
+
     await prisma.leave_requests.update({
       where: { id: parseInt(id) },
-      data: { status },
+      data: updateData,
     });
 
-    res.status(200).json({ success: true, message: 'Status updated' });
+    res.status(200).json({ success: true, message: 'Status updated successfully' });
   } catch (error) {
     console.error('Error updating leave status:', error);
     res.status(500).json({ success: false, error: 'Server error' });

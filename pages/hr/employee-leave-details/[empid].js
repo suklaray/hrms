@@ -5,6 +5,7 @@ import Breadcrumb from "@/Components/Breadcrumb";
 import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import moment from 'moment';
 import { swalConfirm } from '@/utils/confirmDialog';
+import { toast } from 'react-toastify';
 
 export default function EmployeeLeaveDetails() {
   const router = useRouter();
@@ -16,24 +17,29 @@ export default function EmployeeLeaveDetails() {
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState('');
   const [leaveBalances, setLeaveBalances] = useState([]);
+  const [actionReason, setActionReason] = useState('');
+  const [pendingLeave, setPendingLeave] = useState(null);
+  const [pendingStatus, setPendingStatus] = useState('');
+  const [showViewReasonModal, setShowViewReasonModal] = useState(false);
+  const fetchEmployeeData = async () => {
+    try {
+      const res = await fetch(`/api/hr/employee-leave-details?empid=${empid}`);
+      const data = await res.json();
 
-  useEffect(() => {
-    if (empid) {
-      fetch(`/api/hr/employee-leave-details?empid=${empid}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            setEmployeeData(data.data);
-            calculateLeaveBalances(data.data.leaveHistory);
-          }
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error('Error fetching employee details:', err);
-          setLoading(false);
-        });
+      if (data.success) {
+        setEmployeeData(data.data);
+        calculateLeaveBalances(data.data.leaveHistory);
+      }
+    } catch (err) {
+      console.error('Error fetching employee details:', err);
     }
-  }, [empid]);
+  };
+  useEffect(() => {
+  if (empid) {
+    fetchEmployeeData();
+    setLoading(false);
+  }
+}, [empid]);
 
 
   const formatDate = (dateString) => {
@@ -60,53 +66,113 @@ export default function EmployeeLeaveDetails() {
 
 
 const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
-  // Business logic for status changes
   if (currentStatus === 'Rejected' && newStatus === 'Approved') {
-    await swalConfirm('Cannot change status from Rejected to Approved. This action is not allowed.', false);
+    await swalConfirm(
+      'Cannot change status from Rejected to Approved. This action is not allowed.',
+      false
+    );
     return;
   }
 
-  if ((currentStatus === 'Approved' || currentStatus === 'Rejected') && newStatus === 'Pending') {
-    await swalConfirm('Cannot change status back to Pending once it has been Approved or Rejected.', false);
+  if (
+    (currentStatus === 'Approved' || currentStatus === 'Rejected') &&
+    newStatus === 'Pending'
+  ) {
+    await swalConfirm(
+      'Cannot change status back to Pending once it has been Approved or Rejected.',
+      false
+    );
     return;
   }
 
-  // Confirmation message
   let confirmMessage = '';
+
   if (newStatus === 'Approved') {
-    confirmMessage = 'Are you sure you want to APPROVE this leave request? Once confirmed, this can only be changed to Rejected (one time only).';
+    confirmMessage =
+      'Are you sure you want to APPROVE this leave request? Once confirmed, this can only be changed to Rejected (one time only).';
   } else if (newStatus === 'Rejected') {
     if (currentStatus === 'Approved') {
-      confirmMessage = 'Are you sure you want to REJECT this leave request? This is a one-time change from Approved to Rejected and cannot be reversed.';
+      confirmMessage =
+        'Are you sure you want to REJECT this leave request? This is a one-time change from Approved to Rejected and cannot be reversed.';
     } else {
-      confirmMessage = 'Are you sure you want to REJECT this leave request? Once confirmed, this cannot be changed.';
+      confirmMessage =
+        'Are you sure you want to REJECT this leave request? Once confirmed, this cannot be changed.';
     }
+  } else if (newStatus === 'Cancelled') {
+    confirmMessage =
+      'Are you sure you want to CANCEL this leave request?';
   }
 
   const confirmed = await swalConfirm(confirmMessage);
+
   if (!confirmed) return;
+
+  // APPROVED → Save directly
+  if (newStatus === 'Approved') {
+    try {
+      const res = await fetch('/api/hr/update-leave-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: leaveId,
+          status: newStatus
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        fetchEmployeeData();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+
+    return;
+  }
+
+  // REJECTED / CANCELLED → Open modal
+  if (newStatus === 'Rejected' || newStatus === 'Cancelled') {
+    setPendingLeave(leaveId);
+    setPendingStatus(newStatus);
+    setActionReason('');
+    setShowReasonModal(true);
+  }
+};
+const submitStatusWithReason = async () => {
+  if (!actionReason.trim()) {
+    await swalConfirm('Reason is required', false);
+    return;
+  }
 
   try {
     const res = await fetch('/api/hr/update-leave-status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: leaveId, status: newStatus }),
+      body: JSON.stringify({
+        id: pendingLeave,
+        status: pendingStatus,
+        reason: actionReason
+      })
     });
-    
+
     const data = await res.json();
+
     if (data.success) {
-      setEmployeeData(prev => ({
-        ...prev,
-        leaveHistory: prev.leaveHistory.map(leave =>
-          leave.id === leaveId ? { ...leave, status: newStatus } : leave
-        )
-      }));
+      toast.success('Leave status updated successfully');
+      setShowReasonModal(false);
+      setActionReason('');
+      setPendingLeave(null);
+      setPendingStatus('');
+
+      fetchEmployeeData();
+
     }
   } catch (error) {
     console.error('Error updating status:', error);
+    toast.error('Failed to update leave status'); 
   }
 };
-
 
 
   const calculateLeaveBalances = async (leaveHistory) => {
@@ -336,7 +402,7 @@ const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
                               title="Click to view full reason"
                               onClick={() => {
                                 setSelectedReason(leave.reason);
-                                setShowReasonModal(true);
+                                setShowViewReasonModal(true);
                               }}
                             >
                               {leave.reason}
@@ -387,6 +453,7 @@ const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
                                   <option value="Pending">Pending</option>
                                   <option value="Approved">Approved</option>
                                   <option value="Rejected">Rejected</option>
+                                  <option value="Cancelled">Cancelled</option>
                                 </>
                               )}
                               {leave.status === 'Approved' && (
@@ -483,26 +550,64 @@ const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
         </div>
       </div>
       {/* Reason Modal */}
-{/* Reason Modal */}
-{showReasonModal && (
-  <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-    <div className="bg-white/90 backdrop-blur-lg rounded-3xl border border-gray-200 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg max-h-80 sm:max-h-96 overflow-hidden shadow-xl">
-      <div className="flex justify-between items-center p-6 border-b border-gray-200/50">
-        <h3 className="text-lg font-bold text-gray-800">Leave Reason</h3>
-        <button
-          onClick={() => setShowReasonModal(false)}
-          className="w-8 h-8 rounded-full bg-gray-100/80 hover:bg-gray-200/80 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-all"
-        >
-          ×
-        </button>
-      </div>
-      <div className="p-6 text-sm text-gray-800 whitespace-pre-wrap overflow-y-auto max-h-64">
-        {selectedReason}
-      </div>
-    </div>
-  </div>
-)}
+      {showViewReasonModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/90 backdrop-blur-lg rounded-3xl border border-gray-200 w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg max-h-80 sm:max-h-96 overflow-hidden shadow-xl">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200/50">
+              <h3 className="text-lg font-bold text-gray-800">Leave Reason</h3>
+              <button
+                onClick={() => setShowReasonModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100/80 hover:bg-gray-200/80 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-all"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6 text-sm text-gray-800 whitespace-pre-wrap overflow-y-auto max-h-64">
+              {selectedReason}
+            </div>
+          </div>
+        </div>
+      )}
+      {showReasonModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">
+              {pendingStatus === 'Rejected'
+                ? 'Reason for Rejection'
+                : 'Reason for Cancellation'}
+            </h3>
 
+            <textarea
+              value={actionReason}
+              onChange={(e) => setActionReason(e.target.value)}
+              rows={4}
+              className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Enter reason..."
+            />
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => {
+                  setShowReasonModal(false);
+                  setActionReason('');
+                  setPendingLeave(null);
+                  setPendingStatus('');
+                }}
+                className="px-4 py-2 border rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={submitStatusWithReason}
+                className="px-4 py-2 bg-red-600 text-white rounded"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -220,6 +220,8 @@ model leave_requests {
   leave_type String
   name       String
   status     leave_requests_status? @default(Pending)
+  resoan_to_reject String? @db.VarChar(255)
+  reason_to_cancel String? @db.VarChar(255)
   users      users                  @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
 
   @@index([empid])
