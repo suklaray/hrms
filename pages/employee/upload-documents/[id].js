@@ -1384,37 +1384,82 @@ export default function EmployeeDocumentForm() {
                   </p>
                 </div>
                 
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Experience Certificate (Optional)</label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      name="experience_certificate"
-                      onChange={handleChange}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                        errors.experience_certificate ? 'border-red-500' : 'border-gray-300'
-                      } ${existingData?.experience_certificate ? 'pr-12' : ''}`}
-                    />
-                    {existingData?.experience_certificate && (
-                      <a
-                        href={existingData.experience_certificate}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
-                        title="View current document"
-                      >
-                        <Eye size={20} />
-                      </a>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Experience Certificate (Optional)
+                      {isDocumentPendingResubmission('experience_certificate') && (
+                        <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                          Resubmission Required
+                        </span>
+                      )}
+                    </label>
+                    {isDocumentPendingResubmission('experience_certificate') && (
+                      <div className="mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <p className="text-orange-800 text-sm font-medium">
+                          📄 Document Resubmission Required
+                        </p>
+                        <p className="text-orange-700 text-xs mt-1">
+                          Reason: {getPendingResubmissionInfo('experience_certificate')?.reason || 'Document verification failed'}
+                        </p>
+                        <p className="text-orange-600 text-xs mt-1">
+                          Requested by: {getPendingResubmissionInfo('experience_certificate')?.requestor?.name || 'HR/Admin'}
+                        </p>
+                      </div>
                     )}
-                  </div>
-                  {errors.experience_certificate && (
-                    <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-                      {errors.experience_certificate}
+                    <div className="relative">
+                      <input
+                        type="file"
+                        name="experience_certificate"
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        // CRITICAL DIFFERENCE: It is only mandatory IF HR asked for a resubmission
+                        required={isDocumentPendingResubmission('experience_certificate')}
+                        // Locks the field if it exists, UNLESS HR asked for a new one
+                        disabled={
+                          !isDocumentPendingResubmission('experience_certificate') &&
+                          existingData?.experience_certificate
+                        }
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.experience_certificate
+                            ? 'border-red-500'
+                            : isDocumentPendingResubmission('experience_certificate')
+                              ? 'border-orange-500 bg-orange-50'
+                              : 'border-gray-300'
+                          } ${existingData?.experience_certificate ? 'pr-12' : ''} ${!isDocumentPendingResubmission('experience_certificate') &&
+                            existingData?.experience_certificate
+                            ? 'bg-gray-100 cursor-not-allowed'
+                            : ''
+                          }`}
+                      />
+                      {existingData?.experience_certificate && (
+                        <a
+                          href={existingData.experience_certificate}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800"
+                          title="View current document"
+                        >
+                          <Eye size={20} />
+                        </a>
+                      )}
                     </div>
-                  )}
-                  <p className="text-gray-500 text-xs mt-1">Max 5MB, JPG/PNG/PDF only.</p>
-                  <p className="text-blue-600 text-sm mt-1">ⓘ This field is optional. Upload only if you have work experience.</p>
-                </div>
+                    {errors.experience_certificate && (
+                      <div className="mt-1 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                        {errors.experience_certificate}
+                      </div>
+                    )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Max 5MB, JPG/PNG/PDF only.
+                      {!isDocumentPendingResubmission('experience_certificate') &&
+                        existingData?.experience_certificate && (
+                          <span className="text-blue-600 ml-1">
+                            ✓ Already uploaded - disabled unless resubmission required
+                          </span>
+                        )}
+                    </p>
+                    <p className="text-blue-600 text-sm mt-1">
+                      ⓘ This field is optional. Upload only if you have work experience.
+                    </p>
+                  </div>
               </div>
             </div>
 
