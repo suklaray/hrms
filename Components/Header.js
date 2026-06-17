@@ -286,7 +286,7 @@ const Header = () => {
           });
           
           // Show modal if there are new notifications
-          setTimeout(() => setShowModal(true), 500);
+          // setTimeout(() => setShowModal(true), 500);
         }
       }
     } catch (error) {
@@ -384,10 +384,10 @@ const Header = () => {
             mergeNotification(notification);
             
             // Force modal to show for new notifications
-            if (notification.type !== 'system' && notification.type !== 'heartbeat') {
+            // if (notification.type !== 'system' && notification.type !== 'heartbeat') {
               // console.log('SSE: Auto-showing modal for new notification');
-              setTimeout(() => setShowModal(true), 100);
-            }
+            //   setTimeout(() => setShowModal(true), 100);
+            // }
             
           } catch (error) {
             console.error('SSE: Error parsing notification:', error, 'Raw data:', event.data);
