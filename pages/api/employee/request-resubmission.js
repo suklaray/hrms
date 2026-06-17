@@ -69,9 +69,9 @@ async function handleCreateRequest(req, res) {
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { empid, documentType } = req.body;
+    const { empid, documentType, reason } = req.body;
 
-    if (!empid || !documentType) {
+    if (!empid || !documentType || !reason?.trim()) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -92,32 +92,38 @@ async function handleCreateRequest(req, res) {
     });
 
     // Create resubmission request in database
-    await prisma.$executeRaw`
-      INSERT INTO document_resubmission_requests 
-      (employee_empid, document_type, requested_by, reason, status, created_at) 
-      VALUES (${empid}, ${documentType}, ${requestorEmpid}, ${`Document resubmission requested by ${requestor?.name || requestorRole}`}, 'pending', NOW())
-    `;
+    await prisma.document_resubmission_requests.create({
+      data: {
+        employee_empid: empid,
+        document_type: documentType,
+        requested_by: requestorEmpid,
+        reason: reason.trim(),
+        status: 'pending'
+      }
+    });
 
     // Create notification for the employee
     await prisma.$executeRaw`
-      INSERT INTO notifications 
-      (recipient_type, recipient_id, title, message, type, metadata, is_read, created_at) 
-      VALUES ('user', ${empid}, 'Document Resubmission Required', ${`Please resubmit your ${getDocumentDisplayName(documentType)}. Requested by ${requestor?.name || requestorRole}`}, 'document_resubmission_request', ${JSON.stringify({
-        empid: empid,
-        documentType: documentType,
-        requestedBy: requestorEmpid,
-        requestorName: requestor?.name || requestorRole
-      })}, false, NOW())
-    `;
+  INSERT INTO notifications 
+  (recipient_type, recipient_id, title, message, type, metadata, is_read, created_at) 
+  VALUES ('user', ${empid}, 'Document Resubmission Required', ${`Please resubmit your ${getDocumentDisplayName(documentType)}. Reason: ${reason}`}, 'document_resubmission_request', ${JSON.stringify({
+      empid: empid,
+      documentType: documentType,
+      requestedBy: requestorEmpid,
+      requestorName: requestor?.name || requestorRole,
+      reason
+    })}, false, NOW())
+`;
 
     // Send real-time notification to employee
     await sendNotificationToUser(empid, {
       type: 'document_resubmission_request',
       title: 'Document Resubmission Required',
-      message: `Please resubmit your ${getDocumentDisplayName(documentType)}. Requested by ${requestor?.name || requestorRole}`,
+      message: `Please resubmit your ${getDocumentDisplayName(documentType)}. Reason: ${reason}`,
       documentType: documentType,
       requestedBy: requestorEmpid,
-      requestorName: requestor?.name || requestorRole
+      requestorName: requestor?.name || requestorRole,
+      reason
     });
 
     res.status(200).json({

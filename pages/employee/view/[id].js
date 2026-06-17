@@ -41,6 +41,7 @@ export default function ViewEmployee() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [resubmitStates, setResubmitStates] = useState({});
+  const [resubmitReason, setResubmitReason] = useState({});
   useEffect(() => {
     const fetchEverything = async () => {
       try {
@@ -280,7 +281,7 @@ export default function ViewEmployee() {
     }
   };
 
-  const handleRequestResubmission = async (documentType) => {
+  const handleRequestResubmission = async (documentType, reason) => {
     const confirmed = await swalConfirm(
       `Are you sure you want to request resubmission of ${getDocumentDisplayName(documentType)}?\n\nThis will notify the employee to upload a new document.`
     );
@@ -299,7 +300,8 @@ export default function ViewEmployee() {
         },
         body: JSON.stringify({
           empid: empid,
-          documentType: documentType
+          documentType: documentType,
+          reason,
         }),
         credentials: 'include'
       });
@@ -807,6 +809,8 @@ export default function ViewEmployee() {
                         isResubmitting={resubmitStates.aadhar_card}
                         userRole={role}
                         resubmitStates={resubmitStates}
+                        resubmitReason={resubmitReason}
+                        setResubmitReason={setResubmitReason}
                       />
                       <Detail
                         label="Aadhar Number"
@@ -822,6 +826,8 @@ export default function ViewEmployee() {
                         isResubmitting={resubmitStates.pan_card}
                         userRole={role}
                         resubmitStates={resubmitStates}
+                        resubmitReason={resubmitReason}
+                        setResubmitReason={setResubmitReason}
                       />
                       <Detail
                         label="PAN Number"
@@ -837,6 +843,8 @@ export default function ViewEmployee() {
                         isResubmitting={resubmitStates.resume}
                         userRole={role}
                         resubmitStates={resubmitStates}
+                        resubmitReason={resubmitReason}
+                        setResubmitReason={setResubmitReason}
                       />
                       <FileDetail
                         label="Experience Certificate"
@@ -848,6 +856,8 @@ export default function ViewEmployee() {
                         isResubmitting={resubmitStates.experience_certificate}
                         userRole={role}
                         resubmitStates={resubmitStates}
+                        resubmitReason={resubmitReason}
+                        setResubmitReason={setResubmitReason}
                       />
                     </div>
                   </div>
@@ -891,6 +901,8 @@ export default function ViewEmployee() {
                         isResubmitting={resubmitStates.education_certificates}
                         userRole={role}
                         resubmitStates={resubmitStates}
+                        resubmitReason={resubmitReason}
+                        setResubmitReason={setResubmitReason}
                       />
                     </div>
                   </div>
@@ -952,6 +964,8 @@ export default function ViewEmployee() {
                           isResubmitting={resubmitStates.checkbook_document}
                           userRole={role}
                           resubmitStates={resubmitStates}
+                          resubmitReason={resubmitReason}
+                          setResubmitReason={setResubmitReason}
                         />
                       </div>
                     ) : (
@@ -1066,7 +1080,7 @@ function Detail({ label, value }) {
   );
 }
 
-function FileDetail({ label, file, documentType, empid, onResubmit, onRequestResubmission, isResubmitting, userRole, resubmitStates }) {
+function FileDetail({ label, file, documentType, empid, onResubmit, onRequestResubmission, isResubmitting, userRole, resubmitStates, resubmitReason, setResubmitReason }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [showResubmit, setShowResubmit] = useState(false);
 
@@ -1083,7 +1097,19 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
   };
 
   const handleRequestResubmission = () => {
-    onRequestResubmission(documentType);
+    const reason = resubmitReason?.[documentType] || "";
+
+    if (!reason.trim()) {
+      toast.error("Please enter a reason");
+      return;
+    }
+
+    onRequestResubmission(documentType, reason);
+
+    setResubmitReason((prev) => ({
+      ...prev,
+      [documentType]: "",
+    }));
   };
 
   const isEmployee = userRole === 'employee';
@@ -1151,25 +1177,39 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
         )}
         
         {canInteract && isAdminHR && (
-          <div className="mt-2">
+          <div className="mt-2 space-y-2">
+            <textarea
+              value={resubmitReason?.[documentType] || ""}
+              onChange={(e) =>
+                setResubmitReason((prev) => ({
+                  ...prev,
+                  [documentType]: e.target.value,
+                }))
+              }
+              placeholder="Enter reason for resubmission"
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            />
+
             <button
               onClick={handleRequestResubmission}
-              disabled={isResubmitting || resubmitStates?.[documentType] === 'sent'}
-              className={`inline-flex items-center px-3 py-1 text-sm rounded-md transition-colors ${
+              disabled={
+                isResubmitting ||
                 resubmitStates?.[documentType] === 'sent'
+              }
+              className={`inline-flex items-center px-3 py-1 text-sm rounded-md transition-colors ${resubmitStates?.[documentType] === 'sent'
                   ? 'bg-green-100 text-green-700 cursor-default'
                   : isResubmitting
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-red-100 hover:bg-red-200 text-red-700'
-              }`}
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-red-100 hover:bg-red-200 text-red-700'
+                }`}
             >
               <Upload className="w-3 h-3 mr-1" />
               {resubmitStates?.[documentType] === 'sent'
                 ? 'Request Sent'
                 : isResubmitting
-                ? 'Sending...'
-                : 'Request Resubmission'
-              }
+                  ? 'Sending...'
+                  : 'Request Resubmission'}
             </button>
           </div>
         )}
