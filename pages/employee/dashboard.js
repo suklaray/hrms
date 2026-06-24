@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-toastify";
 import EmployeeCalenderSection from "/Components/EmployeeCalenderSection";
+import { formatLongDate } from "@/utils/dateTime";
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
@@ -247,7 +248,7 @@ useEffect(() => {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>{formatLongDate(new Date())}</span>
               </div>
 
             </div>

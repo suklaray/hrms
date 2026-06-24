@@ -5,6 +5,7 @@ import SideBar from "@/Components/SideBar";
 import { FileText, Download, Calendar, AlertCircle, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
+import { formatLongDate } from "@/utils/dateTime";
 
 export async function getServerSideProps(context) {
   const { req } = context;
@@ -124,7 +125,7 @@ const handleDownloadPayslip = async (month, year) => {
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span>{formatLongDate(new Date())}</span>
               </div>
             </div>
           </div>

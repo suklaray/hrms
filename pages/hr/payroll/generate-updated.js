@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import {toast} from 'react-toastify';
 
 import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye } from "lucide-react";
+import { formatMonthYear, formatShortMonthYear } from "@/utils/dateTime";
 
 export default function GeneratePayrollPage() {
   const [employees, setEmployees] = useState([]);
@@ -48,7 +49,7 @@ export default function GeneratePayrollPage() {
   };
 
   const getCurrentMonth = () => {
-    return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return formatMonthYear(new Date());
   };
 
   const StatCard = ({ title, value, icon: Icon, color, bgColor }) => (
@@ -156,10 +157,12 @@ export default function GeneratePayrollPage() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">
-                            {emp.lastPaymentDate ? new Date(emp.lastPaymentDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Never'}
+                            {emp.lastPaymentDate
+                              ? formatShortMonthYear(emp.lastPaymentDate)
+                              : "Never"}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {emp.lastPaymentDate ? new Date(emp.lastPaymentDate).toLocaleDateString() : 'No previous payment'}
+                            {emp.lastPaymentDate ? formatLongDate(emp.lastPaymentDate) : 'No previous payment'}
                           </div>
                         </td>
                         <td className="px-6 py-4">

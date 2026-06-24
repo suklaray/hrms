@@ -4,26 +4,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import {BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area} from "recharts";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-const formatTimeToAMPM = (timeString) => {
-  if (!timeString) return '--:--';
-  
-    let date;
-    if (timeString.includes(':')) {
-      const [hours, minutes] = timeString.split(':');
-      date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    } else {
-      date = new Date(timeString);
-    }
-    
-    if (isNaN(date.getTime())) return '--:--';
-    
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
+import {formatHHMMToAMPM} from "@/utils/dateTime";
   export async function getServerSideProps(context) {
     const { req } = context;
     const token = req?.cookies?.token || "";
@@ -196,11 +177,11 @@ export default function AttendanceAnalytics({ user }) {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-500">Avg Check-in:</span>
-                  <span className="text-sm font-bold text-green-600">{formatTimeToAMPM(data?.avgCheckinTime) || '--:--'}</span>
+                  <span className="text-sm font-bold text-green-600">{formatHHMMToAMPM(data?.avgCheckinTime) || '--:--'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-500">Avg Check-out:</span>
-                  <span className="text-sm font-bold text-red-600">{formatTimeToAMPM(data?.avgCheckoutTime) || '--:--'}</span>
+                  <span className="text-sm font-bold text-red-600">{formatHHMMToAMPM(data?.avgCheckoutTime) || '--:--'}</span>
                 </div>
               </div>
             </div>

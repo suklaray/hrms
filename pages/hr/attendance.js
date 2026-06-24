@@ -3,7 +3,7 @@ import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Clock, Users, Search, Calendar, TrendingUp, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter } from "next/router";
-
+import { formatDateTime } from "@/utils/dateTime";
 // Live Timer Component
 function LiveTimer({ currentCheckInTime, isLoggedIn, totalHours, completedSeconds }) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -107,27 +107,6 @@ export default function AttendanceList() {
     setActiveFilter(filter);
   };
 
-  const formatTime = (timeString) => {
-    if (!timeString) return '--';
-    
-    try {
-      const formatted = new Date(timeString).toLocaleString('en-IN', {
-        month: '2-digit',
-        day: '2-digit', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Asia/Kolkata'
-      });
-      
-      // Convert AM/PM to uppercase
-      return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return '--';
-    }
-  };
 
   // Pagination logic
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -318,10 +297,10 @@ export default function AttendanceList() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                           {formatTime(user.last_login)}
+                           {formatDateTime(user.last_login)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatTime(user.last_logout)}
+                          {formatDateTime(user.last_logout)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">

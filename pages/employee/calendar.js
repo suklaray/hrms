@@ -10,6 +10,7 @@ import {
   FaDownload,
 } from "react-icons/fa";
 import Link from "next/link";
+import { formatMediumDate } from "@/utils/dateTime";
 
 export default function EmployeeCalendar() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -99,11 +100,7 @@ export default function EmployeeCalendar() {
             yPos = 30;
           }
 
-          const date = new Date(holiday.date).toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          });
+          const date = formatMediumDate(holiday.date);
 
           doc.text(date, 20, yPos);
           doc.text(holiday.title.replace("🎉 ", ""), 80, yPos);

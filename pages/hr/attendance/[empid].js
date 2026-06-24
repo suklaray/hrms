@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft, ChevronLeft, ChevronRight, FileText, X } from "lucide-react";
-
+import { formatTime } from "@/utils/dateTime"; 
 // Modal Component for Leave Details
 const LeaveModal = ({ isOpen, onClose, leaveData, employeeName }) => {
   if (!isOpen) return null;
@@ -191,13 +191,71 @@ const ViewAttendance = () => {
   const attendanceRate = employeeData?.totalDays > 0 
     ? ((employeeData?.daysPresent / employeeData?.totalDays) * 100).toFixed(1)
     : 0;
+    const getAttendanceWithMissingDays = () => {
+  if (!attendanceData?.length) return [];
 
-  const filteredAttendanceData = attendanceData.filter(attendance => {
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  const daysInMonth = new Date(
+    currentYear,
+    currentMonth + 1,
+    0
+  ).getDate();
+
+  const attendanceMap = new Map(
+    attendanceData.map(record => [record.date, record])
+  );
+
+  const result = [];
+
+  for (
+    let day = Math.min(daysInMonth, today.getDate());
+    day >= 1;
+    day--
+  ) {
+    const dateString =
+      `${String(day).padStart(2, "0")}-${String(currentMonth + 1).padStart(2, "0")}-${currentYear}`;
+
+    if (attendanceMap.has(dateString)) {
+      result.push(attendanceMap.get(dateString));
+    } else {
+      const dateObj = new Date(
+        currentYear,
+        currentMonth,
+        day
+      );
+
+      const dayOfWeek = dateObj.getDay();
+
+      result.push({
+        date: dateString,
+        check_in: null,
+        last_check_in: null,
+        check_out: null,
+        total_hours: "--",
+        login_status: "Logged Out",
+        attendance_status:
+          dayOfWeek === 0 || dayOfWeek === 6
+            ? "Weekend"
+            : "Absent",
+      });
+    }
+  }
+
+  return result;
+};
+  const completeAttendanceData = getAttendanceWithMissingDays();
+
+  const filteredAttendanceData = completeAttendanceData.filter(attendance => {
     if (filter === 'present') return attendance.attendance_status === 'Present';
     if (filter === 'absent') return attendance.attendance_status === 'Absent';
     return true;
   });
-
+  const absentDays = completeAttendanceData.filter(
+  day => day.attendance_status === "Absent"
+).length;
   // Pagination logic
   const totalPages = Math.ceil(filteredAttendanceData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -208,34 +266,33 @@ const ViewAttendance = () => {
   };
 
   // Fix timezone formatting for check-in/checkout times
-  const formatTime = (timeString) => {
-    if (!timeString || timeString === '--') return '--';
+  // const formatTime = (timeString) => {
+  //   if (!timeString || timeString === '--') return '--';
     
-    // If it's already formatted (contains AM/PM), return as is
-    if (timeString.includes('AM') || timeString.includes('PM')) {
-      return timeString;
-    }
+  //   // If it's already formatted (contains AM/PM), return as is
+  //   if (timeString.includes('AM') || timeString.includes('PM')) {
+  //     return timeString;
+  //   }
     
-    try {
-      // Create date object and format with Indian timezone
-      const date = new Date(timeString);
-      if (isNaN(date.getTime())) return '--';
+  //   try {
+  //     // Create date object and format with Indian timezone
+  //     const date = new Date(timeString);
+  //     if (isNaN(date.getTime())) return '--';
       
-      const formatted = date.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Asia/Kolkata'
-      });
+  //     const formatted = date.toLocaleTimeString('en-IN', {
+  //       hour: '2-digit',
+  //       minute: '2-digit',
+  //       hour12: true,
+  //       timeZone: 'Asia/Kolkata'
+  //     });
       
-      // Convert AM/PM to uppercase
-      return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return '--';
-    }
-  };
-
+  //     // Convert AM/PM to uppercase
+  //     return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
+  //   } catch (error) {
+  //     console.error('Error formatting time:', error);
+  //     return '--';
+  //   }
+  // };
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
@@ -348,7 +405,7 @@ const ViewAttendance = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Days Absent</p>
-                  <p className="text-3xl font-bold text-red-600">{employeeData?.daysAbsent || 0}</p>
+                  <p className="text-3xl font-bold text-red-600">{absentDays || 0}</p>
                 </div>
                 <div className="p-3 bg-red-100 rounded-lg">
                   <XCircle className="w-6 h-6 text-red-600" />
@@ -441,13 +498,18 @@ const ViewAttendance = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            attendance.attendance_status === 'Present' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {attendance.attendance_status}
-                          </span>
+                          <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${attendance.attendance_status === "Present"
+                                  ? "bg-green-100 text-green-800"
+                                  : attendance.attendance_status === "AutoCheckout"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : attendance.attendance_status === "Weekend"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                              >
+                                {attendance.attendance_status}
+                              </span>
                         </td>
                       </tr>
                     ))

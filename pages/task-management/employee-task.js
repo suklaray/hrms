@@ -5,7 +5,7 @@ import SideBar from "@/Components/SideBar";
 import { ArrowLeft, Calendar, Clock, User, Trash2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { swalConfirm } from '@/utils/confirmDialog';
-
+import { formatDateTime } from '@/utils/dateTime';
 export default function EmployeeTasks() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,17 +105,6 @@ export default function EmployeeTasks() {
     }
   };
 
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    
-    const options = { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: 'Asia/Kolkata' };
-    const timeString = new Intl.DateTimeFormat('en-US', options).format(date);
-    
-    return `${day}/${month}/${year} ${timeString}`;
-  };
 
   const getDeadlineStatus = (deadline, status) => {
     if (status === 'Completed') return null;

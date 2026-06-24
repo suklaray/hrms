@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import Sidebar from '../../Components/empSidebar';
-
+import {
+  formatTime,
+} from "@/utils/dateTime";
 export default function EmployeeAttendance() {
   const [user, setUser] = useState(null);
   const [attendance, setAttendance] = useState([]);
@@ -125,44 +127,63 @@ export default function EmployeeAttendance() {
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+const getAttendanceWithMissingDays = () => {
+    const daysInMonth = new Date(
+        currentYear,
+        currentMonth + 1,
+        0
+    ).getDate();
 
-  // Fix timezone formatting for check-in/checkout times
-  // Fix timezone formatting for check-in/checkout times
-  const formatTime = (timeString) => {
-    if (!timeString || timeString === '--') return '--';
-    
-    // If it's already formatted (contains AM/PM), return as is
-    if (timeString.includes('AM') || timeString.includes('PM')) {
-      return timeString;
-    }
-    
-    try {
-      // Create date object and format with Indian timezone
-      const date = new Date(timeString);
-      if (isNaN(date.getTime())) return '--';
-      
-      const formatted = date.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: 'Asia/Kolkata'
-      });
-      
-      // Convert AM/PM to uppercase
-      return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
-    } catch (error) {
-      console.error('Error formatting time:', error);
-      return '--';
-    }
-  };
+    const attendanceMap = new Map(
+        attendance.map(record => [record.date, record])
+    );
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short'
-    });
-  };
+    const result = [];
+
+    const today = new Date();
+
+    for (let day = daysInMonth; day >= 1; day--) {
+
+        if (
+            currentYear === today.getFullYear() &&
+            currentMonth === today.getMonth() &&
+            day > today.getDate()
+        ) {
+            continue;
+        }
+
+        const dateString =
+            `${String(day).padStart(2, '0')}-${String(currentMonth + 1).padStart(2, '0')}-${currentYear}`;
+
+        if (attendanceMap.has(dateString)) {
+            result.push(attendanceMap.get(dateString));
+        } else {
+            const dateObj = new Date(
+                currentYear,
+                currentMonth,
+                day
+            );
+
+            const dayOfWeek = dateObj.getDay();
+
+            result.push({
+                date: dateString,
+                first_check_in: null,
+                last_check_in: null,
+                check_out: null,
+                total_hours: '--',
+                login_status: 'Logged Out',
+                attendance_status:
+                    dayOfWeek === 0 || dayOfWeek === 6
+                        ? 'Weekend'
+                        : 'Absent',
+            });
+        }
+    }
+
+    return result;
+};
+const attendanceData = getAttendanceWithMissingDays();
 // Get working days of selected month
 const getWorkingDays = () => {
   const days = [];
@@ -199,7 +220,7 @@ const getWorkingDays = () => {
 const workingDays = getWorkingDays();
 
 // Count Present
-const presentDays = attendance.filter(rec => rec.attendance_status === "Present").length;
+const presentDays = attendanceData.filter(rec => rec.attendance_status === "Present" || rec.attendance_status === "AutoCheckout").length;
 
 // Absent Days = Working Days - Present Days
 const absentDays = workingDays.length - presentDays;
@@ -334,9 +355,9 @@ const attendanceRate = workingDays.length > 0
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Month
-                      </th>
+                      </th> */}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Date
                       </th>
@@ -358,38 +379,43 @@ const attendanceRate = workingDays.length > 0
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {Array.isArray(attendance) && attendance.length > 0 ? (
-                      attendance.map((record, index) => {
+                    {Array.isArray(attendanceData) && attendanceData.length > 0 ? (
+                      attendanceData.map((record, index) => {
                         // Parse dd-MM-yyyy format to get month
                         const dateParts = record.date.split('-');
                         const monthIndex = parseInt(dateParts[1]) - 1;
                          console.log('Rendering record:', record);
                         return (
                           <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {monthNames[monthIndex]}
-                            </td>
+                            </td> */}
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {record.date}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatTime(record.first_check_in || '--')}
+                              {formatTime(record.first_check_in)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatTime(record.last_check_in || '--')}
+                              {formatTime(record.last_check_in)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatTime(record.check_out || '--')}
+                              {formatTime(record.check_out)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {record.total_hours || '--'}
+                              {record.total_hours}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                record.attendance_status === 'Present'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.attendance_status === "Present"
+                                  ? "bg-green-100 text-green-800"
+                                  : record.attendance_status === "AutoCheckout"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : record.attendance_status === "Weekend"
+                                      ? "bg-blue-100 text-blue-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                              >
                                 {record.attendance_status}
                               </span>
                             </td>

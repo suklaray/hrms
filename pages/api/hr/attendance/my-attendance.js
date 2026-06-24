@@ -2,12 +2,6 @@ import jwt from 'jsonwebtoken';
 import prisma from '@/lib/prisma';
 import { format } from 'date-fns';
 
-const formatTime = (date) => {
-  if (!date || isNaN(new Date(date))) return '';
-  const opts = { hour: 'numeric', minute: 'numeric', hour12: true };
-  return new Intl.DateTimeFormat('en-US', opts).format(new Date(date));
-};
-
 const calculateTotalWorkingHours = (sessions) => {
   let totalSeconds = 0;
   const validSessions = sessions.filter(s => s.check_in && s.check_out);
@@ -95,14 +89,23 @@ export default async function handler(req, res) {
       const CheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
 
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
-      const attendance_status = calculateAttendanceStatus(totalSeconds);
+      const hasAutoCheckout = sessions.some(
+        s => s.attendance_status === "AutoCheckout"
+      );
+
+      const attendance_status =
+        sessions.some(s => s.attendance_status === "AutoCheckout")
+          ? "AutoCheckout"
+          : sessions.some(s => s.attendance_status === "Present")
+            ? "Present"
+            : "Absent";
       const isToday = date === today;
 
       return {
         date: formattedDate,
-        first_check_in: formatTime(firstCheckIn),
-        last_check_in: formatTime(lastCheckIn),
-        check_out: isToday && login_status === 'Logged In' ? '--' : formatTime(CheckOut),
+        first_check_in: firstCheckIn,
+        last_check_in: lastCheckIn,
+        check_out: isToday && login_status === 'Logged In' ? '--' : CheckOut,
         total_hours: formatted,
         login_status,
         attendance_status,

@@ -13,6 +13,7 @@ import {
   Building2,
   Bell,
 } from "lucide-react";
+import { formatDayMonthDate } from "@/utils/dateTime";
 
 const Header = () => {
   const [user, setUser] = useState(null);
@@ -161,11 +162,7 @@ const Header = () => {
         const holidayName = holidayMatch ? holidayMatch[1] : "a holiday";
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowDate = tomorrow.toLocaleDateString("en-US", {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-        });
+        const tomorrowDate = formatDayMonthDate(tomorrow);
 
         newNotifications.push({
           id: "holiday-tomorrow",
@@ -186,11 +183,7 @@ const Header = () => {
 
         if (tomorrowDay === 0 || tomorrowDay === 6) {
           const dayName = tomorrowDay === 0 ? "Sunday" : "Saturday";
-          const tomorrowDate = tomorrow.toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          });
+          const tomorrowDate = formatDayMonthDate(tomorrow);
 
           newNotifications.push({
             id: "weekend-holiday",

@@ -4,6 +4,7 @@ import SideBar from "@/Components/SideBar";
 import { useRouter } from "next/router";
 import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import {toast} from 'react-toastify';
+import { formatDateTime, formatMonthName, formatMonthYear, formatShortMonthYear } from "@/utils/dateTime";
 
 export default function GeneratePayrollPage() {
   const [employees, setEmployees] = useState([]);
@@ -62,7 +63,7 @@ export default function GeneratePayrollPage() {
   };
 
   const getCurrentMonth = () => {
-    return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    return formatMonthYear(new Date());
   };
 
   const handleFilterChange = (filter) => {
@@ -137,11 +138,13 @@ export default function GeneratePayrollPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Payroll Generation</h1>
-                <p className="text-gray-600 text-sm sm:text-base">Generate payroll for {new Date(0, selectedMonth - 1).toLocaleDateString('en-US', { month: 'long' })} {selectedYear}</p>
+                <p className="text-gray-600 text-sm sm:text-base">
+                  Generate payroll for {formatMonthName(new Date(0, selectedMonth - 1))} {selectedYear}
+                </p>
               </div>
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
-                <span>{new Date(0, selectedMonth - 1).toLocaleDateString('en-US', { month: 'long' })} {selectedYear}</span>
+                <span>{formatMonthName(new Date(0, selectedMonth - 1))} {selectedYear}</span>
               </div>
             </div>
           </div>
@@ -220,7 +223,7 @@ export default function GeneratePayrollPage() {
                 >
                   {Array.from({ length: 12 }, (_, i) => (
                     <option key={i + 1} value={i + 1}>
-                      {new Date(0, i).toLocaleDateString('en-US', { month: 'long' })}
+                      {formatMonthName(new Date(0, i))}
                     </option>
                   ))}
                 </select>
@@ -307,10 +310,10 @@ export default function GeneratePayrollPage() {
                             </td>
                             <td className="px-4 sm:px-6 py-4 hidden md:table-cell">
                               <div className="text-sm text-gray-900">
-                                {emp.lastPaymentDate ? new Date(emp.lastPaymentDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Never'}
+                                {emp.lastPaymentDate ? formatShortMonthYear(emp.lastPaymentDate) : "Never"}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {emp.lastPaymentDate ? new Date(emp.lastPaymentDate).toLocaleDateString() : 'No previous payment'}
+                                {emp.lastPaymentDate ? formatDateTime(emp.lastPaymentDate) : 'No previous payment'}
                               </div>
                             </td>
                             <td className="px-4 sm:px-6 py-4 hidden lg:table-cell">

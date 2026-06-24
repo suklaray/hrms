@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import SideBar from "@/Components/SideBar";
 import { swalConfirm } from '@/utils/confirmDialog';
+import { formatDate, formatTime } from "@/utils/dateTime";
 export default function CustomerConnect() {
     const [messages, setMessages] = useState([]);
     const [selected, setSelected] = useState([]);
@@ -190,13 +191,10 @@ export default function CustomerConnect() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {new Date(msg.created_at).toLocaleDateString()}
+                            {formatDate(msg.created_at)}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {new Date(msg.created_at).toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
+                            {formatTime(msg.created_at)}
                           </div>
                         </td>
                       </tr>

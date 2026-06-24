@@ -6,7 +6,7 @@ import SideBar from '@/Components/SideBar';
 import EmpSideBar from '@/Components/empSidebar';
 import WorkReportModal from '@/Components/WorkReportModal';
 import { CheckCircle, Clock, AlertCircle, Calendar, User, Filter, ChevronLeft, ChevronRight, AlertTriangle, FileText, X } from 'lucide-react';
-
+import { formatDateTime } from '@/utils/dateTime';
 export default function UserTasks() {
   const router = useRouter();
   const [tasks, setTasks] = useState([]);
@@ -114,17 +114,6 @@ const calculateStats = useCallback(() => {
     }
   };
 
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    
-    const options = { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: 'Asia/Kolkata' };
-    const timeString = new Intl.DateTimeFormat('en-US', options).format(date);
-    
-    return `${day}/${month}/${year} ${timeString}`;
-  };
 
   const getDeadlineStatus = (deadline, status) => {
     if (status === 'Completed') return null;

@@ -1,19 +1,6 @@
 import { verifyEmployeeToken } from '@/lib/auth';
 import prisma from "@/lib/prisma";
 import { format } from 'date-fns';
-
-// // ---------------- Format Time ----------------
-// const formatTime = (date) => {
-//   if (!date || isNaN(new Date(date))) return '';
-//   const opts = { 
-//     hour: 'numeric', 
-//     minute: 'numeric', 
-//     hour12: true,
-//     timeZone: 'Asia/Kolkata'
-//   };
-//   return new Intl.DateTimeFormat('en-IN', opts).format(new Date(date));
-// };
-
 // ---------------- Total Working Hours ----------------
 const calculateTotalWorkingHours = (sessions) => {
   let totalSeconds = 0;
@@ -104,8 +91,16 @@ export default async function handler(req, res) {
       const CheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
 
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
-      const attendance_status = calculateAttendanceStatus(totalSeconds);
+      const hasAutoCheckout = sessions.some(
+        s => s.attendance_status === "AutoCheckout"
+      );
 
+      const attendance_status =
+        sessions.some(s => s.attendance_status === "AutoCheckout")
+          ? "AutoCheckout"
+          : sessions.some(s => s.attendance_status === "Present")
+            ? "Present"
+            : "Absent";
       const isToday = date === today;
 
       return {
@@ -120,7 +115,8 @@ export default async function handler(req, res) {
     });
 
     // Summary Calc
-    const presentDays = attendance.filter(a => a.attendance_status === "Present").length;
+    const presentDays = attendance.filter(a => a.attendance_status === "Present" ||
+    a.attendance_status === "AutoCheckout").length;
 
     const profile = await prisma.users.findUnique({
       where: { empid: user.empid },

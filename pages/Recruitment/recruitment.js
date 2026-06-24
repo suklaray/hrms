@@ -24,6 +24,7 @@ import {
 //import toast from "react-hot-toast";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
+import { formatDate, formatHHMMToAMPM } from "@/utils/dateTime";
 
 export default function Candidates(user) {
   const [candidates, setCandidates] = useState([]);
@@ -629,7 +630,7 @@ export default function Candidates(user) {
                                 <Calendar className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
                                 <span className="text-sm sm:text-base px-2 py-1 whitespace-nowrap">
                                   {candidate.interview_date
-                                    ? candidate.interview_date.split("T")[0]
+                                    ? (formatDate(candidate.interview_date))
                                     : "Not Set"}
                                 </span>
                               </div>
@@ -638,18 +639,9 @@ export default function Candidates(user) {
                               <div className="flex items-center text-sm sm:text-base text-gray-600">
                                 <Clock className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" />
                                 <span className="whitespace-nowrap">
-                                  {candidate.interview_time_from && candidate.interview_time_to ? (
-                                    (() => {
-                                      const formatTime = (time24) => {
-                                        const [hours, minutes] = time24.split(':');
-                                        const hour = parseInt(hours);
-                                        const ampm = hour >= 12 ? 'PM' : 'AM';
-                                        const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                                        return `${hour12}:${minutes} ${ampm}`;
-                                      };
-                                      return `${formatTime(candidate.interview_time_from)} - ${formatTime(candidate.interview_time_to)}`;
-                                    })()
-                                  ) : "Time not set"}
+                                  {candidate.interview_time_from && candidate.interview_time_to
+                                    ? `${formatHHMMToAMPM(candidate.interview_time_from)} - ${formatHHMMToAMPM(candidate.interview_time_to)}`
+                                    : "Time not set"}
                                 </span>
                               </div>
                             </div>

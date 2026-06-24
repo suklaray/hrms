@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
-
+import { formatDate } from "@/utils/dateTime";
 export default function ViewLeaveRequests() {
   const router = useRouter();
   const [allLeaveData, setAllLeaveData] = useState([]);
@@ -93,12 +93,6 @@ export default function ViewLeaveRequests() {
     } catch (error) {
       console.error("Error updating status:", error);
     }
-  };
-
-  const formatDate = (dateString) => {
-    return moment(dateString).isValid()
-      ? moment(dateString).format("DD/MM/YYYY")
-      : "Invalid Date";
   };
 
   const getLeaveStatus = (leave) => {

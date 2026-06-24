@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import Image from "next/image";
+import { formatLongDate } from "@/utils/dateTime";
 export default function EmployeeHelperBot() {
   const [isOpen, setIsOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -13,12 +14,7 @@ export default function EmployeeHelperBot() {
 
   const getGreetingMessage = () => {
     const hour = new Date().getHours();
-    const today = new Date().toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    const today = formatLongDate();
 
     let greeting = "";
     let emoji = "";

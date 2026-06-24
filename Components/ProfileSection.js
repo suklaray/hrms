@@ -3,7 +3,7 @@ import { User, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Calendar } from "lucide-react";
 import {toast} from "react-toastify";
-
+import {formatLongDate} from "@/utils/dateTime";
 export default function ProfileSection({ user }) {
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
@@ -92,24 +92,13 @@ export default function ProfileSection({ user }) {
     }
   };
 
-  // Get current date in the format: Thursday, September 11, 2025
-  const getCurrentDate = () => {
-    const today = new Date();
-    return today.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
   <h2 className="text-lg font-semibold text-gray-900">My Profile</h2>
 <div className="flex items-center text-sm font-medium text-gray-700">
   <Calendar className="w-4 h-4 mr-2" />
-  {getCurrentDate()}
+  {formatLongDate()}
 </div>
 </div>
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">

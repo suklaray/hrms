@@ -2,6 +2,7 @@ import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { getAccessibleRoles } from "@/lib/roleBasedAccess";
 import cookie from "cookie";
+import { formatMonthShort } from "@/utils/dateTime";
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -375,7 +376,7 @@ async function generateRealTrendData(period, startDate, endDate, prisma, totalEm
       });
 
       data.push({
-        period: current.toLocaleString("en-US", { month: "short" }),
+        period: formatMonthShort(current),
         attendance: expectedAttendanceDays ? Math.round((presentCount / expectedAttendanceDays) * 100) : 0,
       });
 

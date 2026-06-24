@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import SideBar from "@/Components/SideBar";
 import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, FileText, Filter, X } from 'lucide-react';
 import moment from 'moment';
-
+import { formatDate } from '@/utils/dateTime';
 export default function EmployeeLeaveSummary() {
   const router = useRouter();
   const { empid } = router.query;
@@ -71,9 +71,6 @@ export default function EmployeeLeaveSummary() {
     }
   };
 
-  const formatDate = (dateString) => {
-    return moment(dateString).isValid() ? moment(dateString).format('DD/MM/YYYY') : 'Invalid Date';
-  };
 
   const getStatusColor = (status) => {
     switch (status) {

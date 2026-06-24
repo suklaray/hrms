@@ -6,7 +6,7 @@ import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, Fi
 import moment from 'moment';
 import { swalConfirm } from '@/utils/confirmDialog';
 import { toast } from 'react-toastify';
-
+import { formatDate } from '@/utils/dateTime';
 export default function EmployeeLeaveDetails() {
   const router = useRouter();
   const { empid } = router.query;
@@ -41,10 +41,6 @@ export default function EmployeeLeaveDetails() {
   }
 }, [empid]);
 
-
-  const formatDate = (dateString) => {
-    return moment(dateString).isValid() ? moment(dateString).format('DD/MM/YYYY') : 'Invalid Date';
-  };
 
   const getStatusColor = (status) => {
     switch (status) {

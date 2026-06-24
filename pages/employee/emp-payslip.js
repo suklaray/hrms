@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import Head from 'next/head';
 import Sidebar from "@/Components/empSidebar";
 import { FileText, Download, Calendar, AlertCircle, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { formatLongDate } from "@/utils/dateTime";
 
 export default function EmpPayslip() {
   const [user, setUser] = useState(null);
@@ -56,7 +57,7 @@ export default function EmpPayslip() {
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
-              <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span>{formatLongDate(new Date())}</span>
             </div>
           </div>
         </div>

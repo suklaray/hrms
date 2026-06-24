@@ -1,12 +1,5 @@
 import { format } from 'date-fns';
 import prisma from "@/lib/prisma";
-
-const formatTime = (date) => {
-  if (!date || isNaN(new Date(date))) return '';
-  const options = { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: 'Asia/Kolkata' };
-  return new Intl.DateTimeFormat('en-US', options).format(new Date(date));
-};
-
 const calculateTotalWorkingHours = (sessions) => {
   let totalSeconds = 0;
   const now = new Date();
@@ -33,9 +26,6 @@ const calculateTotalWorkingHours = (sessions) => {
   };
 };
 
-const calculateAttendanceStatus = (totalSeconds) => {
-  return totalSeconds >= 14400 ? 'Present' : 'Absent'; // >= 4 hours
-};
 
 const getLoginStatus = (sessions) => {
   const hasCheckIn = sessions.some(s => s.check_in);
@@ -95,26 +85,34 @@ export default async function handler(req, res) {
       const lastCheckOut = validCheckOuts.length ? new Date(Math.max(...validCheckOuts)) : null;
 
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
-      const attendance_status = calculateAttendanceStatus(totalSeconds);
+      const hasAutoCheckout = sessions.some(
+        s => s.attendance_status === "AutoCheckout"
+      );
 
+      const attendance_status =
+        hasAutoCheckout
+          ? "AutoCheckout"
+          : sessions.some(s => s.attendance_status === "Present")
+            ? "Present"
+            : "Absent";
       //  Today’s logout logic
       const isToday = date === today;
       const check_out_display = isToday && login_status === 'Logged In'
         ? '--'
-        : formatTime(lastCheckOut);
+        : lastCheckOut;
 
       return {
         date: formattedDate,
-        check_in: formatTime(firstCheckIn),
-        last_check_in: formatTime(lastCheckIn),
+        check_in: firstCheckIn,
+        last_check_in: lastCheckIn,
         check_out: check_out_display,
         total_hours: formatted,
         login_status,
         attendance_status,
       };
     });
-
-    const presentDays = attendance.filter(row => row.attendance_status === 'Present').length;
+    const presentDays = attendance.filter(row => row.attendance_status === 'Present' ||
+      row.attendance_status === "AutoCheckout").length;
     const totalDays = attendance.length;
     const absentDays = totalDays - presentDays;
 

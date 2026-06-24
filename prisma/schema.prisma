@@ -436,6 +436,7 @@ enum leave_requests_status {
 enum attendance_attendance_status {
   Present
   Absent
+  AutoCheckout
 }
 
 enum candidates_status {

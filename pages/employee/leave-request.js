@@ -4,6 +4,7 @@ import Head from 'next/head';
 import EmpSidebar from '@/Components/empSidebar';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { formatLongDate } from '@/utils/dateTime';
 
 export default function LeaveRequest() {
   const [form, setForm] = useState({
@@ -268,7 +269,7 @@ export default function LeaveRequest() {
             </div>
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <Calendar className="w-4 h-4" />
-              <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span>{formatLongDate(new Date())}</span>
             </div>
           </div>
         </div>

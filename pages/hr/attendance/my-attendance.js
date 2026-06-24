@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import SideBar from '../../../Components/SideBar';
-
+import { formatTime } from '@/utils/dateTime';
 export default function MyAttendance() {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -85,38 +85,72 @@ export default function MyAttendance() {
         return workingDays;
     };
 
-    const formatTime = (timeString) => {
-        if (!timeString || timeString === '--') return '--';
-        
-        // If it's already formatted (contains AM/PM), return as is
-        if (timeString.includes('AM') || timeString.includes('PM')) {
-            return timeString;
-        }
-        
-        try {
-            // Create date object and format with Indian timezone
-            const date = new Date(timeString);
-            if (isNaN(date.getTime())) return '--';
-            
-            const formatted = date.toLocaleTimeString('en-IN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Kolkata'
-            });
-            
-            // Convert AM/PM to uppercase
-            return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
-        } catch (error) {
-            console.error('Error formatting time:', error);
-            return '--';
-        }
-    };
+    const getAttendanceWithMissingDays = () => {
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
 
-    const presentDays = attendance.filter(record => record.attendance_status === 'Present').length;
+        // Convert backend attendance into a map for quick lookup
+        const attendanceMap = new Map(
+            attendance.map(record => {
+                const [day, month, year] = record.date.split('-');
+
+                const isoDate = `${day}-${month}-${year}`;
+
+                return [isoDate, record];
+            })
+        );
+        console.log('Attendance Map:', attendanceMap); // Debugging line
+        const result = [];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateObj = new Date(currentYear, currentMonth, day);
+
+            // Don't show future dates for current month
+            const today = new Date();
+            if (
+                currentYear === today.getFullYear() &&
+                currentMonth === today.getMonth() &&
+                day > today.getDate()
+            ) {
+                break;
+            }
+            const dateString =
+                `${String(day).padStart(2, '0')}-${String(currentMonth + 1).padStart(2, '0')}-${currentYear}`;
+            if (attendanceMap.has(dateString)) {
+                result.push(attendanceMap.get(dateString));
+            } else {
+                const dayOfWeek = dateObj.getDay();
+
+                result.push({
+                    date: dateString,
+                    first_check_in: null,
+                    last_check_in: null,
+                    check_out: null,
+                    total_hours: null,
+                    login_status: 'Logged Out',
+                    attendance_status:
+                        dayOfWeek === 0 || dayOfWeek === 6
+                            ? 'Weekend'
+                            : 'Absent',
+                });
+            }
+        }
+
+        return result.reverse(); // Reverse to show latest dates first
+    };
+    const attendanceData = getAttendanceWithMissingDays();
+    console.log('Attendance Data:', attendanceData); // Debugging line
+    const presentDays = attendanceData.filter(
+        record =>
+            record.attendance_status === 'Present' ||
+            record.attendance_status === 'AutoCheckout'
+    ).length;
+
+    const absentDays = attendanceData.filter(
+        record => record.attendance_status === 'Absent'
+    ).length;
     const totalWorkingDaysUpToToday = getWorkingDaysUpToToday(currentMonth, currentYear);
     const totalWorkingDaysInMonth = getTotalWorkingDaysInMonth(currentMonth, currentYear);
-    const absentDays = totalWorkingDaysUpToToday - presentDays;
+    // const absentDays = totalWorkingDaysUpToToday - presentDays;
 
     return (
         <>
@@ -239,8 +273,8 @@ export default function MyAttendance() {
                                     </thead>
 
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {attendance.length > 0 ? (
-                                            attendance.map((record, index) => {
+                                        {attendanceData.length > 0 ? (
+                                            attendanceData.map((record, index) => {
                                                 const totalHours = record.total_hours ? Number(record.total_hours) : 0;
                                                 const loginStatus = record.check_in ? (record.check_out ? 'Logged Out' : 'Logged In') : 'No Login';
                                                 const attendanceStatus = record.attendance_status || 'Absent';
@@ -272,9 +306,16 @@ export default function MyAttendance() {
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                                record.attendance_status === 'Present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                            }`}>
+                                                            <span
+                                                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.attendance_status === "Present"
+                                                                        ? "bg-green-100 text-green-800"
+                                                                        : record.attendance_status === "AutoCheckout"
+                                                                            ? "bg-yellow-100 text-yellow-800"
+                                                                            : record.attendance_status === "Weekend"
+                                                                                ? "bg-blue-100 text-blue-800"
+                                                                                : "bg-red-100 text-red-800"
+                                                                    }`}
+                                                            >
                                                                 {record.attendance_status}
                                                             </span>
                                                         </td>
@@ -289,7 +330,6 @@ export default function MyAttendance() {
                                             </tr>
                                         )}
                                     </tbody>
-
                                 </table>
                             </div>
                         )}

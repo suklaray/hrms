@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { CheckCircle, Clock, AlertCircle, Calendar, AlertTriangle } from 'lucide-react';
-
+import { formatDateTime } from '@/utils/dateTime';
 export default function TaskManagement() {
   const router = useRouter();
   const [tasks, setTasks] = useState([]);
@@ -72,10 +72,6 @@ export default function TaskManagement() {
     }
   };
 
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  };
 
   const filteredTasks = tasks.filter(task => {
     let matchesStatus = filter === 'all' 

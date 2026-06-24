@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { ArrowLeft, Calendar, Search, FileText } from 'lucide-react';
+import { formatDate, formatTimeWithSeconds } from '@/utils/dateTime';
 
 export default function EmployeeReports() {
   const router = useRouter();
@@ -196,12 +197,12 @@ export default function EmployeeReports() {
                       <tr key={report.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            {new Date(report.report_date).toLocaleDateString()}
+                            {formatDate(report.report_date)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
-                            {new Date(report.created_at).toLocaleTimeString('en-US', { hour12: true })}
+                            {formatTimeWithSeconds(report.created_at)}
                           </div>
                         </td>
                         <td className="px-6 py-4">

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from '@/lib/prisma';
+import { formatDateTime, formatLongDate } from '@/utils/dateTime';
 
 function getDocumentDisplayName(documentType) {
   const names = {
@@ -62,14 +63,7 @@ export default async function handler(req, res) {
         status: 'new',
         priority: 1,
         title: 'New Task Assigned!',
-        message: `📋 You have been assigned a new task: "${task.title}"\n\n👤 Assigned by: ${task.creator.name}\n📅 Deadline: ${new Date(task.deadline).toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric',
-          hour: 'numeric',
-          minute: 'numeric'
-        })}\n\n📍 View in Task Management`,
+        message: `📋 You have been assigned a new task: "${task.title}"\n\n👤 Assigned by: ${task.creator.name}\n📅 Deadline: ${formatDateTime(task.deadline)}\n\n📍 View in Task Management`,
         bgColor: 'bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600',
         borderColor: 'border-blue-300/80',
         autoDismiss: false,
@@ -137,12 +131,7 @@ recentHolidays.forEach(event => {
     status: 'upcoming',
     priority: 2,
     title: '🎉 Upcoming Holiday!',
-    message: `🏖️ ${event.title}\n\n📅 Date: ${new Date(event.event_date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })}${event.description ? `\n\n📝 ${event.description}` : ''}`,
+    message: `🏖️ ${event.title}\n\n📅 Date: ${formatLongDate(event.event_date)}${event.description ? `\n\n📝 ${event.description}` : ''}`,
     bgColor: 'bg-gradient-to-br from-yellow-400 via-orange-400 to-pink-500',
     borderColor: 'border-yellow-300/80',
     autoDismiss: false,
