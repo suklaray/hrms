@@ -138,7 +138,6 @@ export default function MyAttendance() {
         return result.reverse(); // Reverse to show latest dates first
     };
     const attendanceData = getAttendanceWithMissingDays();
-    console.log('Attendance Data:', attendanceData); // Debugging line
     const presentDays = attendanceData.filter(
         record =>
             record.attendance_status === 'Present' ||
