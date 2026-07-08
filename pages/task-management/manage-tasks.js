@@ -362,11 +362,26 @@ export default function TaskManagement({ user }) {
                       <textarea
                         name="description"
                         value={formData.description}
-                        onChange={handleChange}
+                        onChange={(e) => {
+                          if (e.target.value.length <= 500) {
+                            handleChange(e);
+                          }
+                        }}
                         rows={4}
+                        maxLength={500}
                         placeholder="Enter task description..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                          formData.description.length >= 450 ? 'border-orange-300' : 'border-gray-300'
+                        }`}
                       />
+                      <div className="flex justify-end mt-1">
+                        <span className={`text-xs ${
+                          formData.description.length >= 500 ? 'text-red-500 font-medium' :
+                          formData.description.length >= 450 ? 'text-orange-500' : 'text-gray-400'
+                        }`}>
+                          {formData.description.length}/500
+                        </span>
+                      </div>
                     </div>
 
                     <button
