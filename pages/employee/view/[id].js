@@ -285,7 +285,7 @@ export default function ViewEmployee() {
     const confirmed = await swalConfirm(
       `Are you sure you want to request resubmission of ${getDocumentDisplayName(documentType)}?\n\nThis will notify the employee to upload a new document.`
     );
-    
+
     if (!confirmed) {
       return;
     }
@@ -309,7 +309,7 @@ export default function ViewEmployee() {
       if (response.ok) {
         const result = await response.json();
         toast.success(`Resubmission request sent to ${result.employeeName}`);
-        
+
         // Keep the button in "Request Sent" state
         setTimeout(() => {
           setResubmitStates(prev => ({ ...prev, [documentType]: 'sent' }));
@@ -336,7 +336,7 @@ export default function ViewEmployee() {
       'profile_photo': 'Profile Photo',
       'checkbook_document': 'Checkbook Document'
     };
-    
+
     return names[documentType] || documentType;
   };
 
@@ -363,7 +363,7 @@ export default function ViewEmployee() {
       if (response.ok) {
         const result = await response.json();
         toast.success('Document resubmitted successfully!');
-        
+
         // Update the local data to reflect the new document
         setData(prev => {
           const newData = { ...prev };
@@ -378,11 +378,11 @@ export default function ViewEmployee() {
           }
           return newData;
         });
-        
+
         // Reset file input
         const fileInput = document.getElementById(`file-${documentType}`);
         if (fileInput) fileInput.value = '';
-        
+
       } else {
         const error = await response.json();
         toast.error(error.error || 'Failed to resubmit document');
@@ -407,7 +407,7 @@ export default function ViewEmployee() {
         empid: empid,
         verificationStatus: updatedVerificationStatus,
       });
-      
+
       if (res.status === 200) {
         setData((prev) => ({
           ...prev,
@@ -516,30 +516,28 @@ export default function ViewEmployee() {
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
                             {user?.role || "N/A"}
                           </span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            user?.verified === 'verified' 
-                              ? 'bg-emerald-100 text-emerald-800' 
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user?.verified === 'verified'
+                              ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-gray-100 text-gray-800'
-                          }`}>
+                            }`}>
                             <CheckCircle className="w-3 h-3 mr-1" />
                             {user?.verified === 'verified' ? 'Verified' : 'Not Verified'}
                           </span>
                         </div>
                       </div>
-                      
+
                       {["admin", "hr", "superadmin"].includes(role) && (
                         <button
                           onClick={handleVerifyEmployee}
                           disabled={isVerifying}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            user?.verified === 'verified'
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${user?.verified === 'verified'
                               ? 'bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white'
                               : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white'
-                          }`}
+                            }`}
                         >
                           <CheckCircle size={16} className={isVerifying ? "animate-spin" : ""} />
-                          {isVerifying 
-                            ? (user?.verified === 'verified' ? "Unverifying..." : "Verifying...") 
+                          {isVerifying
+                            ? (user?.verified === 'verified' ? "Unverifying..." : "Verifying...")
                             : (user?.verified === 'verified' ? "Unverify" : "Verify")
                           }
                         </button>
@@ -554,37 +552,37 @@ export default function ViewEmployee() {
                 !employees.contact_no ||
                 !addresses?.length ||
                 !bankDetails?.length) && (
-                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                        <FileText className="w-6 h-6 text-orange-600" />
+                  <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                          <FileText className="w-6 h-6 text-orange-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-orange-900">
+                            Complete Your Registration
+                          </h3>
+                          <p className="text-orange-700 text-sm">
+                            Some details are missing. Please complete your profile
+                            by filling the registration form.
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-orange-900">
-                          Complete Your Registration
-                        </h3>
-                        <p className="text-orange-700 text-sm">
-                          Some details are missing. Please complete your profile
-                          by filling the registration form.
-                        </p>
-                      </div>
+                      <button
+                        onClick={() => {
+                          const formUrl = `/employee/upload-documents/${empid}?name=${encodeURIComponent(
+                            name
+                          )}&email=${encodeURIComponent(email)}`;
+                          window.open(formUrl, "_blank");
+                        }}
+                        className="inline-flex items-center px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Complete Form
+                      </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        const formUrl = `/employee/upload-documents/${empid}?name=${encodeURIComponent(
-                          name
-                        )}&email=${encodeURIComponent(email)}`;
-                        window.open(formUrl, "_blank");
-                      }}
-                      className="inline-flex items-center px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Complete Form
-                    </button>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Personal Details */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100">
@@ -797,69 +795,43 @@ export default function ViewEmployee() {
                   )}
                 </button>
                 {isOpen1 && (
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      <FileDetail
-                        label="Aadhar Card"
-                        file={employees?.aadhar_card}
-                        documentType="aadhar_card"
-                        empid={empid}
-                        onResubmit={handleResubmitDocument}
-                        onRequestResubmission={handleRequestResubmission}
-                        isResubmitting={resubmitStates.aadhar_card}
-                        userRole={role}
-                        resubmitStates={resubmitStates}
-                        resubmitReason={resubmitReason}
-                        setResubmitReason={setResubmitReason}
-                      />
-                      <Detail
-                        label="Aadhar Number"
-                        value={employees?.aadhar_number || "N/A"}
-                      />
-                      <FileDetail 
-                        label="PAN Card" 
-                        file={employees?.pan_card}
-                        documentType="pan_card"
-                        empid={empid}
-                        onResubmit={handleResubmitDocument}
-                        onRequestResubmission={handleRequestResubmission}
-                        isResubmitting={resubmitStates.pan_card}
-                        userRole={role}
-                        resubmitStates={resubmitStates}
-                        resubmitReason={resubmitReason}
-                        setResubmitReason={setResubmitReason}
-                      />
-                      <Detail
-                        label="PAN Number"
-                        value={employees?.pan_number || "N/A"}
-                      />
-                      <FileDetail 
-                        label="Resume" 
-                        file={employees?.resume}
-                        documentType="resume"
-                        empid={empid}
-                        onResubmit={handleResubmitDocument}
-                        onRequestResubmission={handleRequestResubmission}
-                        isResubmitting={resubmitStates.resume}
-                        userRole={role}
-                        resubmitStates={resubmitStates}
-                        resubmitReason={resubmitReason}
-                        setResubmitReason={setResubmitReason}
-                      />
-                      <FileDetail
-                        label="Experience Certificate"
-                        file={employees?.experience_certificate}
-                        documentType="experience_certificate"
-                        empid={empid}
-                        onResubmit={handleResubmitDocument}
-                        onRequestResubmission={handleRequestResubmission}
-                        isResubmitting={resubmitStates.experience_certificate}
-                        userRole={role}
-                        resubmitStates={resubmitStates}
-                        resubmitReason={resubmitReason}
-                        setResubmitReason={setResubmitReason}
-                      />
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <tbody className="divide-y divide-gray-100">
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Aadhar Card</td>
+                          <td className="px-6 py-4">
+                            <FileDetail label="" file={employees?.aadhar_card} documentType="aadhar_card" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.aadhar_card} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Aadhar Number</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 font-medium">{employees?.aadhar_number || "N/A"}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">PAN Card</td>
+                          <td className="px-6 py-4">
+                            <FileDetail label="" file={employees?.pan_card} documentType="pan_card" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.pan_card} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">PAN Number</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 font-medium">{employees?.pan_number || "N/A"}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Resume</td>
+                          <td className="px-6 py-4">
+                            <FileDetail label="" file={employees?.resume} documentType="resume" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.resume} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Experience Certificate</td>
+                          <td className="px-6 py-4">
+                            <FileDetail label="" file={employees?.experience_certificate} documentType="experience_certificate" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.experience_certificate} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -885,26 +857,21 @@ export default function ViewEmployee() {
                   )}
                 </button>
                 {isOpen2 && (
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Detail
-                        label="Highest Qualification"
-                        value={employees?.highest_qualification || "N/A"}
-                      />
-                      <FileDetail
-                        label="Education Certificates"
-                        file={employees?.education_certificates}
-                        documentType="education_certificates"
-                        empid={empid}
-                        onResubmit={handleResubmitDocument}
-                        onRequestResubmission={handleRequestResubmission}
-                        isResubmitting={resubmitStates.education_certificates}
-                        userRole={role}
-                        resubmitStates={resubmitStates}
-                        resubmitReason={resubmitReason}
-                        setResubmitReason={setResubmitReason}
-                      />
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <tbody className="divide-y divide-gray-100">
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Highest Qualification</td>
+                          <td className="px-6 py-3 text-sm text-gray-900 font-medium">{employees?.highest_qualification || "N/A"}</td>
+                        </tr>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Education Certificates</td>
+                          <td className="px-6 py-4">
+                            <FileDetail label="" file={employees?.education_certificates} documentType="education_certificates" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.education_certificates} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -931,43 +898,78 @@ export default function ViewEmployee() {
                   )}
                 </button>
                 {isOpen3 && (
-                  <div className="p-6">
+                  <div className="overflow-x-auto">
                     {bankDetails?.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <Detail
-                          label="Account Holder"
-                          value={bankDetails[0]?.account_holder_name || "N/A"}
-                        />
-                        <Detail
-                          label="Bank Name"
-                          value={bankDetails[0]?.bank_name || "N/A"}
-                        />
-                        <Detail
-                          label="Branch Name"
-                          value={bankDetails[0]?.branch_name || "N/A"}
-                        />
-                        <Detail
-                          label="Account Number"
-                          value={bankDetails[0]?.account_number || "N/A"}
-                        />
-                        <Detail
-                          label="IFSC Code"
-                          value={bankDetails[0]?.ifsc_code || "N/A"}
-                        />
-                        <FileDetail
-                          label="Checkbook Document"
-                          file={bankDetails[0]?.checkbook_document}
-                          documentType="checkbook_document"
-                          empid={empid}
-                          onResubmit={handleResubmitDocument}
-                          onRequestResubmission={handleRequestResubmission}
-                          isResubmitting={resubmitStates.checkbook_document}
-                          userRole={role}
-                          resubmitStates={resubmitStates}
-                          resubmitReason={resubmitReason}
-                          setResubmitReason={setResubmitReason}
-                        />
-                      </div>
+                      <table className="w-full">
+                        <tbody className="divide-y divide-gray-100">
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
+                              Account Holder
+                            </td>
+                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
+                              {bankDetails[0]?.account_holder_name || "N/A"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
+                              Bank Name
+                            </td>
+                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
+                              {bankDetails[0]?.bank_name || "N/A"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
+                              Branch Name
+                            </td>
+                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
+                              {bankDetails[0]?.branch_name || "N/A"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
+                              Account Number
+                            </td>
+                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
+                              {bankDetails[0]?.account_number || "N/A"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
+                              IFSC Code
+                            </td>
+                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
+                              {bankDetails[0]?.ifsc_code || "N/A"}
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-gray-50">
+                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
+                              Checkbook Document
+                            </td>
+
+                            <td className="px-6 py-4">
+                              <FileDetail
+                                label=""
+                                file={bankDetails[0]?.checkbook_document}
+                                documentType="checkbook_document"
+                                empid={empid}
+                                onResubmit={handleResubmitDocument}
+                                onRequestResubmission={handleRequestResubmission}
+                                isResubmitting={resubmitStates.checkbook_document}
+                                userRole={role}
+                                resubmitStates={resubmitStates}
+                                resubmitReason={resubmitReason}
+                                setResubmitReason={setResubmitReason}
+                              />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     ) : (
                       <div className="text-center py-8">
                         <p className="text-gray-500">
@@ -1117,87 +1119,71 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
   const canInteract = empid && documentType && onResubmit;
 
   return (
-    <div>
-      <p className="text-sm font-medium text-gray-700 mb-1">{label}</p>
-      <div className="space-y-2">
+    <div className="flex flex-wrap items-start gap-3">
+      <p className="text-sm font-medium text-gray-700 w-full">{label}</p>
+      <div className="flex flex-wrap items-center gap-3 w-full">
         {file ? (
           <a
-            href={file}
+            href={`/api/hr/view-document/${empid}?type=${documentType}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+            className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors whitespace-nowrap"
           >
             <FileText className="w-4 h-4 mr-1" />
             View Document
           </a>
         ) : (
-          <p className="text-gray-900 font-medium">N/A</p>
+          <span className="text-gray-400 text-sm">No document uploaded</span>
         )}
-        
+
         {canInteract && isEmployee && (
-          <div className="mt-2">
-            {!showResubmit ? (
+          !showResubmit ? (
+            <button
+              onClick={() => setShowResubmit(true)}
+              className="inline-flex items-center px-3 py-1.5 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors whitespace-nowrap"
+            >
+              <Upload className="w-3 h-3 mr-1" />
+              Resubmit
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                id={`file-${documentType}`}
+                type="file"
+                onChange={handleFileSelect}
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
               <button
-                onClick={() => setShowResubmit(true)}
-                className="inline-flex items-center px-3 py-1 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors"
+                onClick={handleResubmitClick}
+                disabled={!selectedFile || isResubmitting}
+                className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded transition-colors whitespace-nowrap"
               >
-                <Upload className="w-3 h-3 mr-1" />
-                Resubmit
+                {isResubmitting ? 'Uploading...' : 'Upload'}
               </button>
-            ) : (
-              <div className="space-y-2 p-3 bg-gray-50 rounded-md">
-                <input
-                  id={`file-${documentType}`}
-                  type="file"
-                  onChange={handleFileSelect}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleResubmitClick}
-                    disabled={!selectedFile || isResubmitting}
-                    className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded transition-colors"
-                  >
-                    {isResubmitting ? 'Uploading...' : 'Upload'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowResubmit(false);
-                      setSelectedFile(null);
-                    }}
-                    className="px-3 py-1 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              <button
+                onClick={() => { setShowResubmit(false); setSelectedFile(null); }}
+                className="px-3 py-1 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )
         )}
-        
+
         {canInteract && isAdminHR && (
-          <div className="mt-2 space-y-2">
+          <>
             <textarea
               value={resubmitReason?.[documentType] || ""}
-              onChange={(e) =>
-                setResubmitReason((prev) => ({
-                  ...prev,
-                  [documentType]: e.target.value,
-                }))
-              }
-              placeholder="Enter reason for resubmission"
-              rows={3}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              onChange={(e) => setResubmitReason((prev) => ({ ...prev, [documentType]: e.target.value }))}
+              placeholder="Reason for resubmission"
+              rows={1}
+              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-1 min-w-[160px] resize-none"
             />
-
             <button
               onClick={handleRequestResubmission}
-              disabled={
-                isResubmitting ||
-                resubmitStates?.[documentType] === 'sent'
-              }
-              className={`inline-flex items-center px-3 py-1 text-sm rounded-md transition-colors ${resubmitStates?.[documentType] === 'sent'
+              disabled={isResubmitting || resubmitStates?.[documentType] === 'sent'}
+              className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${resubmitStates?.[documentType] === 'sent'
                   ? 'bg-green-100 text-green-700 cursor-default'
                   : isResubmitting
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -1205,13 +1191,9 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
                 }`}
             >
               <Upload className="w-3 h-3 mr-1" />
-              {resubmitStates?.[documentType] === 'sent'
-                ? 'Request Sent'
-                : isResubmitting
-                  ? 'Sending...'
-                  : 'Request Resubmission'}
+              {resubmitStates?.[documentType] === 'sent' ? 'Request Sent' : isResubmitting ? 'Sending...' : 'Request Resubmission'}
             </button>
-          </div>
+          </>
         )}
       </div>
     </div>
