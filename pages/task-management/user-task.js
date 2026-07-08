@@ -6,7 +6,7 @@ import SideBar from '@/Components/SideBar';
 import EmpSideBar from '@/Components/empSidebar';
 import WorkReportModal from '@/Components/WorkReportModal';
 import { CheckCircle, Clock, AlertCircle, Calendar, User, Filter, ChevronLeft, ChevronRight, AlertTriangle, FileText, X } from 'lucide-react';
-import { formatDateTime } from '@/utils/dateTime';
+import { formatDate, formatDateTime } from '@/utils/dateTime';
 export default function UserTasks() {
   const router = useRouter();
   const [tasks, setTasks] = useState([]);
@@ -79,6 +79,7 @@ const calculateStats = useCallback(() => {
       if (reportsRes.ok) {
         const reportsData = await reportsRes.json();
         setWorkReports(reportsData || []);
+        console.log('Fetched work reports:', reportsData);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -206,31 +207,55 @@ const calculateStats = useCallback(() => {
         );
     }
   // Generate all days in the selected month for work reports
-  const generateMonthlyReportRows = () => {
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const firstDay = new Date(year, month - 1, 1);
-    const lastDay = new Date(year, month, 0);
-    const rows = [];
+ const generateMonthlyReportRows = () => {
+  const [year, month] = selectedMonth.split("-").map(Number);
 
-    for (let date = new Date(firstDay); date <= lastDay; date.setDate(date.getDate() + 1)) {
-      const dayOfWeek = date.getDay();
-      
-      // Skip weekends (Saturday = 6, Sunday = 0)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        const report = filteredReports.find(
-          r => new Date(r.report_date).toDateString() === date.toDateString()
-        );
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date();
 
-        rows.push({
-          date: new Date(date),
-          report
-        });
-      }
+  // Create a lookup map using your centralized formatter
+  const reportMap = new Map(
+    filteredReports.map((report) => [
+      formatDate(report.report_date),
+      report,
+    ])
+  );
+
+  const rows = [];
+
+  for (let day = daysInMonth; day >= 1; day--) {
+    const currentDate = new Date(year, month - 1, day);
+
+    // Don't show future dates in current month
+    if (
+      currentDate.getFullYear() === today.getFullYear() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getDate() > today.getDate()
+    ) {
+      continue;
     }
 
-    // Sort by date descending (most recent first)
-    return rows.sort((a, b) => b.date - a.date);
-  };
+    const formattedDate = formatDate(currentDate);
+
+    const report = reportMap.get(formattedDate);
+
+    const isWeekend =
+      currentDate.getDay() === 0 ||
+      currentDate.getDay() === 6;
+
+    rows.push({
+      date: currentDate,
+      report,
+      status: report
+        ? "Submitted"
+        : isWeekend
+        ? "Day Off"
+        : "No Report",
+    });
+  }
+
+  return rows;
+};
 
   const monthlyReportRows = generateMonthlyReportRows();
 
@@ -594,37 +619,55 @@ const calculateStats = useCallback(() => {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Issues
                                         </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-  {monthlyReportRows.map((row, index) => (
-    <tr key={index} className="hover:bg-gray-50">
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {new Date(row.date).toLocaleDateString()}
-      </td>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {monthlyReportRows.map((row, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {row.date.toLocaleDateString()}
+                              </td>
 
-      {row.report ? (
-        <>
-          <td className="px-6 py-4 text-sm text-gray-900">
-            {row.report.tasks_completed}
-          </td>
+                              {row.report ? (
+                                <>
+                                  <td className="px-6 py-4 text-sm">
+                                    {row.report.tasks_completed}
+                                  </td>
 
-          <td className="px-6 py-4 text-sm text-gray-900">
-            {row.report.tasks_tomorrow}
-          </td>
+                                  <td className="px-6 py-4 text-sm">
+                                    {row.report.tasks_tomorrow}
+                                  </td>
 
-          <td className="px-6 py-4 text-sm text-gray-900">
-            {row.report.issues || "None"}
-          </td>
-        </>
-      ) : (
-        <td colSpan="3" className="px-6 py-4 text-sm text-gray-500 text-center">
-          No Report Found
-        </td>
-      )}
-    </tr>
-  ))}
-</tbody>
+                                  <td className="px-6 py-4 text-sm">
+                                    {row.report.issues || "-"}
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="px-6 py-4 text-gray-500">--</td>
+                                  <td className="px-6 py-4 text-gray-500">--</td>
+                                  <td className="px-6 py-4 text-gray-500">--</td>
+                                </>
+                              )}
+
+                              <td className="px-6 py-4">
+                                <span
+                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${row.status === "Submitted"
+                                      ? "bg-green-100 text-green-800"
+                                      : row.status === "Day Off"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-red-100 text-red-800"
+                                    }`}
+                                >
+                                  {row.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
                             </table>
                         </div>
                     </div>
