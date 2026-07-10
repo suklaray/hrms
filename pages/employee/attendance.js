@@ -5,6 +5,7 @@ import Sidebar from '../../Components/empSidebar';
 import {
   formatTime,
 } from "@/utils/dateTime";
+import LiveTimer from '@/utils/liveTimer';
 export default function EmployeeAttendance() {
   const [user, setUser] = useState(null);
   const [attendance, setAttendance] = useState([]);
@@ -403,7 +404,12 @@ const attendanceRate = workingDays.length > 0
                               {formatTime(record.check_out)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {record.total_hours}
+                              <LiveTimer
+                                currentCheckInTime={record.currentCheckInTime}
+                                isLoggedIn={record.isLoggedIn}
+                                totalHours={record.total_hours}
+                                completedSeconds={record.completedSeconds}
+                              />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span

@@ -5,26 +5,29 @@ import { format } from 'date-fns';
 const calculateTotalWorkingHours = (sessions) => {
   let totalSeconds = 0;
 
-  const validSessions = sessions.filter(s => s.check_in && s.check_out);
-  
-  for (let s of validSessions) {
-    const checkIn = new Date(s.check_in);
-    const checkOut = new Date(s.check_out);
+  const validSessions = sessions.filter(
+    (s) => s.check_in && s.check_out
+  );
+
+  for (const session of validSessions) {
+    const checkIn = new Date(session.check_in);
+    const checkOut = new Date(session.check_out);
+
     totalSeconds += (checkOut - checkIn) / 1000;
   }
 
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s2 = Math.floor(totalSeconds % 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = Math.floor(totalSeconds % 60);
 
   return {
     totalSeconds,
-    formatted: `${h.toString().padStart(2, '0')}:${m
-      .toString()
-      .padStart(2, '0')}:${s2.toString().padStart(2, '0')}`
+    formatted: `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+      2,
+      "0"
+    )}:${String(seconds).padStart(2, "0")}`,
   };
 };
-
 // ---------------- Attendance / Login Status ----------------
 const calculateAttendanceStatus = (total) =>
   total >= 14400 ? "Present" : "Absent";
@@ -82,7 +85,9 @@ export default async function handler(req, res) {
     const attendance = Object.entries(grouped).reverse().map(([date, sessions]) => {
       const formattedDate = format(new Date(date), "dd-MM-yyyy");
       const login_status = getLoginStatus(sessions);
-
+      const openSession = sessions.find(
+        (s) => s.check_in && !s.check_out
+      );
       const validIns = sessions.map(s => new Date(s.check_in)).filter(x => !isNaN(x));
       const validOuts = sessions.map(s => new Date(s.check_out)).filter(x => !isNaN(x));
 
@@ -91,16 +96,18 @@ export default async function handler(req, res) {
       const CheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
 
       const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
+      const completedSeconds = totalSeconds;
       const hasAutoCheckout = sessions.some(
         s => s.attendance_status === "AutoCheckout"
       );
 
-      const attendance_status =
-        sessions.some(s => s.attendance_status === "AutoCheckout")
+      const attendance_status = sessions.some(
+        (s) => s.attendance_status === "AutoCheckout",
+      )
+        ? calculateAttendanceStatus(totalSeconds) === "Present"
           ? "AutoCheckout"
-          : sessions.some(s => s.attendance_status === "Present")
-            ? "Present"
-            : "Absent";
+          : "Absent"
+        : calculateAttendanceStatus(totalSeconds);
       const isToday = date === today;
 
       return {
@@ -111,6 +118,9 @@ export default async function handler(req, res) {
         total_hours: formatted,
         login_status,
         attendance_status,
+        currentCheckInTime: openSession?.check_in || null,
+        completedSeconds,
+        isLoggedIn: isToday && login_status === "Logged In",
       };
     });
 

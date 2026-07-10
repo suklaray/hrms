@@ -3,6 +3,7 @@ import Head from 'next/head';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import SideBar from '../../../Components/SideBar';
 import { formatTime } from '@/utils/dateTime';
+import LiveTimer from '@/utils/liveTimer';
 export default function MyAttendance() {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -293,7 +294,13 @@ export default function MyAttendance() {
                                                             {formatTime(record.check_out)}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {record.total_hours || '--'}
+                                                            {/* {record.total_hours || '--'} */}
+                                                             <LiveTimer
+                                                                currentCheckInTime={record.currentCheckInTime}
+                                                                isLoggedIn={record.isLoggedIn}
+                                                                totalHours={record.total_hours}
+                                                                completedSeconds={record.completedSeconds}
+                                                            />
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${

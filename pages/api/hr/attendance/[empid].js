@@ -26,7 +26,9 @@ const calculateTotalWorkingHours = (sessions) => {
   };
 };
 
-
+// ---------------- Attendance / Login Status ----------------
+const calculateAttendanceStatus = (total) =>
+  total >= 14400 ? "Present" : "Absent";
 const getLoginStatus = (sessions) => {
   const hasCheckIn = sessions.some(s => s.check_in);
   const hasCheckOut = sessions.every(s => s.check_out);
@@ -89,12 +91,13 @@ export default async function handler(req, res) {
         s => s.attendance_status === "AutoCheckout"
       );
 
-      const attendance_status =
-        hasAutoCheckout
+      const attendance_status = sessions.some(
+        (s) => s.attendance_status === "AutoCheckout",
+      )
+        ? calculateAttendanceStatus(totalSeconds) === "Present"
           ? "AutoCheckout"
-          : sessions.some(s => s.attendance_status === "Present")
-            ? "Present"
-            : "Absent";
+          : "Absent"
+        : calculateAttendanceStatus(totalSeconds);
       //  Today’s logout logic
       const isToday = date === today;
       const check_out_display = isToday && login_status === 'Logged In'
