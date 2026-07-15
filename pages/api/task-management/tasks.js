@@ -118,15 +118,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Deadline is required' });
       }
 
-      // Validate and parse date format (treat as local time)
-      const localDate = new Date(deadline);
-
-      // Convert local time to UTC
-      const deadlineDate = new Date(
-        localDate.getTime() - localDate.getTimezoneOffset() * 60000
-      );
+      // deadline from datetime-local is local IST time (no timezone), treat as IST → convert to UTC
+      const deadlineDate = new Date(deadline + '+05:30');
       if (isNaN(deadlineDate.getTime())) {
-        console.error('Invalid deadline format:', deadline);
         return res.status(400).json({ error: 'Invalid deadline format' });
       }
       // console.log('Deadline parsed:', deadlineDate);
