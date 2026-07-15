@@ -3,11 +3,11 @@ import cookie from 'cookie';
 import prisma from "@/lib/prisma";
 
 export default async function handler(req, res) {
-  console.log('=== Task Management API Debug ===');
-  console.log('Method:', req.method);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('Body:', JSON.stringify(req.body, null, 2));
-  console.log('Environment:', process.env.NODE_ENV);
+  // console.log('=== Task Management API Debug ===');
+  // console.log('Method:', req.method);
+  // console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  // console.log('Body:', JSON.stringify(req.body, null, 2));
+  // console.log('Environment:', process.env.NODE_ENV);
   
   try {
     // Check JWT_SECRET exists
@@ -25,18 +25,18 @@ export default async function handler(req, res) {
       console.error('No token found in cookies');
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    console.log('Token found');
+    // console.log('Token found');
 
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Token decoded successfully:', { empid: decoded.empid, role: decoded.role });
+      // console.log('Token decoded successfully:', { empid: decoded.empid, role: decoded.role });
     } catch (jwtError) {
       console.error('JWT verification failed:', jwtError.message);
       return res.status(401).json({ error: 'Invalid token' });
     }
     
-    console.log(' Looking up user in database...');
+    // console.log(' Looking up user in database...');
     const user = await prisma.users.findUnique({
       where: { empid: decoded.empid || decoded.id },
       select: { empid: true, role: true, name: true }
@@ -46,16 +46,16 @@ export default async function handler(req, res) {
       console.error('User not found in database for empid:', decoded.empid || decoded.id);
       return res.status(401).json({ error: 'User not found' });
     }
-    console.log('User found:', user);
+    // console.log('User found:', user);
 
     if (!['hr', 'admin', 'superadmin'].includes(user.role)) {
       console.error(' User role not authorized:', user.role);
       return res.status(401).json({ error: 'Unauthorized role' });
     }
-    console.log('User role authorized:', user.role);
+    // console.log('User role authorized:', user.role);
 
     if (req.method === 'GET') {
-      console.log('Processing GET request for employees...');
+      // console.log('Processing GET request for employees...');
       
       let roleFilter = [];
       if (user.role === 'superadmin') {
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       } else if (user.role === 'hr') {
         roleFilter = ['employee'];
       }
-      console.log('Role filter:', roleFilter);
+      // console.log('Role filter:', roleFilter);
 
       let whereClause = { 
         status: { not: 'Inactive' },
@@ -74,14 +74,14 @@ export default async function handler(req, res) {
           ...(roleFilter.length > 0 ? [{ role: { in: roleFilter } }] : [])
         ]
       };
-      console.log('Where clause:', JSON.stringify(whereClause, null, 2));
+      // console.log('Where clause:', JSON.stringify(whereClause, null, 2));
 
       const employees = await prisma.users.findMany({
         where: whereClause,
         select: { empid: true, name: true, email: true, role: true, employee_type: true, position: true },
         orderBy: { name: 'asc' }
       });
-      console.log('Found employees:', employees.length);
+      // console.log('Found employees:', employees.length);
 
       return res.status(200).json({ employees });
     }
@@ -90,13 +90,13 @@ export default async function handler(req, res) {
       console.log('Processing POST request for task creation...');
       const { title, description, assigned_to, priority, deadline } = req.body;
       
-      console.log('Task data received:', {
-        title: title?.length || 0,
-        description: description?.length || 0,
-        assigned_to,
-        priority,
-        deadline
-      });
+      // console.log('Task data received:', {
+      //   title: title?.length || 0,
+      //   description: description?.length || 0,
+      //   assigned_to,
+      //   priority,
+      //   deadline
+      // });
 
       if (!title?.trim()) {
         console.error('Missing title');
@@ -119,15 +119,20 @@ export default async function handler(req, res) {
       }
 
       // Validate and parse date format (treat as local time)
-      const deadlineDate = new Date(deadline);
+      const localDate = new Date(deadline);
+
+      // Convert local time to UTC
+      const deadlineDate = new Date(
+        localDate.getTime() - localDate.getTimezoneOffset() * 60000
+      );
       if (isNaN(deadlineDate.getTime())) {
         console.error('Invalid deadline format:', deadline);
         return res.status(400).json({ error: 'Invalid deadline format' });
       }
-      console.log('Deadline parsed:', deadlineDate);
+      // console.log('Deadline parsed:', deadlineDate);
 
       // Check if assigned user exists
-      console.log('Checking if assigned user exists...');
+      // console.log('Checking if assigned user exists...');
       const assignedUser = await prisma.users.findUnique({
         where: { empid: assigned_to },
         select: { empid: true, name: true }
@@ -137,9 +142,9 @@ export default async function handler(req, res) {
         console.error('Assigned user not found:', assigned_to);
         return res.status(400).json({ error: 'Assigned user not found' });
       }
-      console.log('Assigned user found:', assignedUser);
+      // console.log('Assigned user found:', assignedUser);
 
-      console.log('Creating task in database...');
+      // console.log('Creating task in database...');
       const taskData = {
         title: title.trim(),
         description: description?.trim() || null,
@@ -149,17 +154,17 @@ export default async function handler(req, res) {
         deadline: deadlineDate,
         status: 'Pending'
       };
-      console.log('Task data to create:', taskData);
+      // console.log('Task data to create:', taskData);
 
       const createdTask = await prisma.tasks.create({
         data: taskData
       });
-      console.log('Task created successfully:', createdTask.id);
+      // console.log('Task created successfully:', createdTask.id);
 
       return res.status(201).json({ message: 'Task created successfully', taskId: createdTask.id });
     }
 
-    console.log('Method not allowed:', req.method);
+    // console.log('Method not allowed:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
     
   } catch (error) {
