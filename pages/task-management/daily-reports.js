@@ -22,6 +22,7 @@ export default function DailyReports() {
   const [itemsPerPage] = useState(10);
 
   const [allEmployeeReports, setAllEmployeeReports] = useState([]);
+  const [allLeaves, setAllLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [positions, setPositions] = useState([]);
 
@@ -57,7 +58,8 @@ export default function DailyReports() {
 
       if (reportsRes.ok) {
         const reportsData = await reportsRes.json();
-        setAllEmployeeReports(Array.isArray(reportsData) ? reportsData : []);
+        setAllEmployeeReports(Array.isArray(reportsData.reports) ? reportsData.reports : []);
+        setAllLeaves(Array.isArray(reportsData.leaves) ? reportsData.leaves : []);
       }
 
       if (usersRes.ok) {
@@ -104,87 +106,83 @@ export default function DailyReports() {
 
   const start = new Date(fromDate);
   const end = new Date(toDate);
-
   start.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
 
   const dateList = [];
   const tempDate = new Date(start);
-
-  /* GENERATE ALL DATES BETWEEN FROM & TO */
-
   while (tempDate <= end) {
-  const day = tempDate.getDay();
-
-  // Skip Sunday (0) and Saturday (6)
-  if (day !== 0 && day !== 6) {
     dateList.push(new Date(tempDate));
+    tempDate.setDate(tempDate.getDate() + 1);
   }
 
-  tempDate.setDate(tempDate.getDate() + 1);
-}
-
   employees.forEach((emp) => {
-    /* APPLY EMPLOYEE FILTER */
-
-    if (
-      employeeFilter &&
-      !emp.name?.toLowerCase().includes(employeeFilter.toLowerCase())
-    ) {
-      return;
-    }
-
+    if (employeeFilter && !emp.name?.toLowerCase().includes(employeeFilter.toLowerCase())) return;
     if (selectedRole && emp.role !== selectedRole) return;
-
     if (selectedPosition && emp.position !== selectedPosition) return;
 
-    /* LOOP EVERY DATE */
+    // Build leave date map for this employee
+    const empLeaves = allLeaves.filter(l => l.empid === emp.empid);
 
     dateList.forEach((date) => {
       const dateStr = date.toLocaleDateString("en-CA");
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
       const report = allEmployeeReports.find((rep) => {
         const reportDate = new Date(rep.report_date).toLocaleDateString("en-CA");
-
         return rep.user?.empid === emp.empid && reportDate === dateStr;
       });
 
+      // Check if this date falls within any leave request
+      const leaveOnDate = empLeaves.find(l => {
+        const from = new Date(l.from_date); from.setHours(0,0,0,0);
+        const to = new Date(l.to_date); to.setHours(0,0,0,0);
+        return date >= from && date <= to;
+      });
+
       if (report) {
-        results.push(report);
+        // Report submitted — even on weekend = worked on day off
+        results.push({
+          ...report,
+          rowType: isWeekend ? 'worked_dayoff' : 'submitted',
+        });
+      } else if (isWeekend) {
+        results.push({
+          id: `dayoff-${emp.empid}-${dateStr}`,
+          report_date: dateStr,
+          created_at: null,
+          rowType: 'dayoff',
+          user: emp,
+        });
+      } else if (leaveOnDate) {
+        results.push({
+          id: `leave-${emp.empid}-${dateStr}`,
+          report_date: dateStr,
+          created_at: null,
+          rowType: 'leave',
+          leaveInfo: leaveOnDate,
+          user: emp,
+        });
       } else {
         results.push({
           id: `missing-${emp.empid}-${dateStr}`,
           report_date: dateStr,
           created_at: null,
-          tasks_completed: "No data found",
-          tasks_tomorrow: "No data found",
-          issues: "No data found",
+          rowType: 'missing',
           user: emp,
         });
       }
     });
   });
 
- return results.sort((a, b) => {
-  const dateA = new Date(a.report_date);
-  const dateB = new Date(b.report_date);
-
-  // 1️⃣ Sort by date first
-  if (dateA.getTime() !== dateB.getTime()) {
-    return dateA - dateB;
-  }
-
-  // 2️⃣ Submitted first
-  const submittedA = !!a.created_at;
-  const submittedB = !!b.created_at;
-
-  if (submittedA !== submittedB) {
-    return submittedB - submittedA;
-  }
-
-  // 3️⃣ Sort by employee name
-  return (a.user?.name || "").localeCompare(b.user?.name || "");
-});
+  return results.sort((a, b) => {
+    const dateA = new Date(a.report_date);
+    const dateB = new Date(b.report_date);
+    if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+    const order = { submitted: 0, worked_dayoff: 1, leave: 2, dayoff: 3, missing: 4 };
+    if (a.rowType !== b.rowType) return (order[a.rowType] ?? 5) - (order[b.rowType] ?? 5);
+    return (a.user?.name || "").localeCompare(b.user?.name || "");
+  });
 })();
 
   const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
@@ -332,77 +330,62 @@ export default function DailyReports() {
                         (emp) => emp.empid === report.user?.empid,
                       );
 
+                      const isLeave = report.rowType === 'leave';
+                      const isDayOff = report.rowType === 'dayoff';
+                      const isWorkedDayOff = report.rowType === 'worked_dayoff';
+                      const isMissing = report.rowType === 'missing';
+
+                      const rowBg = isDayOff ? 'bg-blue-50'
+                        : isLeave ? 'bg-yellow-50'
+                        : isWorkedDayOff ? 'bg-green-50'
+                        : isMissing ? 'bg-red-50'
+                        : '';
+
                       return (
-                        <tr
-                          key={report.id}
-                          className={!report.created_at ? "bg-red-50" : ""}
-                        >
-                          <td className="px-4 py-3 font-medium">
-                            {report.user?.name}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {employee?.position || "N/A"}
-                          </td>
-
+                        <tr key={report.id} className={rowBg}>
+                          <td className="px-4 py-3 font-medium">{report.user?.name}</td>
+                          <td className="px-4 py-3">{employee?.position || "N/A"}</td>
                           <td className="px-4 py-3">{report.user?.role}</td>
-
                           <td className="px-4 py-3">
-                            {report.report_date
-                              ? new Date(
-                                  report.report_date,
-                                ).toLocaleDateString()
-                              : "Not Submitted"}
+                            {new Date(report.report_date).toLocaleDateString()}
                           </td>
 
-                          {
-                            report.created_at ? (
+                          {isDayOff ? (
+                            <td colSpan={4} className="px-4 py-3 text-center text-blue-600 font-medium">Weekend / Day Off</td>
+                          ) : isLeave ? (
+                            <td colSpan={4} className="px-4 py-3 text-center text-yellow-700">
+                              On Leave — {report.leaveInfo.leave_type}
+                            </td>
+                          ) : (
                             <>
-                            <td className="px-4 py-3">
-                            {report.created_at
-                              ? new Date(report.created_at).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    second:"2-digit",
-                                    hour12: true,
-                                  },
-                                )
-                              : "No data found, for this time period"}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            <div
-                              className="max-w-[250px] truncate cursor-pointer hover:underline"
-                              onClick={() =>
-                                setOpenTask(report.tasks_completed)
-                              }
-                            >
-                              {report.tasks_completed}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div
-                              className="max-w-[250px] truncate cursor-pointer hover:underline"
-                              onClick={() => setOpenTask(report.tasks_tomorrow)}
-                            >
-                              {report.tasks_tomorrow}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div
-                              className="max-w-[250px] truncate cursor-pointer hover:underline"
-                              onClick={() => setOpenTask(report.issues)}
-                            >
-                              {report.issues || "None"}
-                            </div>
-                          </td>
-                          </>
-                          ):(
-                            <td colSpan={4} className="px-4 py-3 text-center">No Data Found</td>
-                          )
-                          }
+                              <td className="px-4 py-3">
+                                {report.created_at
+                                  ? new Date(report.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+                                  : '—'}
+                              </td>
+                              <td className="px-4 py-3">
+                                {report.tasks_completed ? (
+                                  <div className="max-w-[250px] truncate cursor-pointer hover:underline" onClick={() => setOpenTask(report.tasks_completed)}>
+                                    {report.tasks_completed}
+                                  </div>
+                                ) : <span className="text-gray-400">No data found</span>}
+                              </td>
+                              <td className="px-4 py-3">
+                                {report.tasks_tomorrow ? (
+                                  <div className="max-w-[250px] truncate cursor-pointer hover:underline" onClick={() => setOpenTask(report.tasks_tomorrow)}>
+                                    {report.tasks_tomorrow}
+                                  </div>
+                                ) : <span className="text-gray-400">No data found</span>}
+                              </td>
+                              <td className="px-4 py-3">
+                                {report.issues ? (
+                                  <div className="max-w-[250px] truncate cursor-pointer hover:underline" onClick={() => setOpenTask(report.issues)}>
+                                    {report.issues}
+                                  </div>
+                                ) : <span className="text-gray-400">None</span>}
+                              </td>
+                            </>
+                          )}
 
                           <td className="px-4 py-3">
                             <button

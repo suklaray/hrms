@@ -35,19 +35,21 @@ export default async function handler(req, res) {
       where: { empid },
       include: {
         users: {
-          select: {
-            empid: true,
-            name: true,
-            role: true
-          }
+          select: { empid: true, name: true, role: true }
         }
       },
-      orderBy: {
-        report_date: 'desc'
+      orderBy: { report_date: 'desc' }
+    });
+
+    const leaves = await prisma.leave_requests.findMany({
+      where: { empid },
+      select: {
+        id: true, from_date: true, to_date: true,
+        leave_type: true, status: true, reason: true
       }
     });
 
-    return res.status(200).json({ reports, employee });
+    return res.status(200).json({ reports, employee, leaves });
   } catch (error) {
     console.error("Error fetching employee work reports:", error);
     return res.status(500).json({ message: "Internal server error" });

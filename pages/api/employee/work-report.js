@@ -62,11 +62,17 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const reports = await prisma.daily_work_reports.findMany({
-        where: { empid: decoded.empid },
-        orderBy: { report_date: 'desc' },
-      });
-      return res.status(200).json(reports);
+      const [reports, leaves] = await Promise.all([
+        prisma.daily_work_reports.findMany({
+          where: { empid: decoded.empid },
+          orderBy: { report_date: 'desc' },
+        }),
+        prisma.leave_requests.findMany({
+          where: { empid: decoded.empid },
+          select: { id: true, from_date: true, to_date: true, leave_type: true, status: true, reason: true }
+        })
+      ]);
+      return res.status(200).json({ reports, leaves });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

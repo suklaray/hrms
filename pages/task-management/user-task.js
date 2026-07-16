@@ -19,6 +19,7 @@ export default function UserTasks() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('tasks');
   const [workReports, setWorkReports] = useState([]);
+  const [leaves, setLeaves] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM format
   const [filteredReports, setFilteredReports] = useState([]);
   const [stats, setStats] = useState({
@@ -51,7 +52,6 @@ const calculateStats = useCallback(() => {
     calculateStats();
   }, [tasks, calculateStats]);
 
-  // Filter reports by selected month
   useEffect(() => {
     if (workReports.length > 0) {
       const filtered = workReports.filter(report => {
@@ -78,8 +78,8 @@ const calculateStats = useCallback(() => {
       const reportsRes = await fetch('/api/employee/work-report');
       if (reportsRes.ok) {
         const reportsData = await reportsRes.json();
-        setWorkReports(reportsData || []);
-        console.log('Fetched work reports:', reportsData);
+        setWorkReports(reportsData.reports || []);
+        setLeaves(reportsData.leaves || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -209,49 +209,42 @@ const calculateStats = useCallback(() => {
   // Generate all days in the selected month for work reports
  const generateMonthlyReportRows = () => {
   const [year, month] = selectedMonth.split("-").map(Number);
-
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
-
-  // Create a lookup map using your centralized formatter
-  const reportMap = new Map(
-    filteredReports.map((report) => [
-      formatDate(report.report_date),
-      report,
-    ])
-  );
-
   const rows = [];
 
   for (let day = daysInMonth; day >= 1; day--) {
     const currentDate = new Date(year, month - 1, day);
 
-    // Don't show future dates in current month
     if (
       currentDate.getFullYear() === today.getFullYear() &&
       currentDate.getMonth() === today.getMonth() &&
       currentDate.getDate() > today.getDate()
-    ) {
-      continue;
-    }
+    ) continue;
 
-    const formattedDate = formatDate(currentDate);
+    const dateStr = currentDate.toLocaleDateString('en-CA');
+    const isWeekend = currentDate.getDay() === 0 || currentDate.getDay() === 6;
 
-    const report = reportMap.get(formattedDate);
+    const report = filteredReports.find(r =>
+      new Date(r.report_date).toLocaleDateString('en-CA') === dateStr
+    );
 
-    const isWeekend =
-      currentDate.getDay() === 0 ||
-      currentDate.getDay() === 6;
-
-    rows.push({
-      date: currentDate,
-      report,
-      status: report
-        ? "Submitted"
-        : isWeekend
-        ? "Day Off"
-        : "No Report",
+    const leaveOnDate = leaves.find(l => {
+      const from = new Date(l.from_date); from.setHours(0,0,0,0);
+      const to = new Date(l.to_date); to.setHours(0,0,0,0);
+      const cur = new Date(currentDate); cur.setHours(0,0,0,0);
+      return cur >= from && cur <= to;
     });
+
+    if (report) {
+      rows.push({ date: currentDate, report, rowType: isWeekend ? 'worked_dayoff' : 'submitted' });
+    } else if (isWeekend) {
+      rows.push({ date: currentDate, report: null, rowType: 'dayoff' });
+    } else if (leaveOnDate) {
+      rows.push({ date: currentDate, report: null, rowType: 'leave', leaveInfo: leaveOnDate });
+    } else {
+      rows.push({ date: currentDate, report: null, rowType: 'missing' });
+    }
   }
 
   return rows;
@@ -264,7 +257,6 @@ const calculateStats = useCallback(() => {
     const currentYear = new Date().getFullYear();
     const months = [];
     
-    // available month from work reports
     const availableMonths = [
   ...new Set(
     workReports.map(report => {
@@ -625,48 +617,60 @@ const calculateStats = useCallback(() => {
                                     </tr>
                                 </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {monthlyReportRows.map((row, index) => (
-                            <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {row.date.toLocaleDateString()}
-                              </td>
+                          {monthlyReportRows.map((row, index) => {
+                            const { rowType } = row;
 
-                              {row.report ? (
-                                <>
-                                  <td className="px-6 py-4 text-sm">
-                                    {row.report.tasks_completed}
-                                  </td>
+                            if (rowType === 'dayoff') return (
+                              <tr key={index} className="bg-blue-50">
+                                <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-blue-700">{row.date.toLocaleDateString()}</td>
+                                <td colSpan="4" className="px-6 py-3 text-center">
+                                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">Weekend / Day Off</span>
+                                </td>
+                              </tr>
+                            );
 
-                                  <td className="px-6 py-4 text-sm">
-                                    {row.report.tasks_tomorrow}
-                                  </td>
+                            if (rowType === 'leave') return (
+                              <tr key={index} className="bg-yellow-50">
+                                <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-yellow-700">{row.date.toLocaleDateString()}</td>
+                                <td colSpan="4" className="px-6 py-3 text-center">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    row.leaveInfo.status === 'Approved' ? 'bg-green-100 text-green-700'
+                                    : row.leaveInfo.status === 'Rejected' ? 'bg-red-100 text-red-700'
+                                    : row.leaveInfo.status === 'Cancelled' ? 'bg-gray-100 text-gray-600'
+                                    : 'bg-yellow-100 text-yellow-700'
+                                  }`}>
+                                    On Leave — {row.leaveInfo.leave_type} ({row.leaveInfo.status})
+                                  </span>
+                                </td>
+                              </tr>
+                            );
 
-                                  <td className="px-6 py-4 text-sm">
-                                    {row.report.issues || "-"}
-                                  </td>
-                                </>
-                              ) : (
-                                <>
-                                  <td className="px-6 py-4 text-gray-500">--</td>
-                                  <td className="px-6 py-4 text-gray-500">--</td>
-                                  <td className="px-6 py-4 text-gray-500">--</td>
-                                </>
-                              )}
+                            if (rowType === 'missing') return (
+                              <tr key={index} className="bg-red-50">
+                                <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-red-600">{row.date.toLocaleDateString()}</td>
+                                <td colSpan="4" className="px-6 py-3 text-center">
+                                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">No Report</span>
+                                </td>
+                              </tr>
+                            );
 
-                              <td className="px-6 py-4">
-                                <span
-                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${row.status === "Submitted"
-                                      ? "bg-green-100 text-green-800"
-                                      : row.status === "Day Off"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : "bg-red-100 text-red-800"
-                                    }`}
-                                >
-                                  {row.status}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
+                            // submitted or worked_dayoff
+                            return (
+                              <tr key={index} className={rowType === 'worked_dayoff' ? 'bg-green-50' : 'hover:bg-gray-50'}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row.date.toLocaleDateString()}</td>
+                                <td className="px-6 py-4 text-sm">{row.report.tasks_completed}</td>
+                                <td className="px-6 py-4 text-sm">{row.report.tasks_tomorrow}</td>
+                                <td className="px-6 py-4 text-sm">{row.report.issues || "-"}</td>
+                                <td className="px-6 py-4">
+                                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    rowType === 'worked_dayoff' ? 'bg-green-100 text-green-800' : 'bg-green-100 text-green-800'
+                                  }`}>
+                                    {rowType === 'worked_dayoff' ? 'Submitted (Day Off)' : 'Submitted'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                             </table>
                         </div>
