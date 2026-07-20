@@ -227,6 +227,26 @@ model leave_requests {
   @@index([empid])
 }
 
+model attendance_regularization {
+  id                Int                                @id @default(autoincrement())
+  attendance_id     Int
+  empid             String
+  attendance_date   DateTime
+  check_in_time     DateTime
+  requested_checkout DateTime
+  reason            String                             @db.VarChar(500)
+  status            attendance_regularization_status   @default(PENDING)
+  reviewed_by       String?
+  reviewed_at       DateTime?
+  rejection_reason  String?                            @db.VarChar(500)
+  created_at        DateTime                           @default(now())
+  users             users                              @relation(fields: [empid], references: [empid], onDelete: Cascade)
+
+  @@index([empid])
+  @@index([attendance_id])
+  @@index([status])
+}
+
 model users {
   id               Int                      @id @default(autoincrement())
   empid            String                   @unique
@@ -257,6 +277,7 @@ model users {
   daily_work_reports daily_work_reports[]
   resubmissionRequests document_resubmission_requests[] @relation("ResubmissionEmployee")
   requestedResubmissions document_resubmission_requests[] @relation("ResubmissionRequestor")
+  attendance_regularization attendance_regularization[]
 }
 
 model payroll {
@@ -413,6 +434,12 @@ model notifications {
 
   @@index([recipient_type, recipient_id])
   @@index([created_at])
+}
+
+enum attendance_regularization_status {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum EventType {

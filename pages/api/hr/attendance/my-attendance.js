@@ -2,30 +2,37 @@ import jwt from 'jsonwebtoken';
 import prisma from '@/lib/prisma';
 import { format } from 'date-fns';
 
-const calculateTotalWorkingHours = (sessions) => {
-  let totalSeconds = 0;
+const isValidCheckout = (dt) => {
+  if (!dt) return false;
+  const d = new Date(dt);
+  return !isNaN(d.getTime()) && d.getFullYear() > 1971;
+};
 
-  const validSessions = sessions.filter(
-    (s) => s.check_in && s.check_out
-  );
+const calculateTotalWorkingHours = (sessions, dateKey) => {
+  let closedSeconds = 0;
+  let openSeconds = 0;
+  const now = new Date();
+  const today = new Date().toISOString().split('T')[0];
+  const isToday = dateKey === today;
 
-  for (const session of validSessions) {
-    const checkIn = new Date(session.check_in);
-    const checkOut = new Date(session.check_out);
-
-    totalSeconds += (checkOut - checkIn) / 1000;
+  const validSessions = sessions.filter(s => s.check_in);
+  for (const s of validSessions) {
+    const checkIn = new Date(s.check_in);
+    if (isValidCheckout(s.check_out)) {
+      closedSeconds += (new Date(s.check_out) - checkIn) / 1000;
+    } else if (isToday) {
+      openSeconds += (now - checkIn) / 1000;
+    }
   }
 
+  const totalSeconds = closedSeconds + openSeconds;
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = Math.floor(totalSeconds % 60);
-
   return {
     totalSeconds,
-    formatted: `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(seconds).padStart(2, "0")}`,
+    closedSeconds,
+    formatted: `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
   };
 };
 
@@ -33,7 +40,7 @@ const calculateAttendanceStatus = (total) => total >= 14400 ? "Present" : "Absen
 
 const getLoginStatus = (sessions) => {
   const hasIn = sessions.some(s => s.check_in);
-  const allOut = sessions.every(s => s.check_out);
+  const allOut = sessions.every(s => isValidCheckout(s.check_out));
   if (hasIn && allOut) return "Logged Out";
   if (hasIn && !allOut) return "Logged In";
   return "Not Logged In";
@@ -77,6 +84,13 @@ export default async function handler(req, res) {
       orderBy: { date: "asc" }
     });
 
+    const regs = await prisma.attendance_regularization.findMany({
+      where: { empid: decoded.empid, attendance_date: { gte: startOfMonth, lt: endOfMonth } },
+      select: { attendance_date: true, status: true, reason: true, rejection_reason: true }
+    });
+    const regMap = {};
+    for (const r of regs) regMap[new Date(r.attendance_date).toISOString().split('T')[0]] = r;
+
     const grouped = rows.reduce((acc, row) => {
       const dateKey = new Date(row.date).toISOString().split("T")[0];
       if (!acc[dateKey]) acc[dateKey] = [];
@@ -87,18 +101,16 @@ export default async function handler(req, res) {
     const attendance = Object.entries(grouped).reverse().map(([date, sessions]) => {
       const formattedDate = format(new Date(date), "dd-MM-yyyy");
       const login_status = getLoginStatus(sessions);
-      const openSession = sessions.find(
-        (s) => s.check_in && !s.check_out
-      );
+      const openSession = sessions.find(s => s.check_in && !isValidCheckout(s.check_out));
       const validIns = sessions.map(s => new Date(s.check_in)).filter(x => !isNaN(x));
-      const validOuts = sessions.map(s => new Date(s.check_out)).filter(x => !isNaN(x));
+      const validOuts = sessions.map(s => s.check_out).filter(isValidCheckout).map(x => new Date(x));
 
       const firstCheckIn = validIns.length ? new Date(Math.min(...validIns)) : null;
       const lastCheckIn = validIns.length ? new Date(Math.max(...validIns)) : null;   
       const CheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
 
-      const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
-      const completedSeconds = totalSeconds;
+      const { totalSeconds, closedSeconds, formatted } = calculateTotalWorkingHours(sessions, date);
+      const completedSeconds = closedSeconds;
       const hasAutoCheckout = sessions.some(
         s => s.attendance_status === "AutoCheckout"
       );
@@ -117,12 +129,13 @@ export default async function handler(req, res) {
         first_check_in: firstCheckIn,
         last_check_in: lastCheckIn,
         check_out: isToday && login_status === 'Logged In' ? '--' : CheckOut,
-        total_hours: formatted,
+        total_hours: isToday ? formatted : (totalSeconds === 0 ? '--' : formatted),
         login_status,
         attendance_status,
         currentCheckInTime: openSession?.check_in || null,
         completedSeconds,
         isLoggedIn: isToday && login_status === "Logged In",
+        regularization: regMap[date] || null,
       };
     });
 

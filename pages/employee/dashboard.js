@@ -7,6 +7,8 @@ import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp, Chevr
 import { toast } from "react-toastify";
 import EmployeeCalenderSection from "/Components/EmployeeCalenderSection";
 import { formatLongDate } from "@/utils/dateTime";
+import RegularizationCard from "/Components/RegularizationCard";
+import RegularizationModal from "@/Components/RegularizationModal";
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
@@ -17,6 +19,8 @@ export default function EmployeeDashboard() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [events, setEvents] = useState([]);
   const [calendarLoading, setCalendarLoading] = useState(true);
+  const [missedCheckout, setMissedCheckout] = useState(null);
+  const [showRegModal, setShowRegModal] = useState(false);
 
   const router = useRouter();
 
@@ -53,6 +57,15 @@ export default function EmployeeDashboard() {
         }
 
         
+        // Check missed checkout
+        try {
+          const missedRes = await fetch('/api/attendance/check-missed-checkout', { credentials: 'include' });
+          if (missedRes.ok) {
+            const missedData = await missedRes.json();
+            if (missedData.hasMissedCheckout) setMissedCheckout(missedData.attendance);
+          }
+        } catch (e) { /* silent */ }
+
         // Calendar events fetched by separate useEffect
       } catch (err) {
         console.error("Error fetching user:", err);
@@ -260,8 +273,9 @@ useEffect(() => {
             // Verified User Dashboard
             <>
 
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 items-stretch">
           {/* Work Status Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
@@ -308,7 +322,17 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Profile Overview */}
+                  {/* Regularization Card */}
+                  <div className="h-full">
+                    <RegularizationCard
+                      // mode="employee"
+                      missedCheckout={missedCheckout}
+                      onOpenModal={() => setShowRegModal(true)}
+                    />
+                  </div>
+                </div>
+
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {/* Profile Card */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -550,8 +574,16 @@ useEffect(() => {
         </div>
       </div>
 
-
     </div>
+
+      {/* Regularization Modal */}
+      {showRegModal && missedCheckout && (
+        <RegularizationModal
+          attendance={missedCheckout}
+          onClose={() => setShowRegModal(false)}
+          onSubmitted={() => { setShowRegModal(false); setMissedCheckout(null); }}
+        />
+      )}
     </>
   );
 }

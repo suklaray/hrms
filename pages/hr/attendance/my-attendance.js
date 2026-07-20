@@ -159,7 +159,7 @@ export default function MyAttendance() {
             </Head>
             <div className="flex min-h-screen bg-gray-50">
                 <SideBar />
-                <div className="flex-1 p-6">
+                <div className="flex-1 min-w-0 p-6">
                     {/* Header with user info */}
                     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                         <div className="flex items-center justify-between">
@@ -269,6 +269,7 @@ export default function MyAttendance() {
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hours</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Login Status</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Regularization Status</th>
                                         </tr>
                                     </thead>
 
@@ -325,12 +326,26 @@ export default function MyAttendance() {
                                                                 {record.attendance_status}
                                                             </span>
                                                         </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            {record.regularization ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
+                                                                        record.regularization.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                                        record.regularization.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                                                        'bg-yellow-100 text-yellow-800'
+                                                                    }`}>{record.regularization.status}</span>
+                                                                    {record.regularization.status === 'REJECTED' && record.regularization.rejection_reason && (
+                                                                        <span title={record.regularization.rejection_reason} className="text-xs text-red-600 truncate max-w-[140px]">{record.regularization.rejection_reason}</span>
+                                                                    )}
+                                                                </div>
+                                                            ) : <span className="text-gray-400">--</span>}
+                                                        </td>
                                                     </tr>
                                                 );
                                             })
                                         ) : (
                                             <tr>
-                                                <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                                                <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
                                                     No attendance records found for {monthNames[currentMonth]} {currentYear}
                                                 </td>
                                             </tr>

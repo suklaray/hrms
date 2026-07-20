@@ -374,9 +374,8 @@ const attendanceRate = workingDays.length > 0
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Total Time
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Regularization</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -412,18 +411,29 @@ const attendanceRate = workingDays.length > 0
                               />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.attendance_status === "Present"
-                                  ? "bg-green-100 text-green-800"
-                                  : record.attendance_status === "AutoCheckout"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : record.attendance_status === "Weekend"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                              >
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                record.attendance_status === "Present" ? "bg-green-100 text-green-800"
+                                : record.attendance_status === "AutoCheckout" ? "bg-yellow-100 text-yellow-800"
+                                : record.attendance_status === "Weekend" ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"}`}>
                                 {record.attendance_status}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {record.regularization ? (
+                                <div className="flex flex-col gap-1">
+                                  <span
+                                    title={record.regularization.status === 'REJECTED' && record.regularization.rejection_reason ? record.regularization.rejection_reason : undefined}
+                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${
+                                      record.regularization.status === 'APPROVED' ? 'bg-green-100 text-green-800'
+                                      : record.regularization.status === 'REJECTED' ? 'bg-red-100 text-red-800'
+                                      : 'bg-amber-100 text-amber-800'
+                                    }`}>{record.regularization.status}</span>
+                                  {record.regularization.status === 'REJECTED' && record.regularization.rejection_reason && (
+                                    <span title={record.regularization.rejection_reason} className="text-xs text-red-600 truncate max-w-[140px]">{record.regularization.rejection_reason}</span>
+                                  )}
+                                </div>
+                              ) : <span className="text-xs text-gray-400">—</span>}
                             </td>
                           </tr>
                         );

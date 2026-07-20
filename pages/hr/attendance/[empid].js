@@ -2,8 +2,150 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft, ChevronLeft, ChevronRight, FileText, X } from "lucide-react";
-import { formatTime } from "@/utils/dateTime"; 
+import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft, ChevronLeft, ChevronRight, FileText, X, Eye } from "lucide-react";
+import { formatTime } from "@/utils/dateTime";
+import { toast } from "react-toastify";
+import LiveTimer from "@/utils/liveTimer";
+// Regularization Detail Modal
+const RegularizationModal = ({ request, onClose, onUpdated }) => {
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showReject, setShowReject] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const isPending = request.status === "PENDING";
+
+  const handleAction = async (action) => {
+    if (action === "REJECTED" && !rejectionReason.trim()) {
+      toast.error("Rejection reason is required");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hr/regularization", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id: request.id, action, rejection_reason: rejectionReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || "Failed"); return; }
+      toast.success(`Request ${action === "APPROVED" ? "approved" : "rejected"} successfully`);
+      onUpdated(request.id, action);
+      onClose();
+    } catch { toast.error("Failed to process request"); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 text-amber-600" />
+            <h2 className="text-lg font-semibold text-gray-900">Regularization Request</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Status badge */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Status</span>
+            <span className={`px-3 py-1 text-xs font-semibold rounded-full ${
+              request.status === "APPROVED" ? "bg-green-100 text-green-800"
+              : request.status === "REJECTED" ? "bg-red-100 text-red-800"
+              : "bg-amber-100 text-amber-800"
+            }`}>{request.status}</span>
+          </div>
+
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-500 mb-1">Attendance Date</p>
+            <p className="text-sm font-medium text-gray-900">
+              {new Date(request.attendance_date).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-500">Check-in Time</p>
+              <p className="text-sm font-medium text-gray-900">
+                {new Date(request.check_in_time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-500">Requested Check-out</p>
+              <p className="text-sm font-medium text-gray-900">
+                {new Date(request.requested_checkout).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-500 mb-1">Reason</p>
+            <p className="text-sm text-gray-800">{request.reason}</p>
+          </div>
+
+          {request.status === "REJECTED" && request.rejection_reason && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-xs text-red-500 mb-1">Rejection Reason</p>
+              <p className="text-sm text-red-800">{request.rejection_reason}</p>
+            </div>
+          )}
+
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="text-xs text-gray-500 mb-1">Submitted On</p>
+            <p className="text-sm text-gray-800">
+              {new Date(request.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </div>
+
+          {isPending && (
+            <>
+              {showReject && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Rejection Reason <span className="text-red-500">*</span></label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    rows={2}
+                    placeholder="Why are you rejecting this request?"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
+                  />
+                </div>
+              )}
+              <div className="flex gap-3 pt-1">
+                {!showReject ? (
+                  <>
+                    <button onClick={() => setShowReject(true)} disabled={loading}
+                      className="flex-1 px-4 py-2 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50 disabled:opacity-50">
+                      Reject
+                    </button>
+                    <button onClick={() => handleAction("APPROVED")} disabled={loading}
+                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+                      {loading ? "Processing..." : "Approve"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => { setShowReject(false); setRejectionReason(""); }} disabled={loading}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-50">
+                      Back
+                    </button>
+                    <button onClick={() => handleAction("REJECTED")} disabled={loading}
+                      className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+                      {loading ? "Processing..." : "Confirm Reject"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Modal Component for Leave Details
 const LeaveModal = ({ isOpen, onClose, leaveData, employeeName }) => {
   if (!isOpen) return null;
@@ -114,6 +256,7 @@ const ViewAttendance = () => {
   const [employeeData, setEmployeeData] = useState(null);
   const [leaveData, setLeaveData] = useState({ balances: [], history: [] });
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [selectedRegularization, setSelectedRegularization] = useState(null);
   const [filter, setFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -152,7 +295,7 @@ const ViewAttendance = () => {
           // Fetch leave data
           const leaveRes = await fetch(`/api/hr/employee-leave-details?empid=${empid}`);
           const leaveJson = await leaveRes.json();
-          
+
           // Calculate working days for current month
           const workingDays = getCurrentMonthWorkingDays();
           
@@ -265,34 +408,6 @@ const ViewAttendance = () => {
     setCurrentPage(page);
   };
 
-  // Fix timezone formatting for check-in/checkout times
-  // const formatTime = (timeString) => {
-  //   if (!timeString || timeString === '--') return '--';
-    
-  //   // If it's already formatted (contains AM/PM), return as is
-  //   if (timeString.includes('AM') || timeString.includes('PM')) {
-  //     return timeString;
-  //   }
-    
-  //   try {
-  //     // Create date object and format with Indian timezone
-  //     const date = new Date(timeString);
-  //     if (isNaN(date.getTime())) return '--';
-      
-  //     const formatted = date.toLocaleTimeString('en-IN', {
-  //       hour: '2-digit',
-  //       minute: '2-digit',
-  //       hour12: true,
-  //       timeZone: 'Asia/Kolkata'
-  //     });
-      
-  //     // Convert AM/PM to uppercase
-  //     return formatted.replace(/am/gi, 'AM').replace(/pm/gi, 'PM');
-  //   } catch (error) {
-  //     console.error('Error formatting time:', error);
-  //     return '--';
-  //   }
-  // };
   // Reset to page 1 when filter changes
   useEffect(() => {
     setCurrentPage(1);
@@ -466,6 +581,7 @@ const ViewAttendance = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hours</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Login Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Regularization</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -498,18 +614,38 @@ const ViewAttendance = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${attendance.attendance_status === "Present"
-                                  ? "bg-green-100 text-green-800"
-                                  : attendance.attendance_status === "AutoCheckout"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : attendance.attendance_status === "Weekend"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-red-100 text-red-800"
-                                  }`}
-                              >
-                                {attendance.attendance_status}
-                              </span>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            attendance.attendance_status === "Present" ? "bg-green-100 text-green-800"
+                            : attendance.attendance_status === "AutoCheckout" ? "bg-yellow-100 text-yellow-800"
+                            : attendance.attendance_status === "Weekend" ? "bg-blue-100 text-blue-800"
+                            : "bg-red-100 text-red-800"
+                          }`}>
+                            {attendance.attendance_status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {(() => {
+                            const reg = attendance.regularization;
+                            if (!reg) return <span className="text-xs text-gray-400">—</span>;
+                            return (
+                              <div className="flex items-center gap-2">
+                                <span
+                                  title={reg.status === 'REJECTED' && reg.rejection_reason ? `Rejected: ${reg.rejection_reason}` : undefined}
+                                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full cursor-default ${
+                                  reg.status === "APPROVED" ? "bg-green-100 text-green-800"
+                                  : reg.status === "REJECTED" ? "bg-red-100 text-red-800"
+                                  : "bg-amber-100 text-amber-800"
+                                }`}>{reg.status}</span>
+                                <button
+                                  onClick={() => setSelectedRegularization(reg)}
+                                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                  title="View details"
+                                >
+                                  <Eye className="w-4 h-4 text-indigo-600" />
+                                </button>
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     ))
@@ -579,7 +715,18 @@ const ViewAttendance = () => {
         </div>
       </div>
 
-      {/* Leave Modal */}
+      {selectedRegularization && (
+        <RegularizationModal
+          request={selectedRegularization}
+          onClose={() => setSelectedRegularization(null)}
+          onUpdated={(id, action) => {
+            setAttendanceData(prev => prev.map(r =>
+              r.regularization?.id === id ? { ...r, regularization: { ...r.regularization, status: action } } : r
+            ));
+          }}
+        />
+      )}
+
       {/* Leave Modal */}
       <LeaveModal 
         isOpen={showLeaveModal}

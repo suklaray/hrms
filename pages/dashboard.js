@@ -1,15 +1,15 @@
-import jwt from "jsonwebtoken";
 import SideBar from "@/Components/SideBar";
 import ProfileSection from "@/Components/ProfileSection";
 import CalendarSection from "@/Components/CalendarSection";
+import RegularizationCard from "@/Components/RegularizationCard";
 import Head from "next/head";
 
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { Users, UserCheck, Clock, FileText, Calendar, Bell, User } from "lucide-react";
-import Image from "next/image";
+import { Users, UserCheck, Clock, FileText, Calendar, User } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
+import RegularizationModal from "@/Components/RegularizationModal";
 
 export async function getServerSideProps(context) {
   const { req } = context;
@@ -58,22 +58,32 @@ export async function getServerSideProps(context) {
     },
   };
 }
- const loaderProp =({ src }) => {
-     return src;
-}
 export default function Dashboard({ user }) {
   const router = useRouter();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [missedCheckout, setMissedCheckout] = useState(null);
+  const [showRegModal, setShowRegModal] = useState(false);
 
   const isAccessEnabled = user.role === 'superadmin' || (user.verified === 'verified' && user.form_submitted === true);
 
   useEffect(() => {
     setMounted(true);
     fetchStats();
+    fetchRegularizationStats();
   }, []);
+  const fetchRegularizationStats = async () => {
+          // Check missed checkout
+        try {
+          const missedRes = await fetch('/api/attendance/check-missed-checkout', { credentials: 'include' });
+          if (missedRes.ok) {
+            const missedData = await missedRes.json();
+            if (missedData.hasMissedCheckout) setMissedCheckout(missedData.attendance);
+          }
+        } catch (e) { /* silent */ }
 
+  }
   const fetchStats = async () => {
     try {
       const response = await fetch('/api/dashboard/stats');
@@ -114,10 +124,9 @@ export default function Dashboard({ user }) {
           // Verified User Dashboard
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <ProfileSection user={user} />
-              <div></div> {/* Empty div to maintain grid layout */}
-            </div>
-
+              <ProfileSection user={user}/>
+              <RegularizationCard missedCheckout={missedCheckout} onOpenModal={() => setShowRegModal(true)}/>
+            </div>        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div 
             className={`bg-white rounded-lg shadow p-6 transition-shadow ${
@@ -332,6 +341,14 @@ export default function Dashboard({ user }) {
         </div>
       </div>
     </div>
+{/* Regularization Modal */}
+      {showRegModal && missedCheckout && (
+        <RegularizationModal
+          attendance={missedCheckout}
+          onClose={() => setShowRegModal(false)}
+          onSubmitted={() => { setShowRegModal(false); setMissedCheckout(null); }}
+        />
+      )}
     </>
   );
 }

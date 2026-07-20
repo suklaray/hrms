@@ -1,17 +1,30 @@
 import { format } from 'date-fns';
 import prisma from "@/lib/prisma";
-const calculateTotalWorkingHours = (sessions) => {
+
+const isValidCheckout = (dt) => {
+  if (!dt) return false;
+  const d = new Date(dt);
+  return !isNaN(d.getTime()) && d.getFullYear() > 1971;
+};
+
+const calculateTotalWorkingHours = (sessions, dateKey) => {
   let totalSeconds = 0;
   const now = new Date();
+  const today = new Date().toISOString().split('T')[0];
+  const isToday = dateKey === today;
 
   const validSessions = sessions.filter(s => s.check_in);
   validSessions.sort((a, b) => new Date(a.check_in) - new Date(b.check_in));
 
   for (let i = 0; i < validSessions.length; i++) {
     const checkInTime = new Date(validSessions[i].check_in);
-    const checkOutTime = validSessions[i].check_out ? new Date(validSessions[i].check_out) : now;
-    const duration = (checkOutTime - checkInTime) / 1000;
-    totalSeconds += duration;
+    if (isValidCheckout(validSessions[i].check_out)) {
+      const checkOutTime = new Date(validSessions[i].check_out);
+      totalSeconds += (checkOutTime - checkInTime) / 1000;
+    } else if (isToday) {
+      totalSeconds += (now - checkInTime) / 1000;
+    }
+    // Past days with no valid checkout: skip
   }
 
   const hours = Math.floor(totalSeconds / 3600);
@@ -20,21 +33,19 @@ const calculateTotalWorkingHours = (sessions) => {
 
   return {
     totalSeconds,
-    formatted: `${hours.toString().padStart(2, '0')}:${minutes
-      .toString()
-      .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+    formatted: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
   };
 };
 
-// ---------------- Attendance / Login Status ----------------
 const calculateAttendanceStatus = (total) =>
   total >= 14400 ? "Present" : "Absent";
+
 const getLoginStatus = (sessions) => {
   const hasCheckIn = sessions.some(s => s.check_in);
-  const hasCheckOut = sessions.every(s => s.check_out);
+  const hasValidCheckOut = sessions.every(s => isValidCheckout(s.check_out));
 
-  if (hasCheckIn && hasCheckOut) return 'Logged Out';
-  if (hasCheckIn && !hasCheckOut) return 'Logged In';
+  if (hasCheckIn && hasValidCheckOut) return 'Logged Out';
+  if (hasCheckIn && !hasValidCheckOut) return 'Logged In';
   return 'Not Logged In';
 };
 
@@ -46,7 +57,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const today = new Date().toISOString().split('T')[0]; // 'YYYY-MM-DD'
+    const today = new Date().toISOString().split('T')[0];
 
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
@@ -58,14 +69,23 @@ export default async function handler(req, res) {
     const rows = await prisma.attendance.findMany({
       where: {
         empid,
-        date: {
-          gte: startOfMonth,
-          lt: endOfMonth,
-        },
+        date: { gte: startOfMonth, lt: endOfMonth },
       },
-      orderBy: {
-        date: 'asc',
+      orderBy: { date: 'asc' },
+    });
+
+    // Fetch regularization requests for this employee this month
+    const regularizations = await prisma.attendance_regularization.findMany({
+      where: {
+        empid,
+        attendance_date: { gte: startOfMonth, lt: endOfMonth }
       },
+      select: { id: true, attendance_date: true, check_in_time: true, requested_checkout: true, reason: true, status: true, rejection_reason: true, created_at: true }
+    });
+    const regMap = {};
+    regularizations.forEach(r => {
+      const key = new Date(r.attendance_date).toISOString().split('T')[0];
+      regMap[key] = r;
     });
 
     const groupedSessions = rows.reduce((acc, row) => {
@@ -80,42 +100,38 @@ export default async function handler(req, res) {
       const login_status = getLoginStatus(sessions);
 
       const validCheckIns = sessions.map(s => new Date(s.check_in)).filter(d => !isNaN(d));
-      const validCheckOuts = sessions.map(s => new Date(s.check_out)).filter(d => !isNaN(d));
+      const validCheckOuts = sessions.map(s => new Date(s.check_out)).filter(d => !isNaN(d) && d.getFullYear() > 1971);
 
       const firstCheckIn = validCheckIns.length ? new Date(Math.min(...validCheckIns)) : null;
       const lastCheckIn = validCheckIns.length ? new Date(Math.max(...validCheckIns)) : null;
       const lastCheckOut = validCheckOuts.length ? new Date(Math.max(...validCheckOuts)) : null;
 
-      const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions);
-      const hasAutoCheckout = sessions.some(
-        s => s.attendance_status === "AutoCheckout"
-      );
+      const { totalSeconds, formatted } = calculateTotalWorkingHours(sessions, date);
 
-      const attendance_status = sessions.some(
-        (s) => s.attendance_status === "AutoCheckout",
-      )
-        ? calculateAttendanceStatus(totalSeconds) === "Present"
-          ? "AutoCheckout"
-          : "Absent"
+      const attendance_status = sessions.some(s => s.attendance_status === "AutoCheckout")
+        ? calculateAttendanceStatus(totalSeconds) === "Present" ? "AutoCheckout" : "Absent"
         : calculateAttendanceStatus(totalSeconds);
-      //  Today’s logout logic
+
       const isToday = date === today;
-      const check_out_display = isToday && login_status === 'Logged In'
-        ? '--'
-        : lastCheckOut;
+      const check_out_display = isToday && login_status === 'Logged In' ? '--' : lastCheckOut;
+      // Show '--' for past days with no valid checkout instead of 00:00:00
+      const total_hours_display = totalSeconds === 0 && !isToday ? '--' : formatted;
 
       return {
         date: formattedDate,
         check_in: firstCheckIn,
         last_check_in: lastCheckIn,
         check_out: check_out_display,
-        total_hours: formatted,
+        total_hours: total_hours_display,
         login_status,
         attendance_status,
+        regularization: regMap[date] || null,
       };
     });
-    const presentDays = attendance.filter(row => row.attendance_status === 'Present' ||
-      row.attendance_status === "AutoCheckout").length;
+
+    const presentDays = attendance.filter(row =>
+      row.attendance_status === 'Present' || row.attendance_status === "AutoCheckout"
+    ).length;
     const totalDays = attendance.length;
     const absentDays = totalDays - presentDays;
 
