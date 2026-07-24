@@ -9,6 +9,7 @@ import EmployeeCalenderSection from "/Components/EmployeeCalenderSection";
 import { formatLongDate } from "@/utils/dateTime";
 import RegularizationCard from "/Components/RegularizationCard";
 import RegularizationModal from "@/Components/RegularizationModal";
+import { swalConfirm } from "@/utils/confirmDialog";
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
@@ -153,6 +154,31 @@ useEffect(() => {
 
   const handleToggleWork = async () => {
   if (!user) return;
+    if (!isWorking) {
+      const checkRes = await fetch("/api/attendance/check-missed-checkout", {
+        credentials: "include",
+      });
+
+      const checkData = await checkRes.json();
+
+      if (checkData.hasMissedCheckout) {
+        toast.error(
+          "Please submit yesterday's attendance regularization before checking in."
+        );
+        return;
+      }
+    }
+    // Before checkout
+    if (isWorking) {
+      const confirmed = await swalConfirm(
+        "Are you sure you want to check out for today?",
+        "Check Out"
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
   const endpoint = isWorking ? "checkout" : "checkin";
   try {
     const res = await fetch(`/api/employee/${endpoint}`, {

@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const { attendance_id, attendance_date, check_in_time, requested_checkout, reason } = req.body;
 
     // Validation
-    if (!attendance_id || !attendance_date || !check_in_time || !requested_checkout || !reason?.trim()) {
+    if (!attendance_date || !check_in_time || !requested_checkout || !reason?.trim()) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
@@ -29,17 +29,29 @@ export default async function handler(req, res) {
     }
 
     // Verify attendance belongs to this employee
-    const attendance = await prisma.attendance.findFirst({
-      where: { id: parseInt(attendance_id), empid: user.empid }
-    });
+    let attendance = null;
 
-    if (!attendance) {
-      return res.status(404).json({ error: 'Attendance record not found' });
+    if (attendance_id) {
+      attendance = await prisma.attendance.findFirst({
+        where: {
+          id: parseInt(attendance_id),
+          empid: user.empid
+        }
+      });
+
+      if (!attendance) {
+        return res.status(404).json({
+          error: 'Attendance record not found'
+        });
+      }
     }
 
     // Check if request already exists
     const existing = await prisma.attendance_regularization.findFirst({
-      where: { attendance_id: parseInt(attendance_id) }
+      where: {
+        empid: user.empid,
+        attendance_date: new Date(attendance_date)
+      }
     });
 
     if (existing) {
@@ -48,7 +60,7 @@ export default async function handler(req, res) {
 
     const regularization = await prisma.attendance_regularization.create({
       data: {
-        attendance_id: parseInt(attendance_id),
+        attendance_id: attendance_id ? parseInt(attendance_id) : null,
         empid: user.empid,
         attendance_date: new Date(attendance_date),
         check_in_time: checkIn,

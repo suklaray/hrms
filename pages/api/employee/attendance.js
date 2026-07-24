@@ -87,6 +87,7 @@ export default async function handler(req, res) {
       select: { attendance_id: true, status: true, rejection_reason: true, attendance_date: true }
     });
     const regMap = {};
+    const absentRegMap = {};
     regularizations.forEach(r => {
       const key = new Date(r.attendance_date).toISOString().split('T')[0];
       regMap[key] = r;
@@ -99,6 +100,14 @@ export default async function handler(req, res) {
       acc[dateKey].push(row);
       return acc;
     }, {});
+
+    // Populate absentRegMap for regularizations with no matching attendance row
+    regularizations.forEach(r => {
+      const key = new Date(r.attendance_date).toISOString().split('T')[0];
+      if (!grouped[key]) {
+        absentRegMap[format(new Date(key), 'dd-MM-yyyy')] = r;
+      }
+    });
 
     // Process sessions
     const attendance = Object.entries(grouped).reverse().map(([date, sessions]) => {
@@ -160,7 +169,8 @@ export default async function handler(req, res) {
         daysAbsent: attendance.length - presentDays,
         totalDays: attendance.length
       },
-      attendance
+      attendance,
+      absentRegMap
     });
 
   } catch (err) {

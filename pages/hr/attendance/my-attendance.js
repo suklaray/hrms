@@ -4,6 +4,7 @@ import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import SideBar from '../../../Components/SideBar';
 import { formatTime } from '@/utils/dateTime';
 import LiveTimer from '@/utils/liveTimer';
+import RegularizationModal from '@/Components/RegularizationModal';
 export default function MyAttendance() {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -11,7 +12,8 @@ export default function MyAttendance() {
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
     const [user, setUser] = useState(null);
-
+    const [selectedAttendance, setSelectedAttendance] = useState(null);
+    const [absentRegMap, setAbsentRegMap] = useState({});
     const fetchAttendance = useCallback(async () => {
         try {
             setLoading(true);
@@ -25,6 +27,7 @@ export default function MyAttendance() {
                 const data = await res.json();
                 setUser(data.user);
                 setAttendance(data.attendance);
+                setAbsentRegMap(data.absentRegMap || {});
             } else {
                 setError('Failed to fetch attendance');
             }
@@ -132,6 +135,7 @@ export default function MyAttendance() {
                         dayOfWeek === 0 || dayOfWeek === 6
                             ? 'Weekend'
                             : 'Absent',
+                    regularization: absentRegMap[dateString] || null,
                 });
             }
         }
@@ -151,7 +155,9 @@ export default function MyAttendance() {
     const totalWorkingDaysUpToToday = getWorkingDaysUpToToday(currentMonth, currentYear);
     const totalWorkingDaysInMonth = getTotalWorkingDaysInMonth(currentMonth, currentYear);
     // const absentDays = totalWorkingDaysUpToToday - presentDays;
-
+    const handleRegularization = (attendance) => {
+        setSelectedAttendance(attendance);
+    };
     return (
         <>
             <Head>
@@ -279,7 +285,7 @@ export default function MyAttendance() {
                                                 const totalHours = record.total_hours ? Number(record.total_hours) : 0;
                                                 const loginStatus = record.check_in ? (record.check_out ? 'Logged Out' : 'Logged In') : 'No Login';
                                                 const attendanceStatus = record.attendance_status || 'Absent';
-                                                
+                                                console.log('Rendering record:', record); // Debugging line
                                                 return (
                                                     <tr key={index} className="hover:bg-gray-50">
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -338,7 +344,20 @@ export default function MyAttendance() {
                                                                         <span title={record.regularization.rejection_reason} className="text-xs text-red-600 truncate max-w-[140px]">{record.regularization.rejection_reason}</span>
                                                                     )}
                                                                 </div>
-                                                            ) : <span className="text-gray-400">--</span>}
+                                                            ) : (() => {
+                                                                    const today = new Date();
+                                                                    const todayStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
+                                                                    if (record.date === todayStr) return <span className="text-gray-400">—</span>;
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleRegularization(record)}
+                                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1 px-2 rounded-md"
+                                                                        >
+                                                                            Regularize
+                                                                        </button>
+                                                                    );
+                                                                })()}
                                                         </td>
                                                     </tr>
                                                 );
@@ -357,6 +376,16 @@ export default function MyAttendance() {
                     </div>
                 </div>
             </div>
+            {selectedAttendance && (
+                <RegularizationModal
+                    attendance={selectedAttendance}
+                    onClose={() => setSelectedAttendance(null)}
+                    onSubmitted={() => {
+                        setSelectedAttendance(null);
+                        fetchAttendance(); 
+                    }}
+                />
+            )}
         </>
     );
 }

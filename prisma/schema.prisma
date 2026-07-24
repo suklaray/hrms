@@ -229,7 +229,7 @@ model leave_requests {
 
 model attendance_regularization {
   id                Int                                @id @default(autoincrement())
-  attendance_id     Int
+  attendance_id     Int?
   empid             String
   attendance_date   DateTime
   check_in_time     DateTime

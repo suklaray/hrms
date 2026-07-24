@@ -3,14 +3,16 @@ import { Clock } from "lucide-react";
 import { toast } from "react-toastify";
 
 export default function RegularizationModal({ attendance, onClose, onSubmitted }) {
-  const attendanceDate = new Date(attendance.date);
-  const checkInDate = new Date(attendance.check_in);
-  const fmt = (d) => d.toISOString().split('T')[0];
+  // Normalize date: supports both DD-MM-YYYY (my-attendance) and ISO string (dashboard)
+  const isoDate = /^\d{2}-\d{2}-\d{4}$/.test(attendance.date)
+    ? attendance.date.split('-').reverse().join('-')
+    : attendance.date.split('T')[0];
+  const checkInDate = attendance.check_in ? new Date(attendance.check_in) : null;
   const fmtTime = (d) => d.toTimeString().slice(0, 5);
 
   const [form, setForm] = useState({
-    check_in_time: `${fmt(attendanceDate)}T${fmtTime(checkInDate)}`,
-    requested_checkout: `${fmt(attendanceDate)}T`,
+    check_in_time: checkInDate ? `${isoDate}T${fmtTime(checkInDate)}` : '',
+    requested_checkout: `${isoDate}T`,
     reason: ''
   });
   const [loading, setLoading] = useState(false);
@@ -26,8 +28,8 @@ export default function RegularizationModal({ attendance, onClose, onSubmitted }
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          attendance_id: attendance.id,
-          attendance_date: fmt(attendanceDate),
+          attendance_id: attendance.id || null,
+          attendance_date: isoDate,
           check_in_time: form.check_in_time,
           requested_checkout: form.requested_checkout,
           reason: form.reason
@@ -53,7 +55,7 @@ export default function RegularizationModal({ attendance, onClose, onSubmitted }
         </div>
         <div className="mx-5 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm text-amber-800">
-            Missed check-out on <strong>{attendanceDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
+            Missed check-out on <strong>{new Date(`${isoDate}T12:00:00`).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</strong>
           </p>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">

@@ -145,3 +145,19 @@ export const formatTimeWithSeconds = (date) => {
     .replace(/am/gi, "AM")
     .replace(/pm/gi, "PM");
 };
+export const formatShortDateTime = (date) => {
+  if (!date || !isValidDate(date)) return "--";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: IST_TIMEZONE,
+  })
+    .format(new Date(date))
+    .replace(/am/gi, "AM")
+    .replace(/pm/gi, "PM");
+};

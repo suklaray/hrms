@@ -98,6 +98,20 @@ export default async function handler(req, res) {
       return acc;
     }, {});
 
+    // Also fetch regs for absent days (no attendance row)
+    const absentRegs = regs.filter(r => {
+      const dateKey = new Date(r.attendance_date).toISOString().split('T')[0];
+      return !grouped[dateKey];
+    });
+    // Merge absent-day regs into regMap (already done above), nothing extra needed
+    // The frontend synthetic absent records will pick up regMap via date string match
+    // But we need to send absent-day regularizations so frontend can match by date
+    const absentRegMap = {};
+    for (const r of absentRegs) {
+      const dateKey = new Date(r.attendance_date).toISOString().split('T')[0];
+      absentRegMap[format(new Date(dateKey), 'dd-MM-yyyy')] = r;
+    }
+
     const attendance = Object.entries(grouped).reverse().map(([date, sessions]) => {
       const formattedDate = format(new Date(date), "dd-MM-yyyy");
       const login_status = getLoginStatus(sessions);
@@ -139,7 +153,7 @@ export default async function handler(req, res) {
       };
     });
 
-    res.status(200).json({ user, attendance });
+    res.status(200).json({ user, attendance, absentRegMap });
   } catch (error) {
     console.error('Error fetching attendance:', error);
     res.status(500).json({ message: 'Internal server error' });

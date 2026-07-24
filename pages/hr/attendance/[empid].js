@@ -3,9 +3,8 @@ import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft, ChevronLeft, ChevronRight, FileText, X, Eye } from "lucide-react";
-import { formatTime } from "@/utils/dateTime";
+import { formatLongDate, formatShortDateTime, formatTime } from "@/utils/dateTime";
 import { toast } from "react-toastify";
-import LiveTimer from "@/utils/liveTimer";
 // Regularization Detail Modal
 const RegularizationModal = ({ request, onClose, onUpdated }) => {
   const [rejectionReason, setRejectionReason] = useState("");
@@ -61,7 +60,7 @@ const RegularizationModal = ({ request, onClose, onUpdated }) => {
           <div className="p-3 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-500 mb-1">Attendance Date</p>
             <p className="text-sm font-medium text-gray-900">
-              {new Date(request.attendance_date).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              {formatLongDate(request.attendance_date)}
             </p>
           </div>
 
@@ -69,13 +68,13 @@ const RegularizationModal = ({ request, onClose, onUpdated }) => {
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500">Check-in Time</p>
               <p className="text-sm font-medium text-gray-900">
-                {new Date(request.check_in_time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                {formatTime(request.check_in_time)}
               </p>
             </div>
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500">Requested Check-out</p>
               <p className="text-sm font-medium text-gray-900">
-                {new Date(request.requested_checkout).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                {formatTime(request.requested_checkout)}
               </p>
             </div>
           </div>
@@ -95,7 +94,7 @@ const RegularizationModal = ({ request, onClose, onUpdated }) => {
           <div className="p-3 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-500 mb-1">Submitted On</p>
             <p className="text-sm text-gray-800">
-              {new Date(request.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              {formatShortDateTime(request.created_at)}
             </p>
           </div>
 
@@ -250,6 +249,8 @@ const LeaveModal = ({ isOpen, onClose, leaveData, employeeName }) => {
 
 
 
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
 const ViewAttendance = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -257,161 +258,129 @@ const ViewAttendance = () => {
   const [leaveData, setLeaveData] = useState({ balances: [], history: [] });
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [selectedRegularization, setSelectedRegularization] = useState(null);
+  const [absentRegMap, setAbsentRegMap] = useState({});
   const [filter, setFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [currentUserEmpid, setCurrentUserEmpid] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
   const router = useRouter();
   const { empid } = router.query;
 
-  // Calculate working days for current month (excluding weekends and holidays)
-  const getCurrentMonthWorkingDays = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    
-    let workingDays = 0;
-    for (let date = new Date(firstDay); date <= lastDay; date.setDate(date.getDate() + 1)) {
-      const dayOfWeek = date.getDay();
-      // Exclude weekends (Saturday = 6, Sunday = 0)
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        workingDays++;
-      }
-    }
-    
-    return workingDays;
+  useEffect(() => {
+    fetch('/api/hr/attendance/my-attendance')
+      .then(r => r.json())
+      .then(d => { if (d.user) { setCurrentUserEmpid(d.user.empid); setCurrentUserRole(d.user.role); } })
+      .catch(() => {});
+  }, []);
+
+  const now = new Date();
+  const isCurrentMonth = selectedMonth === now.getMonth() && selectedYear === now.getFullYear();
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) { setSelectedMonth(11); setSelectedYear(y => y - 1); }
+    else setSelectedMonth(m => m - 1);
+  };
+
+  const handleNextMonth = () => {
+    if (isCurrentMonth) return;
+    if (selectedMonth === 11) { setSelectedMonth(0); setSelectedYear(y => y + 1); }
+    else setSelectedMonth(m => m + 1);
   };
 
   useEffect(() => {
-    if (empid) {
-      const fetchData = async () => {
-        try {
-          // Fetch attendance data
-          const attendanceRes = await fetch(`/api/hr/attendance/${empid}`);
-          const attendanceJson = await attendanceRes.json();
-          
-          // Fetch leave data
-          const leaveRes = await fetch(`/api/hr/employee-leave-details?empid=${empid}`);
-          const leaveJson = await leaveRes.json();
+    if (!empid) return;
+    setLoading(true);
+    setFilter('all');
+    setCurrentPage(1);
 
-          // Calculate working days for current month
-          const workingDays = getCurrentMonthWorkingDays();
-          
-          setEmployeeData({
-            ...attendanceJson.employee,
-            totalDays: workingDays // Override with current month working days
-          });
-          setAttendanceData(attendanceJson.attendance);
-          
-          if (leaveJson.success) {
-            setLeaveData({
-              history: leaveJson.data.leaveHistory || [],
-              balances: [] // Will be populated separately if needed
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        } finally {
-          setLoading(false);
+    const fetchData = async () => {
+      try {
+        const attendanceRes = await fetch(`/api/hr/attendance/${empid}?month=${selectedMonth + 1}&year=${selectedYear}`);
+        const attendanceJson = await attendanceRes.json();
+
+        const leaveRes = await fetch(`/api/hr/employee-leave-details?empid=${empid}`);
+        const leaveJson = await leaveRes.json();
+
+        // Working days for selected month (up to today if current month)
+        const lastDay = isCurrentMonth
+          ? now.getDate()
+          : new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        let workingDays = 0;
+        for (let d = 1; d <= lastDay; d++) {
+          const day = new Date(selectedYear, selectedMonth, d).getDay();
+          if (day !== 0 && day !== 6) workingDays++;
         }
-      };
 
-      fetchData();
-    }
-  }, [empid]);
+        setEmployeeData({ ...attendanceJson.employee, totalDays: workingDays });
+        setAttendanceData(attendanceJson.attendance);
+        setAbsentRegMap(attendanceJson.absentRegMap || {});
+
+        if (leaveJson.success) {
+          setLeaveData({ history: leaveJson.data.leaveHistory || [], balances: [] });
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [empid, selectedMonth, selectedYear]);
 
   // Calculate approved leaves taken
   const approvedLeaves = leaveData.history?.filter(leave => leave.status === 'Approved') || [];
   const totalApprovedLeaveDays = approvedLeaves.reduce((total, leave) => {
     const fromDate = new Date(leave.from_date);
     const toDate = new Date(leave.to_date);
-    const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
-    return total + days;
+    return total + Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
   }, 0);
 
-  const attendanceRate = employeeData?.totalDays > 0 
-    ? ((employeeData?.daysPresent / employeeData?.totalDays) * 100).toFixed(1)
-    : 0;
-    const getAttendanceWithMissingDays = () => {
-  if (!attendanceData?.length) return [];
-
-  const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
-
-  const daysInMonth = new Date(
-    currentYear,
-    currentMonth + 1,
-    0
-  ).getDate();
-
-  const attendanceMap = new Map(
-    attendanceData.map(record => [record.date, record])
-  );
-
-  const result = [];
-
-  for (
-    let day = Math.min(daysInMonth, today.getDate());
-    day >= 1;
-    day--
-  ) {
-    const dateString =
-      `${String(day).padStart(2, "0")}-${String(currentMonth + 1).padStart(2, "0")}-${currentYear}`;
-
-    if (attendanceMap.has(dateString)) {
-      result.push(attendanceMap.get(dateString));
-    } else {
-      const dateObj = new Date(
-        currentYear,
-        currentMonth,
-        day
-      );
-
-      const dayOfWeek = dateObj.getDay();
-
-      result.push({
-        date: dateString,
-        check_in: null,
-        last_check_in: null,
-        check_out: null,
-        total_hours: "--",
-        login_status: "Logged Out",
-        attendance_status:
-          dayOfWeek === 0 || dayOfWeek === 6
-            ? "Weekend"
-            : "Absent",
-      });
+  const getAttendanceWithMissingDays = () => {
+    const attendanceMap = new Map(attendanceData.map(record => [record.date, record]));
+    const lastDay = isCurrentMonth
+      ? now.getDate()
+      : new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const result = [];
+    for (let day = lastDay; day >= 1; day--) {
+      const dateString = `${String(day).padStart(2, '0')}-${String(selectedMonth + 1).padStart(2, '0')}-${selectedYear}`;
+      if (attendanceMap.has(dateString)) {
+        result.push(attendanceMap.get(dateString));
+      } else {
+        const dayOfWeek = new Date(selectedYear, selectedMonth, day).getDay();
+        result.push({
+          date: dateString,
+          check_in: null, last_check_in: null, check_out: null,
+          total_hours: '--', login_status: 'Logged Out',
+          attendance_status: dayOfWeek === 0 || dayOfWeek === 6 ? 'Weekend' : 'Absent',
+          regularization: absentRegMap[dateString] || null,
+        });
+      }
     }
-  }
+    return result;
+  };
 
-  return result;
-};
   const completeAttendanceData = getAttendanceWithMissingDays();
-
-  const filteredAttendanceData = completeAttendanceData.filter(attendance => {
-    if (filter === 'present') return attendance.attendance_status === 'Present';
-    if (filter === 'absent') return attendance.attendance_status === 'Absent';
+  const filteredAttendanceData = completeAttendanceData.filter(a => {
+    if (filter === 'present') return a.attendance_status === 'Present' || a.attendance_status === 'AutoCheckout';
+    if (filter === 'absent') return a.attendance_status === 'Absent';
     return true;
   });
-  const absentDays = completeAttendanceData.filter(
-  day => day.attendance_status === "Absent"
-).length;
-  // Pagination logic
+  const absentDays = completeAttendanceData.filter(d => d.attendance_status === 'Absent').length;
+  const attendanceRate = employeeData?.totalDays > 0
+    ? ((employeeData?.daysPresent / employeeData?.totalDays) * 100).toFixed(1)
+    : 0;
+
   const totalPages = Math.ceil(filteredAttendanceData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredAttendanceData.slice(startIndex, startIndex + itemsPerPage);
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
+  useEffect(() => { setCurrentPage(1); }, [filter]);
 
-  // Reset to page 1 when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter]);
+  const handlePageChange = (page) => setCurrentPage(page);
 
   if (loading) {
     return (
@@ -454,6 +423,22 @@ const ViewAttendance = () => {
                 <p className="text-gray-600">Employee ID: {empid}</p>
               </div>
             </div>
+            {/* Month / Year selector */}
+            <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+              <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-200 rounded-lg transition-colors">
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
+              <span className="text-sm font-semibold text-gray-900 w-36 text-center">
+                {MONTHS[selectedMonth]} {selectedYear}
+              </span>
+              <button
+                onClick={handleNextMonth}
+                disabled={isCurrentMonth}
+                className={`p-1 rounded-lg transition-colors ${isCurrentMonth ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+              >
+                <ChevronRight className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -486,7 +471,7 @@ const ViewAttendance = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Working Days</p>
                   <p className="text-3xl font-bold text-gray-900">{employeeData?.totalDays || 0}</p>
-                  <p className="text-xs text-gray-500">Current Month</p>
+                  <p className="text-xs text-gray-500">{MONTHS[selectedMonth]} {selectedYear}</p>
                 </div>
                 <div className="p-3 bg-blue-100 rounded-lg">
                   <Calendar className="w-6 h-6 text-blue-600" />
@@ -626,6 +611,7 @@ const ViewAttendance = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           {(() => {
                             const reg = attendance.regularization;
+                            const isOwnRecord = currentUserEmpid && empid === currentUserEmpid && currentUserRole !== 'superadmin';
                             if (!reg) return <span className="text-xs text-gray-400">—</span>;
                             return (
                               <div className="flex items-center gap-2">
@@ -636,13 +622,15 @@ const ViewAttendance = () => {
                                   : reg.status === "REJECTED" ? "bg-red-100 text-red-800"
                                   : "bg-amber-100 text-amber-800"
                                 }`}>{reg.status}</span>
-                                <button
-                                  onClick={() => setSelectedRegularization(reg)}
-                                  className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                  title="View details"
-                                >
-                                  <Eye className="w-4 h-4 text-indigo-600" />
-                                </button>
+                                {!isOwnRecord && (
+                                  <button
+                                    onClick={() => setSelectedRegularization(reg)}
+                                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                                    title="View details"
+                                  >
+                                    <Eye className="w-4 h-4 text-indigo-600" />
+                                  </button>
+                                )}
                               </div>
                             );
                           })()}

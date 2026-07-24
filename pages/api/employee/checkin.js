@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-
+import { getPendingRegularization } from "@/lib/checkPendingRegularization";
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -20,7 +20,14 @@ export default async function handler(req, res) {
 
     // Use empid from JWT token, not request body
     const empid = decoded.empid;
+    // Block check-in if previous missed checkout is not regularized
+    const pendingAttendance = await getPendingRegularization(empid);
 
+    if (pendingAttendance) {
+      return res.status(400).json({
+        error: "Please submit yesterday's attendance regularization before checking in."
+      });
+    }
     // Proceed with checkin
     // Use Prisma transaction to ensure both actions succeed together
     await prisma.$transaction([

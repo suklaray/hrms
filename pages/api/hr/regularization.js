@@ -1,6 +1,7 @@
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
+import { canAccessRole } from '@/lib/roleBasedAccess';
 
 function verifyHRToken(req) {
   const cookies = cookie.parse(req.headers.cookie || '');
@@ -26,7 +27,11 @@ export default async function handler(req, res) {
 
       const where = {};
       if (status !== 'all') where.status = status;
-      if (empid) where.empid = empid;
+      if (empid) {
+        where.empid = empid;
+      } else if (user.role !== 'superadmin') {
+        where.NOT = { empid: user.empid };
+      }
 
       const requests = await prisma.attendance_regularization.findMany({
         where,
@@ -64,27 +69,64 @@ export default async function handler(req, res) {
       if (request.status !== 'PENDING') {
         return res.status(400).json({ error: 'Request already processed' });
       }
-      if (request.empid === user.empid) {
+      if (request.empid === user.empid && user.role !== 'superadmin') {
         return res.status(403).json({ error: 'You cannot approve or reject your own regularization request' });
       }
 
+      // Check hierarchical authority
+      const targetUser = await prisma.users.findUnique({
+        where: { empid: request.empid },
+        select: { role: true }
+      });
+      if (!targetUser || !canAccessRole(user.role, targetUser.role)) {
+        return res.status(403).json({ error: 'You do not have authority to process this request' });
+      }
+
       if (action === 'APPROVED') {
-        const checkIn = new Date(request.check_in_time);
-        const checkOut = new Date(request.requested_checkout);
+        function parseISTToUTC(dateTime) {
+          return new Date(dateTime + "+05:30");
+        }
+
+        const checkIn = parseISTToUTC(request.check_in_time);
+        const checkOut = parseISTToUTC(request.requested_checkout);
         const totalSeconds = (checkOut - checkIn) / 1000;
         const totalHours = parseFloat((totalSeconds / 3600).toFixed(2));
         const attendanceStatus = totalSeconds >= 14400 ? 'Present' : 'Absent';
+        let attendanceId = request.attendance_id;
+        if (attendanceId) {
+          // Attendance row already exists
+          await prisma.attendance.update({
+            where: { id: attendanceId },
+            data: {
+              check_in: checkIn,
+              check_out: checkOut,
+              total_hours: totalHours,
+              attendance_status: attendanceStatus,
+            },
+          });
+        } else {
+          // Attendance row doesn't exist -> create one
+          const attendance = await prisma.attendance.create({
+            data: {
+              empid: request.empid,
+              date: new Date(request.attendance_date),
+              check_in: checkIn,
+              check_out: checkOut,
+              total_hours: totalHours,
+              attendance_status: attendanceStatus,
+            },
+          });
 
-        // Update attendance record
-        await prisma.attendance.update({
-          where: { id: request.attendance_id },
-          data: {
-            check_out: checkOut,
-            check_in: checkIn,
-            total_hours: totalHours,
-            attendance_status: attendanceStatus
-          }
-        });
+          attendanceId = attendance.id;
+
+          // Save the newly created attendance id back into the regularization record
+          await prisma.attendance_regularization.update({
+            where: { id: request.id },
+            data: {
+              attendance_id: attendanceId,
+            },
+          });
+        }
       }
 
       // Update regularization status

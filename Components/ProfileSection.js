@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Calendar } from "lucide-react";
 import {toast} from "react-toastify";
 import {formatLongDate} from "@/utils/dateTime";
+import { swalConfirm } from "@/utils/confirmDialog";
 export default function ProfileSection({ user }) {
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
@@ -51,7 +52,31 @@ export default function ProfileSection({ user }) {
 
   const handleToggleWork = async () => {
     if (!user?.empid || isLoading) return;
-    
+    if (!isWorking) {
+      const checkRes = await fetch("/api/attendance/check-missed-checkout", {
+        credentials: "include",
+      });
+
+      const checkData = await checkRes.json();
+
+      if (checkData.hasMissedCheckout) {
+        toast.error(
+          "Please submit yesterday's attendance regularization before checking in."
+        );
+        return;
+      }
+    }
+    // Before checkout
+    if (isWorking) {
+      const confirmed = await swalConfirm(
+        "Are you sure you want to check out for today?",
+        "Check Out"
+      );
+
+      if (!confirmed) {
+        return;
+      }
+    }
     setIsLoading(true);
     const endpoint = isWorking ? "checkout" : "checkin";
     

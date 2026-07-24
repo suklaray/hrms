@@ -2,10 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 import Sidebar from '../../Components/empSidebar';
-import {
-  formatTime,
-} from "@/utils/dateTime";
+import { formatTime } from "@/utils/dateTime";
 import LiveTimer from '@/utils/liveTimer';
+import RegularizationModal from '@/Components/RegularizationModal';
 export default function EmployeeAttendance() {
   const [user, setUser] = useState(null);
   const [attendance, setAttendance] = useState([]);
@@ -14,6 +13,8 @@ export default function EmployeeAttendance() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [holidays, setHolidays] = useState([]);
+  const [selectedAttendance, setSelectedAttendance] = useState(null);
+  const [absentRegMap, setAbsentRegMap] = useState({});
 
   const fetchUser = useCallback(async () => {
     try {
@@ -91,6 +92,7 @@ export default function EmployeeAttendance() {
         const data = await res.json();
         console.log('Attendance response:', data.attendance);
         setAttendance(data.attendance || []);
+        setAbsentRegMap(data.absentRegMap || {});
       } else {
         const errorData = await res.json();
         setError(errorData.message || 'Failed to fetch attendance records');
@@ -178,6 +180,7 @@ const getAttendanceWithMissingDays = () => {
                     dayOfWeek === 0 || dayOfWeek === 6
                         ? 'Weekend'
                         : 'Absent',
+                regularization: absentRegMap[dateString] || null,
             });
         }
     }
@@ -433,7 +436,20 @@ const attendanceRate = workingDays.length > 0
                                     <span title={record.regularization.rejection_reason} className="text-xs text-red-600 truncate max-w-[140px]">{record.regularization.rejection_reason}</span>
                                   )}
                                 </div>
-                              ) : <span className="text-xs text-gray-400">—</span>}
+                              ) : (() => {
+                                const today = new Date();
+                                const todayStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
+                                if (record.date === todayStr || record.attendance_status === 'Weekend') return <span className="text-xs text-gray-400">—</span>;
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedAttendance(record)}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1 px-2 rounded-md text-xs"
+                                  >
+                                    Regularize
+                                  </button>
+                                );
+                              })()}
                             </td>
                           </tr>
                         );
@@ -469,6 +485,13 @@ const attendanceRate = workingDays.length > 0
         </div>
       </div>
     </div>
+      {selectedAttendance && (
+        <RegularizationModal
+          attendance={selectedAttendance}
+          onClose={() => setSelectedAttendance(null)}
+          onSubmitted={() => { setSelectedAttendance(null); fetchAttendance(); }}
+        />
+      )}
     </>
   );
 }

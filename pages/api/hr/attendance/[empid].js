@@ -50,7 +50,7 @@ const getLoginStatus = (sessions) => {
 };
 
 export default async function handler(req, res) {
-  const { empid } = req.query;
+  const { empid, month, year } = req.query;
 
   if (!empid) {
     return res.status(400).json({ error: "empid is required" });
@@ -59,12 +59,11 @@ export default async function handler(req, res) {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const selectedMonth = month ? parseInt(month) - 1 : new Date().getMonth();
+    const selectedYear  = year  ? parseInt(year)      : new Date().getFullYear();
 
-    const endOfMonth = new Date(startOfMonth);
-    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+    const startOfMonth = new Date(selectedYear, selectedMonth, 1);
+    const endOfMonth   = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
 
     const rows = await prisma.attendance.findMany({
       where: {
@@ -83,6 +82,7 @@ export default async function handler(req, res) {
       select: { id: true, attendance_date: true, check_in_time: true, requested_checkout: true, reason: true, status: true, rejection_reason: true, created_at: true }
     });
     const regMap = {};
+    const absentRegMap = {};
     regularizations.forEach(r => {
       const key = new Date(r.attendance_date).toISOString().split('T')[0];
       regMap[key] = r;
@@ -94,6 +94,14 @@ export default async function handler(req, res) {
       acc[dateKey].push(row);
       return acc;
     }, {});
+
+    // Populate absentRegMap for regularizations with no matching attendance row
+    regularizations.forEach(r => {
+      const key = new Date(r.attendance_date).toISOString().split('T')[0];
+      if (!groupedSessions[key]) {
+        absentRegMap[format(new Date(key), 'dd-MM-yyyy')] = r;
+      }
+    });
 
     const attendance = Object.entries(groupedSessions).map(([date, sessions]) => {
       const formattedDate = format(new Date(date), 'dd-MM-yyyy');
@@ -149,7 +157,7 @@ export default async function handler(req, res) {
       totalDays,
     };
 
-    res.status(200).json({ employee, attendance });
+    res.status(200).json({ employee, attendance, absentRegMap });
 
   } catch (error) {
     console.error('Attendance Error:', error);

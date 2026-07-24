@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
-import { Clock, Users, Search, Calendar, TrendingUp, Eye, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Users, Search, Calendar, TrendingUp, Eye, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { useRouter } from "next/router";
 import { formatDateTime } from "@/utils/dateTime";
 // Live Timer Component
@@ -27,6 +27,7 @@ export default function AttendanceList() {
           setApiAvgHours(response.avgHours);
           setData(response.data || response);
           setFilteredData(response.data || response);
+          console.log("API Response:", response.data);
         } else {
           setData(response);
           setFilteredData(response);
@@ -40,28 +41,28 @@ export default function AttendanceList() {
   }, []);
 
   useEffect(() => {
-    let filtered = data;
-    
-    // Apply status filter
-    if (activeFilter === "present") {
-      filtered = filtered.filter(user => user.attendance_status === "Present");
-    } else if (activeFilter === "online") {
-      // Fixed: Check is_logged_in instead of checking today_checkin && !last_logout
-      filtered = filtered.filter(user => user.is_logged_in === true);
-    }
-    
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter((user) =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.empid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    setFilteredData(filtered);
-    setCurrentPage(1);
-  }, [searchTerm, data, activeFilter]);
+  let filtered = data;
+
+  if (activeFilter === "present") {
+    filtered = filtered.filter(user => user.attendance_status === "Present");
+  } else if (activeFilter === "online") {
+    filtered = filtered.filter(user => user.is_logged_in === true);
+  } else if (activeFilter === "regularization") {
+    filtered = filtered.filter(user => user.has_pending_regularization);
+    // or whatever field your API returns
+  }
+
+  if (searchTerm) {
+    filtered = filtered.filter((user) =>
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.empid.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }
+
+  setFilteredData(filtered);
+  setCurrentPage(1);
+}, [searchTerm, data, activeFilter]);
 
   const handleFilterClick = (filter) => {
     setActiveFilter(filter);
@@ -94,9 +95,10 @@ export default function AttendanceList() {
     total: data.length,
     present: data.filter(u => u.attendance_status === "Present").length,
     loggedIn: data.filter(u => u.is_logged_in === true).length,
+    regularization: data.filter(u => u.has_pending_regularization).length,
     avgHours: apiAvgHours
   };
-
+ console.log("stats",stats);
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
@@ -135,66 +137,81 @@ export default function AttendanceList() {
 
         <div className="p-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
             <div 
               onClick={() => handleFilterClick("all")}
-              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+              className={`bg-white rounded-xl shadow-sm border p-4 cursor-pointer transition-all hover:shadow-md ${
                 activeFilter === "all" ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-100"
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Employees</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                 </div>
                 <div className="p-3 bg-blue-100 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600" />
+                  <Users className="w-4 h-4 text-blue-600" />
                 </div>
               </div>
             </div>
 
             <div 
               onClick={() => handleFilterClick("present")}
-              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+              className={`bg-white rounded-xl shadow-sm border p-4 cursor-pointer transition-all hover:shadow-md ${
                 activeFilter === "present" ? "border-green-500 ring-2 ring-green-200" : "border-gray-100"
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Present Today</p>
-                  <p className="text-3xl font-bold text-green-600">{stats.present}</p>
+                  <p className="text-2xl font-bold text-green-600">{stats.present}</p>
                 </div>
                 <div className="p-3 bg-green-100 rounded-lg">
-                  <Calendar className="w-6 h-6 text-green-600" />
+                  <Calendar className="w-4 h-4 text-green-600" />
                 </div>
               </div>
             </div>
 
             <div 
               onClick={() => handleFilterClick("online")}
-              className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all hover:shadow-md ${
+              className={`bg-white rounded-xl shadow-sm border p-4 cursor-pointer transition-all hover:shadow-md ${
                 activeFilter === "online" ? "border-emerald-500 ring-2 ring-emerald-200" : "border-gray-100"
               }`}
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Currently Online</p>
-                  <p className="text-3xl font-bold text-emerald-600">{stats.loggedIn}</p>
+                  <p className="text-2xl font-bold text-emerald-600">{stats.loggedIn}</p>
                 </div>
                 <div className="p-3 bg-emerald-100 rounded-lg">
-                  <Clock className="w-6 h-6 text-emerald-600" />
+                  <Clock className="w-4 h-4 text-emerald-600" />
                 </div>
               </div>
             </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div 
+              onClick={() => handleFilterClick("regularization")}
+              className={`bg-white rounded-xl shadow-sm border p-4 cursor-pointer transition-all hover:shadow-md ${
+                activeFilter === "regularization" ? "border-amber-500 ring-2 ring-amber-200" : "border-gray-100"
+              }`}
+            >
+            <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Pending Regularization</p>
+                  <p className="text-2xl font-bold text-amber-600">{stats.regularization}</p>
+                </div>
+                <div className="p-3 bg-amber-100 rounded-lg">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Avg Hours</p>
-                  <p className="text-3xl font-bold text-purple-600">{stats.avgHours}h</p>
+                  <p className="text-2xl font-bold text-purple-600">{stats.avgHours}h</p>
                 </div>
                 <div className="p-3 bg-purple-100 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                  <TrendingUp className="w-4 h-4 text-purple-600" />
                 </div>
               </div>
             </div>

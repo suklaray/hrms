@@ -71,7 +71,16 @@ export default async function handler(req, res) {
         attendance_status: true
       }
     });
-    
+    const pendingRegularizations = await prisma.attendance_regularization.findMany({
+        where: {
+          status: "PENDING",
+          ...(currentUser.role !== 'superadmin' && { empid: { not: currentUser.empid } }),
+        },
+        select: { empid: true },
+      });
+
+    // Create a Set for quick lookup
+    const pendingEmpIds = new Set(pendingRegularizations.map((r) => r.empid));
     // Filter by role permissions
     const roleFilteredAttendance = attendanceData.filter(record => 
       users.some(u => u.empid === record.empid)
@@ -189,7 +198,8 @@ export default async function handler(req, res) {
         today_total_seconds: user.today_total_seconds || 0,
         total_hours: userRealTimeHours.toFixed(1),
         attendance_status,
-        is_logged_in: user.has_open_session
+        is_logged_in: user.has_open_session,
+        has_pending_regularization: pendingEmpIds.has(user.empid)
       };
     });
 
