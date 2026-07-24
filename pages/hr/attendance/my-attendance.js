@@ -347,7 +347,19 @@ export default function MyAttendance() {
                                                             ) : (() => {
                                                                     const today = new Date();
                                                                     const todayStr = `${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
-                                                                    if (record.date === todayStr) return <span className="text-gray-400">—</span>;
+                                                                    const isPresent =
+                                                                        record.attendance_status === "Present" || record.attendance_status === "AutoCheckout";
+
+                                                                    const hasCheckInAndCheckOut =
+                                                                        record.first_check_in && record.check_out;
+
+                                                                    if (
+                                                                        record.date === todayStr ||
+                                                                        isPresent ||
+                                                                        (record.attendance_status === "Absent" && hasCheckInAndCheckOut)
+                                                                    ) {
+                                                                        return <span className="text-xs text-gray-400">—</span>;
+                                                                    }
                                                                     return (
                                                                         <button
                                                                             type="button"

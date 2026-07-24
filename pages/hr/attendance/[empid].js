@@ -308,13 +308,7 @@ const ViewAttendance = () => {
         const lastDay = isCurrentMonth
           ? now.getDate()
           : new Date(selectedYear, selectedMonth + 1, 0).getDate();
-        let workingDays = 0;
-        for (let d = 1; d <= lastDay; d++) {
-          const day = new Date(selectedYear, selectedMonth, d).getDay();
-          if (day !== 0 && day !== 6) workingDays++;
-        }
-
-        setEmployeeData({ ...attendanceJson.employee, totalDays: workingDays });
+        setEmployeeData({ ...attendanceJson.employee });
         setAttendanceData(attendanceJson.attendance);
         setAbsentRegMap(attendanceJson.absentRegMap || {});
 
@@ -338,7 +332,23 @@ const ViewAttendance = () => {
     const toDate = new Date(leave.to_date);
     return total + Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
   }, 0);
+  const getWorkingDaysInMonth = (year, month) => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let workingDays = 0;
 
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayOfWeek = new Date(year, month, day).getDay();
+
+      // Skip weekends
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDays++;
+      }
+    }
+
+    return workingDays;
+  };
+
+  const workingDays = getWorkingDaysInMonth(selectedYear, selectedMonth);
   const getAttendanceWithMissingDays = () => {
     const attendanceMap = new Map(attendanceData.map(record => [record.date, record]));
     const lastDay = isCurrentMonth
@@ -470,7 +480,7 @@ const ViewAttendance = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Working Days</p>
-                  <p className="text-3xl font-bold text-gray-900">{employeeData?.totalDays || 0}</p>
+                  <p className="text-3xl font-bold text-gray-900">{workingDays || 0}</p>
                   <p className="text-xs text-gray-500">{MONTHS[selectedMonth]} {selectedYear}</p>
                 </div>
                 <div className="p-3 bg-blue-100 rounded-lg">
