@@ -83,12 +83,8 @@ export default async function handler(req, res) {
       }
 
       if (action === 'APPROVED') {
-        function parseISTToUTC(dateTime) {
-          return new Date(dateTime + "+05:30");
-        }
-
-        const checkIn = parseISTToUTC(request.check_in_time);
-        const checkOut = parseISTToUTC(request.requested_checkout);
+        const checkIn = new Date(request.check_in_time);
+        const checkOut = new Date(request.requested_checkout);
         const totalSeconds = (checkOut - checkIn) / 1000;
         const totalHours = parseFloat((totalSeconds / 3600).toFixed(2));
         const attendanceStatus = totalSeconds >= 14400 ? 'Present' : 'Absent';
