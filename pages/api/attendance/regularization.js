@@ -21,9 +21,9 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Reason cannot exceed 500 characters' });
     }
 
-    const checkIn = new Date(check_in_time.includes('+') ? check_in_time : check_in_time + '+05:30');
-    const checkOut = new Date(requested_checkout.includes('+') ? requested_checkout : requested_checkout + '+05:30');
-    const attendanceDateParsed = new Date(attendance_date.length === 10 ? attendance_date + 'T00:00:00+05:30' : attendance_date);
+    const checkIn = new Date(check_in_time);
+    const checkOut = new Date(requested_checkout);
+    const attendanceDateParsed = new Date(attendance_date);
 
     if (checkOut <= checkIn) {
       return res.status(400).json({ error: 'Check-out time must be after check-in time' });

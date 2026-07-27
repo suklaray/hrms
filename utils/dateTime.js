@@ -161,3 +161,15 @@ export const formatShortDateTime = (date) => {
     .replace(/am/gi, "AM")
     .replace(/pm/gi, "PM");
 };
+export const formatTimeUTC = (time) => {
+    if (!time) return "--";
+    // Handles plain HH:mm strings from API (no timezone conversion needed)
+    const str = typeof time === 'string' ? time : '';
+    const timePart = str.includes('T') ? str.split('T')[1].slice(0, 5) : str.slice(0, 5);
+    if (!timePart || !timePart.includes(':')) return "--";
+    const [h, m] = timePart.split(':').map(Number);
+    if (isNaN(h) || isNaN(m)) return "--";
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${String(hour12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+};

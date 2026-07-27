@@ -85,7 +85,11 @@ export default async function handler(req, res) {
     const absentRegMap = {};
     regularizations.forEach(r => {
       const key = new Date(r.attendance_date).toISOString().split('T')[0];
-      regMap[key] = r;
+      regMap[key] = {
+        ...r,
+        check_in_time: r.check_in_time ? format(r.check_in_time, 'HH:mm') : null,
+        requested_checkout: r.requested_checkout ? format(r.requested_checkout, 'HH:mm') : null,
+      };
     });
 
     const groupedSessions = rows.reduce((acc, row) => {
@@ -99,7 +103,11 @@ export default async function handler(req, res) {
     regularizations.forEach(r => {
       const key = new Date(r.attendance_date).toISOString().split('T')[0];
       if (!groupedSessions[key]) {
-        absentRegMap[format(new Date(key), 'dd-MM-yyyy')] = r;
+        absentRegMap[format(new Date(key), 'dd-MM-yyyy')] = {
+          ...r,
+          check_in_time: r.check_in_time ? format(r.check_in_time, 'HH:mm') : null,
+          requested_checkout: r.requested_checkout ? format(r.requested_checkout, 'HH:mm') : null,
+        };
       }
     });
 

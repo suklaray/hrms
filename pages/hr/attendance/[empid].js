@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft, ChevronLeft, ChevronRight, FileText, X, Eye } from "lucide-react";
-import { formatLongDate, formatShortDateTime, formatTime } from "@/utils/dateTime";
+import { formatLongDate, formatShortDateTime, formatTime, formatTimeUTC } from "@/utils/dateTime";
 import { toast } from "react-toastify";
 // Regularization Detail Modal
 const RegularizationModal = ({ request, onClose, onUpdated }) => {
@@ -68,13 +68,13 @@ const RegularizationModal = ({ request, onClose, onUpdated }) => {
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500">Check-in Time</p>
               <p className="text-sm font-medium text-gray-900">
-                {formatTime(request.check_in_time)}
+                {formatTimeUTC(request.check_in_time)}
               </p>
             </div>
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500">Requested Check-out</p>
               <p className="text-sm font-medium text-gray-900">
-                {formatTime(request.requested_checkout)}
+                {formatTimeUTC(request.requested_checkout)}
               </p>
             </div>
           </div>
