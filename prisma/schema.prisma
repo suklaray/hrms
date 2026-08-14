@@ -260,6 +260,7 @@ model users {
   experience       Int?
   profile_photo    String?
   created_at       DateTime?                @default(now())
+  roleId           Int?
   role             users_role               @default(employee)
   verified         users_verified?          @default(not_verified)
   form_submitted   Boolean                  @default(false)
@@ -268,6 +269,7 @@ model users {
   employee_type    employees_employee_type? @default(Full_time)
   candidate_id     String?
   duration_months  Int?
+  rbacRole         Role?                    @relation(fields: [roleId], references: [id], onDelete: SetNull)
   leave_balances   leave_balances[]
   leave_requests   leave_requests[]
   payroll          payroll[]
@@ -278,6 +280,8 @@ model users {
   resubmissionRequests document_resubmission_requests[] @relation("ResubmissionEmployee")
   requestedResubmissions document_resubmission_requests[] @relation("ResubmissionRequestor")
   attendance_regularization attendance_regularization[]
+
+  @@index([roleId])
 }
 
 model payroll {
@@ -434,6 +438,44 @@ model notifications {
 
   @@index([recipient_type, recipient_id])
   @@index([created_at])
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  description String?
+  status      String           @default("active")
+  parentId    Int?
+  parent      Role?            @relation("RoleHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Role[]           @relation("RoleHierarchy")
+  users       users[]
+  permissions RolePermission[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([parentId])
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  key         String           @unique
+  description String?
+  category    String           @default("General")
+  roles       RolePermission[]
+  createdAt   DateTime         @default(now())
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
 }
 
 enum attendance_regularization_status {

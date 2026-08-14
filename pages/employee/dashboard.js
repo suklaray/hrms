@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
-import Sidebar from "/Components/empSidebar";
 import Image from "next/image";
-import { Clock, Calendar, User, Mail, Briefcase, Shield, Bell, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Calendar, User, Mail, Briefcase,TrendingUp } from "lucide-react";
 import { toast } from "react-toastify";
 import EmployeeCalenderSection from "/Components/EmployeeCalenderSection";
 import { formatLongDate } from "@/utils/dateTime";
 import RegularizationCard from "/Components/RegularizationCard";
 import RegularizationModal from "@/Components/RegularizationModal";
 import { swalConfirm } from "@/utils/confirmDialog";
-export default function EmployeeDashboard() {
-  const [user, setUser] = useState(null);
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+export default function EmployeeDashboard({ user: propUser, permissions = [] }) {
+  const [user, setUser] = useState(propUser || null);
   const [isWorking, setIsWorking] = useState(false);
   const [workStartTime, setWorkStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
@@ -24,18 +24,26 @@ export default function EmployeeDashboard() {
   const [showRegModal, setShowRegModal] = useState(false);
 
   const router = useRouter();
-
+  const can = (permission) => {
+    if (user?.role === 'superadmin') return true;
+    return permissions.includes(permission);
+  };
+  console.log("permission",permissions);
   const isAccessEnabled = user?.verified === 'verified' && user?.form_submitted === true;
 
   useEffect(() => {
     async function fetchUser() {
-              try {
-          const res = await fetch("/api/auth/employee/me", {
-            credentials: "include",
-          });
-          if (!res.ok) {
-            return router.replace("/employee/login");
+      try {
+        // If user was passed as prop (from unified dashboard), use it directly
+        if (propUser) {
+          setUser(propUser);
+          setIsWorking(propUser.isWorking || false);
+          if (propUser.isWorking && propUser.workStartTime) {
+            setWorkStartTime(new Date(propUser.workStartTime));
           }
+        } else {
+          const res = await fetch("/api/auth/employee/me", { credentials: "include" });
+          if (!res.ok) return router.replace("/login");
           const data = await res.json();
           setUser(data.user);
           setIsWorking(data.user.isWorking);
@@ -43,7 +51,8 @@ export default function EmployeeDashboard() {
             setWorkStartTime(new Date(data.user.workStartTime));
           } else {
             setWorkStartTime(null);
-                }
+          }
+        }
         
         // Fetch stats
         const statsRes = await fetch("/api/employee/stats", {
@@ -55,18 +64,33 @@ export default function EmployeeDashboard() {
             ...statsData,
             todayCompletedSeconds: statsData.todayCompletedSeconds || 0
           });
+        }else
+        {
+          toast.error("Failed to fetch dashboard stats");
         }
 
         
         // Check missed checkout
-        try {
-          const missedRes = await fetch('/api/attendance/check-missed-checkout', { credentials: 'include' });
-          if (missedRes.ok) {
-            const missedData = await missedRes.json();
-            if (missedData.hasMissedCheckout) setMissedCheckout(missedData.attendance);
-          }
-        } catch (e) { /* silent */ }
+        if (can('attendance.regularize')) {
+          try {
+            const missedRes = await fetch(
+              '/api/attendance/check-missed-checkout',
+              {
+                credentials: 'include',
+              }
+            );
 
+            if (missedRes.ok) {
+              const missedData = await missedRes.json();
+
+              if (missedData.hasMissedCheckout) {
+                setMissedCheckout(missedData.attendance);
+              }
+            }
+          } catch (e) {
+            console.error('Error checking missed checkout:', e);
+          }
+        }
         // Calendar events fetched by separate useEffect
       } catch (err) {
         console.error("Error fetching user:", err);
@@ -74,7 +98,7 @@ export default function EmployeeDashboard() {
       }
     }
     fetchUser();
-  }, [router]);
+  }, [router,permissions]);
 
   const fetchCalendarEvents = useCallback(async () => {
     setCalendarLoading(true);
@@ -139,19 +163,6 @@ useEffect(() => {
       
       return src;
   }
-
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/employee/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      router.replace("/employee/login");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    }
-  };
-
   const handleToggleWork = async () => {
   if (!user) return;
     if (!isWorking) {
@@ -251,31 +262,47 @@ useEffect(() => {
       </div>
     );
   }
-
-  const StatCard = ({ title, value, icon: Icon, color, description }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value || '0'}</p>
-          {description && (
-            <p className="text-sm text-gray-500 mt-1">{description}</p>
-          )}
-        </div>
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-
+  const quickActions = [
+    {
+      label: 'Apply Leave',
+      description: 'Request time off',
+      route: '/employee/leave-request',
+      permission: PERMISSION_KEYS.LEAVE_REQUEST,
+      icon: Calendar,
+      color: 'blue',
+    },
+    {
+      label: 'View Attendance',
+      description: 'Check your records',
+      route: '/employee/attendance',
+      permission: PERMISSION_KEYS.ATTENDANCE_MY,
+      icon: Clock,
+      color: 'green',
+    },
+    {
+      label: 'Update Profile',
+      description: 'Edit your details',
+      route: '/employee/profile',
+      permission:PERMISSION_KEYS.SETTINGS_PROFILE, // always visible
+      icon: User,
+      color: 'purple',
+    },
+    {
+      label: 'Payslips & Docs',
+      description: 'View documents',
+      route: '/employee/emp-payslip',
+      permission: PERMISSION_KEYS.PAYSLIP_VIEW,
+      icon: Mail,
+      color: 'orange',
+    },
+  ];
   return (
     <>
-      <Head>
-        <title>Employee Dashboard - HRMS</title>
-      </Head>
-      <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={user} handleLogout={handleLogout} />
+      {!propUser && (
+        <Head>
+          <title>Employee Dashboard - HRMS</title>
+        </Head>
+      )}
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -349,13 +376,14 @@ useEffect(() => {
           </div>
 
                   {/* Regularization Card */}
+                {can('attendance.regularize') && (
                   <div className="h-full">
                     <RegularizationCard
-                      // mode="employee"
                       missedCheckout={missedCheckout}
                       onOpenModal={() => setShowRegModal(true)}
                     />
                   </div>
+                )}
                 </div>
 
 
@@ -477,59 +505,24 @@ useEffect(() => {
               <div className="p-6">
                 <div className="grid grid-cols-1 gap-4">
                 {isAccessEnabled ? (
-                  // Verified User Actions
-                  <>
-                    <button 
-                      onClick={() => router.push('/employee/leave-request')}
-                      className="p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 text-left cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                        <div>
-                          <p className="font-medium text-blue-900">Apply Leave</p>
-                          <p className="text-sm text-blue-600">Request time off</p>
+                  quickActions
+                    .filter(action => action.permission === null || can(action.permission))
+                    .map(({ label, description, route, icon: Icon, color }) => (
+                      <button
+                        key={label}
+                        onClick={() => router.push(route)}
+                        className={`p-4 bg-${color}-50 hover:bg-${color}-100 rounded-lg transition-colors border border-${color}-200 text-left cursor-pointer`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Icon className={`w-5 h-5 text-${color}-600`} />
+                          <div>
+                            <p className={`font-medium text-${color}-900`}>{label}</p>
+                            <p className={`text-sm text-${color}-600`}>{description}</p>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => router.push('/employee/attendance')}
-                      className="p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200 text-left cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Clock className="w-5 h-5 text-green-600" />
-                        <div>
-                          <p className="font-medium text-green-900">View Attendance</p>
-                          <p className="text-sm text-green-600">Check your records</p>
-                        </div>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => router.push('/employee/profile')}
-                      className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <User className="w-5 h-5 text-purple-600" />
-                        <div>
-                          <p className="font-medium text-purple-900">Update Profile</p>
-                          <p className="text-sm text-purple-600">Edit your details</p>
-                        </div>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => router.push('/employee/emp-payslip')}
-                      className="p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 text-left cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Mail className="w-5 h-5 text-orange-600" />
-                        <div>
-                          <p className="font-medium text-orange-900">Payslips & Docs</p>
-                          <p className="text-sm text-orange-600">View documents</p>
-                        </div>
-                      </div>
-                    </button>
-                  </>
+                      </button>
+                    ))
                 ) : (
-                  // Unverified User Actions
                   <>
                     <div className="p-4 bg-gray-100 rounded-lg border border-gray-200 text-left cursor-not-allowed opacity-60">
                       <div className="flex items-center space-x-3">
@@ -549,7 +542,7 @@ useEffect(() => {
                         </div>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => router.push('/employee/profile')}
                       className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left cursor-pointer"
                     >
@@ -599,8 +592,6 @@ useEffect(() => {
           )}
         </div>
       </div>
-
-    </div>
 
       {/* Regularization Modal */}
       {showRegModal && missedCheckout && (

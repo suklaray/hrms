@@ -12,7 +12,7 @@ const AutoLogoutTimer = () => {
   const reminderTimerRef = useRef(null);
 
   const publicPaths = [
-    '/', '/login', '/employee/login', '/AboutUs', '/Contact',
+    '/', '/login', '/AboutUs', '/Contact',
     '/Recruitment/form', '/Recruitment/docs_submitted',
     '/form-already-submitted', '/unauthorized-form-access',
     '/form-link-expired', '/form-locked-device'
@@ -26,32 +26,28 @@ const AutoLogoutTimer = () => {
     );
   };
 
-  const getLoginPath = () => {
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-    return currentPath.startsWith('/employee') ? '/employee/login' : '/login';
-  };
 
   const handleLogout = async () => {
-    clearAllTimers();
-    setShowWarning(false);
+  clearAllTimers();
+  setShowWarning(false);
 
-    const currentPath = window.location.pathname;
-    const isEmployeePath = currentPath.startsWith('/employee');
-    const logoutEndpoint = isEmployeePath ? '/api/auth/employee/logout' : '/api/auth/logout';
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        reason: 'inactivity_timeout',
+      }),
+      credentials: 'include',
+    });
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
 
-    try {
-      await fetch(logoutEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'inactivity_timeout' }),
-        credentials: 'include'
-      });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-    
-    router.replace(getLoginPath());
-  };
+  router.replace('/login');
+};
 
   const displayActivityReminder = () => {
     setShowActivityReminder(true);

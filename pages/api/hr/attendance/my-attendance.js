@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
+    if (!decoded) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

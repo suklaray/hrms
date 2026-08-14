@@ -347,7 +347,7 @@ export default function EmployeeCalendar() {
   };
 
   const handleLogout = () => {
-    window.location.href = "/employee/login";
+    window.location.href = "/login";
   };
 
   return (
@@ -363,7 +363,7 @@ export default function EmployeeCalendar() {
             <div className="flex items-center justify-between">
               <div className="items-center space-x-6">
                 <Link
-                  href="/employee/dashboard"
+                  href="/dashboard"
                   className="px-3 py-2 pb-6 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
                 >
                   ← Back to Dashboard

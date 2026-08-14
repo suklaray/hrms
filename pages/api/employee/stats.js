@@ -1,7 +1,8 @@
 import { verifyEmployeeToken } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-
-export default async function handler(req, res) {
+import { withPermission } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
+async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -103,3 +104,4 @@ export default async function handler(req, res) {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
+export default withPermission(PERMISSION_KEYS.ATTENDANCE_MY, handler);

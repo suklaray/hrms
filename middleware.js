@@ -8,6 +8,7 @@ const PUBLIC_PATHS = [
   "/form-locked-device",
   "/form-link-expired",
   "/unauthorized-form-access",
+  "/403",
 ];
 
 const PUBLIC_ROUTES = [
@@ -15,7 +16,6 @@ const PUBLIC_ROUTES = [
   "/login",
   "/AboutUs",
   "/Contact",
-  "/employee/login",
   "/forgot-password",
   "/reset-password",
   "/privacy-policy",
@@ -26,11 +26,7 @@ const PUBLIC_ROUTES = [
 
 const ALLOWED_PATHS = [
   "/dashboard",
-  "/employee/dashboard",
-  "/hr/dashboard",
-  "/admin/dashboard",
   "/settings/profile",
-  "/employee/profile",
 ];
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
@@ -80,16 +76,9 @@ export async function middleware(request) {
     const isVerified = decoded.verified === "verified";
     const hasFormSubmitted = !!decoded.form_submitted;
 
-    // Redirect logged-in users away from login pages only
-    if (["/login", "/employee/login"].includes(pathname)) {
-      const dashboardPath =
-        role === "superadmin"
-          ? "/dashboard"
-          : role === "employee"
-          ? "/employee/dashboard"
-          : "/dashboard";
-
-      return NextResponse.redirect(new URL(dashboardPath, request.url));
+    // Redirect logged-in users away from login page
+    if (pathname === "/login") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
     // Superadmin has full access
@@ -111,14 +100,14 @@ export async function middleware(request) {
     }
 
     // For employees: redirect unverified users or those who haven't submitted forms
-    if (role === "employee") {
-      const needsVerification = !isVerified && !hasFormSubmitted;
-      if (needsVerification) {
-        return NextResponse.redirect(
-          new URL("/employee/dashboard", request.url)
-        );
-      }
-    }
+    // if (role === "employee") {
+    //   const needsVerification = !isVerified && !hasFormSubmitted;
+    //   if (needsVerification) {
+    //     return NextResponse.redirect(
+    //       new URL("/employee/dashboard", request.url)
+    //     );
+    //   }
+    // }
 
     // For admin/hr: only check verification (they don't need to submit employee forms)
     if (["admin", "hr"].includes(role)) {

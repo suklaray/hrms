@@ -14,18 +14,22 @@ export default async function handler(req, res) {
   if (!allow) return;
 
   const { email, password } = req.body;
-
+   if (!email || !password) {
+    return res.status(400).json({ message: "Email/Username and password are required" });
+  }
   try {
-    const user = await prisma.users.findUnique({ where: { email } });
-
+    let user = await prisma.users.findUnique({ where: { email } });
+    if (!user) {
+      user = await prisma.users.findUnique({ where: { empid: email } });
+    }
     if (!user) {
       return res.status(401).json({ message: "Invalid email" });
     }
 
     // Checking role
-    if (user.role !== "admin" && user.role !== "hr" && user.role !== "superadmin") {
-      return res.status(403).json({ message: "Access denied: Only Admins and HRs can log in here" });
-    }
+    // if (user.role !== "admin" && user.role !== "hr" && user.role !== "superadmin") {
+    //   return res.status(403).json({ message: "Access denied: Only Admins and HRs can log in here" });
+    // }
 
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
@@ -59,6 +63,7 @@ export default async function handler(req, res) {
       empid: user.empid,
       name: user.name,
       role: user.role,
+      roleId: user.roleId ?? null,
       email: user.email,
       verified: user.verified,
       form_submitted: hasFormSubmitted,

@@ -12,7 +12,7 @@ export async function getServerSideProps(context) {
   const token = req?.cookies?.token || "";
   const user = getUserFromToken(token);
 
-  if (!user || !["superadmin", "admin", "hr"].includes(user.role)) {
+  if (!user) {
     return {
       redirect: {
         destination: "/login",

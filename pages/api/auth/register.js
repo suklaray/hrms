@@ -40,6 +40,7 @@ export default async function handler(req, res) {
       experience,
       employee_type,
       role = "employee",
+      rbacRoleId = null,
     } = req.body;
 
     // Role-based validation for role assignment
@@ -132,6 +133,7 @@ export default async function handler(req, res) {
         role,
         employee_type,
         candidate_id: candidateId,
+        roleId: rbacRoleId ? parseInt(rbacRoleId) : null,
       },
     });
 

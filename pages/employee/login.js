@@ -18,7 +18,7 @@ export default function EmployeeLogin() {
   setError("");
 
   try {
-    const res = await fetch("/api/auth/employee/login", {
+    const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -31,7 +31,7 @@ export default function EmployeeLogin() {
       return;
     }
 
-    router.push("/employee/dashboard");
+    router.push("/dashboard");
   } catch (err) {
     setError("An error occurred. Please try again.");
   }

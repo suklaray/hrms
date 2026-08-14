@@ -65,6 +65,7 @@ export default async function handler(req, res) {
       name: user.name,
       email: user.email,
       role: user.role,
+      roleId: user.roleId ?? null,
       verified: user.verified,
       form_submitted: hasFormSubmitted,
     };

@@ -1,13 +1,12 @@
-import { verifyEmployeeToken } from '@/lib/auth';
-import { verifyHRToken } from '@/lib/auth-hr';
-import {getPendingRegularization} from '@/lib/checkPendingRegularization';
-
-export default async function handler(req, res) {
+import { withSessionTimeout } from '@/lib/authMiddleware';
+import { getPendingRegularization } from '@/lib/checkPendingRegularization';
+import { withPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const user = (await verifyEmployeeToken(req)) || (await verifyHRToken(req));
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.user;
     const pendingAttendance = await getPendingRegularization(user.empid);
 
     if (!pendingAttendance) {
@@ -29,3 +28,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }
+export default withSessionTimeout(withPermission(PERMISSION_KEYS.ATTENDANCE_REGULARIZE, handler));

@@ -9,772 +9,350 @@ import {
   LayoutDashboard,
   UserPlus,
   Users,
-  UserCheck,
   Clock,
   DollarSign,
   Shield,
-  TrendingUp,
   Phone,
   Settings,
   LogOut,
   ListChecks,
-  ListCheck,
 } from "lucide-react";
 
+
+const SIDEBAR_STRUCTURE = [
+  {
+    name: 'Dashboard',
+    icon: LayoutDashboard,
+    route: '/dashboard',
+    permission: 'dashboard.view',
+  },
+  {
+    name: 'Recruitment',
+    icon: UserPlus,
+    permission: 'recruitment.view',
+    children: [
+      { title: 'Recruitment',         route: '/Recruitment/recruitment',               permission: 'recruitment.view' },
+    ],
+  },
+  {
+    name: 'Employee Management',
+    icon: Users,
+    permission: 'employee.view',
+    children: [
+      { title: 'Employee List',       route: '/employeeList',                          permission: 'employee.view' },
+      { title: 'Register Employee',   route: '/registerEmployee',                      permission: 'employee.create' },
+    ],
+  },
+  {
+    name: 'Attendance & Leave',
+    icon: Clock,
+    permission: 'attendance.view',
+    children: [
+      { title: 'Attendance',          route: '/hr/attendance',                         permission: 'attendance.view' },
+      { title: 'Leave Management',    route: '/hr/view-leave-requests',                permission: 'leave.view' },
+      { title: 'Attendance Analytics',route: '/attendance/analytics',                  permission: 'attendance.analytics' },
+    ],
+  },
+  {
+    name: 'Payroll Management',
+    icon: DollarSign,
+    permission: 'payroll.view',
+    children: [
+      { title: 'Payroll Record',      route: '/hr/payroll/payroll-view',               permission: 'payroll.view' },
+      { title: 'Generate Payroll',    route: '/hr/payroll/generate',                   permission: 'payroll.generate' },
+    ],
+  },
+  {
+    name: 'Compliance',
+    icon: Shield,
+    permission: 'compliance.view',
+    children: [
+      { title: 'Employee Compliance', route: '/compliance/empCompliance',              permission: 'compliance.view' },
+      { title: 'Document Center',     route: '/compliance/documentCenter',             permission: 'compliance.view_documents' },
+    ],
+  },
+  {
+    name: 'Task Management',
+    icon: ListChecks,
+    permission: 'task.view',
+    children: [
+      { title: 'Task Management',     route: '/task-management/manage-tasks',          permission: 'task.create' },
+      { title: 'Daily Reports',       route: '/task-management/daily-reports',         permission: 'report.view' },
+    ],
+  },
+  
+  {
+    name: 'Customer Connect',
+    icon: Phone,
+    route: '/customer-connect',
+    permission: 'customer.view',
+  },
+  {
+    name: 'Settings',
+    icon: Settings,
+    permission: 'settings.profile',
+    children: [
+      { title: 'Profile Management',  route: '/settings/profile',                      permission: 'settings.profile' },
+      { title: 'My Attendance',       route: '/hr/attendance/my-attendance',           permission: 'attendance.my' },
+      { title: 'Leave Request',       route: '/leave-request/leave-request',           permission: 'leave.request' },
+      { title: 'Add Position',        route: '/settings/position-management',          permission: 'settings.position_manage' },
+      { title: 'Leave Requests',      route: '/leave-request/leave-request',           permission: 'settings.leave_requests' },
+      { title: 'Payslip & Documents', route: '/payslip/payslip-lists',                 permission: 'payslip.view' },
+      { title: 'Manage Tasks',        route: '/task-management/user-task',             permission: 'task.my' },
+      { title: 'Employee Types',      route: '/settings/employee-types',               permission: 'settings.employee_types_manage' },
+      { title: 'Bot Settings',        route: '/settings/bot-settings',                 permission: 'settings.bot' },
+    ],
+  },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function Sidebar({ user: propUser }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [user, setUser] = useState(propUser || null);
-  const [loading, setLoading] = useState(!propUser); // Only loading if no propUser
-  const [userStatus, setUserStatus] = useState({
-    verified: propUser?.verified === "verified" || false,
-    formSubmitted: propUser?.form_submitted || false,
-  });
+  const [loading, setLoading] = useState(true);
+  const [userStatus, setUserStatus] = useState({ verified: false, formSubmitted: false });
+  const [permissions, setPermissions] = useState(new Set());
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  const [openModules, setOpenModules] = useState({});
 
-  // Helper function to check if path is active
   const isActivePath = (path) => {
-    if (path === '/dashboard') {
-      return router.pathname === '/dashboard';
-    }
-    // Exact match for specific paths to avoid conflicts
-    if (path === '/hr/attendance') {
-      return router.pathname === '/hr/attendance';
-    }
-    return router.pathname.startsWith(path);
+    return router.pathname === path;
   };
 
-  // Helper function to check if dropdown should be open based on active path
-  const shouldDropdownBeOpen = useCallback((paths) => {
-    return paths.some(path => isActivePath(path));
-  }, [router.pathname]);
+  const canSee = useCallback(
+    (permission) => {
+      if (!permission) return true;
+      if (isSuperAdminUser) return true;
+      return permissions.has(permission);
+    },
+    [isSuperAdminUser, permissions]
+  );
 
- useEffect(() => {
-  const initUser = async () => {
-    try {
-      if (propUser) {
-        // User already provided, no need to fetch
-        setUser(propUser);
-        setUserStatus({
-          verified: propUser.verified === "verified",
-          formSubmitted: propUser.form_submitted || false,
-        });
-        setLoading(false);
-      } else {
-        // Only fetch if no propUser provided
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData.user);
+  // ── Fetch user + permissions ──────────────────────────────────────────────
+  useEffect(() => {
+    const init = async () => {
+      try {
+        let userData = propUser;
+        if (!propUser) {
+          const res = await fetch('/api/auth/me');
+          if (res.ok) {
+            const json = await res.json();
+            userData = json.user;
+          }
+        }
+        if (userData) {
+          setUser(userData);
           setUserStatus({
-            verified: userData.user?.verified === "verified",
-            formSubmitted: userData.user?.form_submitted || false,
+            verified: userData.verified === 'verified',
+            formSubmitted: userData.form_submitted || false,
           });
         }
+
+        const sbRes = await fetch('/api/sidebar');
+        if (sbRes.ok) {
+          const data = await sbRes.json();
+          setIsSuperAdminUser(data.isSuperAdmin);
+          setPermissions(new Set(data.permissions));
+        }
+      } catch (err) {
+        console.error('Sidebar init failed:', err);
+      } finally {
         setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch user:", error);
-      setLoading(false);
-    }
-  };
+    };
+    init();
+  }, [propUser]);
 
-  initUser();
-}, [propUser]);
+  // ── Auto-open dropdowns ───────────────────────────────────────────────────
+  useEffect(() => {
+    const next = {};
+    for (const item of SIDEBAR_STRUCTURE) {
+      if (!item.children) continue;
+      const routes = item.children.map((c) => c.route);
+      next[item.name] = routes.some((r) => isActivePath(r));
+    }
+    setOpenModules(next);
+  }, [router.pathname]);
+
+  // ── Screen size ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsCollapsed(mobile);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout");
-      router.push("/");
-    } catch (error) {
-      console.error("Logout failed:", error);
+      await fetch('/api/auth/logout');
+      router.push('/');
+    } catch (err) {
+      console.error('Logout failed:', err);
     }
   };
 
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) {
-        setIsCollapsed(true);
-      } else {
-        setIsCollapsed(false);
-      }
-    };
+  const role = user?.role?.toLowerCase() || 'hr';
+  const isAccessEnabled =
+    isSuperAdminUser ||
+    role === 'superadmin' ||
+    (userStatus.verified && userStatus.formSubmitted);
 
-    checkScreenSize();
-    window.addEventListener("resize", checkScreenSize);
-    return () => window.removeEventListener("resize", checkScreenSize);
-  }, []);
-  const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const [payrollOpen, setPayrollOpen] = useState(false);
-  const [complianceOpen, setComplianceOpen] = useState(false);
-  const [performanceOpen, setPerformanceOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [employeeOpen, setEmployeeOpen] = useState(false);
-  const [taskManagementOpen, setTaskManagementOpen] = useState(false);
-
-  // Auto-open dropdowns based on current path
-  useEffect(() => {
-    setEmployeeOpen(shouldDropdownBeOpen(['/registerEmployee', '/employeeList']));
-    setAttendanceOpen(shouldDropdownBeOpen(['/hr/attendance', '/hr/view-leave-requests', '/attendance/analytics']) && !router.pathname.startsWith('/hr/attendance/my-attendance'));
-    setPayrollOpen(shouldDropdownBeOpen(['/hr/payroll']));
-    setComplianceOpen(shouldDropdownBeOpen(['/compliance']));
-    setTaskManagementOpen(shouldDropdownBeOpen(['/task-management']) && !router.pathname.startsWith('/task-management/user-task'));
-    setSettingsOpen(shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task']));
-  }, [router.pathname, shouldDropdownBeOpen]);
-  const [checkedIn, setCheckedIn] = useState(false);
-
-  const role = user?.role?.toLowerCase() || "hr";
-  const isSuperAdmin = role === "superadmin";
-  const isAccessEnabled = isSuperAdmin || (userStatus.verified && userStatus.formSubmitted);
-  // console.log("User Role:", role, "Is Super Admin:", isSuperAdmin, "Access Enabled:", isAccessEnabled);
-
-  // Show loading skeleton while user data is being fetched
   if (loading) {
     return (
-      <div
-        className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${
-          isCollapsed ? "w-16" : "w-72"
-        } ${isMobile && !isCollapsed ? "absolute z-50 h-full" : ""}`}
-      >
-        {/* Header Skeleton */}
+      <div className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-72'}`}>
         <div className="p-4 border-b border-gray-700">
           <div className="flex items-center justify-between">
-            {!isCollapsed && <div className="h-8 bg-gray-700 rounded w-32 animate-pulse"></div>}
-            <div className="h-8 w-8 bg-gray-700 rounded animate-pulse"></div>
+            {!isCollapsed && <div className="h-8 bg-gray-700 rounded w-32 animate-pulse" />}
+            <div className="h-8 w-8 bg-gray-700 rounded animate-pulse" />
           </div>
         </div>
-        
-        {/* Menu Items Skeleton */}
-        <div className="p-4">
-          <div className="space-y-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-10 bg-gray-700 rounded animate-pulse"></div>
-            ))}
-          </div>
+        <div className="p-4 space-y-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-10 bg-gray-700 rounded animate-pulse" />
+          ))}
         </div>
       </div>
     );
   }
 
-  const toggleAttendanceMenu = () => setAttendanceOpen(!attendanceOpen);
-  const togglePayrollMenu = () => setPayrollOpen(!payrollOpen);
-  const toggleComplianceMenu = () => setComplianceOpen(!complianceOpen);
-  const togglePerformanceMenu = () => setPerformanceOpen(!performanceOpen);
-  const toggleSettingsMenu = () => setSettingsOpen(!settingsOpen);
-  const toggleEmployeeMenu = () => setEmployeeOpen(!employeeOpen);
-  const toggleTaskManagementMenu = () => setTaskManagementOpen(!taskManagementOpen);
-  const hoverColor =
-    role === "superadmin"
-      ? "hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600"
-      : role === "admin"
-      ? "hover:bg-purple-600"
-      : "hover:bg-blue-600"; // hr
+  // ── Render flat nav item ──────────────────────────────────────────────────
+  const renderFlat = (item) => {
+    if (!canSee(item.permission)) return null;
+    const canAccess = isAccessEnabled || item.name === 'Dashboard';
+    const Icon = item.icon || Settings;
 
-  const navItems = [
-    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, allowUnverified: true },
-    { name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck, allowUnverified: false },
-  ];
-
-  // Memoize access control to prevent recalculation
-  const getItemAccess = (allowUnverified = false) => {
-    return isAccessEnabled || allowUnverified;
-  };
-
-  const renderNavItem = (item) => {
-    const IconComponent = item.icon;
-    const canAccess = getItemAccess(item.allowUnverified);
-    
-    if (canAccess) {
+    if (!canAccess) {
       return (
-        <Link href={item.path} key={item.name}>
+        <li key={item.name}>
           <div
-            className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
-              isActivePath(item.path)
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-800 hover:bg-indigo-600'
-            }`}
-            title={isCollapsed ? item.name : ""}
+            className="w-full px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
+            title={isCollapsed ? `${item.name} (Locked)` : 'Complete verification to access'}
           >
-            <IconComponent size={18} className="flex-shrink-0" />
-            {!isCollapsed && (
-              <span className="text-sm font-medium">{item.name}</span>
-            )}
+            <Icon size={18} className="flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm font-medium">{item.name} 🔒</span>}
           </div>
-        </Link>
-      );
-    } else {
-      return (
-        <div
-          key={item.name}
-          className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
-          title={isCollapsed ? `${item.name} (Locked)` : "Complete verification and form submission to access"}
-        >
-          <IconComponent size={18} className="flex-shrink-0" />
-          {!isCollapsed && (
-            <span className="text-sm font-medium">
-              {item.name} <span className="ml-2 text-xs">(🔒)</span>
-            </span>
-          )}
-        </div>
+        </li>
       );
     }
+
+    return (
+      <li key={item.name}>
+        <Link href={item.route}>
+          <div
+            className={`w-full px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
+              isActivePath(item.route) ? 'bg-indigo-600 text-white' : 'bg-gray-800 hover:bg-indigo-600'
+            }`}
+            title={isCollapsed ? item.name : ''}
+          >
+            <Icon size={18} className="flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm font-medium">{item.name}</span>}
+          </div>
+        </Link>
+      </li>
+    );
   };
 
-  const employeeSubItems = [
-    { name: "Register Employee", path: "/registerEmployee" },
-    { name: "Employees List", path: "/employeeList" },
-  ];
+  // ── Render dropdown module ────────────────────────────────────────────────
+  const renderDropdown = (item) => {
+    const Icon = item.icon || Settings;
+    // Filter children by permission
+    const visibleChildren = item.children.filter((c) => canSee(c.permission));
+    if (visibleChildren.length === 0) return null;
 
-  const attendanceSubItems = [
-    { name: "Attendance", path: "/hr/attendance" },
-    { name: "Leave Management", path: "/hr/view-leave-requests" },
-    //...(role === "hr"
-    //  ? [{ name: "My Leave Requests", path: "/hr/leave-request" }]
-    //  : []),
-    { name: "Attendance Analytics", path: "/attendance/analytics" },
-  ];
+    const isOpen = openModules[item.name] || false;
+    const toggle = () => setOpenModules((prev) => ({ ...prev, [item.name]: !prev[item.name] }));
+    const canAccess = isAccessEnabled;
+    const isModuleActive = visibleChildren.some((c) => isActivePath(c.route));
 
-  const payrollSubItems = [
-    { name: "Payroll Records", path: "/hr/payroll/payroll-view" },
-    { name: "Generate Payroll", path: "/hr/payroll/generate" },
-  ];
+    return (
+      <li key={item.name}>
+        <button
+          onClick={canAccess ? (isCollapsed ? () => router.push(visibleChildren[0].route) : toggle) : undefined}
+          disabled={!canAccess}
+          className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
+            canAccess
+              ? isModuleActive
+                ? 'bg-indigo-600 text-white cursor-pointer'
+                : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer'
+              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+          }`}
+          title={isCollapsed ? item.name : ''}
+        >
+          <div className="flex items-center gap-3">
+            <Icon size={18} className="flex-shrink-0" />
+            {!isCollapsed && (
+              <span className="text-sm font-medium">
+                {item.name}
+                {!canAccess && ' 🔒'}
+              </span>
+            )}
+          </div>
+          {!isCollapsed && canAccess && (isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+        </button>
 
-  const complianceSubItems = [
-    { name: "Employee Compliance", path: "/compliance/empCompliance" },
-    //{ name: "Statutory Compliance", path: "/compliance/statutoryCompliance" },
-    { name: "Document Center", path: "/compliance/documentCenter" },
-    //{ name: "Policy Acknowledgements", path: "/compliance/policyAcknowledge" },
-    //{ name: "Audit Logs", path: "/compliance/auditLog" },
-    //{ name: "Reports & Filings", path: "/compliance/ReportFillings" },
-  ];
+        {!isCollapsed && isOpen && canAccess && (
+          <ul className="pl-6 pt-2 space-y-2">
+            {visibleChildren.map((child) => (
+              <li key={child.route}>
+                <Link href={child.route}>
+                  <span
+                    className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                      isActivePath(child.route)
+                        ? 'bg-indigo-500 text-white'
+                        : 'bg-gray-700 hover:bg-indigo-500'
+                    }`}
+                  >
+                    {child.title}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  };
 
-  const taskManagementSubItems = [
-    { name: "Task Management", path: "/task-management/manage-tasks" },
-    { name: "Daily Reports", path: "/task-management/daily-reports" },
-  ];
   return (
     <div
       className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${
-        isCollapsed ? "w-16" : "w-72"
-      } ${isMobile && !isCollapsed ? "absolute z-50 h-full" : ""}`}
+        isCollapsed ? 'w-16' : 'w-72'
+      } ${isMobile && !isCollapsed ? 'absolute z-50 h-full' : ''}`}
     >
-      {/* Header with Toggle and Notifications */}
+      {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           {!isCollapsed && <h2 className="text-2xl font-bold">HRMS Panel</h2>}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
-            >
-              {isCollapsed ? <Menu size={20} /> : <X size={20} />}
-            </button>
-          </div>
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+          >
+            {isCollapsed ? <Menu size={20} /> : <X size={20} />}
+          </button>
         </div>
       </div>
 
       <div className="p-4">
         <ul className="space-y-4">
-          {navItems.map((item) => (
-            <li key={item.name}>
-              {renderNavItem(item)}
-            </li>
-          ))}
-
-          {/* Employee Management Dropdown */}
-          <li>
-            <button
-              onClick={
-                getItemAccess()
-                  ? (isCollapsed
-                    ? () => router.push("/employeeList")
-                      : toggleEmployeeMenu)
-                  : undefined
-              }
-              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                getItemAccess()
-                  ? (shouldDropdownBeOpen(['/registerEmployee', '/employeeList'])
-                    ? 'bg-indigo-600 text-white cursor-pointer'
-                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-              }`}
-              title={isCollapsed ? (getItemAccess() ? "Employee Management" : "Employee Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
-              disabled={!getItemAccess()}
-            >
-              <div className="flex items-center gap-3">
-                <Users size={18} className="flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium">
-                    Employee Management
-                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
-                  </span>
-                )}
-              </div>
-              {!isCollapsed &&
-                (employeeOpen ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                ))}
-            </button>
-            {!isCollapsed && employeeOpen && getItemAccess() && (
-              <ul className="pl-6 pt-2 space-y-2">
-                {employeeSubItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link href={subItem.path}>
-                      <span
-                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          isActivePath(subItem.path)
-                            ? 'bg-indigo-500 text-white'
-                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
-                        }`}
-                      >
-                        {subItem.name}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-
-          {/* Attendance Dropdown */}
-          <li>
-            <button
-              onClick={
-                getItemAccess()
-                  ? (isCollapsed
-                    ? () => router.push("/hr/attendance")
-                      : toggleAttendanceMenu)
-                  : undefined
-              }
-              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                getItemAccess()
-                  ? (shouldDropdownBeOpen(['/hr/attendance', '/hr/view-leave-requests', '/attendance/analytics'])
-                    ? 'bg-indigo-600 text-white cursor-pointer'
-                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-              }`}
-              title={isCollapsed ? (getItemAccess() ? "Attendance & Leave" : "Attendance & Leave (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
-              disabled={!getItemAccess()}
-            >
-              <div className="flex items-center gap-3">
-                <Clock size={18} className="flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium">
-                    Attendance & Leave
-                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
-                  </span>
-                )}
-              </div>
-              {!isCollapsed && getItemAccess() &&
-                (attendanceOpen ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                ))}
-            </button>
-            {!isCollapsed && attendanceOpen && getItemAccess() && (
-              <ul className="pl-6 pt-2 space-y-2">
-                {attendanceSubItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link href={subItem.path}>
-                      <span
-                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          isActivePath(subItem.path)
-                            ? 'bg-indigo-500 text-white'
-                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
-                        }`}
-                      >
-                        {subItem.name}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-
-          {/* Payroll Dropdown */}
-          <li>
-            <button
-              onClick={
-                getItemAccess()
-                  ? (isCollapsed
-                    ? () => router.push("/hr/payroll/payroll-view")
-                      : togglePayrollMenu)
-                  : undefined
-              }
-              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                getItemAccess()
-                  ? (shouldDropdownBeOpen(['/hr/payroll'])
-                    ? 'bg-indigo-600 text-white cursor-pointer'
-                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-              }`}
-              title={isCollapsed ? (getItemAccess() ? "Payroll Management" : "Payroll Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
-              disabled={!getItemAccess()}
-            >
-              <div className="flex items-center gap-3">
-                <DollarSign size={18} className="flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium">
-                    Payroll Management
-                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
-                  </span>
-                )}
-              </div>
-              {!isCollapsed && getItemAccess() &&
-                (payrollOpen ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                ))}
-            </button>
-            {!isCollapsed && payrollOpen && getItemAccess() && (
-              <ul className="pl-6 pt-2 space-y-2">
-                {payrollSubItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link href={subItem.path}>
-                      <span
-                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          isActivePath(subItem.path)
-                            ? 'bg-indigo-500 text-white'
-                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
-                        }`}
-                      >
-                        {subItem.name}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-
-          {/* Compliance Dropdown */}
-          <li>
-            <button
-              onClick={
-                getItemAccess()
-                  ? (isCollapsed
-                    ? () => router.push("/compliance/empCompliance")
-                      : toggleComplianceMenu)
-                  : undefined
-              }
-              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                getItemAccess()
-                  ? (shouldDropdownBeOpen(['/compliance'])
-                    ? 'bg-indigo-600 text-white cursor-pointer'
-                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-              }`}
-              title={isCollapsed ? (getItemAccess() ? "Compliance Management" : "Compliance Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
-              disabled={!getItemAccess()}
-            >
-              <div className="flex items-center gap-3">
-                <Shield size={18} className="flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium">
-                    Compliance
-                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
-                  </span>
-                )}
-              </div>
-              {!isCollapsed && getItemAccess() &&
-                (complianceOpen ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                ))}
-            </button>
-            {!isCollapsed && complianceOpen && getItemAccess() && (
-              <ul className="pl-6 pt-2 space-y-2">
-                {complianceSubItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link href={subItem.path}>
-                      <span
-                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          isActivePath(subItem.path)
-                            ? 'bg-indigo-500 text-white'
-                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
-                        }`}
-                      >
-                        {subItem.name}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-
-          {/* Task Management Dropdown */}
-          <li>
-            <button
-              onClick={
-                getItemAccess()
-                  ? (isCollapsed
-                    ? () => router.push("/task-management")
-                      : toggleTaskManagementMenu)
-                  : undefined
-              }
-              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-                getItemAccess()
-                  ? (shouldDropdownBeOpen(['/task-management']) && !router.pathname.startsWith('/task-management/user-task')
-                    ? 'bg-indigo-600 text-white cursor-pointer'
-                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-              }`}
-              title={isCollapsed ? (getItemAccess() ? "Task Management" : "Task Management (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
-              disabled={!getItemAccess()}
-            >
-              <div className="flex items-center gap-3">
-                <ListChecks size={19} className="flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium">
-                    Task Management
-                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
-                  </span>
-                )}
-              </div>
-              {!isCollapsed && getItemAccess() &&
-                (taskManagementOpen ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                ))}
-            </button>
-            {!isCollapsed && taskManagementOpen && getItemAccess() && (
-              <ul className="pl-6 pt-2 space-y-2">
-                {taskManagementSubItems.map((subItem) => (
-                  <li key={subItem.name}>
-                    <Link href={subItem.path}>
-                      <span
-                        className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          isActivePath(subItem.path)
-                            ? 'bg-indigo-500 text-white'
-                            : `bg-gray-700 ${hoverColor.replace("600", "500")}`
-                        }`}
-                      >
-                        {subItem.name}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-
-          {/* Customer Connect */}
-          <li>
-            {getItemAccess() ? (
-              <Link href="/customer-connect">
-                <div
-                  className={`w-full text-left px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
-                    isActivePath('/customer-connect')
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-800 hover:bg-indigo-600'
-                  }`}
-                  title={isCollapsed ? "Customer Connect" : ""}
-                >
-                  <Phone size={18} className="flex-shrink-0" />
-                  {!isCollapsed && (
-                    <span className="text-sm font-medium">Customer Connect</span>
-                  )}
-                </div>
-              </Link>
-            ) : (
-              <div
-                className="w-full text-left px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
-                title={isCollapsed ? "Customer Connect (Locked)" : "Complete verification and form submission to access"}
-              >
-                <Phone size={18} className="flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium">
-                    Customer Connect <span className="ml-2 text-xs">(🔒)</span>
-                  </span>
-                )}
-              </div>
-            )}
-          </li>
-
-          {/* Settings Dropdown */}
-          <li>
-            <button
-              onClick={
-                isCollapsed
-                  ? () => router.push("/settings/profile")
-                  : toggleSettingsMenu
-              }
-              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition cursor-pointer ${
-                shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task'])
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-800 hover:bg-indigo-600'
-              }`}
-              title={isCollapsed ? "Settings" : ""}
-            >
-              <div className="flex items-center gap-3">
-                <Settings size={18} className="flex-shrink-0" />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium">
-                    Accounts & Settings
-                  </span>
-                )}
-              </div>
-              {!isCollapsed &&
-                (settingsOpen ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                ))}
-            </button>
-            {!isCollapsed && settingsOpen && (
-              <ul className="pl-6 pt-2 space-y-2">
-                <li>
-                  <Link href="/settings/profile">
-                    <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                      isActivePath('/settings/profile')
-                        ? 'bg-indigo-500 text-white'
-                        : 'bg-gray-700 hover:bg-indigo-500'
-                    }`}>
-                      Profile Management
-                    </span>
-                  </Link>
-                </li>
-
-                {/* Other settings - only accessible if verified and form submitted */}
-                {getItemAccess() && (
-                  <>
-                    {/* Users own attendance */}
-                    {["hr", "admin", "superadmin"].includes(role) && (
-                      <li>
-                        <Link href="/hr/attendance/my-attendance">
-                          <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                            isActivePath('/hr/attendance/my-attendance')
-                              ? 'bg-indigo-500 text-white'
-                              : 'bg-gray-700 hover:bg-indigo-500'
-                          }`}>
-                            My Attendance
-                          </span>
-                        </Link>
-                      </li>
-                    )}
-                    {/* Bot Settings - Only for superadmin */}
-                    {role === "superadmin" && (
-                      <li>
-                        <Link href="/settings/bot-settings">
-                          <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                            router.pathname === '/settings/bot-settings'
-                              ? 'bg-indigo-500 text-white'
-                              : 'bg-gray-700 hover:bg-indigo-500'
-                          }`}>
-                            Bot Settings
-                          </span>
-                        </Link>
-                      </li>
-                    )}
-                    <li>
-                      <Link href="/settings/position-management">
-                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          router.pathname === '/settings/position-management'
-                            ? 'bg-indigo-500 text-white'
-                            : 'bg-gray-700 hover:bg-indigo-500'
-                        }`}>
-                          Add Position
-                        </span>
-                      </Link>
-                    </li>
-                    {role !== "superadmin" && (
-                      <li>
-                        <Link href="/leave-request/leave-request">
-                          <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                            isActivePath('/leave-request')
-                              ? 'bg-indigo-500 text-white'
-                              : 'bg-gray-700 hover:bg-indigo-500'
-                          }`}>
-                            Leave Requests
-                          </span>
-                        </Link>
-                      </li>
-                    )}
-                    <li>
-                      <Link href="/payslip/payslip-lists">
-                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          isActivePath('/payslip')
-                            ? 'bg-indigo-500 text-white'
-                            : 'bg-gray-700 hover:bg-indigo-500'
-                        }`}>
-                          Payslip & Documents
-                        </span>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/task-management/user-task">
-                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                          isActivePath('/task-management/user-task')
-                            ? 'bg-indigo-500 text-white'
-                            : 'bg-gray-700 hover:bg-indigo-500'
-                        }`}>
-                          Manage Tasks
-                        </span>
-                      </Link>
-                    </li>
-                  </>
-                )}
-
-                {/* Show locked items for non-verified users */}
-                {!getItemAccess() && (
-                  <>
-                    <li>
-                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
-                        My Attendance (🔒)
-                      </span>
-                    </li>
-                    <li>
-                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
-                        Bot Settings (🔒)
-                      </span>
-                    </li>
-                    <li>
-                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
-                        Add Position (🔒)
-                      </span>
-                    </li>
-                    <li>
-                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
-                        Leave Requests (🔒)
-                      </span>
-                    </li>
-                    <li>
-                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
-                        Payslip & Documents (🔒)
-                      </span>
-                    </li>
-                    <li>
-                      <span className="block text-sm px-3 py-2 bg-gray-600 rounded-lg text-gray-400 cursor-not-allowed">
-                        Manage Tasks (🔒)
-                      </span>
-                    </li>
-                  </>
-                )}
-              </ul>
-            )}
-          </li>
+          {SIDEBAR_STRUCTURE.map((item) =>
+            item.children ? renderDropdown(item) : renderFlat(item)
+          )}
 
           {/* Logout */}
           <li>
             <button
               onClick={handleLogout}
               className="w-full text-left px-3 py-2.5 bg-red-600 hover:bg-red-700 transition rounded-lg mt-6 cursor-pointer flex items-center gap-3"
-              title={isCollapsed ? "Logout" : ""}
+              title={isCollapsed ? 'Logout' : ''}
             >
               <LogOut size={18} className="flex-shrink-0" />
-              {!isCollapsed && (
-                <span className="text-sm font-medium">Logout</span>
-              )}
+              {!isCollapsed && <span className="text-sm font-medium">Logout</span>}
             </button>
           </li>
         </ul>

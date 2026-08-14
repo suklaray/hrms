@@ -19,7 +19,7 @@ export default function EmpPayslip() {
         const userRes = await fetch("/api/auth/employee/me", {
           credentials: "include",
         });
-        if (!userRes.ok) return router.push("/employee/login");
+        if (!userRes.ok) return router.push("/login");
 
         const { user } = await userRes.json();
         setUser(user);

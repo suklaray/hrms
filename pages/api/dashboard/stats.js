@@ -1,7 +1,8 @@
 import prisma from '@/lib/prisma';
 import { getAccessibleRoles } from '@/lib/roleBasedAccess';
 import { withSessionTimeout } from '@/lib/authMiddleware';
-
+import { withPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -10,9 +11,9 @@ async function handler(req, res) {
   try {
     const decoded = req.user; // User info from middleware
     
-    if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+    // if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
+    //   return res.status(403).json({ message: 'Access denied' });
+    // }
 
     // Define role-based filtering
     const roleFilter = getAccessibleRoles(decoded.role);
@@ -163,5 +164,4 @@ async function handler(req, res) {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
-
-export default withSessionTimeout(handler);
+export default withSessionTimeout(withPermission(PERMISSION_KEYS.DASHBOARD_VIEW, handler));

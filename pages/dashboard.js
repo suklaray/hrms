@@ -2,44 +2,47 @@ import SideBar from "@/Components/SideBar";
 import ProfileSection from "@/Components/ProfileSection";
 import CalendarSection from "@/Components/CalendarSection";
 import RegularizationCard from "@/Components/RegularizationCard";
+import RegularizationModal from "@/Components/RegularizationModal";
 import Head from "next/head";
-
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { Users, UserCheck, Clock, FileText, Calendar, User } from "lucide-react";
+import { Users, UserCheck, Clock, FileText, User } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
-import RegularizationModal from "@/Components/RegularizationModal";
-
+import { toast } from "react-toastify";
+import EmployeeDashboard from "./employee/dashboard";
+import { checkPermission, getUserPermissions, isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 export async function getServerSideProps(context) {
   const { req } = context;
-  const token = req?.cookies?.token || req?.cookies?.employeeToken || "";
+  const token = req?.cookies?.token || "";
   const user = getUserFromToken(token);
 
-  if (!user || !["superadmin", "admin", "hr"].includes(user.role)) {
+  if (!user) {
+    return { redirect: { destination: "/login", permanent: false } };
+  }
+  const hasDashboardAccess = await checkPermission(
+    user,
+    PERMISSION_KEYS.DASHBOARD_VIEW
+  );
+
+  if (!hasDashboardAccess) {
     return {
       redirect: {
-        destination: "/login",
+        destination: "/403",
         permanent: false,
       },
     };
   }
-
+  const permissions = await getUserPermissions(user.roleId);
   let userData = null;
   try {
     userData = await prisma.users.findUnique({
-      where: { empid: user.empid || user.id },
-      select: {
-        empid: true,
-        name: true,
-        email: true,
-        profile_photo: true,
-        position: true,
-        role: true
-      }
+      where: { empid: user.empid },
+      select: { empid: true, name: true, email: true, profile_photo: true, position: true, role: true ,roleId: true, rbacRole:{select:{id:true,name:true}}},
     });
-  } catch (error) {
-    console.error('Error fetching user data:', error);
+  } catch (e) {
+    toast.error("Dashboard getServerSideProps error:", e);
   }
 
   return {
@@ -53,302 +56,196 @@ export async function getServerSideProps(context) {
         profile_photo: userData?.profile_photo || null,
         position: userData?.position || null,
         verified: user.verified || null,
-        form_submitted: user.form_submitted || null,
+        form_submitted: user.form_submitted || false,
+        roleId: user.roleId || null,
+        rbacRole: userData?.rbacRole || null,
       },
+      permissions: Array.from(permissions),
     },
   };
 }
-export default function Dashboard({ user }) {
+
+// ─── HR/Admin dashboard view ──────────────────────────────────────────────────
+function HRDashboardView({ user, permissions }) {
   const router = useRouter();
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
   const [missedCheckout, setMissedCheckout] = useState(null);
   const [showRegModal, setShowRegModal] = useState(false);
+  const isAccessEnabled = user.role === "superadmin" || (user.verified === "verified" && user.form_submitted === true);
+  const can = (permission) => {
+    if (user.role === "superadmin") return true;
 
-  const isAccessEnabled = user.role === 'superadmin' || (user.verified === 'verified' && user.form_submitted === true);
-
+    return permissions.includes(permission);
+  };
   useEffect(() => {
-    setMounted(true);
-    fetchStats();
-    fetchRegularizationStats();
+    fetch("/api/dashboard/stats").then(r => r.ok ? r.json() : null).then(d => setStats(d)).catch(() => { toast.error("Failed to fetch dashboard stats"); });
+    fetch("/api/attendance/check-missed-checkout", { credentials: "include" })
+      .then(r => r.ok ? r.json() : null).then(d => { if (d?.hasMissedCheckout) setMissedCheckout(d.attendance); }).catch(() => { toast.error("Failed to check missed checkout"); });
   }, []);
-  const fetchRegularizationStats = async () => {
-          // Check missed checkout
-        try {
-          const missedRes = await fetch('/api/attendance/check-missed-checkout', { credentials: 'include' });
-          if (missedRes.ok) {
-            const missedData = await missedRes.json();
-            if (missedData.hasMissedCheckout) setMissedCheckout(missedData.attendance);
-          }
-        } catch (e) { /* silent */ }
+  const dashboardCards = [
+    {
+      label: "Total Employees",
+      value: stats?.totalEmployees,
+      icon: Users,
+      color: "bg-blue-500",
+      route: "/employeeList",
+      permission: PERMISSION_KEYS.EMPLOYEE_VIEW,
+    },
+    {
+      label: "Currently Logged In",
+      value: stats?.activeEmployees,
+      icon: UserCheck,
+      color: "bg-green-500",
+      route: "/hr/attendance",
+      permission: PERMISSION_KEYS.ATTENDANCE_VIEW,
+    },
+    {
+      label: "Pending Leaves",
+      value: stats?.pendingLeaves,
+      icon: Clock,
+      color: "bg-orange-500",
+      route: "/hr/view-leave-requests",
+      permission: PERMISSION_KEYS.LEAVE_VIEW,
+    },
+    {
+      label: "Total Candidates",
+      value: stats?.totalCandidates,
+      icon: FileText,
+      color: "bg-purple-500",
+      route: "/Recruitment/recruitment",
+      permission: PERMISSION_KEYS.RECRUITMENT_VIEW,
+    },
+  ];
+  const quickActions = [
+    {
+      label: "Add Employee",
+      icon: Users,
+      color: "blue",
+      route: "/registerEmployee",
+      permission: PERMISSION_KEYS.EMPLOYEE_CREATE,
+    },
+    {
+      label: "View Attendance",
+      icon: Clock,
+      color: "green",
+      route: "/hr/attendance",
+      permission: PERMISSION_KEYS.ATTENDANCE_VIEW,
+    },
+    {
+      label: "Generate Payroll",
+      icon: FileText,
+      color: "purple",
+      route: "/hr/payroll/generate",
+      permission: PERMISSION_KEYS.PAYROLL_GENERATE,
+    },
+    {
+      label: "Recruitment",
+      icon: UserCheck,
+      color: "orange",
+      route: "/Recruitment/recruitment",
+      permission: PERMISSION_KEYS.RECRUITMENT_VIEW,
+    },
+  ];
+  return (
+    <div className="p-6">
+      {isAccessEnabled ? (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <ProfileSection user={user} />
+            <RegularizationCard missedCheckout={missedCheckout} onOpenModal={() => setShowRegModal(true)} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {dashboardCards
+              .filter((card) => can(card.permission))
+              .map(({ label, value, icon: Icon, color, route }) => (
+                <div
+                  key={label}
+                  onClick={() => router.push(route)}
+                  className="bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex items-center">
+                    <div className={`p-3 rounded-full ${color} text-white`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
 
-  }
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/dashboard/stats');
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      } else {
-        console.error('Stats API failed:', response.status);
-        setStats(null);
-      }
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+                    <div className="ml-4">
+                      <p className="text-md font-medium text-gray-600">
+                        {label}
+                      </p>
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout");
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+                      <p className="text-sm font-semibold text-gray-900">
+                        {stats ? (value || "—") : "Loading..."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {can(PERMISSION_KEYS.CALENDAR_VIEW) && (
+              <CalendarSection />
+            )}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200"><h3 className="text-lg font-medium text-gray-900">Quick Actions</h3></div>
+              <div className="p-6 space-y-3">
+                {quickActions
+                  .filter((action) => can(action.permission))
+                  .map(({ label, icon: Icon, color, route }) => (
+                    <button
+                      key={label}
+                      onClick={() => router.push(route)}
+                      className={`w-full text-left p-4 bg-${color}-50 hover:bg-${color}-100 rounded-lg transition-colors cursor-pointer`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className={`w-5 h-5 text-${color}-600`} />
+                        <span className={`font-medium text-${color}-900`}>
+                          {label}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex justify-center items-center min-h-[60vh]">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><User className="w-8 h-8 text-yellow-600" /></div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Complete Your Profile</h2>
+            <p className="text-gray-600 mb-6">Please complete your profile verification and form submission to access all HRMS features.</p>
+            <button onClick={() => router.push("/settings/profile")} className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium">Complete Profile Setup</button>
+          </div>
+        </div>
+      )}
+      {showRegModal && missedCheckout &&
+        can(PERMISSION_KEYS.ATTENDANCE_REGULARIZE) && (
+          <RegularizationModal
+            attendance={missedCheckout}
+            onClose={() => setShowRegModal(false)}
+            onSubmitted={() => {
+              setShowRegModal(false);
+              setMissedCheckout(null);
+            }}
+          />
+        )}
+    </div>
+  );
+}
+
+// ─── Main unified dashboard ───────────────────────────────────────────────────
+export default function Dashboard({ user, permissions }) {
+  const isEmployee = user.role === "employee" || user?.rbacRole?.name?.toLowerCase() === "employee";
 
   return (
     <>
-      <Head>
-        <title>Dashboard - HRMS</title>
-      </Head>
+      <Head><title>Dashboard - HRMS</title></Head>
       <div className="flex min-h-screen bg-gray-50">
-      <SideBar user={user}/>
-      <div className="flex-1 overflow-auto">
-        <div className="p-6">
-        {isAccessEnabled ? (
-          // Verified User Dashboard
-          <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              <ProfileSection user={user}/>
-              <RegularizationCard missedCheckout={missedCheckout} onOpenModal={() => setShowRegModal(true)}/>
-            </div>        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div 
-            className={`bg-white rounded-lg shadow p-6 transition-shadow ${
-              isAccessEnabled ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-60'
-            }`}
-            onClick={() => {
-              if (isAccessEnabled) {
-                router.push('/employeeList');
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-500 text-white">
-                <Users className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <p className="text-md font-medium text-gray-600">Total Employees</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {stats ? (stats.totalEmployees || 'No employees') : 'Loading...'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            className={`bg-white rounded-lg shadow p-6 transition-shadow ${
-              isAccessEnabled ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-60'
-            }`}
-            onClick={() => {
-              if (isAccessEnabled) {
-                router.push('/hr/attendance');
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-500 text-white">
-                <UserCheck className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <p className="text-md font-medium text-gray-600">Currently Logged In</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {stats ? (stats.activeEmployees || 'None logged in') : 'Loading...'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            className={`bg-white rounded-lg shadow p-6 transition-shadow ${
-              isAccessEnabled ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-60'
-            }`}
-            onClick={() => {
-              if (isAccessEnabled) {
-                router.push('/hr/view-leave-requests');
-              }
-            }}>
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-orange-500 text-white">
-                <Clock className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <p className="text-md font-medium text-gray-600">Pending Leaves</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {stats ? (stats.pendingLeaves || 'No requests') : 'Loading...'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            className={`bg-white rounded-lg shadow p-6 transition-shadow ${
-              isAccessEnabled ? 'cursor-pointer hover:shadow-lg' : 'cursor-not-allowed opacity-60'
-            }`}
-            onClick={() => {
-              if (isAccessEnabled) {
-                router.push('/Recruitment/recruitment');
-              }
-            }}
-          >
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-500 text-white">
-                <FileText className="w-6 h-6" />
-              </div>
-              <div className="ml-4">
-                <p className="text-md font-medium text-gray-600">Total Candidates</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {stats ? (stats.totalCandidates || 'No candidates') : 'Loading...'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-
-          {/* Calendar and Quick Actions Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <CalendarSection />
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-6 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
-              </div>
-              <div className="p-6 space-y-3">
-                {isAccessEnabled ? (
-                  // Verified User Actions
-                  <>
-                    <button
-                      onClick={() => router.push('/registerEmployee')}
-                      className="w-full text-left p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <span className="font-medium text-blue-900">Add Employee</span>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => router.push('/hr/attendance')}
-                      className="w-full text-left p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Clock className="w-5 h-5 text-green-600" />
-                        <span className="font-medium text-green-900">View Attendance</span>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => router.push('/hr/payroll/generate')}
-                      className="w-full text-left p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <FileText className="w-5 h-5 text-purple-600" />
-                        <span className="font-medium text-purple-900">Generate Payroll</span>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => router.push('/Recruitment/recruitment')}
-                      className="w-full text-left p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <UserCheck className="w-5 h-5 text-orange-600" />
-                        <span className="font-medium text-orange-900">Recruitment</span>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => router.push('/compliance/empCompliance')}
-                      className="w-full text-left p-4 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <FileText className="w-5 h-5 text-yellow-600" />
-                        <span className="font-medium text-yellow-900">Employee Compliance</span>
-                      </div>
-                    </button>
-                  </>
-                ) : (
-                  // Unverified User Actions
-                  <>
-                    <div className="w-full text-left p-4 bg-gray-100 rounded-lg opacity-60 cursor-not-allowed">
-                      <div className="flex items-center space-x-3">
-                        <Users className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-500">Add Employee (Locked)</span>
-                      </div>
-                    </div>
-                    <div className="w-full text-left p-4 bg-gray-100 rounded-lg opacity-60 cursor-not-allowed">
-                      <div className="flex items-center space-x-3">
-                        <Clock className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-500">View Attendance (Locked)</span>
-                      </div>
-                    </div>
-                    <div className="w-full text-left p-4 bg-gray-100 rounded-lg opacity-60 cursor-not-allowed">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-500">Generate Payroll (Locked)</span>
-                      </div>
-                    </div>
-                    <div className="w-full text-left p-4 bg-gray-100 rounded-lg opacity-60 cursor-not-allowed">
-                      <div className="flex items-center space-x-3">
-                        <UserCheck className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-500">Recruitment (Locked)</span>
-                      </div>
-                    </div>
-                    <div className="w-full text-left p-4 bg-gray-100 rounded-lg opacity-60 cursor-not-allowed">
-                      <div className="flex items-center space-x-3">
-                        <FileText className="w-5 h-5 text-gray-400" />
-                        <span className="font-medium text-gray-500">Employee Compliance (Locked)</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          </>
-        ) : (
-          // Unverified User - Profile Completion Card
-          <div className="flex justify-center items-center min-h-[60vh]">
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 max-w-md w-full text-center">
-              <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <User className="w-8 h-8 text-yellow-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Complete Your Profile</h2>
-              <p className="text-gray-600 mb-6">
-                Please complete your profile verification and form submission to access all HRMS features.
-              </p>
-              <button
-                onClick={() => router.push('/settings/profile')}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Complete Profile Setup
-              </button>
-            </div>
-          </div>
-        )}
+        <SideBar user={user} />
+        <div className="flex-1 overflow-auto">
+          {isEmployee ? <EmployeeDashboard user={user} permissions={permissions} /> : <HRDashboardView user={user} permissions={permissions} />}
         </div>
       </div>
-    </div>
-{/* Regularization Modal */}
-      {showRegModal && missedCheckout && (
-        <RegularizationModal
-          attendance={missedCheckout}
-          onClose={() => setShowRegModal(false)}
-          onSubmitted={() => { setShowRegModal(false); setMissedCheckout(null); }}
-        />
-      )}
     </>
   );
 }

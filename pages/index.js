@@ -39,13 +39,9 @@
     export default function Home({ isAuthenticated, user }) {
         const handleGetStarted = () => {
         if (isAuthenticated && user) {
-            if (user.role === 'employee') {
-                window.location.href = '/employee/dashboard';
-            } else if (['hr', 'admin', 'superadmin'].includes(user.role)) {
-                window.location.href = '/dashboard';
-            }
+            window.location.href="/dashboard";
         } else {
-            window.location.href = '/employee/login';
+            window.location.href = '/login';
         }
     };
 

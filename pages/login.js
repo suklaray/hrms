@@ -86,10 +86,10 @@ export default function Login() {
                                 <FiMail className="text-gray-500 mr-3" />
                                 <input
                                     className="w-full bg-transparent text-purple-950 focus:outline-none text-center"
-                                    type="email"
+                                    type="text"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="Enter your email"
+                                    placeholder="Enter your email or username"
                                     required
                                     autoComplete="off"
                                     autoCorrect="off"

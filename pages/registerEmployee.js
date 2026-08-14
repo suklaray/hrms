@@ -40,7 +40,8 @@ export default function RegisterEmployee() {
         experience: "",
         employeeType: "",
         duration_months: "",
-        role: "employee"
+        role: "employee",
+        rbacRoleId: ""
     });
     const [generatedPassword, setGeneratedPassword] = useState("");
     const [generatedUsername, setGeneratedUsername] = useState("");
@@ -57,6 +58,7 @@ export default function RegisterEmployee() {
     const [isFormValid, setIsFormValid] = useState(false);
     const [employeeData, setEmployeeData] = useState(null);
     const [positions, setPositions] = useState([]);
+    const [rbacRoles, setRbacRoles] = useState([]);
     const [isResettingForm, setIsResettingForm] = useState(false);
     useEffect(() => {
         setMounted(true);
@@ -74,6 +76,12 @@ export default function RegisterEmployee() {
                 console.error('Error fetching positions:', err);
                 toast.error('Failed to fetch positions');
               })
+        // Fetch RBAC roles (employee types) for assignment
+            axios.get('/api/settings/employee-types')
+              .then((res) => {
+                setRbacRoles(res.data.roles?.filter(r => r.status === 'active') || []);
+              })
+              .catch(() => {}); // non-critical, silently fail
         // Fetch current user's role
         const fetchUserRole = async () => {
             try {
@@ -377,7 +385,8 @@ const handleRegister = async () => {
                 experience: formData.experience,
                 employee_type: formData.employeeType,
                 duration_months: formData.duration_months,
-                role: formData.role
+                role: formData.role,
+                rbacRoleId: formData.rbacRoleId ? parseInt(formData.rbacRoleId) : null
             }),
         });
 
@@ -424,7 +433,8 @@ const handleRegister = async () => {
             experience: "",
             employeeType: "",
             duration_months: "",
-            role: "employee"
+            role: "employee",
+            rbacRoleId: ""
         });
         setErrors({});
         setIsFormValid(false);
@@ -848,6 +858,34 @@ const handleRegister = async () => {
                                             </div>
                                         </div>
                                     </div>
+
+                                {/* RBAC Employee Type */}
+                                {rbacRoles.length > 0 && (
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <Users className="mr-2 text-indigo-500" />
+                                            Employee Type (RBAC Role)
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={formData.rbacRoleId}
+                                                onChange={(e) => handleInputChange('rbacRoleId', e.target.value)}
+                                                className="w-full border-2 p-3 pr-10 rounded-xl focus:outline-none focus:border-indigo-500 appearance-none bg-white border-gray-200"
+                                            >
+                                                <option value="">None (assign later)</option>
+                                                {rbacRoles.map((r) => (
+                                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Controls which features this employee can access</p>
+                                    </div>
+                                )}
 
                             </form>
 

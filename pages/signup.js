@@ -243,7 +243,7 @@ export default function Signup() {
                                     Already have an account? <span className="text-indigo-600">LogIn</span>
                                 </Link>
                                 <br />
-                                <Link href="/employee/login" className="text-gray-700 hover:text-indigo-600 transition-all duration-200">
+                                <Link href="/login" className="text-gray-700 hover:text-indigo-600 transition-all duration-200">
                                     Are You an Employee? <span className="text-indigo-600">Let&rsquo;s LogIn</span>
                                 </Link>
                             </div>
