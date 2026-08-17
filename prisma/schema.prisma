@@ -274,6 +274,7 @@ model users {
   createdTasks     tasks[]                  @relation("TaskCreator")
   assignedTasks    tasks[]                  @relation("TaskAssignee")
   positions        positions[]
+  departments      departments[]
   daily_work_reports daily_work_reports[]
   resubmissionRequests document_resubmission_requests[] @relation("ResubmissionEmployee")
   requestedResubmissions document_resubmission_requests[] @relation("ResubmissionRequestor")
@@ -386,6 +387,22 @@ model positions {
   created_by    String
   created_at    DateTime @default(now())
   users         users    @relation(fields: [created_by], references: [empid])
+  department_id Int?
+  department    departments? @relation(fields: [department_id], references: [id], onDelete: SetNull)
+
+  @@index([created_by])
+  @@index([department_id])
+
+}
+
+model departments {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String?
+  created_by  String
+  created_at  DateTime    @default(now())
+  users       users       @relation(fields: [created_by], references: [empid])
+  positions   positions[]
 
   @@index([created_by])
 }
@@ -493,4 +510,31 @@ enum employees_employee_type {
   Full_time  @map("Full-time")
   Intern
   Contractor
+}
+
+model job_descriptions {
+  id                Int      @id @default(autoincrement())
+  title             String
+  department        String
+  employment_type   String
+  work_mode         String
+  location          String
+  openings          Int
+  experience        String
+  education         String
+  required_skills   String   @db.Text
+  preferred_skills  String?  @db.Text
+  responsibilities  String   @db.Text
+  summary           String   @db.Text
+  salary_min        String?
+  salary_max        String?
+  benefits          String?  @db.Text
+  deadline          DateTime
+  hiring_manager    String
+  interview_process String?  @db.Text
+  keywords          String?
+  status            String   @default("Draft")
+  created_by        String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 }
