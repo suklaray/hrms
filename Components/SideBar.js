@@ -113,6 +113,7 @@ export default function Sidebar({ user: propUser }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [employeeOpen, setEmployeeOpen] = useState(false);
   const [taskManagementOpen, setTaskManagementOpen] = useState(false);
+  const [recruitmentOpen, setRecruitmentOpen] = useState(false);
 
   // Auto-open dropdowns based on current path
   useEffect(() => {
@@ -121,13 +122,14 @@ export default function Sidebar({ user: propUser }) {
     setPayrollOpen(shouldDropdownBeOpen(['/hr/payroll']));
     setComplianceOpen(shouldDropdownBeOpen(['/compliance']));
     setTaskManagementOpen(shouldDropdownBeOpen(['/task-management']) && !router.pathname.startsWith('/task-management/user-task'));
-    setSettingsOpen(shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task']));
+    setRecruitmentOpen(shouldDropdownBeOpen(['/Recruitment'])); //recruitment dropdown auto-open added
+    setSettingsOpen(shouldDropdownBeOpen(['/settings', '/hr/attendance/my-attendance', '/leave-request', '/payslip', '/task-management/user-task',"/settings/department-management", "/settings/position-management" ]));
   }, [router.pathname, shouldDropdownBeOpen]);
   const [checkedIn, setCheckedIn] = useState(false);
 
   const role = user?.role?.toLowerCase() || "hr";
   const isSuperAdmin = role === "superadmin";
-  const isAccessEnabled = isSuperAdmin || (userStatus.verified && userStatus.formSubmitted);
+  const isAccessEnabled = isSuperAdmin || (userStatus.verified && userStatus.formSubmitted); 
   // console.log("User Role:", role, "Is Super Admin:", isSuperAdmin, "Access Enabled:", isAccessEnabled);
 
   // Show loading skeleton while user data is being fetched
@@ -165,6 +167,8 @@ export default function Sidebar({ user: propUser }) {
   const toggleSettingsMenu = () => setSettingsOpen(!settingsOpen);
   const toggleEmployeeMenu = () => setEmployeeOpen(!employeeOpen);
   const toggleTaskManagementMenu = () => setTaskManagementOpen(!taskManagementOpen);
+  const toggleRecruitmentMenu = () => setRecruitmentOpen(!recruitmentOpen);
+
   const hoverColor =
     role === "superadmin"
       ? "hover:bg-gradient-to-r hover:from-indigo-600 hover:to-purple-600"
@@ -172,9 +176,14 @@ export default function Sidebar({ user: propUser }) {
       ? "hover:bg-purple-600"
       : "hover:bg-blue-600"; // hr
 
+  const recruitmentSubItems = [  //Recruitment dropdown items added
+    { name: "Candidates", path: "/Recruitment/recruitment" },
+    { name: "Job Descriptions", path: "/Recruitment/job-description" },
+  ];
+
   const navItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, allowUnverified: true },
-    { name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck, allowUnverified: false },
+    //{ name: "Recruitment", path: "/Recruitment/recruitment", icon: UserCheck, allowUnverified: false },
   ];
 
   // Memoize access control to prevent recalculation
@@ -282,6 +291,55 @@ export default function Sidebar({ user: propUser }) {
               {renderNavItem(item)}
             </li>
           ))}
+
+          {/* Recruitment Dropdown */}
+          <li>
+            <button
+              onClick={
+                getItemAccess()
+                  ? (isCollapsed ? () => router.push("/Recruitment/recruitment") : toggleRecruitmentMenu)
+                  : undefined
+              }
+              className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
+                getItemAccess()
+                  ? (shouldDropdownBeOpen(['/Recruitment'])
+                    ? 'bg-indigo-600 text-white cursor-pointer'
+                    : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer')
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+              }`}
+              title={isCollapsed ? (getItemAccess() ? "Recruitment" : "Recruitment (Locked)") : (getItemAccess() ? "" : "Complete verification and form submission to access")}
+              disabled={!getItemAccess()}
+            >
+              <div className="flex items-center gap-3">
+                <UserCheck size={18} className="flex-shrink-0" />
+                {!isCollapsed && (
+                  <span className="text-sm font-medium">
+                    Recruitment Management
+                    {!getItemAccess() && <span className="ml-2 text-xs">(🔒)</span>}
+                  </span>
+                )}
+              </div>
+              {!isCollapsed && getItemAccess() &&
+                (recruitmentOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+            </button>
+            {!isCollapsed && recruitmentOpen && getItemAccess() && (
+              <ul className="pl-6 pt-2 space-y-2">
+                {recruitmentSubItems.map((subItem) => (
+                  <li key={subItem.name}>
+                    <Link href={subItem.path}>
+                      <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                        isActivePath(subItem.path)
+                          ? 'bg-indigo-500 text-white'
+                          : `bg-gray-700 ${hoverColor.replace("600", "500")}`
+                      }`}>
+                        {subItem.name}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
 
           {/* Employee Management Dropdown */}
           <li>
@@ -677,16 +735,29 @@ export default function Sidebar({ user: propUser }) {
                       </li>
                     )}
                     <li>
+                      <Link href="/settings/department-management">
+                        <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
+                          router.pathname === '/settings/department-management'
+                            ? 'bg-indigo-500 text-white'
+                            : 'bg-gray-700 hover:bg-indigo-500'
+                        }`}>
+                          Department Management
+                        </span>
+                      </Link>
+                    </li>
+                    <li>
                       <Link href="/settings/position-management">
                         <span className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
                           router.pathname === '/settings/position-management'
                             ? 'bg-indigo-500 text-white'
                             : 'bg-gray-700 hover:bg-indigo-500'
                         }`}>
-                          Add Position
+                          Position Management
                         </span>
                       </Link>
                     </li>
+
+
                     {role !== "superadmin" && (
                       <li>
                         <Link href="/leave-request/leave-request">
