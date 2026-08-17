@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     }
   } else if (req.method === "POST") {
     try {
-      const { position_name, description } = req.body;
+      const { position_name, description, department_id } = req.body;
       
       if (!position_name) {
         return res.status(400).json({ error: "Position name is required" });
@@ -48,6 +48,7 @@ export default async function handler(req, res) {
         data: {
           position_name,
           description: description || null,
+          department_id: department_id ? parseInt(department_id) : null,
           created_by: user.empid
         }
       });
@@ -60,7 +61,7 @@ export default async function handler(req, res) {
   } else if (req.method === "PUT") {
     try {
       const { id } = req.query;
-      const { position_name, description } = req.body;
+      const { position_name, description, department_id } = req.body;
       
       if (!position_name) {
         return res.status(400).json({ error: "Position name is required" });
@@ -70,7 +71,8 @@ export default async function handler(req, res) {
         where: { id: parseInt(id) },
         data: {
           position_name,
-          description: description || null
+          description: description || null,
+          department_id: department_id ? parseInt(department_id) : null
         }
       });
 
