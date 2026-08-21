@@ -179,6 +179,7 @@ export default function Sidebar({ user: propUser }) {
   const recruitmentSubItems = [  //Recruitment dropdown items added
     { name: "Candidates", path: "/Recruitment/recruitment" },
     { name: "Job Descriptions", path: "/Recruitment/job-description" },
+    {name:"Job Applications", path:"/Recruitment/job-applications"},
   ];
 
   const navItems = [
