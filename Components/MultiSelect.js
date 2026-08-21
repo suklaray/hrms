@@ -61,7 +61,7 @@ export default function MultiSelect({ selected, onChange, placeholder }) {
             ))}
             {canAddCustom && (
               <li onClick={() => add(search.trim())} className="px-4 py-2 text-sm text-indigo-600 font-medium hover:bg-indigo-50 cursor-pointer transition-colors border-t border-gray-100">
-                + Add "{search.trim()}"
+                + Add &quot;{search.trim()}&quot;
               </li>
             )}
           </ul>

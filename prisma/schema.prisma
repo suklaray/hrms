@@ -512,6 +512,52 @@ enum employees_employee_type {
   Contractor
 }
 
+model parsed_resumes {
+  id                      Int       @id @default(autoincrement())
+  // Personal
+  full_name               String?
+  email                   String?
+  mobile_number           String?
+  alternate_phone         String?
+  current_address         String?
+  city                    String?
+  state                   String?
+  country                 String?
+  linkedin_profile        String?
+  portfolio_url           String?
+  github_url              String?
+  // Professional
+  career_objective        String?   @db.Text
+  professional_summary    String?   @db.Text
+  // Structured JSON fields
+  work_experience         Json?
+  education               Json?
+  technical_skills        Json?
+  soft_skills             Json?
+  certifications          Json?
+  languages_known         Json?
+  projects                Json?
+  awards_and_achievements Json?
+  publications            Json?
+  training                Json?
+  // Additional info
+  notice_period           String?
+  current_salary          String?
+  expected_salary         String?
+  preferred_location      String?
+  resume_file_path        String?
+  original_file_name      String?
+  resume_mime_type        String?
+  resume_file_size        Int?
+  // Parser processing metadata
+  parsing_status          String?   @default("PROCESSING")
+  parser_version          String?
+  ai_model                String?
+  parsing_error           String?   @db.Text
+  parsed_at               DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+}
+
 model job_descriptions {
   id                Int      @id @default(autoincrement())
   title             String

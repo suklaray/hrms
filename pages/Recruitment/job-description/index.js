@@ -377,7 +377,7 @@ export default function JobDescriptions() {
               </div>
               <h2 className="text-xl font-bold text-gray-900 text-center mb-2">Close Job Description</h2>
               <p className="text-sm text-gray-500 text-center mb-1">You are about to close the Job Description</p>
-              <p className="text-sm font-semibold text-gray-800 text-center mb-4">"{deleteJob.title}"</p>
+              <p className="text-sm font-semibold text-gray-800 text-center mb-4">&quot;{deleteJob.title}&quot;</p>
               <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-6">
                 <p className="text-xs text-red-600 text-center leading-relaxed">
                   This will mark the job as Closed and it will no longer be active.
