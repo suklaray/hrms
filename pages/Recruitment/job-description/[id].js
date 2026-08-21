@@ -44,8 +44,14 @@ export default function EditJobDescription() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const [saved, setSaved]     = useState(false);
+  const [hrUsers, setHrUsers] = useState([]);
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
+  fetch("/api/auth/me")
+    .then((r) => r.json())
+    .then((data) => setUserRole(data.user?.role?.toLowerCase() || ""));
+
   if (!id || !/^\d+$/.test(id)) return;
   fetch(`/api/recruitment/job-description/${id}`)
       .then((r) => r.json())
@@ -57,6 +63,13 @@ export default function EditJobDescription() {
         setFetching(false);
       })
       .catch(() => { setError("Failed to load job description."); setFetching(false); });
+
+  fetch("/api/hr/users")
+    .then((r) => r.json())
+    .then((data) => {
+      const users = Array.isArray(data?.users) ? data.users : [];
+      setHrUsers(users.filter((user) => user.role?.toLowerCase() === "hr"));
+    });
   }, [id]);
 
   const set = (field) => (e) => { setForm((f) => ({ ...f, [field]: e.target.value })); setSaved(false); };
@@ -108,7 +121,11 @@ export default function EditJobDescription() {
           <header className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between shadow-sm flex-shrink-0">
             <div>
               <nav className="flex items-center gap-2 text-xs text-gray-400 mb-1">
-                <Link href="/Recruitment/recruitment" className="hover:text-indigo-600 transition-colors">Recruitment</Link>
+                {userRole === "recruiter" ? (
+                  <span>Recruitment</span>
+                ) : (
+                  <Link href="/Recruitment/recruitment" className="hover:text-indigo-600 transition-colors">Recruitment</Link>
+                )}
                 <span>/</span>
                 <Link href="/Recruitment/job-description" className="hover:text-indigo-600 transition-colors">Job Descriptions</Link>
                 <span>/</span>
@@ -253,7 +270,15 @@ export default function EditJobDescription() {
                   </div>
                   <div>
                     <Label required>Hiring Manager</Label>
-                    <Input placeholder="e.g. Priya Sharma" value={form.hiring_manager} onChange={set("hiring_manager")} />
+                    <Select value={form.hiring_manager || ""} onChange={set("hiring_manager")}>
+                      <option value="">Select HR hiring manager</option>
+                      {form.hiring_manager && !hrUsers.some((user) => user.name === form.hiring_manager) && (
+                        <option value={form.hiring_manager}>{form.hiring_manager}</option>
+                      )}
+                      {hrUsers.map((user) => (
+                        <option key={user.empid} value={user.name}>{user.name}</option>
+                      ))}
+                    </Select>
                   </div>
                   <div className="md:col-span-2">
                     <Label>Interview Process</Label>
