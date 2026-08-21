@@ -583,4 +583,93 @@ model job_descriptions {
   created_by        String?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
+  analysis          job_description_analysis?
+}
+model job_description_analysis {
+  id                  Int      @id @default(autoincrement())
+
+  job_description_id  Int      @unique
+
+  // Job Information
+  job_title           String?
+  department          String?
+  employment_type     String?
+  work_mode           String?
+  location            String?
+  experience_required String?
+  education           String?
+  salary_min          String?
+  salary_max          String?
+  openings            Int?
+
+  // Skills
+  mandatory_skills    Json?
+  preferred_skills    Json?
+  soft_skills         Json?
+
+  // Keywords
+  technical_keywords  Json?
+  functional_keywords Json?
+  industry_keywords   Json?
+  role_keywords       Json?
+
+  // Experience
+  minimum_experience  String?
+  maximum_experience  String?
+  industry_experience Json?
+  domain_expertise    Json?
+
+  // Education
+  degree              Json?
+  stream              Json?
+  certifications      Json?
+  mandatory_certifications Json?
+  preferred_certifications Json?
+
+  // Responsibilities
+  primary_responsibilities   Json?
+  secondary_responsibilities Json?
+  leadership_responsibilities Json?
+
+  // Quality
+  quality_score       Int?
+
+  completeness_score  Int?
+  readability_score   Int?
+  ats_score           Int?
+  bias_free_score     Int?
+  keyword_score       Int?
+
+  // Missing information
+  missing_information Json?
+
+  // Bias
+  bias_detected       Boolean @default(false)
+  bias_details        Json?
+  inclusive_suggestions Json?
+
+  // ATS
+  ats_suggestions     Json?
+
+  // Matching
+  required_skills_weight      Int?
+  experience_weight           Int?
+  education_weight            Int?
+  certification_weight       Int?
+
+  matching_criteria Json?
+
+  // AI metadata
+  analysis_status     String @default("PENDING")
+  confidence_score    Decimal? @db.Decimal(5,2)
+  ai_model            String?
+  analysis_error      String? @db.Text
+
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  job_description job_descriptions
+    @relation(fields: [job_description_id], references: [id], onDelete: Cascade)
+
+  @@index([analysis_status])
 }
