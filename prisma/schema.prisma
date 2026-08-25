@@ -668,8 +668,6 @@ model job_description_analysis {
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
 
-  job_description job_descriptions
-    @relation(fields: [job_description_id], references: [id], onDelete: Cascade)
-
+  job_description job_descriptions @relation(fields: [job_description_id],references: [id],onDelete: Cascade)
   @@index([analysis_status])
 }

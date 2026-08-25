@@ -4,9 +4,10 @@ import Link from "next/link";
 import SideBar from "@/Components/SideBar";
 import {
   Search, Plus, Pencil, Trash2, Briefcase, Users,
-  CheckCircle, XCircle, ChevronDown, Eye, X, AlertTriangle, Lock,
+  CheckCircle, XCircle, ChevronDown, Eye, X, AlertTriangle, Lock,Sparkles
 } from "lucide-react";
 import Pagination from "@/Components/Pagination";
+import { toast } from "react-toastify";
 
 const STATUS_CONFIG = {
   Draft:     { bg: "bg-gray-100",  text: "text-gray-600",  dot: "bg-gray-400"  },
@@ -26,6 +27,10 @@ export default function JobDescriptions() {
   const [viewJob, setViewJob]     = useState(null);
   const [deleteJob, setDeleteJob] = useState(null);
   const [deleting, setDeleting]   = useState(false);
+  const [analysis, setAnalysis] = useState(null);
+  const [analysisJob, setAnalysisJob] = useState(null);
+  const [analyzingId, setAnalyzingId] = useState(null);
+  const [savingAnalysis, setSavingAnalysis] = useState(false);
   const [page, setPage]       = useState(1);
   const [perPage, setPerPage] = useState(10);
 
@@ -47,7 +52,81 @@ export default function JobDescriptions() {
       setDeleting(false);
     }
   };
-  
+  const handleAnalyze = async (job) => {
+    setAnalyzingId(job.id);
+
+    try {
+      const response = await fetch(
+        `/api/recruitment/job-description/${job.id}/analyze`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to analyze job description");
+      }
+
+      setAnalysisJob(job);
+      setAnalysis(result.data);
+
+    } catch (error) {
+      console.error("JD Analysis Error:", error);
+      toast.error(error.message || "Failed to analyze job description");
+    } finally {
+      setAnalyzingId(null);
+    }
+  };
+  const handleReAnalyze = async () => {
+    if (!analysisJob) return;
+
+    await handleAnalyze(analysisJob);
+  };
+  const handleSaveAnalysis = async () => {
+    if (!analysisJob || !analysis) return;
+
+    setSavingAnalysis(true);
+
+    try {
+      const response = await fetch(
+        `/api/recruitment/job-description/${analysisJob.id}/analysis`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            analysis,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error || "Failed to save analysis"
+        );
+      }
+
+      toast.success("Analysis saved successfully.");
+
+      setAnalysis(null);
+      setAnalysisJob(null);
+
+    } catch (error) {
+      toast.error("Save Analysis Error:", error);
+
+      toast.error(error.message || "Failed to save analysis");
+    } finally {
+      setSavingAnalysis(false);
+    }
+  };
   const filtered = jobs.filter((j) => {
     const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.department.toLowerCase().includes(search.toLowerCase());
     const matchStatus = status === "All Status" || j.status === status;
@@ -201,6 +280,18 @@ export default function JobDescriptions() {
                               <div className="flex items-center gap-1">
                                 <button onClick={() => setViewJob(job)} className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer" title="View">
                                   <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleAnalyze(job)}
+                                  disabled={analyzingId === job.id}
+                                  className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Analyze Job Description"
+                                >
+                                  {analyzingId === job.id ? (
+                                    <span className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin block" />
+                                  ) : (
+                                    <Sparkles className="w-4 h-4" />
+                                  )}
                                 </button>
                                 <Link href={`/Recruitment/job-description/${job.id}`}>
                                   <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer" title="Edit">
@@ -395,6 +486,100 @@ export default function JobDescriptions() {
                 </button>
               </div>
             </div>
+          </div>
+        </>
+      )}
+      {/* view model for analysis */}
+      {analysis && analysisJob && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm"
+            onClick={() => {
+              if (!savingAnalysis && !analyzingId) {
+                setAnalysis(null);
+                setAnalysisJob(null);
+              }
+            }}
+          />
+
+          <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-white z-50 shadow-2xl flex flex-col">
+
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-8 py-6 flex-shrink-0">
+
+              <div className="flex items-start justify-between">
+
+                <div>
+                  <p className="text-indigo-200 text-xs font-semibold uppercase tracking-wider">
+                    Job Description Analysis
+                  </p>
+
+                  <h2 className="text-2xl font-bold text-white mt-1">
+                    {analysisJob.title}
+                  </h2>
+
+                  <p className="text-indigo-200 text-sm mt-1">
+                    {analysisJob.department}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setAnalysis(null);
+                    setAnalysisJob(null);
+                  }}
+                  className="p-2 hover:bg-white/20 rounded-xl text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+              </div>
+
+            </div>
+
+            {/* Analysis Content */}
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+
+              {/* Temporary */}
+              <pre className="bg-gray-50 rounded-xl p-5 text-sm text-gray-700 whitespace-pre-wrap">
+                {JSON.stringify(analysis, null, 2)}
+              </pre>
+
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
+
+              <button
+                onClick={handleReAnalyze}
+                disabled={
+                  analyzingId === analysisJob.id ||
+                  savingAnalysis
+                }
+                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-50 transition-colors disabled:opacity-50"
+              >
+                <Sparkles className="w-4 h-4" />
+
+                {analyzingId === analysisJob.id
+                  ? "Re-analyzing..."
+                  : "Re-analyze"}
+              </button>
+
+              <button
+                onClick={handleSaveAnalysis}
+                disabled={
+                  savingAnalysis ||
+                  analyzingId === analysisJob.id
+                }
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {savingAnalysis
+                  ? "Saving..."
+                  : "Save Analysis"}
+              </button>
+
+            </div>
+
           </div>
         </>
       )}
