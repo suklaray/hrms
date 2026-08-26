@@ -1,5 +1,78 @@
 import prisma from "@/lib/prisma";
 
+function mapAnalysisToDatabase(analysis) {
+  const jobInformation = analysis.jobInformation || {};
+  const skillsAnalysis = analysis.skillsAnalysis || {};
+  const keywords = analysis.keywords || {};
+  const experienceAnalysis = analysis.experienceAnalysis || {};
+  const educationAnalysis = analysis.educationAnalysis || {};
+  const responsibilities = analysis.responsibilities || {};
+  const qualityScore = analysis.qualityScore || {};
+  const biasDetection = analysis.biasDetection || {};
+  const matchingCriteria = analysis.matchingCriteria || {};
+
+  return {
+    job_title: jobInformation.jobTitle,
+    department: jobInformation.department,
+    employment_type: jobInformation.employmentType,
+    work_mode: jobInformation.workMode,
+    location: jobInformation.location,
+    experience_required: jobInformation.minimumExperience,
+    education: jobInformation.educationQualification,
+    salary_min: jobInformation.salaryMinimum,
+    salary_max: jobInformation.salaryMaximum,
+    openings: jobInformation.openings,
+
+    mandatory_skills: skillsAnalysis.mandatorySkills,
+    preferred_skills: skillsAnalysis.preferredSkills,
+    soft_skills: skillsAnalysis.softSkills,
+
+    technical_keywords: keywords.technical,
+    functional_keywords: keywords.functional,
+    industry_keywords: keywords.industry,
+    role_keywords: keywords.roleBased,
+
+    minimum_experience: experienceAnalysis.minimumExperience,
+    maximum_experience: experienceAnalysis.maximumExperience,
+    industry_experience: experienceAnalysis.industryExperience,
+    domain_expertise: experienceAnalysis.domainExpertise,
+
+    degree: educationAnalysis.degree,
+    stream: educationAnalysis.stream,
+    certifications: educationAnalysis.certifications,
+    mandatory_certifications: educationAnalysis.mandatoryCertifications,
+    preferred_certifications: educationAnalysis.preferredCertifications,
+
+    primary_responsibilities: responsibilities.primary,
+    secondary_responsibilities: responsibilities.secondary,
+    leadership_responsibilities: responsibilities.leadership,
+
+    quality_score: qualityScore.overall,
+    completeness_score: qualityScore.completeness,
+    readability_score: qualityScore.readability,
+    ats_score: qualityScore.atsFriendliness,
+    bias_free_score: qualityScore.biasFreeLanguage,
+    keyword_score: qualityScore.keywordOptimization,
+
+    missing_information: analysis.missingInformation,
+    bias_detected: biasDetection.detected ?? false,
+    bias_details: biasDetection.issues,
+    inclusive_suggestions: biasDetection.issues,
+    ats_suggestions: analysis.atsSuggestions,
+
+    required_skills_weight: matchingCriteria.requiredSkillsWeight,
+    experience_weight: matchingCriteria.experienceWeightage,
+    education_weight: matchingCriteria.educationWeightage,
+    certification_weight: matchingCriteria.certificationWeightage,
+    matching_criteria: matchingCriteria,
+
+    analysis_status: "COMPLETED",
+    confidence_score: analysis.confidenceScore,
+    ai_model: analysis.aiModel,
+    analysis_error: analysis.analysisError,
+  };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({
@@ -46,133 +119,10 @@ export default async function handler(req, res) {
 
       create: {
         job_description_id: Number(id),
-
-        job_title: analysis.job_title,
-        department: analysis.department,
-        employment_type: analysis.employment_type,
-        work_mode: analysis.work_mode,
-        location: analysis.location,
-        experience_required: analysis.experience_required,
-        education: analysis.education,
-        salary_min: analysis.salary_min,
-        salary_max: analysis.salary_max,
-        openings: analysis.openings,
-
-        mandatory_skills: analysis.mandatory_skills,
-        preferred_skills: analysis.preferred_skills,
-        soft_skills: analysis.soft_skills,
-
-        technical_keywords: analysis.technical_keywords,
-        functional_keywords: analysis.functional_keywords,
-        industry_keywords: analysis.industry_keywords,
-        role_keywords: analysis.role_keywords,
-
-        minimum_experience: analysis.minimum_experience,
-        maximum_experience: analysis.maximum_experience,
-        industry_experience: analysis.industry_experience,
-        domain_expertise: analysis.domain_expertise,
-
-        degree: analysis.degree,
-        stream: analysis.stream,
-        certifications: analysis.certifications,
-        mandatory_certifications: analysis.mandatory_certifications,
-        preferred_certifications: analysis.preferred_certifications,
-
-        primary_responsibilities: analysis.primary_responsibilities,
-        secondary_responsibilities: analysis.secondary_responsibilities,
-        leadership_responsibilities: analysis.leadership_responsibilities,
-
-        quality_score: analysis.quality_score,
-        completeness_score: analysis.completeness_score,
-        readability_score: analysis.readability_score,
-        ats_score: analysis.ats_score,
-        bias_free_score: analysis.bias_free_score,
-        keyword_score: analysis.keyword_score,
-
-        missing_information: analysis.missing_information,
-
-        bias_detected: analysis.bias_detected ?? false,
-        bias_details: analysis.bias_details,
-        inclusive_suggestions: analysis.inclusive_suggestions,
-
-        ats_suggestions: analysis.ats_suggestions,
-
-        required_skills_weight: analysis.required_skills_weight,
-        experience_weight: analysis.experience_weight,
-        education_weight: analysis.education_weight,
-        certification_weight: analysis.certification_weight,
-
-        matching_criteria: analysis.matching_criteria,
-
-        analysis_status: "COMPLETED",
-        confidence_score: analysis.confidence_score,
-        ai_model: analysis.ai_model,
-        analysis_error: analysis.analysis_error,
+        ...mapAnalysisToDatabase(analysis),
       },
 
-      update: {
-        job_title: analysis.job_title,
-        department: analysis.department,
-        employment_type: analysis.employment_type,
-        work_mode: analysis.work_mode,
-        location: analysis.location,
-        experience_required: analysis.experience_required,
-        education: analysis.education,
-        salary_min: analysis.salary_min,
-        salary_max: analysis.salary_max,
-        openings: analysis.openings,
-
-        mandatory_skills: analysis.mandatory_skills,
-        preferred_skills: analysis.preferred_skills,
-        soft_skills: analysis.soft_skills,
-
-        technical_keywords: analysis.technical_keywords,
-        functional_keywords: analysis.functional_keywords,
-        industry_keywords: analysis.industry_keywords,
-        role_keywords: analysis.role_keywords,
-
-        minimum_experience: analysis.minimum_experience,
-        maximum_experience: analysis.maximum_experience,
-        industry_experience: analysis.industry_experience,
-        domain_expertise: analysis.domain_expertise,
-
-        degree: analysis.degree,
-        stream: analysis.stream,
-        certifications: analysis.certifications,
-        mandatory_certifications: analysis.mandatory_certifications,
-        preferred_certifications: analysis.preferred_certifications,
-
-        primary_responsibilities: analysis.primary_responsibilities,
-        secondary_responsibilities: analysis.secondary_responsibilities,
-        leadership_responsibilities: analysis.leadership_responsibilities,
-
-        quality_score: analysis.quality_score,
-        completeness_score: analysis.completeness_score,
-        readability_score: analysis.readability_score,
-        ats_score: analysis.ats_score,
-        bias_free_score: analysis.bias_free_score,
-        keyword_score: analysis.keyword_score,
-
-        missing_information: analysis.missing_information,
-
-        bias_detected: analysis.bias_detected ?? false,
-        bias_details: analysis.bias_details,
-        inclusive_suggestions: analysis.inclusive_suggestions,
-
-        ats_suggestions: analysis.ats_suggestions,
-
-        required_skills_weight: analysis.required_skills_weight,
-        experience_weight: analysis.experience_weight,
-        education_weight: analysis.education_weight,
-        certification_weight: analysis.certification_weight,
-
-        matching_criteria: analysis.matching_criteria,
-
-        analysis_status: "COMPLETED",
-        confidence_score: analysis.confidence_score,
-        ai_model: analysis.ai_model,
-        analysis_error: analysis.analysis_error,
-      },
+      update: mapAnalysisToDatabase(analysis),
     });
 
     return res.status(200).json({

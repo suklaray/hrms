@@ -1,6 +1,20 @@
 import prisma from "@/lib/prisma";
+import jwt from "jsonwebtoken";
+import cookie from "cookie";
+
+function isRecruitmentUser(req) {
+  try {
+    const { token } = cookie.parse(req.headers.cookie || "");
+    const user = jwt.verify(token, process.env.JWT_SECRET);
+    return ["hr", "admin", "recruiter", "superadmin"].includes(user.role?.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req, res) {
+  if (!isRecruitmentUser(req)) return res.status(401).json({ message: "Unauthorized" });
+
   if (req.method === "GET") {
     try {
       const jobs = await prisma.job_descriptions.findMany({
