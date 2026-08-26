@@ -4,7 +4,8 @@ import Link from "next/link";
 import SideBar from "@/Components/SideBar";
 import {
   Search, Plus, Pencil, Trash2, Briefcase, Users,
-  CheckCircle, XCircle, ChevronDown, Eye, X, AlertTriangle, Lock,Sparkles
+  CheckCircle, XCircle, ChevronDown, Eye, X, AlertTriangle, Lock, Sparkles,
+  Target, ListChecks, AlertCircle, ShieldCheck
 } from "lucide-react";
 import Pagination from "@/Components/Pagination";
 import { toast } from "react-toastify";
@@ -17,6 +18,45 @@ const STATUS_CONFIG = {
 
 const STATUSES   = ["All Status", "Draft", "Published", "Closed"];
 const WORK_MODES = ["All Work Modes", "Remote", "On-site", "Hybrid"];
+
+const asList = (value) => Array.isArray(value) ? value : value ? [value] : [];
+const colorClasses = {
+  indigo: "bg-indigo-50 text-indigo-700",
+  green: "bg-green-50 text-green-700",
+  blue: "bg-blue-50 text-blue-700",
+  purple: "bg-purple-50 text-purple-700",
+  amber: "bg-amber-50 text-amber-700",
+  orange: "bg-orange-50 text-orange-700",
+  red: "bg-red-50 text-red-700",
+  teal: "bg-teal-50 text-teal-700",
+};
+
+const readableItem = (item) => {
+  if (typeof item === "string" || typeof item === "number") return String(item);
+  if (!item || typeof item !== "object") return "Not provided";
+  return item.name || item.skill || item.keyword || item.title ||
+    Object.values(item).filter(Boolean).join(" - ") || "Not provided";
+};
+
+const AnalysisList = ({ title, items, icon: Icon, color = "indigo" }) => {
+  const values = asList(items);
+  if (!values.length) return null;
+
+  return (
+    <section className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+      <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-3">
+        <Icon className={`w-4 h-4 text-${color}-600`} />{title}
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {values.map((item, index) => (
+          <span key={`${title}-${index}`} className={`text-sm px-3 py-1.5 rounded-lg ${colorClasses[color] || colorClasses.indigo}`}>
+            {readableItem(item)}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 export default function JobDescriptions() {
   const [jobs, setJobs]           = useState([]);
@@ -69,15 +109,17 @@ export default function JobDescriptions() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to analyze job description");
+        const error = new Error(result.error || "Failed to analyze job description");
+        error.status = response.status;
+        throw error;
       }
 
       setAnalysisJob(job);
       setAnalysis(result.data);
 
     } catch (error) {
-      console.error("JD Analysis Error:", error);
-      toast.error(error.message || "Failed to analyze job description");
+      console.warn("JD Analysis unavailable:", error.message);
+      toast.error(error.message || "Unable to analyze this job description. Please try again.");
     } finally {
       setAnalyzingId(null);
     }
@@ -538,728 +580,102 @@ export default function JobDescriptions() {
             </div>
 
             {/* Analysis Content */}
-            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
-              {analysis.qualityScore && (
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-6">
-                  <div className="flex items-center justify-between">
-
-                    <div>
-                      <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-                        Overall Quality Score
-                      </p>
-
-                      <p className="text-4xl font-bold text-gray-900 mt-2">
-                        {analysis.qualityScore.overall ?? 0}
-                        <span className="text-lg text-gray-400">/100</span>
-                      </p>
+            <div className="flex-1 overflow-y-auto px-8 py-6">
+              <div className="space-y-6">
+                <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    ["Overall quality", analysis.qualityScore?.overall],
+                    ["Completeness", analysis.qualityScore?.completeness],
+                    ["Readability", analysis.qualityScore?.readability],
+                    ["ATS friendly", analysis.qualityScore?.atsFriendliness],
+                    ["Bias-free language", analysis.qualityScore?.biasFreeLanguage],
+                    ["Keyword optimization", analysis.qualityScore?.keywordOptimization],
+                  ].map(([label, score]) => (
+                    <div key={label} className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                      <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">{label}</p>
+                      <p className="text-2xl font-bold text-indigo-700 mt-1">{score ?? 0}<span className="text-sm font-medium">/100</span></p>
                     </div>
+                  ))}
+                </section>
 
-                    <div className="w-20 h-20 rounded-full border-8 border-indigo-100 flex items-center justify-center">
-                      <span className="text-xl font-bold text-indigo-600">
-                        {analysis.qualityScore.overall ?? 0}
-                      </span>
-                    </div>
-
-                  </div>
-
-                  {/* Score breakdown */}
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6">
-
+                <section className="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                  <h3 className="text-sm font-bold text-gray-800 mb-4">Job overview</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                      {
-                        label: "Completeness",
-                        value: analysis.qualityScore.completeness
-                      },
-                      {
-                        label: "Readability",
-                        value: analysis.qualityScore.readability
-                      },
-                      {
-                        label: "ATS Friendly",
-                        value: analysis.qualityScore.atsFriendliness
-                      },
-                      {
-                        label: "Bias Free",
-                        value: analysis.qualityScore.biasFreeLanguage
-                      },
-                      {
-                        label: "Overall",
-                        value: analysis.qualityScore.overall
-                      }
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="bg-white rounded-xl p-3 border border-gray-100"
-                      >
-                        <p className="text-xs text-gray-400 mb-1">
-                          {item.label}
-                        </p>
-
-                        <p className="text-lg font-bold text-gray-800">
-                          {item.value ?? 0}
-                        </p>
+                      ["Job title", analysis.jobInformation?.jobTitle],
+                      ["Department", analysis.jobInformation?.department],
+                      ["Employment", analysis.jobInformation?.employmentType],
+                      ["Work mode", analysis.jobInformation?.workMode],
+                      ["Location", analysis.jobInformation?.location],
+                      ["Experience", analysis.experienceAnalysis?.minimumExperience || analysis.jobInformation?.minimumExperience],
+                      ["Education", analysis.jobInformation?.educationQualification],
+                      ["Salary", [analysis.jobInformation?.salaryMinimum, analysis.jobInformation?.salaryMaximum].filter(Boolean).join(" - ")],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+                        <p className="text-sm font-semibold text-gray-800 mt-1">{value || "Not provided"}</p>
                       </div>
                     ))}
-
                   </div>
+                </section>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <AnalysisList title="Mandatory skills" items={analysis.skillsAnalysis?.mandatorySkills} icon={ListChecks} color="green" />
+                  <AnalysisList title="Preferred skills" items={analysis.skillsAnalysis?.preferredSkills} icon={Target} color="blue" />
+                  <AnalysisList title="Soft skills" items={analysis.skillsAnalysis?.softSkills} icon={ShieldCheck} color="purple" />
+                  <AnalysisList title="Certifications" items={analysis.educationAnalysis?.certifications} icon={ListChecks} color="amber" />
                 </div>
-              )}
-              {/* JOB INFORMATION */}
-              {analysis.jobInformation && (
-                <div>
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Job Information
-                  </h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    {Object.entries(analysis.jobInformation).map(
-                      ([key, value]) => {
-
-                        if (
-                          value === null ||
-                          value === undefined ||
-                          value === ""
-                        ) {
-                          return null;
-                        }
-
-                        return (
-                          <div
-                            key={key}
-                            className="bg-gray-50 rounded-xl p-4"
-                          >
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
-                              {key
-                                .replace(/([A-Z])/g, " $1")
-                                .replace(/_/g, " ")
-                                .replace(/^./, (str) => str.toUpperCase())}
-                            </p>
-
-                            <p className="text-sm font-semibold text-gray-800">
-                              {Array.isArray(value)
-                                ? value.join(", ")
-                                : typeof value === "object"
-                                  ? JSON.stringify(value)
-                                  : String(value)}
-                            </p>
-                          </div>
-                        );
-                      }
-                    )}
-
-                  </div>
-                </div>
-              )}
-              {/* SKILLS ANALYSIS */}
-
-              {analysis.skillsAnalysis && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Skills Analysis
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-                    {/* Mandatory Skills */}
-                    {analysis.skillsAnalysis.mandatorySkills?.length > 0 && (
-                      <div className="bg-indigo-50 rounded-xl p-4">
-
-                        <p className="text-xs font-semibold text-indigo-600 uppercase mb-3">
-                          Mandatory Skills
-                        </p>
-
-                        <div className="flex flex-wrap gap-2">
-
-                          {analysis.skillsAnalysis.mandatorySkills.map(
-                            (skill, index) => (
-                              <span
-                                key={index}
-                                className="text-xs font-medium bg-white text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-100"
-                              >
-                                {skill}
-                              </span>
-                            )
-                          )}
-
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Preferred Skills */}
-                    {analysis.skillsAnalysis.preferredSkills?.length > 0 && (
-                      <div className="bg-purple-50 rounded-xl p-4">
-
-                        <p className="text-xs font-semibold text-purple-600 uppercase mb-3">
-                          Preferred Skills
-                        </p>
-
-                        <div className="flex flex-wrap gap-2">
-
-                          {analysis.skillsAnalysis.preferredSkills.map(
-                            (skill, index) => (
-                              <span
-                                key={index}
-                                className="text-xs font-medium bg-white text-purple-700 px-3 py-1.5 rounded-lg border border-purple-100"
-                              >
-                                {skill}
-                              </span>
-                            )
-                          )}
-
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Soft Skills */}
-                    {analysis.skillsAnalysis.softSkills?.length > 0 && (
-                      <div className="bg-green-50 rounded-xl p-4">
-
-                        <p className="text-xs font-semibold text-green-600 uppercase mb-3">
-                          Soft Skills
-                        </p>
-
-                        <div className="flex flex-wrap gap-2">
-
-                          {analysis.skillsAnalysis.softSkills.map(
-                            (skill, index) => (
-                              <span
-                                key={index}
-                                className="text-xs font-medium bg-white text-green-700 px-3 py-1.5 rounded-lg border border-green-100"
-                              >
-                                {skill}
-                              </span>
-                            )
-                          )}
-
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-              )}
-              {/* EXPERIENCE ANALYSIS */}
-              {analysis.experienceAnalysis && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Experience Analysis
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-gray-400 uppercase">
-                        Minimum Experience
-                      </p>
-
-                      <p className="text-lg font-bold text-gray-800 mt-1">
-                        {analysis.experienceAnalysis.minimumExperience || "Not specified"}
-                      </p>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="text-xs font-semibold text-gray-400 uppercase">
-                        Maximum Experience
-                      </p>
-
-                      <p className="text-lg font-bold text-gray-800 mt-1">
-                        {analysis.experienceAnalysis.maximumExperience || "Not specified"}
-                      </p>
-                    </div>
-
-                  </div>
-
-                  {/* Industry Experience */}
-                  {analysis.experienceAnalysis.industryExperience?.length > 0 && (
-                    <div className="bg-blue-50 rounded-xl p-4 mt-4">
-
-                      <p className="text-xs font-semibold text-blue-600 uppercase mb-3">
-                        Industry Experience
-                      </p>
-
-                      <div className="flex flex-wrap gap-2">
-                        {analysis.experienceAnalysis.industryExperience.map(
-                          (item, index) => (
-                            <span
-                              key={index}
-                              className="text-xs font-medium bg-white text-blue-700 px-3 py-1.5 rounded-lg border border-blue-100"
-                            >
-                              {typeof item === "string"
-                                ? item
-                                : item.description || item.text || JSON.stringify(item)}
-                            </span>
-                          )
-                        )}
-                      </div>
-
-                    </div>
-                  )}
-
-                  {/* Domain Expertise */}
-                  {analysis.experienceAnalysis.domainExpertise?.length > 0 && (
-                    <div className="bg-purple-50 rounded-xl p-4 mt-4">
-
-                      <p className="text-xs font-semibold text-purple-600 uppercase mb-3">
-                        Domain Expertise
-                      </p>
-
-                      <div className="flex flex-wrap gap-2">
-                        {analysis.experienceAnalysis.domainExpertise.map(
-                          (item, index) => (
-                            <span
-                              key={index}
-                              className="text-xs font-medium bg-white text-purple-700 px-3 py-1.5 rounded-lg border border-purple-100"
-                            >
-                              {typeof item === "string"
-                                ? item
-                                : item.description || item.text || JSON.stringify(item)}
-                            </span>
-                          )
-                        )}
-                      </div>
-
-                    </div>
-                  )}
-
-                </div>
-              )}
-              {/* EDUCATION ANALYSIS */}
-
-              {analysis.educationAnalysis && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Education Analysis
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
+                <section className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-800 mb-4">ATS keywords</h3>
+                  <div className="space-y-3">
                     {[
-                      ["Degree", analysis.educationAnalysis.degree],
-                      ["Stream", analysis.educationAnalysis.stream],
-                      [
-                        "Certifications",
-                        analysis.educationAnalysis.certifications
-                      ],
-                      [
-                        "Mandatory Certifications",
-                        analysis.educationAnalysis.mandatoryCertifications
-                      ],
-                      [
-                        "Preferred Certifications",
-                        analysis.educationAnalysis.preferredCertifications
-                      ]
-                    ].map(([label, values]) => (
-
-                      <div
-                        key={label}
-                        className="bg-gray-50 rounded-xl p-4"
-                      >
-
-                        <p className="text-xs font-semibold text-gray-400 uppercase mb-2">
-                          {label}
-                        </p>
-
-                        {values?.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-
-                            {values.map((item, index) => (
-                              <span
-                                key={index}
-                                className="text-xs font-medium bg-white text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200"
-                              >
-                                {typeof item === "string"
-                                  ? item
-                                  : item.description ||
-                                  item.name ||
-                                  item.text ||
-                                  JSON.stringify(item)}
-                              </span>
-                            ))}
-
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-400">
-                            Not specified
-                          </p>
-                        )}
-
-                      </div>
-
-                    ))}
-
-                  </div>
-
-                </div>
-              )}
-              {/* RESPONSIBILITIES */}
-
-              {analysis.responsibilities && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Responsibilities
-                  </h3>
-
-                  <div className="space-y-4">
-
-                    {[
-                      {
-                        title: "Primary Responsibilities",
-                        data: analysis.responsibilities.primary
-                      },
-                      {
-                        title: "Secondary Responsibilities",
-                        data: analysis.responsibilities.secondary
-                      },
-                      {
-                        title: "Leadership Responsibilities",
-                        data: analysis.responsibilities.leadership
-                      }
-                    ].map((section) => (
-
-                      section.data?.length > 0 && (
-                        <div
-                          key={section.title}
-                          className="bg-gray-50 rounded-xl p-4"
-                        >
-
-                          <p className="text-xs font-semibold text-indigo-600 uppercase mb-3">
-                            {section.title}
-                          </p>
-
-                          <div className="space-y-2">
-
-                            {section.data.map((item, index) => (
-                              <div
-                                key={index}
-                                className="flex gap-3"
-                              >
-
-                                <span className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                  {index + 1}
-                                </span>
-
-                                <p className="text-sm text-gray-600 leading-relaxed">
-                                  {typeof item === "string"
-                                    ? item
-                                    : item.description ||
-                                    item.text ||
-                                    JSON.stringify(item)}
-                                </p>
-
-                              </div>
-                            ))}
-
-                          </div>
-
-                        </div>
-                      )
-
-                    ))}
-
-                  </div>
-
-                </div>
-              )}
-              {/* KEYWORDS */}
-              {analysis.keywords && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Keywords
-                  </h3>
-
-                  <div className="space-y-4">
-
-                    {[
-                      {
-                        title: "Technical Keywords",
-                        data: analysis.keywords.technical
-                      },
-                      {
-                        title: "Functional Keywords",
-                        data: analysis.keywords.functional
-                      },
-                      {
-                        title: "Industry Keywords",
-                        data: analysis.keywords.industry
-                      },
-                      {
-                        title: "Role-Based Keywords",
-                        data: analysis.keywords.roleBased
-                      }
-                    ].map((section) => (
-
-                      section.data?.length > 0 && (
-                        <div
-                          key={section.title}
-                          className="bg-gray-50 rounded-xl p-4"
-                        >
-
-                          <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
-                            {section.title}
-                          </p>
-
-                          <div className="flex flex-wrap gap-2">
-
-                            {section.data.map((item, index) => (
-                              <span
-                                key={index}
-                                className="text-xs font-medium bg-white text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200"
-                              >
-                                {typeof item === "string"
-                                  ? item
-                                  : item.name ||
-                                  item.description ||
-                                  item.text ||
-                                  JSON.stringify(item)}
-                              </span>
-                            ))}
-
-                          </div>
-
-                        </div>
-                      )
-
-                    ))}
-
-                  </div>
-
-                </div>
-              )}
-              {/* MATCHING CRITERIA */}
-              {analysis.matchingCriteria && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Matching Criteria
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-
-                    <div className="bg-indigo-50 rounded-xl p-4">
-                      <p className="text-xs text-indigo-500 font-semibold uppercase">
-                        Experience Weightage
-                      </p>
-                      <p className="text-2xl font-bold text-indigo-700 mt-1">
-                        {analysis.matchingCriteria.experienceWeightage ?? 0}%
-                      </p>
-                    </div>
-
-                    <div className="bg-purple-50 rounded-xl p-4">
-                      <p className="text-xs text-purple-500 font-semibold uppercase">
-                        Education Weightage
-                      </p>
-                      <p className="text-2xl font-bold text-purple-700 mt-1">
-                        {analysis.matchingCriteria.educationWeightage ?? 0}%
-                      </p>
-                    </div>
-
-                    <div className="bg-green-50 rounded-xl p-4">
-                      <p className="text-xs text-green-500 font-semibold uppercase">
-                        Certification Weightage
-                      </p>
-                      <p className="text-2xl font-bold text-green-700 mt-1">
-                        {analysis.matchingCriteria.certificationWeightage ?? 0}%
-                      </p>
-                    </div>
-
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    {/* Required */}
-                    {analysis.matchingCriteria.requiredSkills?.length > 0 && (
-                      <div className="bg-gray-50 rounded-xl p-4">
-
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
-                          Required Skills
-                        </p>
-
+                      ["Technical", analysis.keywords?.technical],
+                      ["Functional", analysis.keywords?.functional],
+                      ["Industry", analysis.keywords?.industry],
+                      ["Role-based", analysis.keywords?.roleBased],
+                    ].map(([label, items]) => asList(items).length > 0 && (
+                      <div key={label} className="flex flex-col sm:flex-row gap-2 sm:items-start">
+                        <span className="w-28 flex-shrink-0 text-xs font-semibold text-gray-400 uppercase tracking-wide pt-1">{label}</span>
                         <div className="flex flex-wrap gap-2">
-                          {analysis.matchingCriteria.requiredSkills.map(
-                            (skill, index) => (
-                              <span
-                                key={index}
-                                className="text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-lg"
-                              >
-                                {skill}
-                              </span>
-                            )
-                          )}
+                          {asList(items).map((item, index) => <span key={`${label}-${index}`} className="text-sm bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg">{readableItem(item)}</span>)}
                         </div>
-
-                      </div>
-                    )}
-
-                    {/* Nice to have */}
-                    {analysis.matchingCriteria.niceToHaveSkills?.length > 0 && (
-                      <div className="bg-gray-50 rounded-xl p-4">
-
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
-                          Nice To Have Skills
-                        </p>
-
-                        <div className="flex flex-wrap gap-2">
-                          {analysis.matchingCriteria.niceToHaveSkills.map(
-                            (skill, index) => (
-                              <span
-                                key={index}
-                                className="text-xs bg-white border border-gray-200 px-3 py-1.5 rounded-lg"
-                              >
-                                {skill}
-                              </span>
-                            )
-                          )}
-                        </div>
-
-                      </div>
-                    )}
-
-                  </div>
-
-                </div>
-              )}
-              {/* ATS SUGGESTIONS */}
-              {analysis.atsSuggestions?.length > 0 && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    ATS Suggestions
-                  </h3>
-
-                  <div className="space-y-2">
-
-                    {analysis.atsSuggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4"
-                      >
-
-                        <span className="text-amber-500 text-lg">
-                          💡
-                        </span>
-
-                        <p className="text-sm text-amber-800 leading-relaxed">
-                          {typeof suggestion === "string"
-                            ? suggestion
-                            : suggestion.description ||
-                            suggestion.text ||
-                            JSON.stringify(suggestion)}
-                        </p>
-
                       </div>
                     ))}
-
                   </div>
+                </section>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <AnalysisList title="Primary responsibilities" items={analysis.responsibilities?.primary} icon={ListChecks} color="indigo" />
+                  <AnalysisList title="Leadership responsibilities" items={analysis.responsibilities?.leadership} icon={ShieldCheck} color="orange" />
+                  <AnalysisList title="Missing information" items={analysis.missingInformation} icon={AlertCircle} color="red" />
+                  <AnalysisList title="ATS suggestions" items={analysis.atsSuggestions} icon={Target} color="teal" />
                 </div>
-              )}
-              {/* MISSING INFORMATION */}
-              {analysis.missingInformation?.length > 0 && (
-                <div>
 
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Missing Information
-                  </h3>
-
-                  <div className="space-y-2">
-
-                    {analysis.missingInformation.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex gap-3 bg-red-50 border border-red-100 rounded-xl p-4"
-                      >
-
-                        <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-
-                        <p className="text-sm text-red-700">
-                          {typeof item === "string"
-                            ? item
-                            : item.description ||
-                            item.text ||
-                            JSON.stringify(item)}
-                        </p>
-
-                      </div>
-                    ))}
-
-                  </div>
-
-                </div>
-              )}
-              {/* BIAS DETECTION */}
-              {analysis.biasDetection && (
-                <div>
-
-                  <h3 className="text-sm font-bold text-gray-800 mb-3">
-                    Bias Detection
-                  </h3>
-
-                  <div
-                    className={`rounded-xl p-4 border ${analysis.biasDetection.detected
-                        ? "bg-red-50 border-red-100"
-                        : "bg-green-50 border-green-100"
-                      }`}
-                  >
-
-                    <p
-                      className={`text-sm font-semibold ${analysis.biasDetection.detected
-                          ? "text-red-700"
-                          : "text-green-700"
-                        }`}
-                    >
-                      {analysis.biasDetection.detected
-                        ? "Potential bias detected"
-                        : "No significant bias detected"}
-                    </p>
-
-                    {analysis.biasDetection.issues?.length > 0 && (
-                      <div className="mt-3 space-y-2">
-
-                        {analysis.biasDetection.issues.map(
-                          (issue, index) => (
-                            <p
-                              key={index}
-                              className="text-sm text-gray-600"
-                            >
-                              •{" "}
-                              {typeof issue === "string"
-                                ? issue
-                                : issue.description ||
-                                issue.text ||
-                                JSON.stringify(issue)}
-                            </p>
-                          )
-                        )}
-
-                      </div>
-                    )}
-
-                  </div>
-
-                </div>
-              )}
-              {/* RAW DATA FALLBACK */}
-              {!analysis.qualityScore &&
-                !analysis.jobInformation &&
-                !analysis.skillsAnalysis &&
-                !analysis.experienceAnalysis &&
-                !analysis.educationAnalysis &&
-                !analysis.responsibilities &&
-                !analysis.keywords &&
-                !analysis.matchingCriteria &&
-                !analysis.atsSuggestions &&
-                !analysis.missingInformation &&
-                !analysis.biasDetection && (
-                  <pre className="bg-gray-50 rounded-xl p-5 text-sm text-gray-700 whitespace-pre-wrap">
-                    {JSON.stringify(analysis, null, 2)}
-                  </pre>
+                {analysis.biasDetection?.detected && (
+                  <section className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-amber-800 mb-3">
+                      <AlertCircle className="w-4 h-4" />Potentially biased language
+                    </h3>
+                    <div className="space-y-2 text-sm text-amber-900">
+                      {asList(analysis.biasDetection.issues).map((issue, index) => <p key={index}>{readableItem(issue)}</p>)}
+                    </div>
+                  </section>
                 )}
+
+                <section className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                  <h3 className="text-sm font-bold text-slate-800 mb-3">Candidate matching criteria</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div><span className="text-slate-500">Experience weight</span><p className="font-bold text-slate-800">{analysis.matchingCriteria?.experienceWeightage ?? 0}%</p></div>
+                    <div><span className="text-slate-500">Education weight</span><p className="font-bold text-slate-800">{analysis.matchingCriteria?.educationWeightage ?? 0}%</p></div>
+                    <div><span className="text-slate-500">Certification weight</span><p className="font-bold text-slate-800">{analysis.matchingCriteria?.certificationWeightage ?? 0}%</p></div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Required skills</p>
+                    <p className="text-sm text-slate-700">{asList(analysis.matchingCriteria?.requiredSkills).map(readableItem).join(", ") || "Not provided"}</p>
+                  </div>
+                </section>
+              </div>
 
             </div>
 
