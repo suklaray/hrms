@@ -4,7 +4,8 @@ import Link from "next/link";
 import SideBar from "@/Components/SideBar";
 import {
   Search, Plus, Pencil, Trash2, Briefcase, Users,
-  CheckCircle, XCircle, ChevronDown, Eye, X, AlertTriangle, Lock,Sparkles
+  CheckCircle, XCircle, ChevronDown, Eye, X, AlertTriangle, Lock, Sparkles,
+  Target, ListChecks, AlertCircle, ShieldCheck
 } from "lucide-react";
 import Pagination from "@/Components/Pagination";
 import { toast } from "react-toastify";
@@ -17,6 +18,45 @@ const STATUS_CONFIG = {
 
 const STATUSES   = ["All Status", "Draft", "Published", "Closed"];
 const WORK_MODES = ["All Work Modes", "Remote", "On-site", "Hybrid"];
+
+const asList = (value) => Array.isArray(value) ? value : value ? [value] : [];
+const colorClasses = {
+  indigo: "bg-indigo-50 text-indigo-700",
+  green: "bg-green-50 text-green-700",
+  blue: "bg-blue-50 text-blue-700",
+  purple: "bg-purple-50 text-purple-700",
+  amber: "bg-amber-50 text-amber-700",
+  orange: "bg-orange-50 text-orange-700",
+  red: "bg-red-50 text-red-700",
+  teal: "bg-teal-50 text-teal-700",
+};
+
+const readableItem = (item) => {
+  if (typeof item === "string" || typeof item === "number") return String(item);
+  if (!item || typeof item !== "object") return "Not provided";
+  return item.name || item.skill || item.keyword || item.title ||
+    Object.values(item).filter(Boolean).join(" - ") || "Not provided";
+};
+
+const AnalysisList = ({ title, items, icon: Icon, color = "indigo" }) => {
+  const values = asList(items);
+  if (!values.length) return null;
+
+  return (
+    <section className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+      <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-3">
+        <Icon className={`w-4 h-4 text-${color}-600`} />{title}
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {values.map((item, index) => (
+          <span key={`${title}-${index}`} className={`text-sm px-3 py-1.5 rounded-lg ${colorClasses[color] || colorClasses.indigo}`}>
+            {readableItem(item)}
+          </span>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 export default function JobDescriptions() {
   const [jobs, setJobs]           = useState([]);
@@ -69,15 +109,17 @@ export default function JobDescriptions() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to analyze job description");
+        const error = new Error(result.error || "Failed to analyze job description");
+        error.status = response.status;
+        throw error;
       }
 
       setAnalysisJob(job);
       setAnalysis(result.data);
 
     } catch (error) {
-      console.error("JD Analysis Error:", error);
-      toast.error(error.message || "Failed to analyze job description");
+      console.warn("JD Analysis unavailable:", error.message);
+      toast.error(error.message || "Unable to analyze this job description. Please try again.");
     } finally {
       setAnalyzingId(null);
     }
@@ -539,11 +581,101 @@ export default function JobDescriptions() {
 
             {/* Analysis Content */}
             <div className="flex-1 overflow-y-auto px-8 py-6">
+              <div className="space-y-6">
+                <section className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    ["Overall quality", analysis.qualityScore?.overall],
+                    ["Completeness", analysis.qualityScore?.completeness],
+                    ["Readability", analysis.qualityScore?.readability],
+                    ["ATS friendly", analysis.qualityScore?.atsFriendliness],
+                    ["Bias-free language", analysis.qualityScore?.biasFreeLanguage],
+                    ["Keyword optimization", analysis.qualityScore?.keywordOptimization],
+                  ].map(([label, score]) => (
+                    <div key={label} className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                      <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">{label}</p>
+                      <p className="text-2xl font-bold text-indigo-700 mt-1">{score ?? 0}<span className="text-sm font-medium">/100</span></p>
+                    </div>
+                  ))}
+                </section>
 
-              {/* Temporary */}
-              <pre className="bg-gray-50 rounded-xl p-5 text-sm text-gray-700 whitespace-pre-wrap">
-                {JSON.stringify(analysis, null, 2)}
-              </pre>
+                <section className="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                  <h3 className="text-sm font-bold text-gray-800 mb-4">Job overview</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      ["Job title", analysis.jobInformation?.jobTitle],
+                      ["Department", analysis.jobInformation?.department],
+                      ["Employment", analysis.jobInformation?.employmentType],
+                      ["Work mode", analysis.jobInformation?.workMode],
+                      ["Location", analysis.jobInformation?.location],
+                      ["Experience", analysis.experienceAnalysis?.minimumExperience || analysis.jobInformation?.minimumExperience],
+                      ["Education", analysis.jobInformation?.educationQualification],
+                      ["Salary", [analysis.jobInformation?.salaryMinimum, analysis.jobInformation?.salaryMaximum].filter(Boolean).join(" - ")],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+                        <p className="text-sm font-semibold text-gray-800 mt-1">{value || "Not provided"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <AnalysisList title="Mandatory skills" items={analysis.skillsAnalysis?.mandatorySkills} icon={ListChecks} color="green" />
+                  <AnalysisList title="Preferred skills" items={analysis.skillsAnalysis?.preferredSkills} icon={Target} color="blue" />
+                  <AnalysisList title="Soft skills" items={analysis.skillsAnalysis?.softSkills} icon={ShieldCheck} color="purple" />
+                  <AnalysisList title="Certifications" items={analysis.educationAnalysis?.certifications} icon={ListChecks} color="amber" />
+                </div>
+
+                <section className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-800 mb-4">ATS keywords</h3>
+                  <div className="space-y-3">
+                    {[
+                      ["Technical", analysis.keywords?.technical],
+                      ["Functional", analysis.keywords?.functional],
+                      ["Industry", analysis.keywords?.industry],
+                      ["Role-based", analysis.keywords?.roleBased],
+                    ].map(([label, items]) => asList(items).length > 0 && (
+                      <div key={label} className="flex flex-col sm:flex-row gap-2 sm:items-start">
+                        <span className="w-28 flex-shrink-0 text-xs font-semibold text-gray-400 uppercase tracking-wide pt-1">{label}</span>
+                        <div className="flex flex-wrap gap-2">
+                          {asList(items).map((item, index) => <span key={`${label}-${index}`} className="text-sm bg-gray-100 text-gray-700 px-2.5 py-1 rounded-lg">{readableItem(item)}</span>)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <AnalysisList title="Primary responsibilities" items={analysis.responsibilities?.primary} icon={ListChecks} color="indigo" />
+                  <AnalysisList title="Leadership responsibilities" items={analysis.responsibilities?.leadership} icon={ShieldCheck} color="orange" />
+                  <AnalysisList title="Missing information" items={analysis.missingInformation} icon={AlertCircle} color="red" />
+                  <AnalysisList title="ATS suggestions" items={analysis.atsSuggestions} icon={Target} color="teal" />
+                </div>
+
+                {analysis.biasDetection?.detected && (
+                  <section className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-amber-800 mb-3">
+                      <AlertCircle className="w-4 h-4" />Potentially biased language
+                    </h3>
+                    <div className="space-y-2 text-sm text-amber-900">
+                      {asList(analysis.biasDetection.issues).map((issue, index) => <p key={index}>{readableItem(issue)}</p>)}
+                    </div>
+                  </section>
+                )}
+
+                <section className="bg-slate-50 border border-slate-200 rounded-xl p-5">
+                  <h3 className="text-sm font-bold text-slate-800 mb-3">Candidate matching criteria</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div><span className="text-slate-500">Experience weight</span><p className="font-bold text-slate-800">{analysis.matchingCriteria?.experienceWeightage ?? 0}%</p></div>
+                    <div><span className="text-slate-500">Education weight</span><p className="font-bold text-slate-800">{analysis.matchingCriteria?.educationWeightage ?? 0}%</p></div>
+                    <div><span className="text-slate-500">Certification weight</span><p className="font-bold text-slate-800">{analysis.matchingCriteria?.certificationWeightage ?? 0}%</p></div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Required skills</p>
+                    <p className="text-sm text-slate-700">{asList(analysis.matchingCriteria?.requiredSkills).map(readableItem).join(", ") || "Not provided"}</p>
+                  </div>
+                </section>
+              </div>
 
             </div>
 
