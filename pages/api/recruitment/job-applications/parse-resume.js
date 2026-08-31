@@ -47,13 +47,14 @@ export default async function handler(req, res) {
   try {
     resumeText = await extractResumeText({ ...file, filepath: finalPath });
   } catch (err) {
-    return res.status(422).json({ success: false, error: 'Text extraction failed: ' + err.message });
+    // extractFromPDF throws user-friendly messages — pass them straight to frontend
+    return res.status(422).json({ success: false, error: err.message });
   }
 
   if (!resumeText || resumeText.trim().length < 50) {
     return res.status(422).json({
       success: false,
-      error: 'Could not extract meaningful text from the resume.',
+      error: 'Unable to read this resume. Please upload a clearer PDF or another supported format.',
     });
   }
 
