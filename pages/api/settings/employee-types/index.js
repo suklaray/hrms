@@ -1,6 +1,6 @@
 // pages/api/settings/employee-types/index.js
 import { withSessionTimeout } from '@/lib/authMiddleware';
-import { isSuperAdmin, getAssignableRolesForUser } from '@/lib/rbac';
+import { isSuperAdmin, getAssignableRolesForUser, ensureSuperAdminRole } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 
 async function handler(req, res) {
@@ -42,12 +42,20 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'An employee type with this name already exists' });
     }
 
+    let resolvedParentId = parentId ? parseInt(parentId, 10) : null;
+    if (!resolvedParentId) {
+      const superAdminRole = await ensureSuperAdminRole(prisma);
+      if (superAdminRole && superAdminRole.name !== name.trim()) {
+        resolvedParentId = superAdminRole.id;
+      }
+    }
+
     const role = await prisma.role.create({
       data: {
         name: name.trim(),
         description: description?.trim() || null,
         status,
-        parentId: parentId ? parseInt(parentId) : null,
+        parentId: resolvedParentId,
         permissions: {
           create: permissionIds.map((id) => ({ permissionId: id })),
         },

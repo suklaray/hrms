@@ -1,6 +1,6 @@
 // pages/api/settings/employee-types/[id].js
 import { withSessionTimeout } from '@/lib/authMiddleware';
-import { isSuperAdmin } from '@/lib/rbac';
+import { isSuperAdmin, ensureSuperAdminRole } from '@/lib/rbac';
 import prisma from '@/lib/prisma';
 
 async function handler(req, res) {
@@ -56,13 +56,24 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'A role cannot be its own parent' });
     }
 
+    let resolvedParentId = parentId ? parseInt(parentId, 10) : null;
+    if (!resolvedParentId) {
+      const currentRole = await prisma.role.findUnique({ where: { id } });
+      if (currentRole && currentRole.name !== 'Super Admin') {
+        const superAdminRole = await ensureSuperAdminRole(prisma);
+        if (superAdminRole && superAdminRole.id !== id) {
+          resolvedParentId = superAdminRole.id;
+        }
+      }
+    }
+
     const role = await prisma.role.update({
       where: { id },
       data: {
         name: name.trim(),
         description: description?.trim() || null,
         status,
-        parentId: parentId ? parseInt(parentId) : null,
+        parentId: resolvedParentId,
         permissions: {
           deleteMany: {},
           create: permissionIds.map((pid) => ({ permissionId: pid })),

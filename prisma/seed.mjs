@@ -1,6 +1,8 @@
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { ensureSuperAdminRole } from '@/lib/rbac';
+
 
 // Generate secure random password (8 characters)
 function generateRandomPassword() {
@@ -61,6 +63,9 @@ async function main() {
   const hashedPassword = await bcrypt.hash(password, 10);
   const empid = generateEmpId(name);
 
+  // Ensure Super Admin role exists in roles table with all permissions from permissions DB table
+  const superAdminRole = await ensureSuperAdminRole(prisma);
+
   // Create new superadmin
   await prisma.users.create({
     data: {
@@ -68,14 +73,10 @@ async function main() {
       email,
       password: hashedPassword,
       role: 'superadmin',
+      roleId: superAdminRole.id,
       empid,
     },
   });
-
-  console.log('Super Admin Created');
-  console.log('Email:', email);
-  console.log('Password:', password);
-  console.log('EmpID:', empid);
 }
 
 main()

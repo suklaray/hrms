@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/prisma';
+import { ensureSuperAdminRole } from '@/lib/rbac';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -46,6 +47,9 @@ export default async function handler(req, res) {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Ensure Super Admin role exists in roles table with all permissions from permissions table
+    const superAdminRole = await ensureSuperAdminRole(prisma);
+
     // Create SUPER_ADMIN user
     const superAdmin = await prisma.users.create({
       data: {
@@ -53,6 +57,7 @@ export default async function handler(req, res) {
         password: hashedPassword,
         name,
         role: 'superadmin',
+        roleId: superAdminRole.id,
         verified: 'verified',
         form_submitted: true,
         empid: 'SUPER_ADMIN_001'
