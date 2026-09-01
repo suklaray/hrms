@@ -3,8 +3,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
-import { Plus, Eye, Edit, Trash2, Users, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Users, CheckCircle, XCircle, ChevronDown, ChevronUp, Search, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { swalConfirm } from '@/utils/confirmDialog';
 
 export default function EmployeeTypes() {
   const router = useRouter();
@@ -14,6 +15,8 @@ export default function EmployeeTypes() {
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
+  const [parentSearchTerm, setParentSearchTerm] = useState('');
 
   const [form, setForm] = useState({
     name: '',
@@ -32,7 +35,7 @@ export default function EmployeeTypes() {
 
       if (!rolesRes.ok) {
         if (rolesRes.status === 403) {
-          router.replace('/dashboard');
+          router.replace('/403');
           return;
         }
         throw new Error('Failed to fetch roles');
@@ -103,7 +106,8 @@ export default function EmployeeTypes() {
   };
 
   const handleDelete = async (id, name) => {
-    if (!confirm(`Delete "${name}"? This will unlink all assigned users.`)) return;
+    const confirmed = await swalConfirm(`Delete "${name}"? This will unlink all assigned users.`, "Delete");
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/settings/employee-types/${id}`, { method: 'DELETE' });
@@ -132,7 +136,7 @@ export default function EmployeeTypes() {
       <div className="flex min-h-screen bg-gray-50">
         <SideBar />
         <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-6xl mx-auto">
+          <div className="mx-auto">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -151,7 +155,7 @@ export default function EmployeeTypes() {
 
             {/* Create Form */}
             {showForm && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <div className="bg-white shadow-sm border border-gray-200 p-6 mb-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Employee Type</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -188,18 +192,95 @@ export default function EmployeeTypes() {
                       </select>
                     </div>
                   </div>
-                  <div className="md:col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Parent Role <span className="text-gray-400 font-normal">(optional — for hierarchy)</span></label>
-                    <select
-                      value={form.parentId}
-                      onChange={(e) => setForm((p) => ({ ...p, parentId: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="">— No parent (top-level role) —</option>
-                      {roles.map((r) => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
-                      ))}
-                    </select>
+                  <div className="md:col-span-3 relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Parent Role <span className="text-gray-400 font-normal">(optional — for hierarchy)</span>
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsParentDropdownOpen(!isParentDropdownOpen)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-left text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-between cursor-pointer"
+                      >
+                        <span className="truncate">
+                          {roles.find((r) => String(r.id) === String(form.parentId))
+                            ? roles.find((r) => String(r.id) === String(form.parentId)).name
+                            : "— No parent (top-level role) —"}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isParentDropdownOpen ? "rotate-180" : ""}`} />
+                      </button>
+
+                      {isParentDropdownOpen && (
+                        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden flex flex-col">
+                          <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+                            <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            <input
+                              type="text"
+                              placeholder="Search parent role..."
+                              value={parentSearchTerm}
+                              onChange={(e) => setParentSearchTerm(e.target.value)}
+                              className="w-full text-xs bg-transparent focus:outline-none"
+                              autoFocus
+                            />
+                          </div>
+
+                          <div className="overflow-y-auto max-h-48 divide-y divide-gray-50">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm((p) => ({ ...p, parentId: '' }));
+                                setIsParentDropdownOpen(false);
+                                setParentSearchTerm('');
+                              }}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between cursor-pointer ${
+                                !form.parentId ? "bg-indigo-50 font-semibold text-indigo-600" : "text-gray-600"
+                              }`}
+                            >
+                              <span>— No parent (top-level role) —</span>
+                              {!form.parentId && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                            </button>
+
+                            {roles
+                              .filter((r) => r.name.toLowerCase().includes(parentSearchTerm.toLowerCase())).length === 0 ? (
+                              <div className="p-3 text-xs text-gray-500 text-center">
+                                No matching roles found
+                              </div>
+                            ) : (
+                              roles
+                                .filter((r) => r.name.toLowerCase().includes(parentSearchTerm.toLowerCase()))
+                                .map((r) => (
+                                  <button
+                                    key={r.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setForm((p) => ({ ...p, parentId: r.id }));
+                                      setIsParentDropdownOpen(false);
+                                      setParentSearchTerm('');
+                                    }}
+                                    className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${
+                                      String(form.parentId) === String(r.id)
+                                        ? "bg-indigo-50 font-semibold text-indigo-600"
+                                        : "text-gray-700"
+                                    }`}
+                                  >
+                                    <div>
+                                      <div className="font-medium">{r.name}</div>
+                                      {r.description && (
+                                        <div className="text-[10px] text-gray-400 truncate max-w-[200px]">
+                                          {r.description}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {String(form.parentId) === String(r.id) && (
+                                      <Check className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                                    )}
+                                  </button>
+                                ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Permissions */}
@@ -278,7 +359,7 @@ export default function EmployeeTypes() {
             )}
 
             {/* Roles Table */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h2 className="text-lg font-semibold text-gray-900">Existing Employee Types</h2>
               </div>
@@ -306,11 +387,10 @@ export default function EmployeeTypes() {
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">{role.name}</td>
                           <td className="px-6 py-4 text-sm text-gray-500">{role.description || '—'}</td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                              role.status === 'active'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${role.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-gray-100 text-gray-600'
+                              }`}>
                               {role.status === 'active'
                                 ? <CheckCircle size={12} />
                                 : <XCircle size={12} />}
@@ -365,4 +445,35 @@ export default function EmployeeTypes() {
       </div>
     </>
   );
+}
+
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps(context) {
+  const { req } = context;
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+
+  if (!user) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_TYPES_MANAGE);
+  if (!hasAccess) {
+    return {
+      redirect: {
+        destination: "/403",
+        permanent: false,
+      },
+    };
+  }
+
+  return { props: {} };
 }

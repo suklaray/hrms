@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from "@/lib/prisma";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   // console.log('=== Task Management API Debug ===');
@@ -46,25 +48,13 @@ export default async function handler(req, res) {
       console.error('User not found in database for empid:', decoded.empid || decoded.id);
       return res.status(401).json({ error: 'User not found' });
     }
-    // console.log('User found:', user);
-
-    if (!['hr', 'admin', 'superadmin'].includes(user.role)) {
-      console.error(' User role not authorized:', user.role);
-      return res.status(401).json({ error: 'Unauthorized role' });
+    const hasAccess = (await checkPermission(decoded, PERMISSION_KEYS.TASK_CREATE)) || (await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW));
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Unauthorized: insufficient permissions' });
     }
-    // console.log('User role authorized:', user.role);
 
     if (req.method === 'GET') {
-      // console.log('Processing GET request for employees...');
-      
-      let roleFilter = [];
-      if (user.role === 'superadmin') {
-        roleFilter = ['admin', 'hr', 'employee'];
-      } else if (user.role === 'admin') {
-        roleFilter = ['hr', 'employee'];
-      } else if (user.role === 'hr') {
-        roleFilter = ['employee'];
-      }
+      const roleFilter = ['admin', 'hr', 'employee'];
       // console.log('Role filter:', roleFilter);
 
       let whereClause = { 

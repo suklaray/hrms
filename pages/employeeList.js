@@ -8,16 +8,28 @@ import prisma from "@/lib/prisma";
 import {toast} from "react-toastify";
 import { swalConfirm} from '@/utils/confirmDialog';
 
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
 export async function getServerSideProps(context) {
   const { req } = context;
   const token = req?.cookies?.token || "";
   const user = getUserFromToken(token);
-  const allowedRoles = ["hr", "admin", "superadmin"];
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!user) {
     return {
       redirect: {
-        destination: "/unauthorized",
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_VIEW);
+  if (!hasAccess) {
+    return {
+      redirect: {
+        destination: "/403",
         permanent: false,
       },
     };

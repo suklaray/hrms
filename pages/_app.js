@@ -1,4 +1,6 @@
 import "@/styles/globals.css";
+import { useEffect } from "react";
+import axios from "axios";
 import { Toaster } from "react-hot-toast";
 import Footer from "@/Components/Footer";
 import Header from "@/Components/Header";
@@ -13,6 +15,29 @@ import 'react-confirm-alert/src/react-confirm-alert.css';
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
+
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        const status = error.response?.status;
+        if (status === 403) {
+          if (router.pathname !== '/403') {
+            router.replace('/403');
+          }
+        } else if (status === 401) {
+          const publicPaths = ['/login', '/employee/login', '/signup', '/forgot-password', '/403'];
+          if (!publicPaths.includes(router.pathname)) {
+            router.replace('/login');
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, [router]);
 
   // Define paths where header/footer should be hidden
   const noLayoutPaths = [

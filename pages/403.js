@@ -59,7 +59,7 @@ export default function ForbiddenPage() {
 
             {/* Description */}
             <p className="text-gray-600 leading-relaxed mb-8">
-              You don't have permission to access this page or perform this
+              You don&apos;t have permission to access this page or perform this
               action. Please contact your administrator if you believe this
               is an error.
             </p>

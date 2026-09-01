@@ -86,7 +86,7 @@ export default async function handler(req, res) {
       path: "/",
     }));
 
-    res.status(200).json({ message: "Login successful" });
+    res.status(200).json({ message: "Login successful", token, user: payload });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Internal Server Error" });

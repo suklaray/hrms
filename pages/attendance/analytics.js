@@ -5,18 +5,31 @@ import Head from 'next/head';
 import {BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area} from "recharts";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import {formatHHMMToAMPM} from "@/utils/dateTime";
-  export async function getServerSideProps(context) {
-    const { req } = context;
-    const token = req?.cookies?.token || "";
-    const user = getUserFromToken(token);
-    if (!user || !["hr", "admin", "superadmin"].includes(user.role)) {
-      return {
-        redirect: {
-          destination: "/login",
-          permanent: false,
-        },
-      };
-    }
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps(context) {
+  const { req } = context;
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+  if (!user) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_ANALYTICS);
+  if (!hasAccess) {
+    return {
+      redirect: {
+        destination: "/403",
+        permanent: false,
+      },
+    };
+  }
 
     return {
       props: {

@@ -5,6 +5,10 @@ import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { ArrowLeft, Edit, CheckCircle, XCircle, Users } from 'lucide-react';
 
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
 export default function ViewEmployeeType() {
   const router = useRouter();
   const { id } = router.query;
@@ -51,7 +55,7 @@ export default function ViewEmployeeType() {
       <div className="flex min-h-screen bg-gray-50">
         <SideBar />
         <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-4xl mx-auto">
+          <div className="mx-auto">
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -79,9 +83,8 @@ export default function ViewEmployeeType() {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Status</p>
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                    role.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${role.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                    }`}>
                     {role.status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
                     {role.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
@@ -181,9 +184,8 @@ export default function ViewEmployeeType() {
                         <td className="px-6 py-3 text-sm font-medium text-gray-900">{u.name}</td>
                         <td className="px-6 py-3 text-sm text-gray-600">{u.position || '—'}</td>
                         <td className="px-6 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${u.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                            }`}>
                             {u.status}
                           </span>
                         </td>

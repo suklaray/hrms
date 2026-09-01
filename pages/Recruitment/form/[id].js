@@ -5,6 +5,10 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
 
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
 export default function CandidateForm() {
   const router = useRouter();
   const { id } = router.query;

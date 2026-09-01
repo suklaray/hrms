@@ -13,6 +13,9 @@ export default async function handler(req, res) {
   try {
     const user = await prisma.users.findUnique({
       where: { id: parseInt(id) },
+      include: {
+        rbacRole: true,
+      },
     });
 
     if (!user) {

@@ -15,6 +15,8 @@ import {
   ChevronUp,
   CheckCircle,
   Upload,
+  Search,
+  Check,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
@@ -38,6 +40,10 @@ export default function ViewEmployee() {
   const [isOpen2, setIsOpen2] = useState(false);
   const [isOpen3, setIsOpen3] = useState(false);
   const [positions, setPositions] = useState([]);
+  const [rolesList, setRolesList] = useState([]);
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [roleSearchTerm, setRoleSearchTerm] = useState("");
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [resubmitStates, setResubmitStates] = useState({});
@@ -64,8 +70,17 @@ export default function ViewEmployee() {
           console.error("User not authenticated");
         }
 
-        //  Fetch employee details only if ID is present
-        // Fetch positions (only for admin/hr/superadmin)
+        // Fetch roles from roles table
+        try {
+          const rolesRes = await axios.get('/api/settings/employee-types', { withCredentials: true });
+          const available = rolesRes.data?.assignableRoles || rolesRes.data?.roles || [];
+          setRolesList(available);
+        } catch (rErr) {
+          console.log('Could not fetch roles list:', rErr.message);
+          setRolesList([]);
+        }
+
+        // Fetch positions
         try {
           const posRes = await axios.get('/api/settings/positions');
           setPositions(posRes.data);
@@ -142,6 +157,47 @@ export default function ViewEmployee() {
 
   const { user, employee: employees, addresses, bankDetails } = data || {};
   const { name, email, empid, password, employee_type } = user || {};
+
+  const handleSelectRole = async (selectedRole) => {
+    setIsUpdatingRole(true);
+    try {
+      const roleNameLower = selectedRole.name.toLowerCase();
+      const legacyEnum = ["admin", "hr", "employee", "superadmin"].includes(roleNameLower)
+        ? roleNameLower
+        : "employee";
+
+      const res = await axios.patch(
+        `/api/auth/employee/update-role/${empid}`,
+        { roleId: selectedRole.id, role: legacyEnum },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        }
+      );
+
+      if (res.status === 200) {
+        setData((prev) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            roleId: selectedRole.id,
+            role: legacyEnum,
+            rbacRole: selectedRole,
+          },
+        }));
+        setIsRoleDropdownOpen(false);
+        setRoleSearchTerm("");
+        toast.success(`User role updated to ${selectedRole.name}`);
+      }
+    } catch (err) {
+      console.error("Failed to update role:", err);
+      toast.error(err.response?.data?.message || "Failed to update role.");
+    } finally {
+      setIsUpdatingRole(false);
+    }
+  };
 
   const handleRoleChange = async (newRole) => {
     try {
@@ -475,7 +531,7 @@ export default function ViewEmployee() {
           </div>
 
           <div className="p-6">
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="mx-auto space-y-6">
               {/* Profile Header */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center space-x-6">
@@ -514,11 +570,11 @@ export default function ViewEmployee() {
                             ID: {empid}
                           </span>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
-                            {user?.role || "N/A"}
+                            {user?.rbacRole?.name || user?.role || "N/A"}
                           </span>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user?.verified === 'verified'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-gray-100 text-gray-800'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-gray-100 text-gray-800'
                             }`}>
                             <CheckCircle className="w-3 h-3 mr-1" />
                             {user?.verified === 'verified' ? 'Verified' : 'Not Verified'}
@@ -531,8 +587,8 @@ export default function ViewEmployee() {
                           onClick={handleVerifyEmployee}
                           disabled={isVerifying}
                           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${user?.verified === 'verified'
-                              ? 'bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white'
-                              : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white'
+                            ? 'bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white'
+                            : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white'
                             }`}
                         >
                           <CheckCircle size={16} className={isVerifying ? "animate-spin" : ""} />
@@ -669,41 +725,84 @@ export default function ViewEmployee() {
                       )}
                     </div>
 
-                    <div>
+                    <div className="relative">
                       <p className="text-sm font-medium text-gray-700 mb-1">
                         User Role
                       </p>
                       <p className="text-gray-900 font-medium capitalize">
-                        {user?.role || "N/A"}
+                        {user?.rbacRole?.name || user?.role || "N/A"}
                       </p>
                       {["admin", "hr", "superadmin"].includes(role) && (
-                        <select
-                          value={user?.role || ""}
-                          onChange={(e) => handleRoleChange(e.target.value)}
-                          className="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        >
-                          <option value="" disabled>
-                            Change User Role
-                          </option>
-                          {role === "superadmin" && (
-                            <>
-                              <option value="employee">Employee</option>
-                              <option value="hr">HR</option>
-                              <option value="admin">Admin</option>
-                              <option value="superadmin">Superadmin</option>
-                            </>
-                          )}
-                          {role === "admin" && (
-                            <>
-                              <option value="employee">Employee</option>
-                              <option value="hr">HR</option>
-                            </>
-                          )}
-                          {role === "hr" && (
-                            <option value="employee">Employee</option>
-                          )}
-                        </select>
+                        <div className="mt-2 relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                            className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                          >
+                            <span className="truncate">
+                              {user?.rbacRole?.name || (user?.role ? user.role.toUpperCase() : "Change User Role")}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""}`} />
+                          </button>
 
+                          {isRoleDropdownOpen && (
+                            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-hidden flex flex-col min-w-[200px]">
+                              <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+                                <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                <input
+                                  type="text"
+                                  placeholder="Search role..."
+                                  value={roleSearchTerm}
+                                  onChange={(e) => setRoleSearchTerm(e.target.value)}
+                                  className="w-full text-xs bg-transparent focus:outline-none"
+                                  autoFocus
+                                />
+                              </div>
+
+                              <div className="overflow-y-auto max-h-48 divide-y divide-gray-50">
+                                {rolesList.filter((r) =>
+                                  r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
+                                  (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
+                                ).length === 0 ? (
+                                  <div className="p-3 text-xs text-gray-500 text-center">
+                                    No matching roles
+                                  </div>
+                                ) : (
+                                  rolesList
+                                    .filter((r) =>
+                                      r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
+                                      (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
+                                    )
+                                    .map((r) => (
+                                      <button
+                                        key={r.id}
+                                        type="button"
+                                        disabled={isUpdatingRole}
+                                        onClick={() => handleSelectRole(r)}
+                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${
+                                          user?.roleId === r.id || user?.rbacRole?.name === r.name
+                                            ? "bg-indigo-50 font-semibold text-indigo-600"
+                                            : "text-gray-700"
+                                        }`}
+                                      >
+                                        <div>
+                                          <div className="font-medium">{r.name}</div>
+                                          {r.description && (
+                                            <div className="text-[10px] text-gray-400 truncate max-w-[180px]">
+                                              {r.description}
+                                            </div>
+                                          )}
+                                        </div>
+                                        {(user?.roleId === r.id || user?.rbacRole?.name === r.name) && (
+                                          <Check className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                                        )}
+                                      </button>
+                                    ))
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1184,10 +1283,10 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
               onClick={handleRequestResubmission}
               disabled={isResubmitting || resubmitStates?.[documentType] === 'sent'}
               className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${resubmitStates?.[documentType] === 'sent'
-                  ? 'bg-green-100 text-green-700 cursor-default'
-                  : isResubmitting
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-red-100 hover:bg-red-200 text-red-700'
+                ? 'bg-green-100 text-green-700 cursor-default'
+                : isResubmitting
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-red-100 hover:bg-red-200 text-red-700'
                 }`}
             >
               <Upload className="w-3 h-3 mr-1" />
@@ -1198,4 +1297,35 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
       </div>
     </div>
   );
+}
+
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps(context) {
+  const { req } = context;
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+
+  if (!user) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_VIEW);
+  if (!hasAccess) {
+    return {
+      redirect: {
+        destination: "/403",
+        permanent: false,
+      },
+    };
+  }
+
+  return { props: {} };
 }

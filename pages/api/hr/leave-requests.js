@@ -2,6 +2,8 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -15,14 +17,15 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
+    }
+
     const currentUser = await prisma.users.findUnique({
       where: { empid: decoded.empid || decoded.id },
       select: { empid: true, role: true }
     });
-
-    if (!currentUser || !['hr', 'admin', 'superadmin'].includes(currentUser.role)) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
 
     // Define role-based filtering (exclude current user's role to prevent seeing own requests)
     let roleFilter = [];

@@ -3,6 +3,7 @@ import cookie from "cookie";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
+import { isSuperAdmin, getAssignableRolesForUser } from "@/lib/rbac";
 
 function generateCandidateId() {
   return `CAND${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -43,21 +44,18 @@ export default async function handler(req, res) {
       rbacRoleId = null,
     } = req.body;
 
-    // Role-based validation for role assignment
-    const allowedRoles = [];
-    if (currentUser.role === 'hr') {
-      allowedRoles.push('employee');
-    } else if (currentUser.role === 'admin') {
-      allowedRoles.push('hr', 'employee');
-    } else if (currentUser.role === 'superadmin') {
-      allowedRoles.push('admin', 'hr', 'employee');
-    }
+    // Dynamic DB role-hierarchy validation
+    const assignableRoles = await getAssignableRolesForUser(currentUser);
+    const assignableIds = new Set(assignableRoles.map((r) => r.id));
 
-    if (!allowedRoles.includes(role)) {
-      return res.status(403).json({
-        success: false,
-        message: `You are not authorized to create ${role} role. Allowed roles: ${allowedRoles.join(', ')}`
-      });
+    if (rbacRoleId) {
+      const parsedRbacRoleId = parseInt(rbacRoleId, 10);
+      if (!isSuperAdmin(currentUser) && !assignableIds.has(parsedRbacRoleId)) {
+        return res.status(403).json({
+          success: false,
+          message: `You are not authorized to assign this role.`
+        });
+      }
     }
 
     if (!name || !email || !employee_type) {

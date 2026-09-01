@@ -3,8 +3,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
-import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Search, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
+
+export async function getServerSideProps() {
+  return { props: {} };
+}
 
 export default function EditEmployeeType() {
   const router = useRouter();
@@ -14,6 +18,8 @@ export default function EditEmployeeType() {
   const [allRoles, setAllRoles] = useState([]);
   const [groupedPermissions, setGroupedPermissions] = useState({});
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
+  const [parentSearchTerm, setParentSearchTerm] = useState('');
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -120,25 +126,31 @@ export default function EditEmployeeType() {
       <div className="flex min-h-screen bg-gray-50">
         <SideBar />
         <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-4xl mx-auto">
+          <div className="mx-auto">
 
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-              <button
-                onClick={() => router.push(`/settings/employee-types/${id}`)}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition cursor-pointer"
-              >
-                <ArrowLeft size={18} /> Back
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Edit Employee Type</h1>
-                <p className="text-gray-500 text-sm">Update role details and permissions</p>
+            <div className="-mx-6 lg:-mx-6 -mt-6 lg:-mt-8 mb-8 px-6 lg:px-8 py-5 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                    Edit {form.name} - Employee Type
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Update role details and permissions
+                  </p>
+                </div>
+                <button
+                  onClick={() => router.push(`/settings/employee-types/${id}`)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
+                >
+                  ← Back to List
+                </button>
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -172,23 +184,100 @@ export default function EditEmployeeType() {
                     </select>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Parent Role <span className="text-gray-400 font-normal">(optional — for hierarchy)</span></label>
-                  <select
-                    value={form.parentId}
-                    onChange={(e) => setForm((p) => ({ ...p, parentId: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">— No parent (top-level role) —</option>
-                    {allRoles.map((r) => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
-                    ))}
-                  </select>
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 mt-3">
+                    Parent Role <span className="text-gray-400 font-normal">(optional — for hierarchy)</span>
+                  </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsParentDropdownOpen(!isParentDropdownOpen)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white text-left text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="truncate">
+                        {allRoles.find((r) => String(r.id) === String(form.parentId))
+                          ? allRoles.find((r) => String(r.id) === String(form.parentId)).name
+                          : "— No parent (top-level role) —"}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isParentDropdownOpen ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {isParentDropdownOpen && (
+                      <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden flex flex-col">
+                        <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+                          <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          <input
+                            type="text"
+                            placeholder="Search parent role..."
+                            value={parentSearchTerm}
+                            onChange={(e) => setParentSearchTerm(e.target.value)}
+                            className="w-full text-xs bg-transparent focus:outline-none"
+                            autoFocus
+                          />
+                        </div>
+
+                        <div className="overflow-y-auto max-h-48 divide-y divide-gray-50">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setForm((p) => ({ ...p, parentId: '' }));
+                              setIsParentDropdownOpen(false);
+                              setParentSearchTerm('');
+                            }}
+                            className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between cursor-pointer ${!form.parentId ? "bg-indigo-50 font-semibold text-indigo-600" : "text-gray-600"
+                              }`}
+                          >
+                            <span>— No parent (top-level role) —</span>
+                            {!form.parentId && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                          </button>
+
+                          {allRoles
+                            .filter((r) => String(r.id) !== String(id))
+                            .filter((r) => r.name.toLowerCase().includes(parentSearchTerm.toLowerCase())).length === 0 ? (
+                            <div className="p-3 text-xs text-gray-500 text-center">
+                              No matching roles found
+                            </div>
+                          ) : (
+                            allRoles
+                              .filter((r) => String(r.id) !== String(id))
+                              .filter((r) => r.name.toLowerCase().includes(parentSearchTerm.toLowerCase()))
+                              .map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((p) => ({ ...p, parentId: r.id }));
+                                    setIsParentDropdownOpen(false);
+                                    setParentSearchTerm('');
+                                  }}
+                                  className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${String(form.parentId) === String(r.id)
+                                      ? "bg-indigo-50 font-semibold text-indigo-600"
+                                      : "text-gray-700"
+                                    }`}
+                                >
+                                  <div>
+                                    <div className="font-medium">{r.name}</div>
+                                    {r.description && (
+                                      <div className="text-[10px] text-gray-400 truncate max-w-[200px]">
+                                        {r.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {String(form.parentId) === String(r.id) && (
+                                    <Check className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
+                                  )}
+                                </button>
+                              ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Permissions */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
                   Permissions
                   <span className="ml-2 text-sm font-normal text-gray-500">

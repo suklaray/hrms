@@ -34,7 +34,7 @@ export async function getServerSideProps(context) {
       },
     };
   }
-  const permissions = await getUserPermissions(user.roleId);
+  const permissions = await getUserPermissions(user);
   let userData = null;
   try {
     userData = await prisma.users.findUnique({
@@ -42,7 +42,7 @@ export async function getServerSideProps(context) {
       select: { empid: true, name: true, email: true, profile_photo: true, position: true, role: true ,roleId: true, rbacRole:{select:{id:true,name:true}}},
     });
   } catch (e) {
-    toast.error("Dashboard getServerSideProps error:", e);
+    console.error("Dashboard getServerSideProps error:", e);
   }
 
   return {
@@ -57,7 +57,7 @@ export async function getServerSideProps(context) {
         position: userData?.position || null,
         verified: user.verified || null,
         form_submitted: user.form_submitted || false,
-        roleId: user.roleId || null,
+        roleId: userData?.roleId || user.roleId || null,
         rbacRole: userData?.rbacRole || null,
       },
       permissions: Array.from(permissions),
@@ -234,8 +234,17 @@ function HRDashboardView({ user, permissions }) {
 }
 
 // ─── Main unified dashboard ───────────────────────────────────────────────────
-export default function Dashboard({ user, permissions }) {
-  const isEmployee = user.role === "employee" || user?.rbacRole?.name?.toLowerCase() === "employee";
+export default function Dashboard({ user, permissions = [] }) {
+  const isSuper = user?.role === "superadmin" || user?.rbacRole?.name === "Super Admin";
+  const hasManagementPermissions =
+    isSuper ||
+    permissions.includes("employee.view") ||
+    permissions.includes("attendance.view") ||
+    permissions.includes("leave.view") ||
+    permissions.includes("recruitment.view") ||
+    permissions.includes("payroll.view") ||
+    permissions.includes("compliance.view") ||
+    ["admin", "hr", "ceo", "superadmin"].includes(user?.role?.toLowerCase());
 
   return (
     <>
@@ -243,7 +252,11 @@ export default function Dashboard({ user, permissions }) {
       <div className="flex min-h-screen bg-gray-50">
         <SideBar user={user} />
         <div className="flex-1 overflow-auto">
-          {isEmployee ? <EmployeeDashboard user={user} permissions={permissions} /> : <HRDashboardView user={user} permissions={permissions} />}
+          {hasManagementPermissions ? (
+            <HRDashboardView user={user} permissions={permissions} />
+          ) : (
+            <EmployeeDashboard user={user} permissions={permissions} />
+          )}
         </div>
       </div>
     </>

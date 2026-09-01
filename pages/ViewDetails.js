@@ -3,6 +3,10 @@ import { useRouter } from "next/router";
 import Head from 'next/head';
 import Breadcrumb from "@/Components/Breadcrumb";
 
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
 export default function ViewDetails() {
     const [employee, setEmployee] = useState(null);
     const [message, setMessage] = useState("");

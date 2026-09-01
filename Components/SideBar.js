@@ -96,7 +96,7 @@ const SIDEBAR_STRUCTURE = [
       { title: 'My Attendance',       route: '/hr/attendance/my-attendance',           permission: 'attendance.my' },
       { title: 'Leave Request',       route: '/leave-request/leave-request',           permission: 'leave.request' },
       { title: 'Add Position',        route: '/settings/position-management',          permission: 'settings.position_manage' },
-      { title: 'Leave Requests',      route: '/leave-request/leave-request',           permission: 'settings.leave_requests' },
+      { title: 'Leave Requests',      route: '/leave-request/leave-request',           permission: 'leave.view' },
       { title: 'Payslip & Documents', route: '/payslip/payslip-lists',                 permission: 'payslip.view' },
       { title: 'Manage Tasks',        route: '/task-management/user-task',             permission: 'task.my' },
       { title: 'Employee Types',      route: '/settings/employee-types',               permission: 'settings.employee_types_manage' },

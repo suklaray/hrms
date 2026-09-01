@@ -2,6 +2,9 @@ import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { getAccessibleRoles } from "@/lib/roleBasedAccess";
 
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
@@ -15,11 +18,17 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
-      return res.status(403).json({ message: "Access denied" });
+    if (!decoded) {
+      return res.status(401).json({ message: "Access denied" });
     }
 
-    const accessibleRoles = getAccessibleRoles(decoded.role);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW);
+    if (!hasAccess) {
+      return res.status(403).json({ message: "Access denied: insufficient permissions" });
+    }
+
+    const role = decoded.role?.toLowerCase();
+    const accessibleRoles = role === 'hr' ? ['employee'] : ['employee', 'hr', 'admin', 'superadmin'];
     
     const employees = await prisma.users.findMany({
       where: { 

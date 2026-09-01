@@ -13,6 +13,10 @@ import {
   FaMailBulk
 } from 'react-icons/fa';
 
+export async function getServerSideProps() {
+  return { props: {} };
+}
+
 export default function CandidateDetails() {
   const [candidate, setCandidate] = useState(null);
   const [employee, setEmployee] = useState(null);

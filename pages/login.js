@@ -28,13 +28,13 @@ export default function Login() {
 
         if (res.ok) {
             const token = data.token;
-
-            // Save token
-            localStorage.setItem("token", token);
-
-            // Decode token to get user info
-            const decoded = jwt.decode(token);
-            localStorage.setItem("user", JSON.stringify(decoded));
+            if (token) {
+                localStorage.setItem("token", token);
+                const decoded = jwt.decode(token);
+                if (decoded) localStorage.setItem("user", JSON.stringify(decoded));
+            } else if (data.user) {
+                localStorage.setItem("user", JSON.stringify(data.user));
+            }
 
             router.push("/dashboard");
         } else {

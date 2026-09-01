@@ -13,22 +13,14 @@ async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
 
   const user = req.user;
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  // 1. Super Admin — bypass all checks
   if (isSuperAdmin(user)) {
     return res.status(200).json({ isSuperAdmin: true, permissions: [] });
   }
 
-  // 2. Has a custom employee type (roleId) → use DB permissions
-  if (user.roleId) {
-    const permissions = await getUserPermissions(user.roleId);
-    return res.status(200).json({ isSuperAdmin: false, permissions: Array.from(permissions) });
-  }
-
-  // 3. Legacy role enum fallback
-  const role = user.role?.toLowerCase();
-  const defaults = ROLE_DEFAULT_PERMISSIONS[role] ?? [];
-  return res.status(200).json({ isSuperAdmin: false, permissions: defaults });
+  const permissions = await getUserPermissions(user);
+  return res.status(200).json({ isSuperAdmin: false, permissions: Array.from(permissions) });
 }
 
 export default withSessionTimeout(handler);

@@ -5,26 +5,29 @@ import SideBar from "@/Components/SideBar";
 //import { toast } from "react-toastify";
 
 import {
-  User,
-  Mail,
-  Lock,
-  Calendar,
-  IdCard,
-  Briefcase,
-  Clock,
-  Users,
-  CheckCircle,
-  AlertCircle,
-  Copy,
-  Eye,
-  EyeOff
+    User,
+    Mail,
+    Lock,
+    Calendar,
+    IdCard,
+    Briefcase,
+    Clock,
+    Users,
+    CheckCircle,
+    AlertCircle,
+    Copy,
+    Eye,
+    EyeOff,
+    Search,
+    Check,
+    ChevronDown,
 } from "lucide-react";
-import { 
-  FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaFileUpload,
-  FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaBriefcase
+import {
+    FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaFileUpload,
+    FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaBriefcase
 } from "react-icons/fa";
 //import toast from "react-hot-toast";
-import {toast} from 'react-toastify';
+import { toast } from 'react-toastify';
 import axios from "axios";
 
 export default function RegisterEmployee() {
@@ -59,6 +62,8 @@ export default function RegisterEmployee() {
     const [employeeData, setEmployeeData] = useState(null);
     const [positions, setPositions] = useState([]);
     const [rbacRoles, setRbacRoles] = useState([]);
+    const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+    const [roleSearchTerm, setRoleSearchTerm] = useState("");
     const [isResettingForm, setIsResettingForm] = useState(false);
     useEffect(() => {
         setMounted(true);
@@ -68,20 +73,21 @@ export default function RegisterEmployee() {
 
     useEffect(() => {
         // Fetch positions
-            axios.get('/api/settings/positions')
-              .then((res) => {
+        axios.get('/api/settings/positions')
+            .then((res) => {
                 setPositions(res.data);
-              })
-              .catch((err) => {
+            })
+            .catch((err) => {
                 console.error('Error fetching positions:', err);
                 toast.error('Failed to fetch positions');
-              })
+            })
         // Fetch RBAC roles (employee types) for assignment
-            axios.get('/api/settings/employee-types')
-              .then((res) => {
-                setRbacRoles(res.data.roles?.filter(r => r.status === 'active') || []);
-              })
-              .catch(() => {}); // non-critical, silently fail
+        axios.get('/api/settings/employee-types')
+            .then((res) => {
+                const available = res.data.assignableRoles || res.data.roles || [];
+                setRbacRoles(available.filter(r => r.status === 'active'));
+            })
+            .catch(() => { }); // non-critical, silently fail
         // Fetch current user's role
         const fetchUserRole = async () => {
             try {
@@ -96,7 +102,7 @@ export default function RegisterEmployee() {
                 console.error('Failed to fetch user role:', error);
             }
         };
-        
+
         fetchUserRole();
     }, []);
 
@@ -125,16 +131,16 @@ export default function RegisterEmployee() {
     // Check if form is valid
     useEffect(() => {
         let requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
-        
+
         // Add duration_months as required if employee type is Intern or Contractor
         if (formData.employeeType === 'Intern' || formData.employeeType === 'Contractor') {
             requiredFields.push('duration_months');
         }
-        
+
         const hasAllFields = requiredFields.every(field => {
             return formData[field] && formData[field].toString().trim() !== '';
         });
-        
+
         const hasNoErrors = Object.keys(errors).length === 0;
         setIsFormValid(hasAllFields && hasNoErrors && !emailChecking);
     }, [formData, errors, emailChecking]);
@@ -145,7 +151,7 @@ export default function RegisterEmployee() {
 
     const validateField = (name, value) => {
         const newErrors = { ...errors };
-        
+
         switch (name) {
             case 'name':
                 if (!value.trim()) {
@@ -207,10 +213,10 @@ export default function RegisterEmployee() {
                     const today = new Date();
                     const twoYearsAgo = new Date();
                     const twoYearsFromNow = new Date();
-                    
+
                     twoYearsAgo.setFullYear(today.getFullYear() - 2);
                     twoYearsFromNow.setFullYear(today.getFullYear() + 2);
-                    
+
                     if (isNaN(selectedDate.getTime())) {
                         newErrors[name] = 'Please enter a valid date';
                     } else if (selectedDate < twoYearsAgo) {
@@ -256,14 +262,14 @@ export default function RegisterEmployee() {
                     delete newErrors[name];
                 }
         }
-        
+
         setErrors(newErrors);
     };
 
     const checkEmailAvailability = async (email) => {
         if (!email || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) return;
         if (isResettingForm || isLoading) return; // Don't check during reset or submission
-        
+
         setEmailChecking(true);
         try {
             const res = await fetch('/api/recruitment/check-email', {
@@ -271,9 +277,9 @@ export default function RegisterEmployee() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email.toLowerCase().trim() })
             });
-            
+
             const data = await res.json();
-            
+
             if (!res.ok) {
                 setErrors(prev => ({
                     ...prev,
@@ -310,35 +316,35 @@ export default function RegisterEmployee() {
 
     const validateForm = () => {
         let requiredFields = ['name', 'email', 'contact_number', 'position', 'dateOfJoining', 'experience', 'employeeType'];
-        
+
         // Add duration_months as required if employee type is Intern or Contractor
         if (formData.employeeType === 'Intern' || formData.employeeType === 'Contractor') {
             requiredFields.push('duration_months');
         }
-        
+
         let isValid = true;
-        
+
         // Check if all required fields have values without triggering validation
         requiredFields.forEach(field => {
             if (!formData[field] || (typeof formData[field] === 'string' && !formData[field].trim())) {
                 isValid = false;
             }
         });
-        
+
         return isValid && Object.keys(errors).length === 0;
     };
 
     const handleInputChange = (field, value) => {
         // Skip validation if form is being reset
         if (isResettingForm) return;
-        
+
         // Normalize email input
         if (field === 'email') {
             value = value.toLowerCase().trim();
         }
-        
+
         setFormData(prev => ({ ...prev, [field]: value }));
-        
+
         // Skip validation for empty email fields (during form reset)
         if (field === 'email' && value === '') {
             setErrors(prev => {
@@ -348,7 +354,7 @@ export default function RegisterEmployee() {
             });
             return;
         }
-        
+
         validateField(field, value);
     };
 
@@ -356,98 +362,100 @@ export default function RegisterEmployee() {
 
 
 
-const handleRegister = async () => {
-    if (!validateForm()) {
-        toast.error('Please fix all validation errors before submitting.');
-        return;
-    }
-    
-    // Clear any pending email validation timeouts BEFORE starting registration
-    if (emailTimeout) {
-        clearTimeout(emailTimeout);
-        setEmailTimeout(null);
-    }
-    
-    setIsLoading(true);
-    setMessage("");
-
-    try {
-        const res = await fetch("/api/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                name: formData.name,
-                email: formData.email,
-                contact_number: formData.contact_number,
-                position: formData.position,
-                date_of_joining: formData.dateOfJoining,
-                status: formData.status,
-                experience: formData.experience,
-                employee_type: formData.employeeType,
-                duration_months: formData.duration_months,
-                role: formData.role,
-                rbacRoleId: formData.rbacRoleId ? parseInt(formData.rbacRoleId) : null
-            }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-            setMessage(data.message || "Failed to register employee.");
+    const handleRegister = async () => {
+        if (!validateForm()) {
+            toast.error('Please fix all validation errors before submitting.');
             return;
         }
 
-    setGeneratedPassword(data.password);
-    setGeneratedUsername(data.empid || data.username || formData.email);
-    setMessage(data.message);
-    
-    // Store employee data before resetting form
-    setEmployeeData({
-        name: formData.name,
-        email: formData.email,
-        role: formData.role
-    });
-
-    setTimeout(() => {
-        setMessage('');
-    }, 1000);
-
-        
-        // Set flag to prevent validation during reset
-        setIsResettingForm(true);
-        
-        // Clear any pending email validation timeouts first
+        // Clear any pending email validation timeouts BEFORE starting registration
         if (emailTimeout) {
             clearTimeout(emailTimeout);
             setEmailTimeout(null);
         }
-        
-        // Reset all form states
-        setFormData({
-            name: "",
-            email: "",
-            contact_number: "",
-            position: "",
-            dateOfJoining: "",
-            status: "Active",
-            experience: "",
-            employeeType: "",
-            duration_months: "",
-            role: "employee",
-            rbacRoleId: ""
-        });
-        setErrors({});
-        setIsFormValid(false);
-        setEmailChecking(false);
-        
-        // Reset the flag after a brief delay
-        setTimeout(() => setIsResettingForm(false), 100);
-    } catch (error) {
-        setMessage("Network error. Please try again.");
-    } finally {
-        setIsLoading(false);
-    }
-};
+
+        setIsLoading(true);
+        setMessage("");
+
+        try {
+            const res = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    contact_number: formData.contact_number,
+                    position: formData.position,
+                    date_of_joining: formData.dateOfJoining,
+                    status: formData.status,
+                    experience: formData.experience,
+                    employee_type: formData.employeeType,
+                    duration_months: formData.duration_months,
+                    role: formData.role,
+                    rbacRoleId: formData.rbacRoleId ? parseInt(formData.rbacRoleId) : null
+                }),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setMessage(data.message || "Failed to register employee.");
+                return;
+            }
+
+            setGeneratedPassword(data.password);
+            setGeneratedUsername(data.empid || data.username || formData.email);
+            setMessage(data.message);
+
+            // Store employee data before resetting form
+            setEmployeeData({
+                name: formData.name,
+                email: formData.email,
+                role: formData.role
+            });
+
+            setTimeout(() => {
+                setMessage('');
+            }, 1000);
+
+
+            // Set flag to prevent validation during reset
+            setIsResettingForm(true);
+
+            // Clear any pending email validation timeouts first
+            if (emailTimeout) {
+                clearTimeout(emailTimeout);
+                setEmailTimeout(null);
+            }
+
+            // Reset all form states
+            setFormData({
+                name: "",
+                email: "",
+                contact_number: "",
+                position: "",
+                dateOfJoining: "",
+                status: "Active",
+                experience: "",
+                employeeType: "",
+                duration_months: "",
+                role: "employee",
+                rbacRoleId: ""
+            });
+            setIsRoleDropdownOpen(false);
+            setRoleSearchTerm("");
+            setErrors({});
+            setIsFormValid(false);
+            setEmailChecking(false);
+
+            // Reset the flag after a brief delay
+            setTimeout(() => setIsResettingForm(false), 100);
+        } catch (error) {
+            setMessage("Network error. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
 
     const copyPassword = async () => {
@@ -483,7 +491,7 @@ const handleRegister = async () => {
                     role: employeeData?.role
                 })
             });
-            
+
             if (res.ok) {
                 toast.success('Credentials sent successfully!');
             } else {
@@ -513,11 +521,10 @@ const handleRegister = async () => {
             <input
                 type={type}
                 value={formData[field]}
-                onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))}
+                onChange={(e) => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
                 placeholder={placeholder}
-                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    error ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
             />
             {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -531,10 +538,9 @@ const handleRegister = async () => {
             </label>
             <select
                 value={formData[field]}
-                onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))}
-                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white ${
-                    error ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
+                onChange={(e) => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
             >
                 <option value="">{placeholder}</option>
                 {options.map(option => (
@@ -551,343 +557,398 @@ const handleRegister = async () => {
                 <title>Register Employee - HRMS</title>
             </Head>
             <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-            <SideBar handleLogout={handleLogout} />
-            
-            <div className="flex-1 overflow-auto p-4 lg:p-6">
-                {/* Back Button */}
-                <div className="mb-6">
-                    <button 
-                        onClick={() => router.push('/dashboard')}
-                        className="flex items-center px-4 py-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
-                    >
-                        ← Back to Dashboard
-                    </button>
-                </div>
-                
-                {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Employee Registration</h1>
-                    <p className="text-gray-600">Fill in all required information to register a new employee</p>
-                </div>
+                <SideBar handleLogout={handleLogout} />
 
-                {/* Main Form Card */}
-                <div className="max-w-4xl mx-auto">
-                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-                        {/* Form Header */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 lg:px-8 py-6">
-                            <h2 className="text-xl lg:text-2xl font-bold text-white">Employee Information</h2>
-                            <p className="text-indigo-100 mt-1">All fields marked with * are required</p>
-                        </div>
-
-                        {/* Global Error Message */}
-                        {message && !message.includes('successfully') && (
-                            <div className="mx-6 lg:mx-8 mt-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-xl">
-                                <div className="flex items-center">
-                                    <FaTimesCircle className="text-red-400 mr-2" />
-                                    <p className="text-red-700 font-medium">{message}</p>
-                                </div>
+                <div className="flex-1 overflow-auto p-4 lg:p-6">
+                    {/* Header */}
+                    <div className="-mx-6 lg:-mx-6 -mt-6 lg:-mt-8 mb-8 px-6 lg:px-8 py-5 border-b border-gray-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900 leading-tight">
+                                    Employee Registration
+                                </h1>
+                                <p className="text-sm text-gray-600 mt-1">
+                                    Fill in all required information to register a new employee
+                                </p>
                             </div>
-                        )}
 
-                        {/* Form */}
-                        <div className="p-6 lg:p-8">
-                            <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Name */}
-                                <div className="md:col-span-2">
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <FaUser className="mr-2 text-indigo-500" />
-                                        Full Name *
-                                    </label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text" 
-                                            value={formData.name} 
-                                            onChange={(e) => handleInputChange('name', e.target.value)}
-                                            placeholder="Enter employee's full name"
-                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                                                errors.name 
-                                                    ? 'border-red-500 focus:border-red-500' 
+                            <button
+                                onClick={() => router.push('/dashboard')}
+                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm rounded-lg transition-colors"
+                            >
+                                ← Back to List
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Main Form Card */}
+                    <div className="mx-auto">
+                        <div className="bg-white shadow-xl">
+                            {/* Form Header */}
+                            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 lg:px-8 py-6">
+                                <h2 className="text-xl lg:text-2xl font-bold text-white">Employee Information</h2>
+                                <p className="text-indigo-100 mt-1">All fields marked with * are required</p>
+                            </div>
+
+                            {/* Global Error Message */}
+                            {message && !message.includes('successfully') && (
+                                <div className="mx-6 lg:mx-8 mt-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-xl">
+                                    <div className="flex items-center">
+                                        <FaTimesCircle className="text-red-400 mr-2" />
+                                        <p className="text-red-700 font-medium">{message}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Form */}
+                            <div className="p-6 lg:p-8">
+                                <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Name */}
+                                    <div className="md:col-span-2">
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <FaUser className="mr-2 text-indigo-500" />
+                                            Full Name *
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.name}
+                                                onChange={(e) => handleInputChange('name', e.target.value)}
+                                                placeholder="Enter employee's full name"
+                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.name
+                                                    ? 'border-red-500 focus:border-red-500'
                                                     : formData.name && !errors.name
                                                         ? 'border-green-500 focus:border-green-500'
                                                         : 'border-gray-200 focus:border-indigo-500'
-                                            }`}
-                                        />
-                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                            {getFieldIcon('name', errors.name, formData.name && !errors.name)}
+                                                    }`}
+                                            />
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                {getFieldIcon('name', errors.name, formData.name && !errors.name)}
+                                            </div>
                                         </div>
+                                        {errors.name && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.name}</p>}
                                     </div>
-                                    {errors.name && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.name}</p>}
-                                </div>
 
-                                {/* Email */}
-                                <div>
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <FaEnvelope className="mr-2 text-indigo-500" />
-                                        Email Address *
-                                    </label>
-                                    <div className="relative">
-                                        <input 
-                                            type="email" 
-                                            value={formData.email} 
-                                            onChange={(e) => handleInputChange('email', e.target.value)}
-                                            placeholder="employee@company.com"
-                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                                                errors.email 
-                                                    ? 'border-red-500 focus:border-red-500' 
+                                    {/* Email */}
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <FaEnvelope className="mr-2 text-indigo-500" />
+                                            Email Address *
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="email"
+                                                value={formData.email}
+                                                onChange={(e) => handleInputChange('email', e.target.value)}
+                                                placeholder="employee@company.com"
+                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.email
+                                                    ? 'border-red-500 focus:border-red-500'
                                                     : formData.email && !errors.email
                                                         ? 'border-green-500 focus:border-green-500'
                                                         : 'border-gray-200 focus:border-indigo-500'
-                                            }`}
-                                        />
-                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                            {emailChecking ? (
-                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
-                                            ) : (
-                                                getFieldIcon('email', errors.email, formData.email && !errors.email)
-                                            )}
+                                                    }`}
+                                            />
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                {emailChecking ? (
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+                                                ) : (
+                                                    getFieldIcon('email', errors.email, formData.email && !errors.email)
+                                                )}
+                                            </div>
                                         </div>
+                                        {errors.email && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.email}</p>}
                                     </div>
-                                    {errors.email && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.email}</p>}
-                                </div>
 
-                                {/* Contact Number */}
-                                <div>
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <FaPhone className="mr-2 text-indigo-500" />
-                                        Contact Number *
-                                    </label>
-                                    <div className="relative">
-                                        <input 
-                                            type="text" 
-                                            value={formData.contact_number} 
-                                            onChange={(e) => handleInputChange('contact_number', e.target.value)}
-                                            placeholder="Enter 10-digit contact number"
-                                            maxLength={10}
-                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                                                errors.contact_number 
-                                                    ? 'border-red-500 focus:border-red-500' 
+                                    {/* Contact Number */}
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <FaPhone className="mr-2 text-indigo-500" />
+                                            Contact Number *
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.contact_number}
+                                                onChange={(e) => handleInputChange('contact_number', e.target.value)}
+                                                placeholder="Enter 10-digit contact number"
+                                                maxLength={10}
+                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.contact_number
+                                                    ? 'border-red-500 focus:border-red-500'
                                                     : formData.contact_number && !errors.contact_number
                                                         ? 'border-green-500 focus:border-green-500'
                                                         : 'border-gray-200 focus:border-indigo-500'
-                                            }`}
-                                        />
-                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                            {getFieldIcon('contact_number', errors.contact_number, formData.contact_number && !errors.contact_number)}
-                                        </div>
-                                    </div>
-                                    {errors.contact_number && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.contact_number}</p>}
-                                </div>
-
-                                {/* Position */}
-                                <div>
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <FaBriefcase className="mr-2 text-indigo-500" />
-                                        Position *
-                                    </label>
-                                    <div className="relative">
-                                        <select 
-                                            value={formData.position} 
-                                            onChange={(e) => handleInputChange('position', e.target.value)}
-                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors appearance-none bg-white ${
-                                                errors.position 
-                                                    ? 'border-red-500 focus:border-red-500' 
-                                                    : formData.position && !errors.position
-                                                        ? 'border-green-500 focus:border-green-500'
-                                                        : 'border-gray-200 focus:border-indigo-500'
-                                            }`}
-                                        >
-                                            <option value="">Select Position</option>
-                                            {positions.map((position) => (
-                                                <option key={position.id} value={position.position_name}>
-                                                    {position.position_name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                            {getFieldIcon('position', errors.position, formData.position && !errors.position)}
-                                        </div>
-                                    </div>
-                                    {errors.position && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.position}</p>}
-                                </div>
-
-                                {/* Date of Joining */}
-                                <div>
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <FaCalendarAlt className="mr-2 text-indigo-500" />
-                                        Date of Joining *
-                                    </label>
-                                    <div className="relative">
-                                        <input 
-                                            type="date" 
-                                            value={formData.dateOfJoining} 
-                                            onChange={(e) => handleInputChange('dateOfJoining', e.target.value)}
-                                            className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                                                errors.dateOfJoining 
-                                                    ? 'border-red-500 focus:border-red-500' 
-                                                    : formData.dateOfJoining && !errors.dateOfJoining
-                                                        ? 'border-green-500 focus:border-green-500'
-                                                        : 'border-gray-200 focus:border-indigo-500'
-                                            }`}
-                                        />
-                                    </div>
-                                    <div className="flex items-center mt-1">
-                                        {(formData.dateOfJoining && !errors.dateOfJoining) && (
-                                            <div className="flex items-center text-green-600 text-sm">
-                                                <FaCheckCircle className="mr-1" />
-                                                Valid date selected
-                                            </div>
-                                        )}
-                                    </div>
-                                    {errors.dateOfJoining && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.dateOfJoining}</p>}
-                                </div>
-
-
-
-                                {/* Experience */}
-                                <div>
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <Clock className="mr-2 text-indigo-500" />
-                                        Experience (Years) *
-                                    </label>
-                                    <div className="relative">
-                                        <input 
-                                            type="number" 
-                                            value={formData.experience} 
-                                            onChange={(e) => handleInputChange('experience', e.target.value)}
-                                            placeholder="Years of experience"
-                                            min="0"
-                                            max="50"
-                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                                                errors.experience 
-                                                    ? 'border-red-500 focus:border-red-500' 
-                                                    : formData.experience && !errors.experience
-                                                        ? 'border-green-500 focus:border-green-500'
-                                                        : 'border-gray-200 focus:border-indigo-500'
-                                            }`}
-                                        />
-                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                            {getFieldIcon('experience', errors.experience, formData.experience && !errors.experience)}
-                                        </div>
-                                    </div>
-                                    {errors.experience && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.experience}</p>}
-                                </div>
-
-                                {/* Employee Type */}
-                                <div>
-                                    <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                        <Users className="mr-2 text-indigo-500" />
-                                        Employee Type *
-                                    </label>
-                                    <div className="relative">
-                                        <select 
-                                            value={formData.employeeType} 
-                                            onChange={(e) => handleInputChange('employeeType', e.target.value)}
-                                            className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors appearance-none bg-white ${
-                                                errors.employeeType 
-                                                    ? 'border-red-500 focus:border-red-500' 
-                                                    : formData.employeeType && !errors.employeeType
-                                                        ? 'border-green-500 focus:border-green-500'
-                                                        : 'border-gray-200 focus:border-indigo-500'
-                                            }`}
-                                        >
-                                            <option value="">Select employee type</option>
-                                            <option value="Full_time">Full-time</option>
-                                            <option value="Intern">Intern</option>
-                                            <option value="Contractor">Contractor</option>
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                            {getFieldIcon('employeeType', errors.employeeType, formData.employeeType && !errors.employeeType)}
-                                        </div>
-                                    </div>
-                                    {errors.employeeType && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.employeeType}</p>}
-                                </div>
-
-                                {/* Duration - Show for Intern or Contractor */}
-                                {(formData.employeeType === "Intern" || formData.employeeType === "Contractor") && (
-                                    <div>
-                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                            <Clock className="mr-2 text-indigo-500" />
-                                            Duration (Months) *
-                                        </label>
-                                        <div className="relative">
-                                            <input 
-                                                type="number" 
-                                                value={formData.duration_months} 
-                                                onChange={(e) => handleInputChange('duration_months', e.target.value)}
-                                                placeholder="Enter duration in months"
-                                                min="1"
-                                                max="12"
-                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                                                    errors.duration_months 
-                                                        ? 'border-red-500 focus:border-red-500' 
-                                                        : formData.duration_months && !errors.duration_months
-                                                            ? 'border-green-500 focus:border-green-500'
-                                                            : 'border-gray-200 focus:border-indigo-500'
-                                                }`}
+                                                    }`}
                                             />
                                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                                                {getFieldIcon('duration_months', errors.duration_months, formData.duration_months && !errors.duration_months)}
+                                                {getFieldIcon('contact_number', errors.contact_number, formData.contact_number && !errors.contact_number)}
                                             </div>
                                         </div>
-                                        {errors.duration_months && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.duration_months}</p>}
-                                    </div>
-                                )}
-
-                                {/* Role */}
-                                {/* Role */}
-                                    <div>
-                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                            <User className="mr-2 text-indigo-500" />
-                                            Role
-                                        </label>
-                                        <div className="relative">
-                                            <select 
-                                                value={formData.role} 
-                                                onChange={(e) => handleInputChange('role', e.target.value)}
-                                                className="w-full border-2 p-3 pr-10 rounded-xl focus:outline-none focus:border-indigo-500 appearance-none bg-white border-gray-200"
-                                            >
-                                                <option value="">Select role</option>
-                                                {getRoleOptions().map(option => (
-                                                    <option key={option.value} value={option.value}>{option.label}</option>
-                                                ))}
-                                            </select>
-                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </div>
-                                        </div>
+                                        {errors.contact_number && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.contact_number}</p>}
                                     </div>
 
-                                {/* RBAC Employee Type */}
-                                {rbacRoles.length > 0 && (
+                                    {/* Position */}
                                     <div>
                                         <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                                            <Users className="mr-2 text-indigo-500" />
-                                            Employee Type (RBAC Role)
+                                            <FaBriefcase className="mr-2 text-indigo-500" />
+                                            Position *
                                         </label>
                                         <div className="relative">
                                             <select
-                                                value={formData.rbacRoleId}
-                                                onChange={(e) => handleInputChange('rbacRoleId', e.target.value)}
-                                                className="w-full border-2 p-3 pr-10 rounded-xl focus:outline-none focus:border-indigo-500 appearance-none bg-white border-gray-200"
+                                                value={formData.position}
+                                                onChange={(e) => handleInputChange('position', e.target.value)}
+                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors appearance-none bg-white ${errors.position
+                                                    ? 'border-red-500 focus:border-red-500'
+                                                    : formData.position && !errors.position
+                                                        ? 'border-green-500 focus:border-green-500'
+                                                        : 'border-gray-200 focus:border-indigo-500'
+                                                    }`}
                                             >
-                                                <option value="">None (assign later)</option>
-                                                {rbacRoles.map((r) => (
-                                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                                <option value="">Select Position</option>
+                                                {positions.map((position) => (
+                                                    <option key={position.id} value={position.position_name}>
+                                                        {position.position_name}
+                                                    </option>
                                                 ))}
                                             </select>
-                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                {getFieldIcon('position', errors.position, formData.position && !errors.position)}
                                             </div>
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">Controls which features this employee can access</p>
+                                        {errors.position && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.position}</p>}
                                     </div>
-                                )}
 
-                            </form>
+                                    {/* Date of Joining */}
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <FaCalendarAlt className="mr-2 text-indigo-500" />
+                                            Date of Joining *
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="date"
+                                                value={formData.dateOfJoining}
+                                                onChange={(e) => handleInputChange('dateOfJoining', e.target.value)}
+                                                className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${errors.dateOfJoining
+                                                    ? 'border-red-500 focus:border-red-500'
+                                                    : formData.dateOfJoining && !errors.dateOfJoining
+                                                        ? 'border-green-500 focus:border-green-500'
+                                                        : 'border-gray-200 focus:border-indigo-500'
+                                                    }`}
+                                            />
+                                        </div>
+                                        <div className="flex items-center mt-1">
+                                            {(formData.dateOfJoining && !errors.dateOfJoining) && (
+                                                <div className="flex items-center text-green-600 text-sm">
+                                                    <FaCheckCircle className="mr-1" />
+                                                    Valid date selected
+                                                </div>
+                                            )}
+                                        </div>
+                                        {errors.dateOfJoining && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.dateOfJoining}</p>}
+                                    </div>
+
+
+
+                                    {/* Experience */}
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <Clock className="mr-2 text-indigo-500" />
+                                            Experience (Years) *
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                value={formData.experience}
+                                                onChange={(e) => handleInputChange('experience', e.target.value)}
+                                                placeholder="Years of experience"
+                                                min="0"
+                                                max="50"
+                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.experience
+                                                    ? 'border-red-500 focus:border-red-500'
+                                                    : formData.experience && !errors.experience
+                                                        ? 'border-green-500 focus:border-green-500'
+                                                        : 'border-gray-200 focus:border-indigo-500'
+                                                    }`}
+                                            />
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                {getFieldIcon('experience', errors.experience, formData.experience && !errors.experience)}
+                                            </div>
+                                        </div>
+                                        {errors.experience && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.experience}</p>}
+                                    </div>
+
+                                    {/* Employee Type */}
+                                    <div>
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <Users className="mr-2 text-indigo-500" />
+                                            Employee Type *
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={formData.employeeType}
+                                                onChange={(e) => handleInputChange('employeeType', e.target.value)}
+                                                className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors appearance-none bg-white ${errors.employeeType
+                                                    ? 'border-red-500 focus:border-red-500'
+                                                    : formData.employeeType && !errors.employeeType
+                                                        ? 'border-green-500 focus:border-green-500'
+                                                        : 'border-gray-200 focus:border-indigo-500'
+                                                    }`}
+                                            >
+                                                <option value="">Select employee type</option>
+                                                <option value="Full_time">Full-time</option>
+                                                <option value="Intern">Intern</option>
+                                                <option value="Contractor">Contractor</option>
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                {getFieldIcon('employeeType', errors.employeeType, formData.employeeType && !errors.employeeType)}
+                                            </div>
+                                        </div>
+                                        {errors.employeeType && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.employeeType}</p>}
+                                    </div>
+
+                                    {/* Duration - Show for Intern or Contractor */}
+                                    {(formData.employeeType === "Intern" || formData.employeeType === "Contractor") && (
+                                        <div>
+                                            <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                                <Clock className="mr-2 text-indigo-500" />
+                                                Duration (Months) *
+                                            </label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    value={formData.duration_months}
+                                                    onChange={(e) => handleInputChange('duration_months', e.target.value)}
+                                                    placeholder="Enter duration in months"
+                                                    min="1"
+                                                    max="12"
+                                                    className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.duration_months
+                                                        ? 'border-red-500 focus:border-red-500'
+                                                        : formData.duration_months && !errors.duration_months
+                                                            ? 'border-green-500 focus:border-green-500'
+                                                            : 'border-gray-200 focus:border-indigo-500'
+                                                        }`}
+                                                />
+                                                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                                    {getFieldIcon('duration_months', errors.duration_months, formData.duration_months && !errors.duration_months)}
+                                                </div>
+                                            </div>
+                                            {errors.duration_months && <p className="text-red-500 text-sm mt-1 flex items-center"><FaTimesCircle className="mr-1" />{errors.duration_months}</p>}
+                                        </div>
+                                    )}
+
+                                    {/* Dynamic Searchable Role / Employee Type */}
+                                    <div className="relative">
+                                        <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                                            <Users className="mr-2 text-indigo-500 w-4 h-4" />
+                                            User Role / Employee Type
+                                        </label>
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                                                className="w-full border-2 p-3 pr-10 rounded-xl focus:outline-none focus:border-indigo-500 bg-white border-gray-200 flex items-center justify-between text-left text-sm text-gray-700 cursor-pointer"
+                                            >
+                                                <span className="truncate">
+                                                    {(() => {
+                                                        const foundRole = rbacRoles.find((r) => String(r.id) === String(formData.rbacRoleId));
+                                                        return foundRole ? foundRole.name : "Select role (or assign later)";
+                                                    })()}
+                                                </span>
+                                                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""}`} />
+                                            </button>
+
+                                            {isRoleDropdownOpen && (
+                                                <div className="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-hidden flex flex-col">
+                                                    {/* Search Input */}
+                                                    <div className="p-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
+                                                        <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search role by name..."
+                                                            value={roleSearchTerm}
+                                                            onChange={(e) => setRoleSearchTerm(e.target.value)}
+                                                            className="w-full text-xs bg-transparent focus:outline-none"
+                                                            autoFocus
+                                                        />
+                                                    </div>
+
+                                                    {/* Roles List */}
+                                                    <div className="overflow-y-auto max-h-48 divide-y divide-gray-50">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    rbacRoleId: "",
+                                                                    role: "employee",
+                                                                }));
+                                                                setIsRoleDropdownOpen(false);
+                                                                setRoleSearchTerm("");
+                                                            }}
+                                                            className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between cursor-pointer ${!formData.rbacRoleId ? "bg-indigo-50 font-semibold text-indigo-600" : "text-gray-600"
+                                                                }`}
+                                                        >
+                                                            <span>None (Default Employee)</span>
+                                                            {!formData.rbacRoleId && <Check className="w-4 h-4 text-indigo-600" />}
+                                                        </button>
+
+                                                        {rbacRoles.filter((r) =>
+                                                            r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
+                                                            (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
+                                                        ).length === 0 ? (
+                                                            <div className="p-4 text-xs text-gray-500 text-center">
+                                                                No matching roles found
+                                                            </div>
+                                                        ) : (
+                                                            rbacRoles
+                                                                .filter((r) =>
+                                                                    r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
+                                                                    (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
+                                                                )
+                                                                .map((r) => (
+                                                                    <button
+                                                                        key={r.id}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const roleNameLower = r.name.toLowerCase();
+                                                                            const legacyEnum = ["admin", "hr", "employee", "superadmin"].includes(roleNameLower)
+                                                                                ? roleNameLower
+                                                                                : "employee";
+                                                                            setFormData((prev) => ({
+                                                                                ...prev,
+                                                                                rbacRoleId: r.id,
+                                                                                role: legacyEnum,
+                                                                            }));
+                                                                            setIsRoleDropdownOpen(false);
+                                                                            setRoleSearchTerm("");
+                                                                        }}
+                                                                        className={`w-full text-left px-4 py-2.5 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${String(formData.rbacRoleId) === String(r.id)
+                                                                            ? "bg-indigo-50 font-semibold text-indigo-600"
+                                                                            : "text-gray-700"
+                                                                            }`}
+                                                                    >
+                                                                        <div>
+                                                                            <div className="font-medium text-sm">{r.name}</div>
+                                                                            {r.description && (
+                                                                                <div className="text-xs text-gray-400 truncate max-w-xs">
+                                                                                    {r.description}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        {String(formData.rbacRoleId) === String(r.id) && (
+                                                                            <Check className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                                                                        )}
+                                                                    </button>
+                                                                ))
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Controls permissions and features accessible to this employee</p>
+                                    </div>
+
+                                </form>
 
                                 {/* Login Credentials Display */}
                                 {generatedPassword && (
@@ -895,9 +956,9 @@ const handleRegister = async () => {
                                         <div className="flex justify-between items-center gap-2 mb-3">
                                             <div className="flex items-center gap-2">
                                                 <CheckCircle className="w-5 h-5 text-green-600 cursor-pointer" />
-                                            <h3 className="font-semibold text-green-800">Employee Registered Successfully!</h3>
+                                                <h3 className="font-semibold text-green-800">Employee Registered Successfully!</h3>
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={handleSendCredentials}
                                                 className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
                                             >
@@ -954,39 +1015,68 @@ const handleRegister = async () => {
                                     </div>
                                 )}
 
-                            {/* Submit Button */}
-                            <div className="mt-8">
-                                <button
-                                    type="button"
-                                    onClick={handleRegister}
-                                    disabled={!isFormValid || isLoading}
-                                    className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg ${
-                                        isFormValid && !isLoading
+                                {/* Submit Button */}
+                                <div className="mt-8">
+                                    <button
+                                        type="button"
+                                        onClick={handleRegister}
+                                        disabled={!isFormValid || isLoading}
+                                        className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg ${isFormValid && !isLoading
                                             ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] cursor-pointer'
                                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                >
-                                    {isLoading ? (
-                                        <div className="flex items-center justify-center">
-                                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                                            Registering...
-                                        </div>
-                                    ) : (
-                                        'Register Employee'
+                                            }`}
+                                    >
+                                        {isLoading ? (
+                                            <div className="flex items-center justify-center">
+                                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                                                Registering...
+                                            </div>
+                                        ) : (
+                                            'Register Employee'
+                                        )}
+                                    </button>
+                                    {!isFormValid && (
+                                        <p className="text-gray-500 text-sm mt-2 text-center">
+                                            Please fill all fields correctly to enable submission
+                                        </p>
                                     )}
-                                </button>
-                                {!isFormValid && (
-                                    <p className="text-gray-500 text-sm mt-2 text-center">
-                                        Please fill all fields correctly to enable submission
-                                    </p>
-                                )}
+                                </div>
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
-        </div>
         </>
     );
+}
+
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps(context) {
+    const { req } = context;
+    const token = req?.cookies?.token || "";
+    const user = getUserFromToken(token);
+
+    if (!user) {
+        return {
+            redirect: {
+                destination: "/login",
+                permanent: false,
+            },
+        };
+    }
+
+    const hasAccess = await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_CREATE);
+    if (!hasAccess) {
+        return {
+            redirect: {
+                destination: "/403",
+                permanent: false,
+            },
+        };
+    }
+
+    return { props: {} };
 }
