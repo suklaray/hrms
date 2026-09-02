@@ -27,7 +27,7 @@ export default function PositionManagement() {
       const response = await axios.get("/api/settings/positions");
       const positionsData = response.data;
       setPositions(positionsData);
-      
+
       // Fetch fresh employee data for all positions to get current roles
       const employeeCounts = {};
       await Promise.all(
@@ -70,12 +70,12 @@ export default function PositionManagement() {
           const userData = await res.json();
           const role = userData.user?.role;
           setUserRole(role);
-          
+
           if (role === "employee") {
             setLoading(false);
             return;
           }
-          
+
           if (["superadmin", "admin", "hr"].includes(role)) {
             fetchPositions();
           }
@@ -85,7 +85,7 @@ export default function PositionManagement() {
         setLoading(false);
       }
     };
-    
+
     checkAccess();
   }, []);
 
@@ -146,7 +146,7 @@ export default function PositionManagement() {
     try {
       const confirmed = await swalConfirm("Are you sure you want to delete this position?");
       if (!confirmed) return;
-      
+
       await axios.delete(`/api/settings/positions?id=${position.id}`);
       toast.success("Position deleted successfully");
       fetchPositions();
@@ -163,9 +163,9 @@ export default function PositionManagement() {
       setExpandedPosition(null);
       return;
     }
-    
+
     setExpandedPosition(position.id);
-    
+
     // Refresh user role and employee data to get current permissions
     await fetchUserRole();
     try {
@@ -181,22 +181,10 @@ export default function PositionManagement() {
   };
 
   const canReassignEmployee = (employeeRole, userRole) => {
-    if (userRole === "superadmin") return true;
-    if (userRole === "admin" && (employeeRole === "hr" || employeeRole === "employee")) return true;
-    if (userRole === "hr" && employeeRole === "employee") return true;
-    return false;
+    return true;
   };
   const canViewRole = (userRole, employeeRole) => {
-    if (userRole === "superadmin") return true;
-
-    if (
-      userRole === "admin" &&
-      (employeeRole === "hr" || employeeRole === "employee")
-    ) {
-      return true;
-    }
-
-    return false; // HR and others cannot see roles
+    return true;
   };
 
   const handlePositionReassign = async (empid, newPosition, positionId, employeeRole) => {
@@ -210,10 +198,10 @@ export default function PositionManagement() {
         empid,
         newPosition
       });
-      
+
       // Refresh all position data to ensure accurate employee counts and roles
       await fetchPositions();
-      
+
       toast.success("Position updated successfully");
     } catch (error) {
       console.error("Error updating position:", error);
@@ -265,7 +253,7 @@ export default function PositionManagement() {
                     <input
                       type="text"
                       value={formData.position_name}
-                      onChange={(e) => setFormData({...formData, position_name: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, position_name: e.target.value })}
                       className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                       placeholder="Enter position name"
                       required
@@ -277,7 +265,7 @@ export default function PositionManagement() {
                     </label>
                     <textarea
                       value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
                       placeholder="Enter position description"
                       rows={3}
@@ -311,72 +299,72 @@ export default function PositionManagement() {
                 <>
                   {/* Mobile Card View */}
                   <div className="block sm:hidden space-y-4 p-4">
-                  {positions.map((position) => (
-                    <div key={position.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Briefcase className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {position.position_name}
+                    {positions.map((position) => (
+                      <div key={position.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Briefcase className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="ml-3">
+                              <div className="text-sm font-medium text-gray-900">
+                                {position.position_name}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleEdit(position)}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                            title="Edit Position"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={async () => {
-                              // Check employee count for mobile view
-                              try {
-                                const response = await axios.get(`/api/settings/position-employees?positionName=${encodeURIComponent(position.position_name)}`);
-                                if (response.data.employees.length > 0) {
-                                  toast.error(`Cannot delete position. ${response.data.employees.length} employee(s) are still assigned. Please reassign them first.`);
-                                  return;
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleEdit(position)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Edit Position"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                // Check employee count for mobile view
+                                try {
+                                  const response = await axios.get(`/api/settings/position-employees?positionName=${encodeURIComponent(position.position_name)}`);
+                                  if (response.data.employees.length > 0) {
+                                    toast.error(`Cannot delete position. ${response.data.employees.length} employee(s) are still assigned. Please reassign them first.`);
+                                    return;
+                                  }
+                                  handleDelete(position);
+                                } catch (error) {
+                                  console.error("Error checking employees:", error);
+                                  handleDelete(position);
                                 }
-                                handleDelete(position);
-                              } catch (error) {
-                                console.error("Error checking employees:", error);
-                                handleDelete(position);
-                              }
-                            }}
-                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                            title="Delete Position"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Delete Position"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="text-gray-500">Description:</span>
+                            <span className="ml-2 text-gray-900">{position.description || "No description"}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Created by:</span>
+                            <span className="ml-2 text-gray-900">{position.created_by_name || "Unknown"}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Created:</span>
+                            <span className="ml-2 text-gray-900">{new Date(position.created_at).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="space-y-2 text-sm">
-                        <div>
-                          <span className="text-gray-500">Description:</span>
-                          <span className="ml-2 text-gray-900">{position.description || "No description"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Created by:</span>
-                          <span className="ml-2 text-gray-900">{position.created_by_name || "Unknown"}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Created:</span>
-                          <span className="ml-2 text-gray-900">{new Date(position.created_at).toLocaleDateString()}</span>
-                        </div>
+                    ))}
+                    {positions.length === 0 && (
+                      <div className="text-center py-12">
+                        <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                        <p className="text-lg font-medium text-gray-500">No positions found</p>
+                        <p className="text-sm text-gray-400">Create your first position to get started</p>
                       </div>
-                    </div>
-                  ))}
-                  {positions.length === 0 && (
-                    <div className="text-center py-12">
-                      <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                      <p className="text-lg font-medium text-gray-500">No positions found</p>
-                      <p className="text-sm text-gray-400">Create your first position to get started</p>
-                    </div>
-                  )}
+                    )}
                   </div>
 
                   {/* Desktop Accordion View */}
@@ -385,7 +373,7 @@ export default function PositionManagement() {
                       {positions.map((position) => (
                         <div key={position.id} className="border border-gray-200 rounded-lg overflow-hidden">
                           {/* Position Header */}
-                          <div 
+                          <div
                             className="bg-white hover:bg-gray-50 cursor-pointer transition-colors"
                             onClick={() => togglePositionAccordion(position)}
                           >
@@ -421,16 +409,14 @@ export default function PositionManagement() {
                                     handleDelete(position);
                                   }}
                                   disabled={(positionEmployees[position.id]?.employees?.length || 0) > 0}
-                                  className={`p-2 rounded-lg transition-colors ${
-                                    (positionEmployees[position.id]?.employees?.length || 0) > 0
+                                  className={`p-2 rounded-lg transition-colors ${(positionEmployees[position.id]?.employees?.length || 0) > 0
                                       ? 'text-gray-400 cursor-not-allowed'
                                       : 'text-red-600 hover:bg-red-100'
-                                  }`}
-                                  title={`${
-                                    (positionEmployees[position.id]?.employees?.length || 0) > 0
+                                    }`}
+                                  title={`${(positionEmployees[position.id]?.employees?.length || 0) > 0
                                       ? `Cannot delete - ${positionEmployees[position.id]?.employees?.length} employee(s) assigned`
                                       : 'Delete Position'
-                                  }`}
+                                    }`}
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -442,7 +428,7 @@ export default function PositionManagement() {
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Employees List (Accordion Content) */}
                           {expandedPosition === position.id && (
                             <div className="bg-gray-50 border-t border-gray-200">
@@ -513,7 +499,7 @@ export default function PositionManagement() {
                           )}
                         </div>
                       ))}
-                      
+
                       {positions.length === 0 && (
                         <div className="text-center py-12">
                           <Briefcase className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -528,7 +514,7 @@ export default function PositionManagement() {
             </div>
           </div>
         </div>
-        
+
 
       </div>
     </>

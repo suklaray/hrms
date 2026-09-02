@@ -1,9 +1,8 @@
-// pages/api/auth/employees.js
-
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { getAccessibleRoles } from "@/lib/roleBasedAccess";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -17,27 +16,18 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const currentUser = await prisma.users.findUnique({
-      where: { empid: decoded.empid || decoded.id },
-      select: { empid: true, role: true }
-    });
-
-    if (!currentUser || !['hr', 'admin', 'superadmin'].includes(currentUser.role)) {
-      return res.status(401).json({ message: 'Unauthorized' });
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
     }
-
-    // Define role-based filtering using standardized function
-    const roleFilter = getAccessibleRoles(currentUser.role);
 
     const { role } = req.query;
 
     const filters = {
       status: { not: "Inactive" },
-      role: { in: roleFilter }
     };
 
-    // If role is given in query string and it's allowed for this user
-    if (role && typeof role === "string" && role !== "All" && roleFilter.includes(role.toLowerCase())) {
+    if (role && typeof role === "string" && role !== "All") {
       filters.role = role.toLowerCase();
     }
 

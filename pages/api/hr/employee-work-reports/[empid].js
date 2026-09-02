@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-import { getAccessibleRoles } from "@/lib/roleBasedAccess";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -16,19 +17,24 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
+    if (!decoded) {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const accessibleRoles = getAccessibleRoles(decoded.role);
+    const isSelf = decoded.empid === empid || decoded.id === empid;
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.REPORT_VIEW);
+
+    if (!isSelf && !hasAccess) {
+      return res.status(403).json({ message: "Access denied: insufficient permissions" });
+    }
     
     const employee = await prisma.users.findUnique({
       where: { empid },
       select: { role: true, name: true, empid: true }
     });
 
-    if (!employee || !accessibleRoles.includes(employee.role)) {
-      return res.status(403).json({ message: "Access denied to this employee's data" });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
     }
 
     const reports = await prisma.daily_work_reports.findMany({

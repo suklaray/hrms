@@ -1,6 +1,8 @@
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
+import { checkPermission, isSuperAdmin } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -25,6 +27,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
+  const hasAccess = await checkPermission(approver, PERMISSION_KEYS.LEAVE_APPROVE);
+  if (!hasAccess) {
+    return res.status(403).json({ success: false, error: 'Insufficient permissions to approve/reject leaves' });
+  }
+
   const { id, status, reason } = req.body;
 
   if (!id || !status) {
@@ -40,38 +47,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Get the leave request to check the requester's role
     const leaveRequest = await prisma.leave_requests.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        users: {
-          select: { role: true }
-        }
-      }
+      where: { id: parseInt(id) }
     });
 
     if (!leaveRequest) {
       return res.status(404).json({ success: false, error: 'Leave request not found' });
-    }
-
-    const requesterRole = leaveRequest.users.role;
-
-    // Hierarchical approval validation
-    if (requesterRole === 'employee') {
-      // Employee leaves can be approved by HR, admin, or superadmin
-      if (!['hr', 'admin', 'superadmin'].includes(approver.role.toLowerCase())) {
-        return res.status(403).json({ success: false, error: 'Insufficient permissions' });
-      }
-    } else if (requesterRole === 'hr') {
-      // HR leaves can only be approved by admin or superadmin
-      if (!['admin', 'superadmin'].includes(approver.role.toLowerCase())) {
-        return res.status(403).json({ success: false, error: 'Only admin or superadmin can approve HR leaves' });
-      }
-    } else if (requesterRole === 'admin') {
-      // Admin leaves can only be approved by superadmin
-      if (approver.role.toLowerCase() !== 'superadmin') {
-        return res.status(403).json({ success: false, error: 'Only superadmin can approve admin leaves' });
-      }
     }
 
     // Prepare update data based on status

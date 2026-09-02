@@ -31,7 +31,7 @@ const SIDEBAR_STRUCTURE = [
     icon: UserPlus,
     permission: 'recruitment.view',
     children: [
-      { title: 'Recruitment',         route: '/Recruitment/recruitment',               permission: 'recruitment.view' },
+      { title: 'Recruitment', route: '/Recruitment/recruitment', permission: 'recruitment.view' },
     ],
   },
   {
@@ -39,8 +39,8 @@ const SIDEBAR_STRUCTURE = [
     icon: Users,
     permission: 'employee.view',
     children: [
-      { title: 'Employee List',       route: '/employeeList',                          permission: 'employee.view' },
-      { title: 'Register Employee',   route: '/registerEmployee',                      permission: 'employee.create' },
+      { title: 'Employee List', route: '/employeeList', permission: 'employee.view' },
+      { title: 'Register Employee', route: '/registerEmployee', permission: 'employee.create' },
     ],
   },
   {
@@ -48,9 +48,9 @@ const SIDEBAR_STRUCTURE = [
     icon: Clock,
     permission: 'attendance.view',
     children: [
-      { title: 'Attendance',          route: '/hr/attendance',                         permission: 'attendance.view' },
-      { title: 'Leave Management',    route: '/hr/view-leave-requests',                permission: 'leave.view' },
-      { title: 'Attendance Analytics',route: '/attendance/analytics',                  permission: 'attendance.analytics' },
+      { title: 'Attendance', route: '/hr/attendance', permission: 'attendance.view' },
+      { title: 'Leave Management', route: '/hr/view-leave-requests', permission: 'leave.view' },
+      { title: 'Attendance Analytics', route: '/attendance/analytics', permission: 'attendance.analytics' },
     ],
   },
   {
@@ -58,8 +58,8 @@ const SIDEBAR_STRUCTURE = [
     icon: DollarSign,
     permission: 'payroll.view',
     children: [
-      { title: 'Payroll Record',      route: '/hr/payroll/payroll-view',               permission: 'payroll.view' },
-      { title: 'Generate Payroll',    route: '/hr/payroll/generate',                   permission: 'payroll.generate' },
+      { title: 'Payroll Record', route: '/hr/payroll/payroll-view', permission: 'payroll.view' },
+      { title: 'Generate Payroll', route: '/hr/payroll/generate', permission: 'payroll.generate' },
     ],
   },
   {
@@ -67,8 +67,8 @@ const SIDEBAR_STRUCTURE = [
     icon: Shield,
     permission: 'compliance.view',
     children: [
-      { title: 'Employee Compliance', route: '/compliance/empCompliance',              permission: 'compliance.view' },
-      { title: 'Document Center',     route: '/compliance/documentCenter',             permission: 'compliance.view_documents' },
+      { title: 'Employee Compliance', route: '/compliance/empCompliance', permission: 'compliance.view' },
+      { title: 'Document Center', route: '/compliance/documentCenter', permission: 'compliance.view_documents' },
     ],
   },
   {
@@ -76,11 +76,11 @@ const SIDEBAR_STRUCTURE = [
     icon: ListChecks,
     permission: 'task.view',
     children: [
-      { title: 'Task Management',     route: '/task-management/manage-tasks',          permission: 'task.create' },
-      { title: 'Daily Reports',       route: '/task-management/daily-reports',         permission: 'report.view' },
+      { title: 'Task Management', route: '/task-management/manage-tasks', permission: 'task.create' },
+      { title: 'Daily Reports', route: '/task-management/daily-reports', permission: 'report.view' },
     ],
   },
-  
+
   {
     name: 'Customer Connect',
     icon: Phone,
@@ -92,15 +92,14 @@ const SIDEBAR_STRUCTURE = [
     icon: Settings,
     permission: 'settings.profile',
     children: [
-      { title: 'Profile Management',  route: '/settings/profile',                      permission: 'settings.profile' },
-      { title: 'My Attendance',       route: '/hr/attendance/my-attendance',           permission: 'attendance.my' },
-      { title: 'Leave Request',       route: '/leave-request/leave-request',           permission: 'leave.request' },
-      { title: 'Add Position',        route: '/settings/position-management',          permission: 'settings.position_manage' },
-      { title: 'Leave Requests',      route: '/leave-request/leave-request',           permission: 'leave.view' },
-      { title: 'Payslip & Documents', route: '/payslip/payslip-lists',                 permission: 'payslip.view' },
-      { title: 'Manage Tasks',        route: '/task-management/user-task',             permission: 'task.my' },
-      { title: 'Employee Types',      route: '/settings/employee-types',               permission: 'settings.employee_types_manage' },
-      { title: 'Bot Settings',        route: '/settings/bot-settings',                 permission: 'settings.bot' },
+      { title: 'Profile Management', route: '/settings/profile', permission: 'settings.profile' },
+      { title: 'My Attendance', route: '/hr/attendance/my-attendance', permission: 'attendance.my' },
+      { title: 'Leave Request', route: '/leave-request/leave-request', permission: 'leave.request' },
+      { title: 'Add Position', route: '/settings/position-management', permission: 'settings.position_manage' },
+      { title: 'Payslip & Documents', route: '/payslip/payslip-lists', permission: 'payslip.view' },
+      { title: 'Manage Tasks', route: '/task-management/user-task', permission: 'task.my' },
+      { title: 'Employee Types', route: '/settings/employee-types', permission: 'settings.employee_types_manage' },
+      { title: 'Bot Settings', route: '/settings/bot-settings', permission: 'settings.bot' },
     ],
   },
 ];
@@ -197,11 +196,10 @@ export default function Sidebar({ user: propUser }) {
     }
   };
 
-  const role = user?.role?.toLowerCase() || 'hr';
   const isAccessEnabled =
     isSuperAdminUser ||
-    role === 'superadmin' ||
-    (userStatus.verified && userStatus.formSubmitted);
+    (userStatus.verified && userStatus.formSubmitted) ||
+    permissions.size > 0;
 
   if (loading) {
     return (
@@ -245,9 +243,8 @@ export default function Sidebar({ user: propUser }) {
       <li key={item.name}>
         <Link href={item.route}>
           <div
-            className={`w-full px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${
-              isActivePath(item.route) ? 'bg-indigo-600 text-white' : 'bg-gray-800 hover:bg-indigo-600'
-            }`}
+            className={`w-full px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${isActivePath(item.route) ? 'bg-indigo-600 text-white' : 'bg-gray-800 hover:bg-indigo-600'
+              }`}
             title={isCollapsed ? item.name : ''}
           >
             <Icon size={18} className="flex-shrink-0" />
@@ -275,13 +272,12 @@ export default function Sidebar({ user: propUser }) {
         <button
           onClick={canAccess ? (isCollapsed ? () => router.push(visibleChildren[0].route) : toggle) : undefined}
           disabled={!canAccess}
-          className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${
-            canAccess
+          className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${canAccess
               ? isModuleActive
                 ? 'bg-indigo-600 text-white cursor-pointer'
                 : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer'
               : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-          }`}
+            }`}
           title={isCollapsed ? item.name : ''}
         >
           <div className="flex items-center gap-3">
@@ -302,11 +298,10 @@ export default function Sidebar({ user: propUser }) {
               <li key={child.route}>
                 <Link href={child.route}>
                   <span
-                    className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${
-                      isActivePath(child.route)
+                    className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${isActivePath(child.route)
                         ? 'bg-indigo-500 text-white'
                         : 'bg-gray-700 hover:bg-indigo-500'
-                    }`}
+                      }`}
                   >
                     {child.title}
                   </span>
@@ -321,9 +316,8 @@ export default function Sidebar({ user: propUser }) {
 
   return (
     <div
-      className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${
-        isCollapsed ? 'w-16' : 'w-72'
-      } ${isMobile && !isCollapsed ? 'absolute z-50 h-full' : ''}`}
+      className={`min-h-screen bg-gray-900 text-white shadow-lg transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-72'
+        } ${isMobile && !isCollapsed ? 'absolute z-50 h-full' : ''}`}
     >
       {/* Header */}
       <div className="p-4 border-b border-gray-700">

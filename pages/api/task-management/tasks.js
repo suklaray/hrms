@@ -54,15 +54,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
-      const roleFilter = ['admin', 'hr', 'employee'];
-      // console.log('Role filter:', roleFilter);
-
       let whereClause = { 
-        status: { not: 'Inactive' },
-        OR: [
-          { empid: user.empid },
-          ...(roleFilter.length > 0 ? [{ role: { in: roleFilter } }] : [])
-        ]
+        status: { not: 'Inactive' }
       };
       // console.log('Where clause:', JSON.stringify(whereClause, null, 2));
 

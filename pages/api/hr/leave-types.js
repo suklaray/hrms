@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from 'jsonwebtoken';
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   try {
@@ -10,8 +12,9 @@ export default async function handler(req, res) {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      if (!['hr', 'admin', 'superadmin'].includes(decoded.role)) {
-        return res.status(403).json({ success: false, message: 'Access denied' });
+      const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_MANAGE_TYPES);
+      if (!hasAccess) {
+        return res.status(403).json({ success: false, message: 'Access denied: insufficient permissions' });
       }
     }
 

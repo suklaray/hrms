@@ -27,14 +27,8 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: "Access denied: insufficient permissions" });
     }
 
-    const role = decoded.role?.toLowerCase();
-    const accessibleRoles = role === 'hr' ? ['employee'] : ['employee', 'hr', 'admin', 'superadmin'];
-    
     const employees = await prisma.users.findMany({
       where: { 
-        role: { 
-          in: accessibleRoles 
-        },
         status: { not: "Inactive" } // Exclude inactive employees
       },
       select: {

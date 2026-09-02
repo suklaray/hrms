@@ -28,10 +28,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ message: "Invalid email/username or not authorized" });
     }
 
-    if (user.role !== "employee") {
-      console.log(`User role mismatch: expected 'employee', got '${user.role}'`);
-      return res.status(401).json({ message: "Not authorized: role mismatch" });
-    }
 
     // Validate password
     const isValid = await bcrypt.compare(password, user.password);

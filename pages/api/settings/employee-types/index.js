@@ -1,15 +1,17 @@
 // pages/api/settings/employee-types/index.js
 import { withSessionTimeout } from '@/lib/authMiddleware';
-import { isSuperAdmin, getAssignableRolesForUser, ensureSuperAdminRole } from '@/lib/rbac';
+import { isSuperAdmin, getAssignableRolesForUser, ensureSuperAdminRole, checkPermission } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 import prisma from '@/lib/prisma';
 
 async function handler(req, res) {
   const user = req.user;
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+
   if (req.method === 'GET') {
-    const isAllowed = isSuperAdmin(user) || ['admin', 'hr', 'superadmin', 'ceo'].includes(user.role?.toLowerCase());
-    if (!isAllowed) {
+    if (!hasAccess) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
@@ -26,8 +28,8 @@ async function handler(req, res) {
     return res.status(200).json({ roles, assignableRoles });
   }
 
-  if (!isSuperAdmin(user)) {
-    return res.status(403).json({ error: 'Only Super Admin can manage employee types' });
+  if (!hasAccess) {
+    return res.status(403).json({ error: 'Insufficient permissions to manage employee types' });
   }
 
   if (req.method === 'POST') {

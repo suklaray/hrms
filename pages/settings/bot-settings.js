@@ -9,27 +9,27 @@ export default function BotSettings() {
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
   const router = useRouter();
-  
 
-useEffect(() => {
-  axios.get('/api/auth/settings/user-profile')
-    .then((res) => {
-      setUser(res.data);
-      
-      // Check if user is superadmin
-      if (res.data.role !== 'superadmin') {
-        setAccessDenied(true);
+
+  useEffect(() => {
+    axios.get('/api/auth/settings/user-profile')
+      .then((res) => {
+        setUser(res.data);
+
+        // Check if user is superadmin
+        if (res.data.role !== 'superadmin') {
+          setAccessDenied(true);
+          setLoading(false);
+          return;
+        }
+
         setLoading(false);
-        return;
-      }
-      
-      setLoading(false);
-    })
-    .catch(() => {
-      setLoading(false);
-      router.push('/dashboard');
-    });
-}, [router]);
+      })
+      .catch(() => {
+        setLoading(false);
+        router.push('/dashboard');
+      });
+  }, [router]);
 
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -57,7 +57,7 @@ useEffect(() => {
   const handleFileUpload = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
+
     setUploading(true);
     setMessage('');
 
@@ -68,7 +68,7 @@ useEffect(() => {
       });
 
       const data = await res.json();
-      
+
       if (res.ok) {
         setMessage('File uploaded successfully!');
         fetchFiles();
@@ -85,7 +85,7 @@ useEffect(() => {
 
   const handleTextSubmit = async (e) => {
     e.preventDefault();
-    
+
     setUploading(true);
     setMessage('');
 
@@ -93,14 +93,14 @@ useEffect(() => {
       const res = await fetch('/api/bot/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           filename: fileName,
-          content: textContent 
+          content: textContent
         }),
       });
 
       const data = await res.json();
-      
+
       if (res.ok) {
         setMessage('Content saved successfully!');
         fetchFiles();
@@ -180,25 +180,23 @@ useEffect(() => {
             {/* Input Mode Selection */}
             <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
               <h2 className="text-lg font-semibold mb-4">Add HR Assistant Data</h2>
-              
+
               <div className="flex space-x-4 mb-6">
                 <button
                   onClick={() => setInputMode('upload')}
-                  className={`px-4 py-2 rounded-md font-medium ${
-                    inputMode === 'upload'
+                  className={`px-4 py-2 rounded-md font-medium ${inputMode === 'upload'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                    }`}
                 >
                   Upload File
                 </button>
                 <button
                   onClick={() => setInputMode('text')}
-                  className={`px-4 py-2 rounded-md font-medium ${
-                    inputMode === 'text'
+                  className={`px-4 py-2 rounded-md font-medium ${inputMode === 'text'
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
+                    }`}
                 >
                   Write Content
                 </button>
@@ -218,7 +216,7 @@ useEffect(() => {
                       className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       File Description (Optional)
@@ -254,7 +252,7 @@ useEffect(() => {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Content
@@ -289,7 +287,7 @@ useEffect(() => {
             {/* Files List */}
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4">Uploaded Files</h2>
-              
+
               {files.length === 0 ? (
                 <p className="text-gray-500">No files uploaded yet.</p>
               ) : (

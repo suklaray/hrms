@@ -20,27 +20,9 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
     }
 
-    const currentUser = await prisma.users.findUnique({
-      where: { empid: decoded.empid || decoded.id },
-      select: { empid: true, role: true }
-    });
-
-    // Define role-based filtering
-    let roleFilter = [];
-    if (currentUser.role === 'hr') {
-      roleFilter = ['employee'];
-    } else if (currentUser.role === 'admin') {
-      roleFilter = ['hr', 'employee'];
-    } else if (currentUser.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
-    }
-
-    console.log('Role filter applied:', roleFilter);
-
     const users = await prisma.users.findMany({
       where: {
-        status: { not: "Inactive" },
-        role: { in: roleFilter }
+        status: { not: "Inactive" }
       }
     });
 

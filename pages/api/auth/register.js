@@ -3,7 +3,8 @@ import cookie from "cookie";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
-import { isSuperAdmin, getAssignableRolesForUser } from "@/lib/rbac";
+import { isSuperAdmin, getAssignableRolesForUser, checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 function generateCandidateId() {
   return `CAND${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -22,14 +23,11 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const currentUser = await prisma.users.findUnique({
-      where: { empid: decoded.empid || decoded.id },
-      select: { empid: true, role: true }
-    });
-
-    if (!currentUser || !['hr', 'admin', 'superadmin'].includes(currentUser.role)) {
-      return res.status(401).json({ message: 'Unauthorized' });
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_CREATE);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
     }
+    const currentUser = decoded;
 
     const {
       name,

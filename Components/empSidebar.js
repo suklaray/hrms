@@ -203,7 +203,7 @@ export default function EmpSidebar({ user: propUser }) {
     }
   };
 
-  const isAccessEnabled = userStatus.formSubmitted || (userStatus.verified && userStatus.formSubmitted);
+  const isAccessEnabled = true;
 
   if (loading) {
     return (

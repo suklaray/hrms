@@ -27,15 +27,6 @@ export default async function handler(req, res) {
     });
 
     // Define role-based filtering
-    let roleFilter = [];
-    if (currentUser.role === 'hr') {
-      roleFilter = ['employee'];
-    } else if (currentUser.role === 'admin') {
-      roleFilter = ['hr', 'employee'];
-    } else if (currentUser.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
-    }
-
     const payrolls = await prisma.payroll.findMany({
       include: {
         users: {
@@ -54,14 +45,14 @@ export default async function handler(req, res) {
       ]
     });
 
-    // Filter based on role and active status
+    // Filter out inactive users
     const formatted = payrolls
-      .filter(p => p.users.status !== 'Inactive' && roleFilter.includes(p.users.role))
+      .filter(p => p.users && p.users.status !== 'Inactive')
       .map(p => ({
         ...p,
-        name: p.users.name,
-        email: p.users.email,
-        position: p.users.position
+        name: p.users?.name,
+        email: p.users?.email,
+        position: p.users?.position
       }));
 
     res.status(200).json(formatted);

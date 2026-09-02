@@ -1,14 +1,21 @@
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { parse } from "cookie";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   const cookies = parse(req.headers.cookie || "");
   const token = cookies.token;
   const user = token ? getUserFromToken(token) : null;
 
-  if (!user || !["admin", "hr", "superadmin"].includes(user.role)) {
+  if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const hasAccess = (await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_MANAGE)) || (await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_VIEW));
+  if (!hasAccess) {
+    return res.status(403).json({ error: "Forbidden: insufficient permissions" });
   }
 
   if (req.method === "GET") {
@@ -81,13 +88,7 @@ export default async function handler(req, res) {
         select: { role: true }
       });
 
-      // Check role-based permissions with fresh role
-      const canReassign = (
-        currentUser.role === "superadmin" ||
-        (currentUser.role === "admin" && ["hr", "employee"].includes(employee.role)) ||
-        (currentUser.role === "hr" && employee.role === "employee")
-      );
-
+      const canReassign = await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_MANAGE);
       if (!canReassign) {
         return res.status(403).json({ error: "Insufficient permissions to reassign this employee" });
       }

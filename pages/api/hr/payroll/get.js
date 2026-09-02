@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-import { canAccessRole } from "@/lib/roleBasedAccess";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -25,23 +26,11 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Allow employees to access their own payroll data
-    if (decoded.role === 'employee') {
-      if (decoded.empid !== empid) {
-        return res.status(403).json({ message: 'Access denied to this employee data' });
-      }
-    } else if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
-      return res.status(403).json({ message: 'Access denied' });
-    } else {
-      // For HR/admin roles, check if they can access this employee's data
-      const targetEmployee = await prisma.users.findUnique({
-        where: { empid },
-        select: { role: true }
-      });
+    const isSelf = (decoded.empid === empid || decoded.id === empid);
+    const hasPermissionAccess = (await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_VIEW)) || (await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW));
 
-      if (!targetEmployee || !canAccessRole(decoded.role, targetEmployee.role)) {
-        return res.status(403).json({ message: 'Access denied to this employee data' });
-      }
+    if (!isSelf && !hasPermissionAccess) {
+      return res.status(403).json({ message: 'Access denied: insufficient permissions' });
     }
 
     const payrolls = await prisma.payroll.findMany({

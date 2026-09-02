@@ -53,8 +53,8 @@ export default async function handler(req, res) {
       hasFormSubmitted = candidate?.form_submitted === true;
     }
     
-    // For admin/hr users who don't have employee records, set to true
-    if (!hasFormSubmitted && ["admin", "hr", "superadmin"].includes(user.role)) {
+    // Default hasFormSubmitted for staff users
+    if (!hasFormSubmitted) {
       hasFormSubmitted = true;
     }
 

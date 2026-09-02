@@ -232,9 +232,8 @@ export default function EmployeeTypes() {
                                 setIsParentDropdownOpen(false);
                                 setParentSearchTerm('');
                               }}
-                              className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between cursor-pointer ${
-                                !form.parentId ? "bg-indigo-50 font-semibold text-indigo-600" : "text-gray-600"
-                              }`}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between cursor-pointer ${!form.parentId ? "bg-indigo-50 font-semibold text-indigo-600" : "text-gray-600"
+                                }`}
                             >
                               <span>— No parent (top-level role) —</span>
                               {!form.parentId && <Check className="w-3.5 h-3.5 text-indigo-600" />}
@@ -257,11 +256,10 @@ export default function EmployeeTypes() {
                                       setIsParentDropdownOpen(false);
                                       setParentSearchTerm('');
                                     }}
-                                    className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${
-                                      String(form.parentId) === String(r.id)
+                                    className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${String(form.parentId) === String(r.id)
                                         ? "bg-indigo-50 font-semibold text-indigo-600"
                                         : "text-gray-700"
-                                    }`}
+                                      }`}
                                   >
                                     <div>
                                       <div className="font-medium">{r.name}</div>

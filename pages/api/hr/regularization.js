@@ -1,24 +1,28 @@
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
-import { canAccessRole } from '@/lib/roleBasedAccess';
+import { checkPermission, isSuperAdmin } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 
-function verifyHRToken(req) {
+function getUserFromToken(req) {
   const cookies = cookie.parse(req.headers.cookie || '');
   const token = cookies.token;
   if (!token) return null;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!['hr', 'admin', 'superadmin'].includes(decoded.role)) return null;
-    return decoded;
+    return jwt.verify(token, process.env.JWT_SECRET);
   } catch {
     return null;
   }
 }
 
 export default async function handler(req, res) {
-  const user = verifyHRToken(req);
+  const user = getUserFromToken(req);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE) || await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE);
+  if (!hasAccess) {
+    return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
+  }
 
   // GET - list all regularization requests
   if (req.method === 'GET') {
@@ -29,7 +33,7 @@ export default async function handler(req, res) {
       if (status !== 'all') where.status = status;
       if (empid) {
         where.empid = empid;
-      } else if (user.role !== 'superadmin') {
+      } else if (!isSuperAdmin(user)) {
         where.NOT = { empid: user.empid };
       }
 
@@ -69,17 +73,8 @@ export default async function handler(req, res) {
       if (request.status !== 'PENDING') {
         return res.status(400).json({ error: 'Request already processed' });
       }
-      if (request.empid === user.empid && user.role !== 'superadmin') {
+      if (request.empid === user.empid && !isSuperAdmin(user)) {
         return res.status(403).json({ error: 'You cannot approve or reject your own regularization request' });
-      }
-
-      // Check hierarchical authority
-      const targetUser = await prisma.users.findUnique({
-        where: { empid: request.empid },
-        select: { role: true }
-      });
-      if (!targetUser || !canAccessRole(user.role, targetUser.role)) {
-        return res.status(403).json({ error: 'You do not have authority to process this request' });
       }
 
       if (action === 'APPROVED') {

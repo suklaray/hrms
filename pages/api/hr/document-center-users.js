@@ -1,7 +1,8 @@
-// /pages/api/hr/document-center-users.js
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import prisma from "@/lib/prisma";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -15,28 +16,14 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ message: 'Unauthorized' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const currentUser = await prisma.users.findUnique({
-      where: { empid: decoded.empid || decoded.id },
-      select: { empid: true, role: true }
-    });
-
-    if (!currentUser || !['hr', 'admin', 'superadmin'].includes(currentUser.role)) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    // Define role-based filtering
-    let roleFilter = [];
-    if (currentUser.role === 'hr') {
-      roleFilter = ['employee'];
-    } else if (currentUser.role === 'admin') {
-      roleFilter = ['hr', 'employee'];
-    } else if (currentUser.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
+    const hasAccess = (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS)) || (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW));
+    
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
     }
 
     const users = await prisma.users.findMany({
       where: {
-        role: { in: roleFilter },
         status: { not: 'Inactive' }
       },
       select: {

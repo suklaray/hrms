@@ -27,16 +27,6 @@ export default async function handler(req, res) {
       select: { empid: true, role: true }
     });
 
-    // Define role-based filtering (exclude current user's role to prevent seeing own requests)
-    let roleFilter = [];
-    if (currentUser.role === 'hr') {
-      roleFilter = ['employee'];
-    } else if (currentUser.role === 'admin') {
-      roleFilter = ['hr', 'employee'];
-    } else if (currentUser.role === 'superadmin') {
-      roleFilter = ['admin', 'hr', 'employee'];
-    }
-
     const leaveRequests = await prisma.leave_requests.findMany({
       include: {
         users: {
@@ -52,9 +42,9 @@ export default async function handler(req, res) {
       },
     });
 
-    // Filter based on role and active status
+    // Filter out inactive employees
     const filteredLeaveRequests = leaveRequests.filter(req => 
-      req.users.status !== 'Inactive' && roleFilter.includes(req.users.role)
+      req.users && req.users.status !== 'Inactive'
     );
 
     // Add pending leave count for each employee

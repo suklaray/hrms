@@ -126,12 +126,7 @@ export default function EmployeeListPage({ user }) {
   };
 
   const canViewRole = (targetRole) => {
-    const role = user.role.toLowerCase();
-    const target = targetRole.toLowerCase();
-    if (role === "superadmin") return target !== "superadmin";
-    if (role === "admin" && (target === "hr" || target === "employee")) return true;
-    if (role === "hr" && target === "employee") return true;
-    return false;
+    return true;
   };
 
   const countByRole = (roleName) =>
@@ -155,9 +150,9 @@ export default function EmployeeListPage({ user }) {
       emp.position?.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (filter === "All") {
-      return canViewRole(target) && matchesSearch;
+      return matchesSearch;
     }
-    return emp.role?.toLowerCase() === filter.toLowerCase() && canViewRole(target) && matchesSearch;
+    return emp.role?.toLowerCase() === filter.toLowerCase() && matchesSearch;
   });
 
   // Pagination logic
@@ -173,29 +168,14 @@ export default function EmployeeListPage({ user }) {
     { label: "Employee", icon: FaUsers, color: "bg-indigo-500" },
   ];
 
-  const roles = allRoles.filter(role => {
-    if (role.label === "All") return true;
-    return canViewRole(role.label);
-  });
+  const roles = allRoles;
 
 //-----------------logic for Excel download-----------------
   const handleDownloadExcel = () => {
-    let filteredData = [];
-
-    if (user.role === "hr") {
-      filteredData = employees.filter(emp => emp.role?.toLowerCase() === "employee");
-    } else if (user.role === "admin") {
-      filteredData = employees.filter(emp => 
-        ["employee", "hr"].includes(emp.role?.toLowerCase())
-      );
-    } else if (user.role === "superadmin") {
-      filteredData = employees.filter(emp =>
-        ["employee", "hr", "admin"].includes(emp.role?.toLowerCase())
-      );
-    }
+    const filteredData = employees;
 
     if (filteredData.length === 0) {
-      toast.error("No data available to download for your role.");
+      toast.error("No data available to download.");
       return;
     }
     

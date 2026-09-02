@@ -1,13 +1,15 @@
 // pages/api/settings/employee-types/[id].js
 import { withSessionTimeout } from '@/lib/authMiddleware';
-import { isSuperAdmin, ensureSuperAdminRole } from '@/lib/rbac';
+import { isSuperAdmin, ensureSuperAdminRole, checkPermission } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 import prisma from '@/lib/prisma';
 
 async function handler(req, res) {
   const user = req.user;
 
-  if (!isSuperAdmin(user)) {
-    return res.status(403).json({ error: 'Only Super Admin can manage employee types' });
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  if (!hasAccess) {
+    return res.status(403).json({ error: 'Insufficient permissions to manage employee types' });
   }
 
   const id = parseInt(req.query.id);

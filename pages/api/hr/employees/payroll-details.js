@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-import { canAccessRole } from "@/lib/roleBasedAccess";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   const { empid } = req.query;
@@ -24,15 +25,14 @@ export default async function handler(req, res) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    if (decoded.role === 'employee') {
-      if (decoded.empid !== empid) {
-        return res.status(403).json({ message: 'Access denied to this employee data' });
-      }
-    } else if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
-      return res.status(403).json({ message: 'Access denied' });
+    const isSelf = (decoded.empid === empid || decoded.id === empid);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_VIEW) || await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW);
+
+    if (!isSelf && !hasAccess) {
+      return res.status(403).json({ message: 'Access denied: insufficient permissions' });
     }
 
-    // Get user data from users table using empid (string like "jyosri8308")
+    // Get user data from users table using empid
     const user = await prisma.users.findUnique({
       where: { empid },
     });
@@ -43,10 +43,6 @@ export default async function handler(req, res) {
 
     if (user.status === "Inactive") {
       return res.status(403).json({ message: "Access denied. Employee is inactive." });
-    }
-
-    if (['admin', 'hr', 'superadmin'].includes(decoded.role) && !canAccessRole(decoded.role, user.role)) {
-      return res.status(403).json({ message: 'Access denied to this employee data' });
     }
 
     let bankDetails = null;

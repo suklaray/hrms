@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-import { getAccessibleRoles } from "@/lib/roleBasedAccess";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -14,11 +15,10 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
-      return res.status(403).json({ message: "Access denied" });
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.REPORT_VIEW);
+    if (!hasAccess) {
+      return res.status(403).json({ message: "Access denied: insufficient permissions" });
     }
-
-    const accessibleRoles = getAccessibleRoles(decoded.role);
     
     const reports = await prisma.daily_work_reports.findMany({
       include: {
@@ -27,13 +27,6 @@ export default async function handler(req, res) {
             empid: true,
             name: true,
             role: true
-          }
-        }
-      },
-      where: {
-        users: {
-          role: {
-            in: accessibleRoles
           }
         }
       },
@@ -49,7 +42,7 @@ export default async function handler(req, res) {
     }));
 
     const leaves = await prisma.leave_requests.findMany({
-      where: { users: { role: { in: accessibleRoles } } },
+      where: { users: { status: { not: 'Inactive' } } },
       select: {
         id: true,
         empid: true,

@@ -1,9 +1,20 @@
 // /pages/api/hr/users.js
 import prisma from "@/lib/prisma";
+import { withSessionTimeout } from "@/lib/authMiddleware";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method Not Allowed" });
+  }
+
+  const user = req.user;
+  if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+  const hasAccess = (await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_VIEW)) || (await checkPermission(user, PERMISSION_KEYS.PAYROLL_VIEW));
+  if (!hasAccess) {
+    return res.status(403).json({ message: "Access denied: insufficient permissions" });
   }
 
   try {
@@ -47,3 +58,5 @@ export default async function handler(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+export default withSessionTimeout(handler);

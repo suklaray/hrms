@@ -1,5 +1,7 @@
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from '@/lib/getUserFromToken';
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,10 +14,14 @@ export default async function handler(req, res) {
     return res.status(401).json({ message: 'Unauthorized - No token provided' });
   }
 
-  // Verify HR/Admin user
   const user = getUserFromToken(token);
-  if (!user || !['hr', 'admin', 'superadmin'].includes(user.role)) {
-    return res.status(401).json({ message: 'Unauthorized - Insufficient permissions' });
+  if (!user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const hasAccess = (await checkPermission(user, PERMISSION_KEYS.LEAVE_CANCEL)) || (await checkPermission(user, PERMISSION_KEYS.LEAVE_APPROVE));
+  if (!hasAccess) {
+    return res.status(403).json({ message: 'Unauthorized - Insufficient permissions' });
   }
 
   const { leaveId , reason_to_cancel} = req.body;
