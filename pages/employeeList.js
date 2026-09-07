@@ -7,9 +7,9 @@ import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
 import {toast} from "react-toastify";
 import { swalConfirm} from '@/utils/confirmDialog';
-
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { hasPermission } from "@/lib/rbac";
 
 export async function getServerSideProps(context) {
   const { req } = context;
@@ -37,6 +37,7 @@ export async function getServerSideProps(context) {
 
   let userData = null;
   try {
+    // Include the role relation to get role name from Role table
     userData = await prisma.users.findUnique({
       where: { empid: user.empid || user.id },
       select: {
@@ -45,12 +46,20 @@ export async function getServerSideProps(context) {
         email: true,
         profile_photo: true,
         position: true,
-        role: true
+        roleId: true, // Keep for reference
+        rbacRole: { // Get role from Role table via relation
+          select: {
+            name: true
+          }
+        }
       }
     });
   } catch (error) {
     console.error('Error fetching user data:', error);
   }
+
+  // Get role name from rbacRole relation, fallback to null
+  const roleName = userData?.rbacRole?.name || null;
 
   return {
     props: {
@@ -58,10 +67,11 @@ export async function getServerSideProps(context) {
         id: user.id,
         empid: userData?.empid || user.empid,
         name: userData?.name || user.name,
-        role: (userData?.role || user.role).toLowerCase(),
+        role: roleName, // Use role from Role table
         email: userData?.email || user.email,
         profile_photo: userData?.profile_photo || null,
         position: userData?.position || null,
+        roleId: userData?.roleId || null, // Include roleId for reference
       },
     },
   };
@@ -69,6 +79,7 @@ export async function getServerSideProps(context) {
 
 export default function EmployeeListPage({ user }) {
   const [employees, setEmployees] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [filter, setFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -81,15 +92,26 @@ export default function EmployeeListPage({ user }) {
         const res = await fetch("/api/auth/employees");
         const data = await res.json();
 
-        if (!res.ok || !Array.isArray(data)) {
-          console.error("Error loading employees:", data.error || "Invalid data format");
+        if (!res.ok || !data.success) {
+          console.error(
+            "Error loading employees:",
+            data.error || "Invalid data format"
+          );
+
           setEmployees([]);
-        } else {
-          setEmployees(data);
+          setRoles([]);
+          return;
         }
+
+        // Employees
+        setEmployees(Array.isArray(data.users) ? data.users : []);
+
+        // Dynamic roles from Role table
+        setRoles(Array.isArray(data.roles) ? data.roles : []);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
         setEmployees([]);
+        setRoles([]);
       }
     };
 
@@ -105,6 +127,13 @@ export default function EmployeeListPage({ user }) {
   };
 
   const handleDelete = async (id) => {
+    // Check permission before allowing delete
+    const canDelete = await hasPermission(user.id, PERMISSION_KEYS.EMPLOYEE_DELETE);
+    if (!canDelete) {
+      toast.error("You don't have permission to delete employees");
+      return;
+    }
+
     const confirm = await swalConfirm("Do you want to remove this employee and make the user inactive? You won't be able to access this employee.");
     if (!confirm) return;
 
@@ -124,13 +153,19 @@ export default function EmployeeListPage({ user }) {
       toast.error("Error occurred. Please try again.");
     }
   };
+  // Helper to get role display color from role name
+  const getRoleColor = (roleName) => {
+    if (!roleName) return "bg-gray-100 text-gray-800";
 
-  const canViewRole = (targetRole) => {
-    return true;
+    const role = roleName.toLowerCase();
+
+    if (role === "superadmin") return "bg-yellow-100 text-yellow-800";
+    if (role === "admin") return "bg-purple-100 text-purple-800";
+    if (role === "hr") return "bg-green-100 text-green-800";
+    if (role === "recruiter") return "bg-orange-100 text-orange-800";
+
+    return "bg-blue-100 text-blue-800";
   };
-
-  const countByRole = (roleName) =>
-    employees.filter(emp => emp.role?.toLowerCase() === roleName.toLowerCase()).length;
 
   const handleFilterChange = (newFilter) => {
     setFilter(newFilter);
@@ -141,18 +176,21 @@ export default function EmployeeListPage({ user }) {
     setCurrentPage(page);
   };
 
+  // Updated filtering to use role from roleId
   const filteredEmployees = employees.filter((emp) => {
-    const target = emp.role?.toLowerCase();
-    const matchesSearch = searchTerm === "" || 
+    const target = emp.rbacRole?.name?.toLowerCase();
+    const matchesSearch =
+      searchTerm === "" ||
       emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.empid?.toString().includes(searchTerm) ||
       emp.position?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     if (filter === "All") {
       return matchesSearch;
     }
-    return emp.role?.toLowerCase() === filter.toLowerCase() && matchesSearch;
+
+    return target === filter.toLowerCase() && matchesSearch;
   });
 
   // Pagination logic
@@ -160,18 +198,13 @@ export default function EmployeeListPage({ user }) {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
 
-  const allRoles = [
-    { label: "All", icon: FaUsers, color: "bg-blue-500" },
-    { label: "HR", icon: FaUserTie, color: "bg-green-500" },
-    { label: "Admin", icon: FaUserShield, color: "bg-purple-500" },
-    { label: "SuperAdmin", icon: FaCrown, color: "bg-yellow-500" },
-    { label: "Employee", icon: FaUsers, color: "bg-indigo-500" },
-  ];
 
-  const roles = allRoles;
-
-//-----------------logic for Excel download-----------------
+  // Excel download - removed user.role reference, using user.role from Role table
   const handleDownloadExcel = () => {
+    // Check permission for download
+    // Assuming there's a permission for export
+    // Add permission check if needed
+
     const filteredData = employees;
 
     if (filteredData.length === 0) {
@@ -179,13 +212,12 @@ export default function EmployeeListPage({ user }) {
       return;
     }
     
-    // Map data for Excel
     const excelData = filteredData.map(emp => ({
       "Employee ID": emp.empid || "",
       "Name": emp.name || "",
       "Email": emp.email || "",
       "Contact": emp.contact_number || "",
-      "Role": emp.role || "",
+      "Role": emp.rbacRole?.name || "", // From Role table
       "Position": emp.position || "",
       "Date of Joining": emp.date_of_joining 
         ? new Date(emp.date_of_joining).toLocaleDateString("en-GB") 
@@ -193,15 +225,23 @@ export default function EmployeeListPage({ user }) {
       "Experience": emp.experience || ""
     }));
 
-    // Create Excel file
     import('xlsx').then(XLSX => {
       const ws = XLSX.utils.json_to_sheet(excelData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Employees");
-      XLSX.writeFile(wb, `employees_${user.role}_${new Date().toISOString().split("T")[0]}.xlsx`);
+      XLSX.writeFile(wb, `employees_${user.role || 'all'}_${new Date().toISOString().split("T")[0]}.xlsx`);
     });
   };
+  const getRoleIcon = (roleName) => {
+    const role = roleName?.toLowerCase();
 
+    if (role === "superadmin") return FaCrown;
+    if (role === "admin") return FaUserShield;
+    if (role === "hr") return FaUserTie;
+    if (role === "recruiter") return FaUsers;
+
+    return FaUsers;
+  };
 
   return (
     <>
@@ -215,10 +255,15 @@ export default function EmployeeListPage({ user }) {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Employee Directory</h1>
           <p className="text-gray-600">Manage and view all employees in your organization</p>
+          {/* Display user role from Role table */}
+          {user.role && (
+            <p className="text-sm text-gray-500 mt-1">
+              Your role: <span className="font-semibold">{user.role}</span>
+            </p>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-          {/* Search Bar */}
           <div className="relative flex-1 max-w-md">
             <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
@@ -230,7 +275,6 @@ export default function EmployeeListPage({ user }) {
             />
           </div>
 
-          {/* Download Button */}
           <button
             onClick={handleDownloadExcel}
             className="flex items-center justify-center gap-2 px-4 py-3 
@@ -242,31 +286,66 @@ export default function EmployeeListPage({ user }) {
           </button>
         </div>
 
+          {/* Dynamic Role Filter Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
 
-
-        {/* Filter Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          {roles.map(({ label, icon: Icon, color }) => {
-            const count = label === "All" ? employees.length : countByRole(label);
-            return (
-              <button
-                key={label}
-                onClick={() => handleFilterChange(label)}
-                className={`p-4 rounded-xl transition-all hover:scale-105 cursor-pointer ${
-                  filter === label 
-                    ? 'bg-indigo-600 text-white shadow-lg' 
-                    : 'bg-white text-gray-700 shadow-md hover:shadow-lg border border-gray-200'
+            {/* All Card */}
+            <button
+              onClick={() => handleFilterChange("All")}
+              className={`p-4 rounded-xl transition-all hover:scale-105 cursor-pointer ${filter === "All"
+                  ? "bg-indigo-600 text-white shadow-lg"
+                  : "bg-white text-gray-700 shadow-md hover:shadow-lg border border-gray-200"
                 }`}
-              >
-                <div className="flex items-center justify-center mb-2">
-                  <Icon className={`text-2xl ${filter === label ? 'text-white' : 'text-indigo-600'}`} />
-                </div>
-                <div className="text-sm font-semibold">{label}</div>
-                <div className="text-xs opacity-75">({count})</div>
-              </button>
-            );
-          })}
-        </div>
+            >
+              <div className="flex items-center justify-center mb-2">
+                <FaUsers
+                  className={`text-2xl ${filter === "All" ? "text-white" : "text-indigo-600"
+                    }`}
+                />
+              </div>
+
+              <div className="text-sm font-semibold">
+                All
+              </div>
+
+              <div className="text-xs opacity-75">
+                ({employees.length})
+              </div>
+            </button>
+
+            {/* Roles from Role table */}
+            {roles.map((role) => {
+              const Icon = getRoleIcon(role.name);
+
+              return (
+                <button
+                  key={role.id}
+                  onClick={() => handleFilterChange(role.name)}
+                  className={`p-4 rounded-xl transition-all hover:scale-105 cursor-pointer ${filter.toLowerCase() === role.name.toLowerCase()
+                      ? "bg-indigo-600 text-white shadow-lg"
+                      : "bg-white text-gray-700 shadow-md hover:shadow-lg border border-gray-200"
+                    }`}
+                >
+                  <div className="flex items-center justify-center mb-2">
+                    <Icon
+                      className={`text-2xl ${filter.toLowerCase() === role.name.toLowerCase()
+                          ? "text-white"
+                          : "text-indigo-600"
+                        }`}
+                    />
+                  </div>
+
+                  <div className="text-sm font-semibold">
+                    {role.name}
+                  </div>
+
+                  <div className="text-xs opacity-75">
+                    ({role.count})
+                  </div>
+                </button>
+              );
+            })}
+          </div>
 
         {/* Results Summary */}
         <div className="mb-4">
@@ -281,7 +360,7 @@ export default function EmployeeListPage({ user }) {
           </p>
         </div>
 
-        {/* Table Container */}
+        {/* Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full">
@@ -321,16 +400,11 @@ export default function EmployeeListPage({ user }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{emp.position || "Not assigned"}</div>
-                      <div className="text-sm text-gray-500">{emp.experience}y experience</div>
+                      <div className="text-sm text-gray-500">{emp.experience || 0}y experience</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        emp.role === 'superadmin' ? 'bg-yellow-100 text-yellow-800' :
-                        emp.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                        emp.role === 'hr' ? 'bg-green-100 text-green-800' :
-                        'bg-blue-100 text-blue-800'
-                      }`}>
-                        {emp.role}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleColor(emp.rbacRole?.name)}`}>
+                        {emp.rbacRole?.name || "No Role"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -353,6 +427,7 @@ export default function EmployeeListPage({ user }) {
                         >
                           <FaEye size={14} />
                         </button>
+                        {/* Delete button - protected by permission check in handler */}
                         <button
                           onClick={() => handleDelete(emp.id)}
                           className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors cursor-pointer"

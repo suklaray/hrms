@@ -74,9 +74,9 @@ const SIDEBAR_STRUCTURE = [
   {
     name: 'Task Management',
     icon: ListChecks,
-    permission: 'task.view',
+    permission: ['task.view', 'task.create', 'report.view'],
     children: [
-      { title: 'Task Management', route: '/task-management/manage-tasks', permission: 'task.create' },
+      { title: 'Task Management', route: '/task-management/manage-tasks', permission: ['task.create', 'task.view'] },
       { title: 'Daily Reports', route: '/task-management/daily-reports', permission: 'report.view' },
     ],
   },
@@ -97,7 +97,7 @@ const SIDEBAR_STRUCTURE = [
       { title: 'Leave Request', route: '/leave-request/leave-request', permission: 'leave.request' },
       { title: 'Add Position', route: '/settings/position-management', permission: 'settings.position_manage' },
       { title: 'Payslip & Documents', route: '/payslip/payslip-lists', permission: 'payslip.view' },
-      { title: 'Manage Tasks', route: '/task-management/user-task', permission: 'task.my' },
+      { title: 'Manage Tasks', route: '/task-management/user-task', permission: ['task.my', 'report.submit'] },
       { title: 'Employee Types', route: '/settings/employee-types', permission: 'settings.employee_types_manage' },
       { title: 'Bot Settings', route: '/settings/bot-settings', permission: 'settings.bot' },
     ],
@@ -105,7 +105,7 @@ const SIDEBAR_STRUCTURE = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function Sidebar({ user: propUser }) {
+export default function Sidebar({ user: propUser, isEmployee = false }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -124,6 +124,7 @@ export default function Sidebar({ user: propUser }) {
     (permission) => {
       if (!permission) return true;
       if (isSuperAdminUser) return true;
+      if (Array.isArray(permission)) return permission.some(p => permissions.has(p));
       return permissions.has(permission);
     },
     [isSuperAdminUser, permissions]
@@ -197,6 +198,7 @@ export default function Sidebar({ user: propUser }) {
   };
 
   const isAccessEnabled =
+    isEmployee ||
     isSuperAdminUser ||
     (userStatus.verified && userStatus.formSubmitted) ||
     permissions.size > 0;
@@ -322,7 +324,16 @@ export default function Sidebar({ user: propUser }) {
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
-          {!isCollapsed && <h2 className="text-2xl font-bold">HRMS Panel</h2>}
+          {!isCollapsed && (
+            isEmployee ? (
+              <div>
+                <h2 className="text-xl font-bold">Employee Panel</h2>
+                <p className="text-sm text-gray-400">{user?.name}</p>
+              </div>
+            ) : (
+              <h2 className="text-2xl font-bold">HRMS Panel</h2>
+            )
+          )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"

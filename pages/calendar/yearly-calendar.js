@@ -15,7 +15,26 @@ import {
 import { swalConfirm } from "/utils/confirmDialog";
 import { toast } from "react-toastify";
 import Link from "next/link";
-export default function YearlyCalendar() {
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: "/login", permanent: false } };
+
+  const [canView, canManage] = await Promise.all([
+    checkPermission(user, PERMISSION_KEYS.CALENDAR_VIEW),
+    checkPermission(user, PERMISSION_KEYS.CALENDAR_MANAGE),
+  ]);
+
+  if (!canView) return { redirect: { destination: "/403", permanent: false } };
+
+  return { props: { canManage } };
+}
+
+export default function YearlyCalendar({ canManage }) {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [events, setEvents] = useState({});
   const [loading, setLoading] = useState(true);
@@ -600,8 +619,7 @@ const downloadHolidaysPDF = () => {
                                       {event.type === "event" &&
                                         `${event.title}`}
                                     </span>
-                                    {(event.type === "event" ||
-                                      event.type === "holiday") && (
+                                    {canManage && (event.type === "event" || event.type === "holiday") && (
                                       <div className="flex items-center space-x-2 ml-2">
                                         <FaEdit
                                           className="w-3 h-3 text-blue-400 hover:text-blue-600 cursor-pointer"
@@ -708,6 +726,7 @@ const downloadHolidaysPDF = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-1">
+                  {canManage && (
                   <Link
                     href="/calendar/add-events"
                     className="px-2 sm:px-4 py-2 bg-indigo-100 hover:bg-indigo-300 text-indigo-800 text-xs sm:text-sm font-medium rounded-lg transition-colors"
@@ -715,6 +734,7 @@ const downloadHolidaysPDF = () => {
                     <span className="hidden sm:inline">+ Add Events</span>
                     <span className="sm:hidden">+</span>
                   </Link>
+                  )}
                   <div className="flex items-center space-x-1">
                   
                   {/* Holidays Download Dropdown */}

@@ -1,16 +1,19 @@
-import { verifyEmployeeToken } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { withPermission } from '@/lib/rbac';
+import { withSessionTimeout } from '@/lib/authMiddleware';
+import { checkPermission } from '@/lib/rbac';
 import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
+
 async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
   try {
-    const user = await verifyEmployeeToken(req);
-    if (!user) {
-      return res.status(401).json({ message: 'Unauthorized' });
+    const user = req.user;
+
+    const canView = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_MY);
+    if (!canView) {
+      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
     }
 
     const now = new Date();
@@ -36,6 +39,7 @@ async function handler(req, res) {
       const diff = checkOut - new Date(todayAttendance.check_in);
       todayHours = Math.max(0, diff / (1000 * 60 * 60));
     }
+    
     // Get all completed sessions for today (where check_out is not null)
     const completedSessions = await prisma.attendance.findMany({
       where: {
@@ -47,6 +51,7 @@ async function handler(req, res) {
         check_out: { not: null }
       }
     });
+    
     let todayCompletedSeconds = 0;
     completedSessions.forEach(session => {
       if (session.check_in && session.check_out) {
@@ -54,6 +59,7 @@ async function handler(req, res) {
         todayCompletedSeconds += diff / 1000; // Convert to seconds
       }
     });
+    
     // This week's hours
     const weekAttendance = await prisma.attendance.findMany({
       where: {
@@ -102,6 +108,7 @@ async function handler(req, res) {
   } catch (error) {
     console.error('Error fetching employee stats:', error);
     res.status(500).json({ message: 'Internal server error' });
-  }
+  } // <-- THIS BRACE WAS MISSING!
 }
-export default withPermission(PERMISSION_KEYS.ATTENDANCE_MY, handler);
+
+export default withSessionTimeout(handler);

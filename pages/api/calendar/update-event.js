@@ -1,21 +1,19 @@
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
+import { withSessionTimeout } from "@/lib/authMiddleware";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "PUT") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
   try {
-    const token = req.cookies.token;
-    if (!token) return res.status(401).json({ message: "Access denied" });
+    const decoded = req.user;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { role, email } = decoded;
-    const allowedRoles = ["superadmin", "admin", "hr"];
-
-    if (!allowedRoles.includes(role)) {
-      return res.status(403).json({ message: "Forbidden" });
+    const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
+    if (!canView) {
+      return res.status(403).json({ message: "Forbidden: insufficient permissions" });
     }
 
     const { id, title, description, event_date, event_type, visible_to } = req.body;
@@ -34,7 +32,7 @@ export default async function handler(req, res) {
     }
 
     // 🧠 Role-based restriction
-    if (role !== "superadmin" && existingEvent.created_by !== email) {
+    if (!isSuperAdmin(decoded) && existingEvent.created_by !== decoded.email) {
       return res.status(403).json({
         success: false,
         message: "You are not allowed to edit this event",
@@ -75,3 +73,4 @@ export default async function handler(req, res) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 }
+export default withSessionTimeout(handler);

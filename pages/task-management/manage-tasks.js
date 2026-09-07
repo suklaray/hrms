@@ -4,7 +4,6 @@ import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { Plus, Users, Eye, Calendar, CheckCircle, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import prisma from "@/lib/prisma";
 import { formatLongDate } from "@/utils/dateTime";
 
 import { checkPermission } from "@/lib/rbac";
@@ -24,45 +23,27 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const hasAccess = (await checkPermission(user, PERMISSION_KEYS.TASK_CREATE)) || (await checkPermission(user, PERMISSION_KEYS.TASK_VIEW));
-  if (!hasAccess) {
-    return {
-      redirect: {
-        destination: "/403",
-        permanent: false,
-      },
-    };
-  }
+  const [canCreate, canView] = await Promise.all([
+    checkPermission(user, PERMISSION_KEYS.TASK_CREATE),
+    checkPermission(user, PERMISSION_KEYS.TASK_VIEW),
+  ]);
 
-  let userData = null;
-  try {
-    userData = await prisma.users.findUnique({
-      where: { empid: user.empid || user.id },
-      select: {
-        empid: true,
-        name: true,
-        email: true,
-        role: true
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching user data:', error);
+  if (!canCreate && !canView) {
+    return { redirect: { destination: '/403', permanent: false } };
   }
 
   return {
     props: {
-      user: {
-        empid: userData?.empid || user.empid,
-        name: userData?.name || user.name,
-        role: (userData?.role || user.role).toLowerCase(),
-        email: userData?.email || user.email,
+      permissions: {
+        create: canCreate,
+        view: canView,
       },
     },
   };
 }
 
-export default function TaskManagement({ user }) {
-  const [activeTab, setActiveTab] = useState("assign");
+export default function TaskManagement({ permissions }) {
+  const [activeTab, setActiveTab] = useState(() => permissions.create ? 'assign' : 'employees');
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -194,28 +175,32 @@ export default function TaskManagement({ user }) {
             <div className="bg-white rounded-lg shadow mb-6">
               <div className="border-b border-gray-200">
                 <nav className="flex space-x-8 px-6">
-                  <button
-                    onClick={() => setActiveTab("assign")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === "assign"
-                        ? "border-indigo-500 text-indigo-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    <Plus className="w-4 h-4 inline mr-2" />
-                    Assign Task
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("employees")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === "employees"
-                        ? "border-indigo-500 text-indigo-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    <Users className="w-4 h-4 inline mr-2" />
-                    Employee Tasks
-                  </button>
+                  {permissions.create && (
+                    <button
+                      onClick={() => setActiveTab("assign")}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === "assign"
+                          ? "border-indigo-500 text-indigo-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <Plus className="w-4 h-4 inline mr-2" />
+                      Assign Task
+                    </button>
+                  )}
+                  {permissions.view && (
+                    <button
+                      onClick={() => setActiveTab("employees")}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === "employees"
+                          ? "border-indigo-500 text-indigo-600"
+                          : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <Users className="w-4 h-4 inline mr-2" />
+                      Employee Tasks
+                    </button>
+                  )}
                 </nav>
               </div>
 

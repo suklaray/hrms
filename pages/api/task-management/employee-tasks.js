@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from '@/lib/prisma';
+import { checkPermission } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 
 export default async function handler(req, res) {
   try {
@@ -8,24 +10,21 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     const user = await prisma.users.findUnique({
       where: { empid: decoded.empid || decoded.id },
       select: { empid: true, role: true }
     });
 
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
     if (req.method === 'GET') {
       const { employeeId } = req.query;
-      
-      if (!employeeId) {
-        return res.status(400).json({ error: 'Employee ID is required' });
-      }
+      if (!employeeId) return res.status(400).json({ error: 'Employee ID is required' });
 
-      if (user.role === 'employee' && user.empid !== employeeId) {
+      // Must have task.view OR be viewing own tasks
+      const canViewAll = await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW);
+      if (!canViewAll && user.empid !== employeeId) {
         return res.status(403).json({ error: 'Access denied' });
       }
 

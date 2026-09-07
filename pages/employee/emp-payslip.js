@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Head from 'next/head';
-import Sidebar from "@/Components/empSidebar";
+import Sidebar from "@/Components/SideBar";
 import { FileText, Download, Calendar, AlertCircle, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatLongDate } from "@/utils/dateTime";
 
@@ -46,7 +46,7 @@ export default function EmpPayslip() {
         <title>Payslips - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar isEmployee />
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">

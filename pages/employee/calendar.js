@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Head from "next/head";
-import Sidebar from "@/Components/empSidebar";
+import Sidebar from "@/Components/SideBar";
 import {
   FaCalendarAlt,
   FaChevronLeft,
@@ -11,6 +11,20 @@ import {
 } from "react-icons/fa";
 import Link from "next/link";
 import { formatMediumDate } from "@/utils/dateTime";
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: "/login", permanent: false } };
+
+  const allowed = await checkPermission(user, PERMISSION_KEYS.CALENDAR_VIEW);
+  if (!allowed) return { redirect: { destination: "/403", permanent: false } };
+
+  return { props: {} };
+}
 
 export default function EmployeeCalendar() {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -356,7 +370,7 @@ export default function EmployeeCalendar() {
         <title>Calendar - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar handleLogout={handleLogout} />
+        <Sidebar handleLogout={handleLogout} isEmployee />
 
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-6 py-4">

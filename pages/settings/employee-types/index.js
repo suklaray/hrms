@@ -463,7 +463,7 @@ export async function getServerSideProps(context) {
     };
   }
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_TYPES_MANAGE);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
   if (!hasAccess) {
     return {
       redirect: {

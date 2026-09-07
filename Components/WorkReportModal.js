@@ -20,7 +20,7 @@ export default function WorkReportModal({ isOpen, onClose, onSubmit }) {
     try {
       const response = await fetch('/api/employee/work-report');
       if (response.ok) {
-        const reports = await response.json();
+        const { reports } = await response.json();
         const today = new Date().toDateString();
         const todayReport = reports.find(report => 
           new Date(report.report_date).toDateString() === today

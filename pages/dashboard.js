@@ -71,16 +71,17 @@ function HRDashboardView({ user, permissions }) {
   const [stats, setStats] = useState(null);
   const [missedCheckout, setMissedCheckout] = useState(null);
   const [showRegModal, setShowRegModal] = useState(false);
-  const isAccessEnabled = user.role === "superadmin" || (user.verified === "verified" && user.form_submitted === true);
+  const isAccessEnabled = isSuperAdmin(user) || (user.verified === "verified" && user.form_submitted === true);
   const can = (permission) => {
-    if (user.role === "superadmin") return true;
-
+    if (isSuperAdmin(user)) return true;
     return permissions.includes(permission);
   };
   useEffect(() => {
     fetch("/api/dashboard/stats").then(r => r.ok ? r.json() : null).then(d => setStats(d)).catch(() => { toast.error("Failed to fetch dashboard stats"); });
-    fetch("/api/attendance/check-missed-checkout", { credentials: "include" })
-      .then(r => r.ok ? r.json() : null).then(d => { if (d?.hasMissedCheckout) setMissedCheckout(d.attendance); }).catch(() => { toast.error("Failed to check missed checkout"); });
+    if (can(PERMISSION_KEYS.ATTENDANCE_REGULARIZE)) {
+      fetch("/api/attendance/check-missed-checkout", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null).then(d => { if (d?.hasMissedCheckout) setMissedCheckout(d.attendance); }).catch(() => {});
+    }
   }, []);
   const dashboardCards = [
     {
@@ -235,16 +236,14 @@ function HRDashboardView({ user, permissions }) {
 
 // ─── Main unified dashboard ───────────────────────────────────────────────────
 export default function Dashboard({ user, permissions = [] }) {
-  const isSuper = user?.role === "superadmin" || user?.rbacRole?.name === "Super Admin";
   const hasManagementPermissions =
-    isSuper ||
+    isSuperAdmin(user) ||
     permissions.includes("employee.view") ||
     permissions.includes("attendance.view") ||
     permissions.includes("leave.view") ||
     permissions.includes("recruitment.view") ||
     permissions.includes("payroll.view") ||
-    permissions.includes("compliance.view") ||
-    ["admin", "hr", "ceo", "superadmin"].includes(user?.role?.toLowerCase());
+    permissions.includes("compliance.view");
 
   return (
     <>

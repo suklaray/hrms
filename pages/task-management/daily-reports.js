@@ -11,6 +11,18 @@ import {
   Eye,
   Calendar,
 } from "lucide-react";
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: "/login", permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.REPORT_VIEW);
+  if (!hasAccess) return { redirect: { destination: "/403", permanent: false } };
+  return { props: {} };
+}
 
 export default function DailyReports() {
   const router = useRouter();
@@ -29,7 +41,6 @@ export default function DailyReports() {
   const [employeeFilter, setEmployeeFilter] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
   const [selectedPosition, setSelectedPosition] = useState("");
-  const [userRole, setUserRole] = useState("");
   const today = new Date().toLocaleDateString("en-CA");
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
@@ -44,12 +55,6 @@ export default function DailyReports() {
       const userRes = await fetch("/api/auth/me");
       const userData = await userRes.json();
       setUser(userData.user);
-
-      if (!["hr", "admin", "superadmin"].includes(userData.user?.role)) {
-        router.push("/task-management/user-task");
-        return;
-      }
-      setUserRole(userData.user?.role);
       const [reportsRes, usersRes, positionsRes] = await Promise.all([
         fetch("/api/hr/all-work-reports"),
         fetch("/api/hr/employees"),
@@ -79,26 +84,13 @@ export default function DailyReports() {
       setLoading(false);
     }
   };
-  const getRoleOptions = () => {
-    switch (userRole) {
-      case "hr":
-        return [{ value: "employee", label: "Employee" }];
-      case "admin":
-        return [
-          { value: "hr", label: "HR" },
-          { value: "employee", label: "Employee" },
-        ];
-      case "superadmin":
-        return [
-          { value: "employee", label: "Employee" },
-          { value: "hr", label: "HR" },
-          { value: "admin", label: "Admin" },
-          { value: "superadmin", label: "Superadmin" },
-        ];
-      default:
-        return [{ value: "employee", label: "Employee" }];
-    }
-  };
+  const getRoleOptions = () => [
+    { value: "employee", label: "Employee" },
+    { value: "hr", label: "HR" },
+    { value: "admin", label: "Admin" },
+    { value: "superadmin", label: "Superadmin" },
+    { value: "ceo", label: "CEO" },
+  ];
   /* ================= FILTER LOGIC ================= */
 
   const filteredReports = (() => {

@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Head from 'next/head';
-import Sidebar from "@/Components/empSidebar";
+import Sidebar from "@/Components/SideBar";
 import PayslipComponent from "@/Components/payslip-component";
 
 export default function EmployeePayslipPreview() {
@@ -39,7 +39,7 @@ export default function EmployeePayslipPreview() {
         <title>Payslip Preview - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
+        <Sidebar isEmployee />
 
         <div className="flex-1 p-8">
           <nav className="mb-4 text-sm text-gray-600">

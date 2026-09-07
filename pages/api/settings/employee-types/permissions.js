@@ -1,13 +1,14 @@
 // pages/api/settings/employee-types/permissions.js
 import { withSessionTimeout } from '@/lib/authMiddleware';
-import { isSuperAdmin } from '@/lib/rbac';
-import { PERMISSIONS } from '@/lib/rbacPermissions';
+import { checkPermission } from '@/lib/rbac';
+import { PERMISSIONS, PERMISSION_KEYS } from '@/lib/rbacPermissions';
 import prisma from '@/lib/prisma';
 
 async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (!isSuperAdmin(req.user)) {
+  const hasAccess = await checkPermission(req.user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  if (!hasAccess) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 

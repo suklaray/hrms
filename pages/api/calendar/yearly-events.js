@@ -1,27 +1,21 @@
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
+import { withSessionTimeout } from "@/lib/authMiddleware";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
   try {
-    const token = req.cookies.token;
-    if (!token) {
-      return res.status(401).json({ message: "Access denied" });
-    }
+    const decoded = req.user;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded) {
-      return res.status(403).json({ message: "Invalid token" });
-    }
+    const allowed = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
+    if (!allowed) return res.status(403).json({ message: "Forbidden" });
 
     const { year } = req.query;
     const targetYear = year ? parseInt(year) : new Date().getFullYear();
-
-    // Get user role first
-    const userRole = decoded.role;
 
     // Get birthdays from employees table using dob
     const birthdays = await prisma.employees.findMany({
@@ -54,8 +48,9 @@ export default async function handler(req, res) {
       ],
     };
 
-    // If user is employee, only show their own leaves
-    if (userRole === "employee") {
+    // If user cannot view all attendance, only show their own leaves
+    const canViewAllAttendance = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_VIEW);
+    if (!canViewAllAttendance) {
       leaveFilter.empid = decoded.empid;
     }
 
@@ -75,8 +70,7 @@ export default async function handler(req, res) {
     const userEmail = decoded.email;
     let visibilityFilter = {};
 
-    if (userRole === "superadmin") {
-      // Super admin can see all events
+    if (isSuperAdmin(decoded)) {
       visibilityFilter = {};
     } else {
       // Filter by email address or 'all'
@@ -230,3 +224,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSessionTimeout(handler);

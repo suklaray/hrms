@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Head from 'next/head';
-import EmpSidebar from '@/Components/empSidebar';
+import EmpSidebar from '@/Components/SideBar';
 import { Calendar, Clock, FileText, Send, CheckCircle, XCircle, AlertCircle, History, Plus, Eye, Download, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { formatLongDate } from '@/utils/dateTime';
@@ -258,7 +258,7 @@ export default function LeaveRequest() {
         <title>Leave Request - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <EmpSidebar />
+      <EmpSidebar isEmployee />
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">

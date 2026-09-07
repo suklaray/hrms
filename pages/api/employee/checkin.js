@@ -1,47 +1,30 @@
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-import cookie from "cookie";
+import { withSessionTimeout } from "@/lib/authMiddleware";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { getPendingRegularization } from "@/lib/checkPendingRegularization";
-export default async function handler(req, res) {
+
+async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   try {
-    // Verify JWT token
-    const cookies = cookie.parse(req.headers.cookie || '');
-    const token = cookies.token;
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized - No token' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Allow all authenticated users to check in
-
-    // Use empid from JWT token, not request body
+    const decoded = req.user;
     const empid = decoded.empid;
-    // Block check-in if previous missed checkout is not regularized
-    const pendingAttendance = await getPendingRegularization(empid);
 
+    const canCheckin = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_MY);
+    if (!canCheckin) return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
+
+    const pendingAttendance = await getPendingRegularization(empid);
     if (pendingAttendance) {
       return res.status(400).json({
         error: "Please submit yesterday's attendance regularization before checking in."
       });
     }
-    // Proceed with checkin
-    // Use Prisma transaction to ensure both actions succeed together
+
     await prisma.$transaction([
-      prisma.users.update({
-        where: { empid },
-        data: { status: "Logged In" },
-      }),
+      prisma.users.update({ where: { empid }, data: { status: "Logged In" } }),
       prisma.attendance.create({
-        data: {
-          empid,
-          check_in: new Date(),
-          date: new Date(),
-          attendance_status: "Present"
-        },
+        data: { empid, check_in: new Date(), date: new Date(), attendance_status: "Present" },
       }),
     ]);
 
@@ -51,3 +34,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: "Check-in failed", details: err.message });
   }
 }
+
+export default withSessionTimeout(handler);

@@ -10,6 +10,7 @@ import RegularizationCard from "/Components/RegularizationCard";
 import RegularizationModal from "@/Components/RegularizationModal";
 import { swalConfirm } from "@/utils/confirmDialog";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { isSuperAdmin } from "@/lib/rbac";
 export default function EmployeeDashboard({ user: propUser, permissions = [] }) {
   const [user, setUser] = useState(propUser || null);
   const [isWorking, setIsWorking] = useState(false);
@@ -22,70 +23,57 @@ export default function EmployeeDashboard({ user: propUser, permissions = [] }) 
   const [calendarLoading, setCalendarLoading] = useState(true);
   const [missedCheckout, setMissedCheckout] = useState(null);
   const [showRegModal, setShowRegModal] = useState(false);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
   const can = (permission) => {
-    if (user?.role === 'superadmin') return true;
+    if (isSuperAdmin(user)) return true;
     return permissions.includes(permission);
   };
-  console.log("permission",permissions);
   const isAccessEnabled = user?.verified === 'verified' && user?.form_submitted === true;
 
   useEffect(() => {
     async function fetchUser() {
       try {
-        // If user was passed as prop (from unified dashboard), use it directly
-        if (propUser) {
-          setUser(propUser);
-          setIsWorking(propUser.isWorking || false);
-          if (propUser.isWorking && propUser.workStartTime) {
-            setWorkStartTime(new Date(propUser.workStartTime));
-          }
+        // Always use propUser for profile data if available (name, email, etc.)
+        if (propUser) setUser(propUser);
+
+        // Always fetch attendance state from DB — propUser never has isWorking/workStartTime
+        // because getServerSideProps does not query the attendance table
+        const res = await fetch("/api/auth/employee/me", { credentials: "include" });
+        if (!res.ok) return router.replace("/login");
+        const data = await res.json();
+
+        // If no propUser (direct navigation), also set profile from API
+        if (!propUser) setUser(data.user);
+
+        setIsWorking(data.user.isWorking);
+        if (data.user.isWorking && data.user.workStartTime) {
+          setWorkStartTime(new Date(data.user.workStartTime));
         } else {
-          const res = await fetch("/api/auth/employee/me", { credentials: "include" });
-          if (!res.ok) return router.replace("/login");
-          const data = await res.json();
-          setUser(data.user);
-          setIsWorking(data.user.isWorking);
-          if (data.user.isWorking && data.user.workStartTime) {
-            setWorkStartTime(new Date(data.user.workStartTime));
+          setWorkStartTime(null);
+        }
+        setAttendanceLoading(false);
+        
+        // Fetch stats — only if user has attendance.my permission
+        if (can(PERMISSION_KEYS.ATTENDANCE_MY)) {
+          const statsRes = await fetch("/api/employee/stats", { credentials: "include" });
+          if (statsRes.ok) {
+            const statsData = await statsRes.json();
+            setStats({ ...statsData, todayCompletedSeconds: statsData.todayCompletedSeconds || 0 });
           } else {
-            setWorkStartTime(null);
+            toast.error("Failed to fetch dashboard stats");
           }
         }
-        
-        // Fetch stats
-        const statsRes = await fetch("/api/employee/stats", {
-          credentials: "include",
-        });
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats({
-            ...statsData,
-            todayCompletedSeconds: statsData.todayCompletedSeconds || 0
-          });
-        }else
-        {
-          toast.error("Failed to fetch dashboard stats");
-        }
 
-        
-        // Check missed checkout
-        if (can('attendance.regularize')) {
+        // Check missed checkout — only if user has attendance.regularize permission
+        if (can(PERMISSION_KEYS.ATTENDANCE_REGULARIZE)) {
           try {
-            const missedRes = await fetch(
-              '/api/attendance/check-missed-checkout',
-              {
-                credentials: 'include',
-              }
-            );
-
+            const missedRes = await fetch('/api/attendance/check-missed-checkout', { credentials: 'include' });
             if (missedRes.ok) {
               const missedData = await missedRes.json();
-
-              if (missedData.hasMissedCheckout) {
-                setMissedCheckout(missedData.attendance);
-              }
+              if (missedData.hasMissedCheckout) setMissedCheckout(missedData.attendance);
             }
           } catch (e) {
             console.error('Error checking missed checkout:', e);
@@ -98,9 +86,10 @@ export default function EmployeeDashboard({ user: propUser, permissions = [] }) 
       }
     }
     fetchUser();
-  }, [router,permissions]);
+  }, [router]);
 
   const fetchCalendarEvents = useCallback(async () => {
+    if (!can(PERMISSION_KEYS.CALENDAR_VIEW)) return;
     setCalendarLoading(true);
     try {
       const res = await fetch(`/api/calendar/events?month=${currentMonth + 1}&year=${currentYear}`);
@@ -113,7 +102,7 @@ export default function EmployeeDashboard({ user: propUser, permissions = [] }) 
     } finally {
       setCalendarLoading(false);
     }
-  }, [currentMonth, currentYear]);
+  }, [currentMonth, currentYear, permissions]);
 
   useEffect(() => {
     fetchCalendarEvents();
@@ -164,77 +153,61 @@ useEffect(() => {
       return src;
   }
   const handleToggleWork = async () => {
-  if (!user) return;
-    if (!isWorking) {
-      const checkRes = await fetch("/api/attendance/check-missed-checkout", {
-        credentials: "include",
-      });
-
-      const checkData = await checkRes.json();
-
-      if (checkData.hasMissedCheckout) {
-        toast.error(
-          "Please submit yesterday's attendance regularization before checking in."
-        );
-        return;
-      }
-    }
-    // Before checkout
-    if (isWorking) {
-      const confirmed = await swalConfirm(
-        "Are you sure you want to check out for today?",
-        "Check Out"
-      );
-
-      if (!confirmed) {
-        return;
-      }
-    }
-  const endpoint = isWorking ? "checkout" : "checkin";
-  try {
-    const res = await fetch(`/api/employee/${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-    const data = await res.json();
-    if (res.ok) {
-      // Refetch user data AND stats
-      const [userRes, statsRes] = await Promise.all([
-        fetch("/api/auth/employee/me", { credentials: "include" }),
-        fetch("/api/employee/stats", { credentials: "include" })
-      ]);
-      
-      if (userRes.ok) {
-        const userData = await userRes.json();
-        setUser(userData.user);
-        setIsWorking(userData.user.isWorking);
-        if (userData.user.isWorking && userData.user.workStartTime) {
-          setWorkStartTime(new Date(userData.user.workStartTime));
-        } else {
-          setWorkStartTime(null);
+    if (!user || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      if (!isWorking) {
+        const checkRes = await fetch("/api/attendance/check-missed-checkout", { credentials: "include" });
+        const checkData = await checkRes.json();
+        if (checkData.hasMissedCheckout) {
+          toast.error("Please submit yesterday's attendance regularization before checking in.");
+          return;
         }
       }
-      
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats({
-          ...statsData,
-          todayCompletedSeconds: statsData.todayCompletedSeconds || 0
-        });
+
+      if (isWorking) {
+        const confirmed = await swalConfirm("Are you sure you want to check out for today?", "Check Out");
+        if (!confirmed) return;
       }
-      
-      toast.success(
-        data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : "")
-      );
-    } else {
+
+      const endpoint = isWorking ? "checkout" : "checkin";
+      const res = await fetch(`/api/employee/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        const [userRes, statsRes] = await Promise.all([
+          fetch("/api/auth/employee/me", { credentials: "include" }),
+          fetch("/api/employee/stats", { credentials: "include" })
+        ]);
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUser(userData.user);
+          setIsWorking(userData.user.isWorking);
+          if (userData.user.isWorking && userData.user.workStartTime) {
+            setWorkStartTime(new Date(userData.user.workStartTime));
+          } else {
+            setWorkStartTime(null);
+          }
+        }
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats({ ...statsData, todayCompletedSeconds: statsData.todayCompletedSeconds || 0 });
+        }
+        toast.success(data.message + (data.hours ? ` (Worked: ${data.hours} hrs)` : ""));
+      } else {
         toast.error(data.error || "An error occurred.");
+      }
+    } catch (err) {
+      console.error("Work toggle error:", err);
+      toast.error("Failed to update work status.");
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (err) {
-    console.error("Work toggle error:", err);
-    toast.error("Failed to update work status.");
-  }
-};
+  };
 
 
   if (!user) {
@@ -349,14 +322,13 @@ useEffect(() => {
                   )}
                 </div>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={isWorking}
-                  onChange={handleToggleWork}
-                />
-                <div className="w-40 sm:w-44 h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-full peer-checked:from-green-400 peer-checked:to-green-600 transition-all duration-500 shadow-inner relative overflow-hidden">
+              <button
+                type="button"
+                onClick={handleToggleWork}
+                disabled={attendanceLoading || isSubmitting}
+                className={`relative inline-flex items-center ${(attendanceLoading || isSubmitting) ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} focus:outline-none`}
+              >
+                <div className={`w-40 sm:w-44 h-12 bg-gradient-to-r ${isWorking ? 'from-green-400 to-green-600' : 'from-gray-200 to-gray-300'} rounded-full transition-all duration-500 shadow-inner relative overflow-hidden`}>
                   <div className="absolute inset-0 flex items-center justify-between px-4 text-xs sm:text-sm font-medium">
                     <span className={`transition-all duration-300 whitespace-nowrap ${isWorking ? 'text-white' : 'text-gray-700'}`}>
                       Check In
@@ -366,12 +338,12 @@ useEffect(() => {
                     </span>
                   </div>
                 </div>
-                <div className="absolute left-1 top-1 w-18 sm:w-20 h-10 bg-white rounded-full shadow-lg transform peer-checked:translate-x-20 sm:peer-checked:translate-x-22 transition-all duration-500 flex items-center justify-center">
+                <div className={`absolute left-1 top-1 w-18 sm:w-20 h-10 bg-white rounded-full shadow-lg transform ${isWorking ? 'translate-x-20 sm:translate-x-22' : 'translate-x-0'} transition-all duration-500 flex items-center justify-center`}>
                   <span className="text-xs font-semibold text-gray-700 whitespace-nowrap">
                     {isWorking ? 'Check Out' : 'Check In'}
                   </span>
                 </div>
-              </label>
+              </button>
             </div>
           </div>
 
@@ -493,9 +465,11 @@ useEffect(() => {
           {/* Calendar and Quick Actions */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Calendar Section */}
-           <EmployeeCalenderSection 
-              events={events} 
-              loading={calendarLoading}/>
+           {can(PERMISSION_KEYS.CALENDAR_VIEW) && (
+             <EmployeeCalenderSection 
+               events={events} 
+               loading={calendarLoading}/>
+           )}
             {/* Quick Actions */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="p-6 border-b border-gray-100">

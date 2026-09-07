@@ -6,7 +6,29 @@ import { ArrowLeft, Calendar, Clock, User, Trash2, AlertTriangle } from "lucide-
 import Link from "next/link";
 import { swalConfirm } from '@/utils/confirmDialog';
 import { formatDateTime } from '@/utils/dateTime';
-export default function EmployeeTasks() {
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: "/login", permanent: false } };
+
+  const [canView, canDelete, canEdit] = await Promise.all([
+    checkPermission(user, PERMISSION_KEYS.TASK_VIEW),
+    checkPermission(user, PERMISSION_KEYS.TASK_DELETE),
+    checkPermission(user, PERMISSION_KEYS.TASK_EDIT),
+  ]);
+
+  if (!canView && !canDelete && !canEdit) {
+    return { redirect: { destination: '/403', permanent: false } };
+  }
+
+  return { props: { canDelete, canEdit } };
+}
+
+export default function EmployeeTasks({ canDelete, canEdit }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTasks, setSelectedTasks] = useState([]);
@@ -81,6 +103,8 @@ export default function EmployeeTasks() {
       if (response.ok) {
         setTasks(prevTasks => prevTasks.filter(task => !selectedTasks.includes(task.id)));
         setSelectedTasks([]);
+      } else if (response.status === 403) {
+        alert('You do not have permission to delete tasks.');
       }
     } catch (error) {
       console.error("Error deleting tasks:", error);
@@ -156,7 +180,7 @@ export default function EmployeeTasks() {
               </div>
             </div>
 
-            {selectedTasks.length > 0 && (
+            {canDelete && selectedTasks.length > 0 && (
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-600">
                   {selectedTasks.length} selected
@@ -177,6 +201,7 @@ export default function EmployeeTasks() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    {canDelete && (
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       <input
                         type="checkbox"
@@ -185,6 +210,7 @@ export default function EmployeeTasks() {
                         className="h-4 w-4 text-indigo-600 border-gray-300 rounded cursor-pointer"
                       />
                     </th>
+                    )}
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -195,19 +221,20 @@ export default function EmployeeTasks() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8">
+                      <td colSpan={canDelete ? 6 : 5} className="text-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-600 border-t-transparent mx-auto"></div>
                       </td>
                     </tr>
                   ) : tasks.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-gray-500">
+                      <td colSpan={canDelete ? 6 : 5} className="text-center py-8 text-gray-500">
                         No tasks assigned
                       </td>
                     </tr>
                   ) : (
                     tasks.map((task) => (
                       <tr key={task.id} className="hover:bg-gray-50">
+                        {canDelete && (
                         <td className="px-4 py-3">
                           <input
                             type="checkbox"
@@ -216,6 +243,7 @@ export default function EmployeeTasks() {
                             className="h-4 w-4 text-indigo-600 border-gray-300 rounded cursor-pointer"
                           />
                         </td>
+                        )}
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{task.title}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
@@ -223,15 +251,21 @@ export default function EmployeeTasks() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm">
-                          <select
-                            value={task.status}
-                            onChange={(e) => updateTaskStatus(task.id, e.target.value)}
-                            className={`px-2 py-1 text-xs font-medium rounded-full cursor-pointer ${getStatusColor(task.status)}`}
-                          >
-                            <option value="Pending">Pending</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="Completed">Completed</option>
-                          </select>
+                          {canEdit ? (
+                            <select
+                              value={task.status}
+                              onChange={(e) => updateTaskStatus(task.id, e.target.value)}
+                              className={`px-2 py-1 text-xs font-medium rounded-full cursor-pointer ${getStatusColor(task.status)}`}
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="In Progress">In Progress</option>
+                              <option value="Completed">Completed</option>
+                            </select>
+                          ) : (
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
+                              {task.status}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm text-gray-900">

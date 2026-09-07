@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
-import Sidebar from '../../Components/empSidebar';
+import Sidebar from '../../Components/SideBar';
 import { formatTime } from "@/utils/dateTime";
 import LiveTimer from '@/utils/liveTimer';
 import RegularizationModal from '@/Components/RegularizationModal';
@@ -248,7 +248,7 @@ const attendanceRate = workingDays.length > 0
         <title>My Attendance - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={user} />
+      <Sidebar user={user} isEmployee />
       
       <div className="flex-1 p-6">
         <div className="max-w-6xl mx-auto">

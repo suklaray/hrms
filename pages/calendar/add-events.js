@@ -3,6 +3,20 @@ import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import Link from 'next/link';
 import { FaCalendarPlus, FaArrowLeft } from 'react-icons/fa';
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: "/login", permanent: false } };
+
+  const allowed = await checkPermission(user, PERMISSION_KEYS.CALENDAR_MANAGE);
+  if (!allowed) return { redirect: { destination: "/403", permanent: false } };
+
+  return { props: {} };
+}
 
 export default function AddEvent() {
   const [formData, setFormData] = useState({

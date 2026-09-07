@@ -1,20 +1,18 @@
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-
-export default async function handler(req, res) {
+import { withSessionTimeout } from "@/lib/authMiddleware";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
   try {
-    const token = req.cookies.token;
-    if (!token) {
-      return res.status(401).json({ message: "Access denied" });
-    }
+    const decoded = req.user;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded) {
-      return res.status(403).json({ message: "Invalid token" });
+    const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
+    if (!canView) {
+      return res.status(403).json({ message: "Forbidden: insufficient permissions" });
     }
 
     const { title, description, event_date, event_type, visible_to, selected_groups } = req.body;
@@ -95,3 +93,4 @@ export default async function handler(req, res) {
     });
   }
 }
+export default withSessionTimeout(handler);

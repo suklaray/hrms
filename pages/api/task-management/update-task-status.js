@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from "@/lib/prisma";
+import { checkPermission } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -16,6 +18,12 @@ export default async function handler(req, res) {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const canUpdate = await checkPermission(decoded, PERMISSION_KEYS.TASK_EDIT);
+    if (!canUpdate) {
+      return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
+    }
+
     const { taskId, status } = req.body;
 
     if (!taskId || !status) {

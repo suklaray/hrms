@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Head from 'next/head';
-import Sidebar from "@/Components/empSidebar";
+import Sidebar from "@/Components/SideBar";
 import { User, Mail, Camera, Lock, Save, X, Eye, EyeOff, FileText, CheckCircle } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
@@ -182,7 +182,7 @@ export default function Profile() {
         <title>Employee Profile - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={user} />
+      <Sidebar user={user} isEmployee />
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">

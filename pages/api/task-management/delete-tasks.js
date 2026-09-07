@@ -14,14 +14,14 @@ export default async function handler(req, res) {
     if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const hasAccess = (await checkPermission(decoded, PERMISSION_KEYS.TASK_DELETE)) || (await checkPermission(decoded, PERMISSION_KEYS.TASK_CREATE));
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.TASK_DELETE);
     if (!hasAccess) {
       return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
     }
 
     const { taskIds } = req.body;
     if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
-      return res.status(400).json({ error: 'Task IDs are requireer-index=8 reference-tracker>rke-index=5 reference-tracker>ex=4 reference-tracker>r-indce-tracker>acker>ex=1 reference-tracker>d' });
+      return res.status(400).json({ error: 'Task IDs are required' });
     }
 
     await prisma.tasks.deleteMany({

@@ -43,18 +43,18 @@ export default function TaskManagement() {
 
   const fetchData = async () => {
     try {
-      const userRes = await fetch('/api/auth/me');
+      const [userRes, tasksRes] = await Promise.all([
+        fetch('/api/auth/me'),
+        fetch('/api/task-management/all-tasks'),
+      ]);
       const userData = await userRes.json();
       setUser(userData.user);
 
-      // Check if user has permission
-      if (!['hr', 'admin', 'superadmin'].includes(userData.user?.role)) {
-        router.push('/task-management/user-task');
+      if (!tasksRes.ok) {
+        if (tasksRes.status === 403) router.push('/task-management/user-task');
         return;
       }
-
-      const res = await fetch('/api/task-management/all-tasks');
-      const data = await res.json();
+      const data = await tasksRes.json();
       setTasks(data.tasks || []);
     } catch (error) {
       console.error('Error fetching data:', error);

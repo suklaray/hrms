@@ -2,6 +2,8 @@
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from "@/lib/prisma";
+import { checkPermission } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 
 export default async function handler(req, res) {
   try {
@@ -20,6 +22,11 @@ export default async function handler(req, res) {
 
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
+    }
+
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.TASK_MY);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
     }
 
     if (req.method === 'GET') {

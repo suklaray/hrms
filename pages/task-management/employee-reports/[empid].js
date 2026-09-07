@@ -4,6 +4,18 @@ import Head from 'next/head';
 import SideBar from '@/Components/SideBar';
 import { ArrowLeft, Calendar, Search, FileText } from 'lucide-react';
 import { formatDate, formatTimeWithSeconds } from '@/utils/dateTime';
+import { getUserFromToken } from '@/lib/getUserFromToken';
+import { checkPermission } from '@/lib/rbac';
+import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || '';
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.REPORT_VIEW);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+  return { props: {} };
+}
 
 export default function EmployeeReports() {
   const router = useRouter();
@@ -30,16 +42,12 @@ export default function EmployeeReports() {
 
   const fetchData = async () => {
     try {
-      const userRes = await fetch('/api/auth/me');
+      const [userRes, reportsRes] = await Promise.all([
+        fetch('/api/auth/me'),
+        fetch(`/api/hr/employee-work-reports/${empid}`),
+      ]);
       const userData = await userRes.json();
       setUser(userData.user);
-
-      if (!['hr', 'admin', 'superadmin'].includes(userData.user?.role)) {
-        router.push('/task-management/user-task');
-        return;
-      }
-
-      const reportsRes = await fetch(`/api/hr/employee-work-reports/${empid}`);
       if (reportsRes.ok) {
         const data = await reportsRes.json();
         setReports(data.reports || []);

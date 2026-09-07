@@ -1,20 +1,19 @@
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
+import { withSessionTimeout } from "@/lib/authMiddleware";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
   }
 
   try {
-    const token = req.cookies.token;
-    if (!token) {
-      return res.status(401).json({ message: "Access denied" });
-    }
+    const decoded = req.user;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded) {
-      return res.status(403).json({ message: "Invalid token" });
+    const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
+    if (!canView) {
+      return res.status(403).json({ message: "Forbidden: insufficient permissions" });
     }
 
     const { month, year } = req.query;
@@ -40,9 +39,9 @@ export default async function handler(req, res) {
       ],
     };
 
-    // If user is employee, only show their own leaves
-    const userRole = decoded.role;
-    if (userRole === "employee") {
+    // If user does not have attendance.view (HR/admin), only show their own leaves
+    const canViewAllLeaves = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_VIEW);
+    if (!canViewAllLeaves) {
       leaveFilter.empid = decoded.empid;
     }
 
@@ -58,15 +57,11 @@ export default async function handler(req, res) {
       },
     });
 
-    // Get calendar events for the month based on user email and role
+    // Super admin sees all events; others filtered by email or 'all'
     const userEmail = decoded.email;
     let visibilityFilter = {};
 
-    if (userRole === "superadmin") {
-      // Super admin can see all events
-      visibilityFilter = {};
-    } else {
-      // Filter by email address or 'all'
+    if (!isSuperAdmin(decoded)) {
       visibilityFilter = {
         OR: [
           { visible_to: "all" },
@@ -187,3 +182,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withSessionTimeout(handler);

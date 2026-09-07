@@ -1,11 +1,14 @@
 import { withSessionTimeout } from "@/lib/authMiddleware";
 import prisma from "@/lib/prisma";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 async function handler(req, res) {
   try {
-    const decoded = req.user; // User info from middleware
+    const decoded = req.user;
 
-    if (decoded.role !== "employee") {
+    const canAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_MY);
+    if (!canAccess) {
       return res.status(403).json({ error: "Access denied" });
     }
 
@@ -31,16 +34,13 @@ async function handler(req, res) {
     const attendance = await prisma.attendance.findFirst({
       where: {
         empid: user.empid,
-        date: {
-          gte: today,
-        },
+        date: { gte: today },
+        check_out: null,
       },
-      orderBy: {
-        date: "desc",
-      },
+      orderBy: { check_in: "desc" },
     });
 
-    const isWorking = !!(attendance?.check_in && !attendance?.check_out);
+    const isWorking = !!(attendance?.check_in);
     const workStartTime = attendance?.check_in || null;
 
     // Return user info + attendance status + JWT fields
