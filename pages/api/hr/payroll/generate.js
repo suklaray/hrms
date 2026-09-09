@@ -1,10 +1,20 @@
 import prisma from "@/lib/prisma";
+import jwt from "jsonwebtoken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
+
+  const token = req.cookies?.token;
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  let decoded;
+  try { decoded = jwt.verify(token, process.env.JWT_SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
+  const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
+  if (!hasAccess) return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
 
   try {
     const {

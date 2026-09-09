@@ -1,7 +1,8 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
@@ -12,7 +13,9 @@ export default async function handler(req, res) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const { empid } = req.query;
-    
+    // Check if the user has permission to view payslip details
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW);
+    if (!hasAccess) return res.status(403).json({ error: "Forbidden: insufficient permissions" });
     // Find user by empid
     const user = await prisma.users.findUnique({
       where: { empid: empid },

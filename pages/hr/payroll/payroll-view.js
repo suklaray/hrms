@@ -2,8 +2,19 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { Search, Calendar, Users, Eye, Filter, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 
-import { Search, Calendar, Users, Eye, Download, Filter, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || '';
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.PAYROLL_VIEW);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+  return { props: {} };
+}
 
 export default function PayrollView() {
   const [payrolls, setPayrolls] = useState([]);
@@ -13,7 +24,6 @@ export default function PayrollView() {
   const [dateFilter, setDateFilter] = useState({ month: '', year: '' });
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [userRole, setUserRole] = useState(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -30,19 +40,7 @@ export default function PayrollView() {
       }
     };
 
-    const fetchUserRole = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        const userData = await res.json();
-        setUserRole(userData.user.role);
-        // console.log('User role:',userData.user.role);
-      } catch (error) {
-        console.error('Error fetching user role:', error);
-      }
-    };
-
     fetchPayrolls();
-    fetchUserRole();
   }, []);
 
   useEffect(() => {
@@ -199,7 +197,7 @@ export default function PayrollView() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Amount</p>
                   <p className="text-3xl font-bold text-indigo-600">
-                    {userRole === 'hr' ? '₹XXX' : `₹${stats.totalAmount.toFixed(2)}`}
+                    ₹{stats.totalAmount.toFixed(2)}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">{stats.periodText}</p>
                 </div>

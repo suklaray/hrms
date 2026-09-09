@@ -4,7 +4,17 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import SideBar from "@/Components/SideBar";
 import { FaEye, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || '';
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.PAYROLL_VIEW);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+  return { props: {} };
+}
 export default function EmployeePayroll() {
   const router = useRouter();
   const { empid } = router.query;
@@ -12,7 +22,7 @@ export default function EmployeePayroll() {
   const [employee, setEmployee] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-
+  
   useEffect(() => {
     if (empid) {
       // Fetch payroll records

@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     }
 
     const isSelf = (decoded.empid === empid || decoded.id === empid);
-    const hasPermissionAccess = (await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_VIEW)) || (await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW));
+    const hasPermissionAccess = (await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_VIEW));
 
     if (!isSelf && !hasPermissionAccess) {
       return res.status(403).json({ message: 'Access denied: insufficient permissions' });

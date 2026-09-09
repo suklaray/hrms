@@ -2,6 +2,18 @@ import { useState } from 'react';
 import SideBar from '@/Components/SideBar';
 import { useRouter } from 'next/router';
 import { Search, Filter, Download, Eye, Calendar } from 'lucide-react';
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || '';
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.COMPLIANCE_VIEW);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+  return { props: {} };
+}
 
 export default function AuditLogs() {
   const router = useRouter();

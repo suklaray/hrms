@@ -6,21 +6,16 @@ import { FileText, Download, Calendar, AlertCircle, Eye, ChevronLeft, ChevronRig
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import prisma from "@/lib/prisma";
 import { formatLongDate } from "@/utils/dateTime";
-
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 export async function getServerSideProps(context) {
   const { req } = context;
   const token = req?.cookies?.token || "";
   const user = getUserFromToken(token);
-
-  if (!user) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.PAYSLIP_VIEW);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+ 
   let userData = null;
   try {
     userData = await prisma.users.findUnique({

@@ -1,6 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
-
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
@@ -16,6 +17,8 @@ export default async function handler(req, res) {
     if (!decoded) {
       return res.status(403).json({ message: "Invalid token" });
     }
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
+    if (!hasAccess) return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
 
     const { empid } = req.query;
     const targetEmpid = empid || decoded.empid || decoded.id;

@@ -5,6 +5,19 @@ import SideBar from "@/Components/SideBar";
 import { Clock, Calendar, User, Mail, TrendingUp, CheckCircle, XCircle, ArrowLeft, ChevronLeft, ChevronRight, FileText, X, Eye } from "lucide-react";
 import { formatLongDate, formatShortDateTime, formatTime, formatTimeUTC } from "@/utils/dateTime";
 import { toast } from "react-toastify";
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || '';
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_VIEW);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+  return { props: {} };
+}
+
 // Regularization Detail Modal
 const RegularizationModal = ({ request, onClose, onUpdated }) => {
   const [rejectionReason, setRejectionReason] = useState("");

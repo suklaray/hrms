@@ -5,6 +5,19 @@ import SideBar from '../../../Components/SideBar';
 import { formatTime } from '@/utils/dateTime';
 import LiveTimer from '@/utils/liveTimer';
 import RegularizationModal from '@/Components/RegularizationModal';
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || '';
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_MY);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+  return { props: {} };
+}
+
 export default function MyAttendance() {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);

@@ -1,6 +1,18 @@
 import { useState } from 'react';
 import SideBar from "@/Components/SideBar";
 import { toast } from "react-toastify";
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export async function getServerSideProps({ req }) {
+  const token = req?.cookies?.token || '';
+  const user = getUserFromToken(token);
+  if (!user) return { redirect: { destination: '/login', permanent: false } };
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.COMPLIANCE_VIEW);
+  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
+  return { props: {} };
+}
 
 export default function HRPolicyManagement() {
   const [policies, setPolicies] = useState([
