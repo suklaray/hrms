@@ -26,7 +26,7 @@ export default function App({ Component, pageProps }) {
             router.replace('/403');
           }
         } else if (status === 401) {
-          const publicPaths = ['/login', '/employee/login', '/signup', '/forgot-password', '/403'];
+          const publicPaths = ['/login', '/signup', '/forgot-password', '/403'];
           if (!publicPaths.includes(router.pathname)) {
             router.replace('/login');
           }

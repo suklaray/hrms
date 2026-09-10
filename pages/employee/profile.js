@@ -30,7 +30,7 @@ export default function Profile() {
         console.error('Failed to fetch employee profile:', error);
         // Redirect to login if unauthorized
         if (error.response?.status === 401 || error.response?.status === 403) {
-          window.location.href = '/employee/login';
+          window.location.href = '/login';
         }
       });
   }, []);

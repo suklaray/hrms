@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     if (!decoded) {
       return res.status(403).json({ message: "Invalid token" });
     }
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW);
     if (!hasAccess) return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
 
     const { empid } = req.query;

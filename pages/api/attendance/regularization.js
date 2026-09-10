@@ -1,14 +1,20 @@
-import { verifyEmployeeToken } from '@/lib/auth';
-import { verifyHRToken } from '@/lib/auth-hr';
 import prisma from '@/lib/prisma';
-
+import cookie from "cookie";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    // Accept both employee token and HR/admin/superadmin token
-    const user = await verifyEmployeeToken(req) || await verifyHRToken(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const { token } = cookies;
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_REGULARIZATION_CREATE);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
+    }
 
     const { attendance_id, attendance_date, check_in_time, requested_checkout, reason } = req.body;
 

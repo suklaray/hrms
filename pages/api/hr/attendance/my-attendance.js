@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
 import prisma from '@/lib/prisma';
 import { format } from 'date-fns';
-
+import cookie from "cookie";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 const isValidCheckout = (dt) => {
   if (!dt) return false;
   const d = new Date(dt);
@@ -60,6 +62,10 @@ export default async function handler(req, res) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded) {
       return res.status(403).json({ message: 'Access denied' });
+    };
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_MY);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
     }
 
     const user = await prisma.users.findUnique({

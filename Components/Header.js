@@ -345,17 +345,6 @@ const Header = () => {
                   <UserPlus className="w-4 h-4" />
                   <span>Login</span>
                 </Link>
-                {/* <Link
-                  href="/employee/login"
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
-                    router.pathname === '/employee/login'
-                      ? 'text-yellow-300 bg-white/20'
-                      : 'text-white '
-                  }`}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Employee Login</span>
-                </Link> */}
               </div>
             )}
             {user && (
@@ -470,18 +459,6 @@ const Header = () => {
                   <UserPlus className="w-5 h-5" />
                   <span>Login</span>
                 </Link>
-                {/* <Link
-                  href="/employee/login"
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                    router.pathname === '/employee/login'
-                      ? 'text-yellow-300 bg-white/20'
-                      : 'text-white hover:text-yellow-300 hover:bg-white/10'
-                  }`}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <UserPlus className="w-5 h-5" />
-                  <span>Employee Login</span>
-                </Link> */}
               </div>
             )}
             {user && (

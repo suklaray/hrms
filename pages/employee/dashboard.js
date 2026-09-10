@@ -239,7 +239,7 @@ useEffect(() => {
     {
       label: 'Apply Leave',
       description: 'Request time off',
-      route: '/employee/leave-request',
+      route: '/leave-request/leave-request',
       permission: PERMISSION_KEYS.LEAVE_REQUEST,
       icon: Calendar,
       color: 'blue',
@@ -247,7 +247,7 @@ useEffect(() => {
     {
       label: 'View Attendance',
       description: 'Check your records',
-      route: '/employee/attendance',
+      route: '/hr/attendance/my-attendance',
       permission: PERMISSION_KEYS.ATTENDANCE_MY,
       icon: Clock,
       color: 'green',
@@ -263,7 +263,7 @@ useEffect(() => {
     {
       label: 'Payslips & Docs',
       description: 'View documents',
-      route: '/employee/emp-payslip',
+      route: '/payslip/payslip-lists',
       permission: PERMISSION_KEYS.PAYSLIP_VIEW,
       icon: Mail,
       color: 'orange',

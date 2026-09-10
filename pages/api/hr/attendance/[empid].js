@@ -1,6 +1,8 @@
 import { format } from 'date-fns';
 import prisma from "@/lib/prisma";
-
+import cookie from "cookie";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 const isValidCheckout = (dt) => {
   if (!dt) return false;
   const d = new Date(dt);
@@ -51,6 +53,15 @@ const getLoginStatus = (sessions) => {
 
 export default async function handler(req, res) {
   const { empid, month, year } = req.query;
+  const cookies = cookie.parse(req.headers.cookie || '');
+  const { token } = cookies;
+  if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_VIEW);
+  if (!hasAccess) {
+    return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
+  }
 
   if (!empid) {
     return res.status(400).json({ error: "empid is required" });
