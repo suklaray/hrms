@@ -83,6 +83,9 @@ model candidates {
   ip_address            String?
   token_expiry          DateTime?
   token_first_used_at   DateTime?
+
+  parsed_resume_id      Int       @unique
+  parsed_resume         parsed_resumes @relation(fields: [parsed_resume_id], references: [id]) 
 }
 
 model compliance_documents {
@@ -514,6 +517,7 @@ enum employees_employee_type {
 
 model parsed_resumes {
   id                      Int       @id @default(autoincrement())
+
   // Personal
   full_name               String?
   email                   String?
@@ -526,9 +530,11 @@ model parsed_resumes {
   linkedin_profile        String?
   portfolio_url           String?
   github_url              String?
+
   // Professional
   career_objective        String?   @db.Text
   professional_summary    String?   @db.Text
+
   // Structured JSON fields
   work_experience         Json?
   education               Json?
@@ -540,6 +546,7 @@ model parsed_resumes {
   awards_and_achievements Json?
   publications            Json?
   training                Json?
+
   // Additional info
   notice_period           String?
   current_salary          String?
@@ -549,13 +556,26 @@ model parsed_resumes {
   original_file_name      String?
   resume_mime_type        String?
   resume_file_size        Int?
+
   // Parser processing metadata
   parsing_status          String?   @default("PROCESSING")
   parser_version          String?
   ai_model                String?
+  application_status      String @default("Waiting")
   parsing_error           String?   @db.Text
   parsed_at               DateTime  @default(now())
   updated_at              DateTime  @updatedAt
+
+  //
+  job_description_id      Int?
+  matching_score          Int?
+
+  job_description job_descriptions? @relation(fields: [job_description_id], references: [id], onDelete: SetNull)
+  
+  @@index([job_description_id])
+  
+  candidate candidates?
+
 }
 
 model job_descriptions {
@@ -584,7 +604,12 @@ model job_descriptions {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
   analysis          job_description_analysis?
+  parsed_resumes    parsed_resumes[]
+
+  
 }
+
+
 model job_description_analysis {
   id                  Int      @id @default(autoincrement())
 

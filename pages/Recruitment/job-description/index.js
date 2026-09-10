@@ -335,6 +335,11 @@ export default function JobDescriptions() {
                                     <Sparkles className="w-4 h-4" />
                                   )}
                                 </button>
+                                {/* <Link href={`/Recruitment/job-description/${job.id}/matches`}>
+                                  <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors cursor-pointer" title="Find matching candidates">
+                                    <Users className="w-4 h-4" />
+                                  </button>
+                                </Link> */}
                                 <Link href={`/Recruitment/job-description/${job.id}`}>
                                   <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer" title="Edit">
                                     <Pencil className="w-4 h-4" />
