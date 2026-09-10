@@ -272,23 +272,37 @@ const chooseFile = (selectedFile) => {
 
   const closeUpload = () => { setUploadOpen(false); setFile(null); setFileError(""); if (inputRef.current) inputRef.current.value = ""; };
   
-  const filtered = data.resumes
-  .filter((resume) => {
-    const matchesSearch = `${resume.name} ${resume.email} ${resume.fileName || ""}`
+  const matchesSearch = (resume, searchText) => {
+  const query = searchText.trim().toLowerCase();
+
+  if (!query) return true;
+
+  return Object.values(resume).some((value) => {
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    if (typeof value === "object") {
+      return JSON.stringify(value)
+        .toLowerCase()
+        .includes(query);
+    }
+
+    return String(value)
       .toLowerCase()
-      .includes(search.toLowerCase());
+      .includes(query);
+  });
+};
 
-    const matchesJob =
-      jobId === "all" ||
-      String(resume.jobDescriptionId) === String(jobId);
+const filtered = data.resumes.filter((resume) => {
+  const searchMatch = matchesSearch(resume, search);
 
-    return matchesSearch && matchesJob;
-  })
-  .sort(
-    (left, right) =>
-      new Date(right.parsedAt || 0) -
-      new Date(left.parsedAt || 0)
-  );
+  const jobMatch =
+    jobId === "all" ||
+    String(resume.jobDescriptionId) === String(jobId);
+
+  return searchMatch && jobMatch;
+});
 
   const parsedCount = data.resumes.length;
 

@@ -169,12 +169,41 @@ export default function JobDescriptions() {
       setSavingAnalysis(false);
     }
   };
-  const filtered = jobs.filter((j) => {
-    const matchSearch = j.title.toLowerCase().includes(search.toLowerCase()) || j.department.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = status === "All Status" || j.status === status;
-    const matchMode   = workMode === "All Work Modes" || j.work_mode === workMode;
-    return matchSearch && matchStatus && matchMode;
+  const matchesSearch = (job, searchText) => {
+  const query = searchText.trim().toLowerCase();
+
+  if (!query) return true;
+
+  return Object.values(job).some((value) => {
+    if (value === null || value === undefined) {
+      return false;
+    }
+
+    if (typeof value === "object") {
+      return JSON.stringify(value)
+        .toLowerCase()
+        .includes(query);
+    }
+
+    return String(value)
+      .toLowerCase()
+      .includes(query);
   });
+};
+
+const filtered = jobs.filter((j) => {
+  const matchSearch = matchesSearch(j, search);
+
+  const matchStatus =
+    status === "All Status" ||
+    j.status === status;
+
+  const matchMode =
+    workMode === "All Work Modes" ||
+    j.work_mode === workMode;
+
+  return matchSearch && matchStatus && matchMode;
+});
 
   useEffect(() => { setPage(1); }, [search, status, workMode]);
 
