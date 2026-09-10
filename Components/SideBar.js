@@ -180,6 +180,7 @@ export default function Sidebar({ user: propUser }) {
     { name: "Candidates", path: "/Recruitment/recruitment" },
     { name: "Job Descriptions", path: "/Recruitment/job-description" },
     {name:"Job Applications", path:"/Recruitment/job-applications"},
+    { name: "Analytics", path: "/Recruitment/analytics" }
   ];
 
   const navItems = [
