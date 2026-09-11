@@ -48,8 +48,8 @@ const SIDEBAR_STRUCTURE = [
     icon: Clock,
     permission: 'attendance.view',
     children: [
-      { title: 'Attendance', route: '/hr/attendance', permission: 'attendance.view' },
-      { title: 'Leave Management', route: '/hr/view-leave-requests', permission: 'leave.view' },
+      { title: 'Attendance', route: '/attendance', permission: 'attendance.view' },
+      { title: 'Leave Management', route: '/view-leave-requests', permission: 'leave.view' },
       { title: 'Attendance Analytics', route: '/attendance/analytics', permission: 'attendance.analytics' },
     ],
   },
@@ -58,8 +58,8 @@ const SIDEBAR_STRUCTURE = [
     icon: DollarSign,
     permission: 'payroll.view',
     children: [
-      { title: 'Payroll Record', route: '/hr/payroll/payroll-view', permission: 'payroll.view' },
-      { title: 'Generate Payroll', route: '/hr/payroll/generate', permission: 'payroll.generate' },
+      { title: 'Payroll Record', route: '/payroll/payroll-view', permission: 'payroll.view' },
+      { title: 'Generate Payroll', route: '/payroll/generate', permission: 'payroll.generate' },
     ],
   },
   {
@@ -93,7 +93,7 @@ const SIDEBAR_STRUCTURE = [
     permission: 'settings.profile',
     children: [
       { title: 'Profile Management', route: '/settings/profile', permission: 'settings.profile' },
-      { title: 'My Attendance', route: '/hr/attendance/my-attendance', permission: 'attendance.my' },
+      { title: 'My Attendance', route: '/attendance/my-attendance', permission: 'attendance.my' },
       { title: 'Leave Request', route: '/leave-request/leave-request', permission: 'leave.request' },
       { title: 'Add Position', route: '/settings/position-management', permission: 'settings.position_manage' },
       { title: 'Payslip & Documents', route: '/payslip/payslip-lists', permission: 'payslip.view' },

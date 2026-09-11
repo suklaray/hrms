@@ -71,7 +71,7 @@ export default function GeneratePayrollPage() {
   }, [router.query]);
 
   const handleGeneratePayroll = (empid) => {
-    router.push(`/hr/payroll/form/${empid}`);
+    router.push(`/payroll/form/${empid}`);
   };
 
   const getCurrentMonth = () => {
@@ -140,7 +140,7 @@ export default function GeneratePayrollPage() {
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             {/* Breadcrumb Navigation */}
             <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-              <button onClick={() => router.push('/hr/payroll/payroll-view')} className="hover:text-indigo-600 transition-colors">
+              <button onClick={() => router.push('/payroll/payroll-view')} className="hover:text-indigo-600 transition-colors">
                 Payroll Management
               </button>
               <span>/</span>

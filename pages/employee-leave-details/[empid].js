@@ -274,7 +274,7 @@ const submitStatusWithReason = async () => {
 
         <div className="p-6">
           <Breadcrumb items={[
-            { label: 'Leave Requests', href: '/hr/view-leave-requests' },
+            { label: 'Leave Requests', href: '/view-leave-requests' },
             { label: employeeData?.name || 'Employee Details' }
           ]} />
           

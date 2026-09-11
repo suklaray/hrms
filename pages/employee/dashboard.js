@@ -247,7 +247,7 @@ useEffect(() => {
     {
       label: 'View Attendance',
       description: 'Check your records',
-      route: '/hr/attendance/my-attendance',
+      route: '/attendance/my-attendance',
       permission: PERMISSION_KEYS.ATTENDANCE_MY,
       icon: Clock,
       color: 'green',
@@ -255,7 +255,7 @@ useEffect(() => {
     {
       label: 'Update Profile',
       description: 'Edit your details',
-      route: '/employee/profile',
+      route: '/settings/profile',
       permission:PERMISSION_KEYS.SETTINGS_PROFILE, // always visible
       icon: User,
       color: 'purple',
@@ -517,7 +517,7 @@ useEffect(() => {
                       </div>
                     </div>
                     <button
-                      onClick={() => router.push('/employee/profile')}
+                      onClick={() => router.push('/settings/profile')}
                       className="p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200 text-left cursor-pointer"
                     >
                       <div className="flex items-center space-x-3">
@@ -556,7 +556,7 @@ useEffect(() => {
                   Please complete your profile verification and form submission to access all HRMS features.
                 </p>
                 <button
-                  onClick={() => router.push('/employee/profile')}
+                  onClick={() => router.push('/settings/profile')}
                   className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   Complete Profile Setup

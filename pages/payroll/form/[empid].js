@@ -379,7 +379,7 @@ export default function PayrollForm() {
           empid: result.empid, 
           month: result.month, 
           year: result.year,
-          payslipUrl: `/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`
+          payslipUrl: `/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`
         });
         // Reset form after successful submission
         setFormData(prev => ({ ...prev, month: '', year: new Date().getFullYear() }));
@@ -466,14 +466,14 @@ export default function PayrollForm() {
           {/* Breadcrumb Navigation */}
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
             <button
-              onClick={() => router.push("/hr/payroll/payroll-view")}
+              onClick={() => router.push("/payroll/payroll-view")}
               className="hover:text-indigo-600 transition-colors"
             >
               Payroll Management
             </button>
             <span>/</span>
             <button
-              onClick={() => router.push("/hr/payroll/generate")}
+              onClick={() => router.push("/payroll/generate")}
               className="hover:text-indigo-600 transition-colors"
             >
               Generate Payroll
@@ -1405,7 +1405,7 @@ export default function PayrollForm() {
                     type="button"
                     onClick={() =>
                       router.push(
-                        `/hr/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`
+                        `/payroll/payslip-preview/${empid}?month=${formData.month}&year=${formData.year}`
                       )
                     }
                     className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 cursor-pointer"

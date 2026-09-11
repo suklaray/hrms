@@ -94,7 +94,7 @@ export default function AttendanceList() {
   };
 
   const handleViewClick = (empid) => {
-    router.push(`/hr/attendance/${empid}`);
+    router.push(`/attendance/${empid}`);
   };
 
   // Pagination calculations

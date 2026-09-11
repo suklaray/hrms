@@ -19,25 +19,25 @@ const Breadcrumb = () => {
       { label: 'Employee Management', href: '#' },
       { label: 'Employees List', href: '/employeeList' }
     ],
-    '/hr/attendance': [
+    '/attendance': [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Attendance & Leave', href: '#' },
-      { label: 'Attendance', href: '/hr/attendance' }
+      { label: 'Attendance', href: '/attendance' }
     ],
-    '/hr/view-leave-requests': [
+    '/view-leave-requests': [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Attendance & Leave', href: '#' },
-      { label: 'Leave Management', href: '/hr/view-leave-requests' }
+      { label: 'Leave Management', href: '/view-leave-requests' }
     ],
-    '/hr/payroll/payroll-view': [
+    '/payroll/payroll-view': [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Payroll Management', href: '#' },
-      { label: 'Payroll Records', href: '/hr/payroll/payroll-view' }
+      { label: 'Payroll Records', href: '/payroll/payroll-view' }
     ],
-    '/hr/payroll/generate': [
+    '/payroll/generate': [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Payroll Management', href: '#' },
-      { label: 'Generate Payroll', href: '/hr/payroll/generate' }
+      { label: 'Generate Payroll', href: '/payroll/generate' }
     ],
     '/compliance/empCompliance': [
       { label: 'Dashboard', href: '/dashboard' },

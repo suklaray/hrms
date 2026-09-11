@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
-import SideBar from '../../../Components/SideBar';
+import SideBar from '../../Components/SideBar';
 import { formatTime } from '@/utils/dateTime';
 import LiveTimer from '@/utils/liveTimer';
 import RegularizationModal from '@/Components/RegularizationModal';

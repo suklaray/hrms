@@ -1,4 +1,4 @@
-// pages/hr/payroll/payslip-preview/[empid].js
+// pages/payroll/payslip-preview/[empid].js
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import SideBar from "@/Components/SideBar";
@@ -55,7 +55,7 @@ export default function PayslipPreview() {
       <div style={{ flex: 1, padding: "2rem" }}>
         {/* Breadcrumb Navigation */}
         <nav style={{ marginBottom: "1rem", fontSize: "0.875rem", color: "#6B7280" }}>
-          <button onClick={() => router.push('/hr/payroll/payroll-view')} style={{ color: "#6B7280", textDecoration: "none", cursor: "pointer" }}>
+          <button onClick={() => router.push('/payroll/payroll-view')} style={{ color: "#6B7280", textDecoration: "none", cursor: "pointer" }}>
             Payroll Management
           </button>
           <span> / </span>

@@ -124,9 +124,9 @@ export default function ViewLeaveRequests() {
 
   const handleViewEmployee = (empid) => {
     if (activeTab === "history") {
-      router.push(`/hr/employee-leave-summary/${empid}`);
+      router.push(`/employee-leave-summary/${empid}`);
     } else {
-      router.push(`/hr/employee-leave-details/${empid}`);
+      router.push(`/employee-leave-details/${empid}`);
     }
   };
 

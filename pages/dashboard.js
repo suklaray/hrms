@@ -97,7 +97,7 @@ function HRDashboardView({ user, permissions }) {
       value: stats?.activeEmployees,
       icon: UserCheck,
       color: "bg-green-500",
-      route: "/hr/attendance",
+      route: "/attendance",
       permission: PERMISSION_KEYS.ATTENDANCE_VIEW,
     },
     {
@@ -105,7 +105,7 @@ function HRDashboardView({ user, permissions }) {
       value: stats?.pendingLeaves,
       icon: Clock,
       color: "bg-orange-500",
-      route: "/hr/view-leave-requests",
+      route: "/view-leave-requests",
       permission: PERMISSION_KEYS.LEAVE_VIEW,
     },
     {
@@ -129,14 +129,14 @@ function HRDashboardView({ user, permissions }) {
       label: "View Attendance",
       icon: Clock,
       color: "green",
-      route: "/hr/attendance",
+      route: "/attendance",
       permission: PERMISSION_KEYS.ATTENDANCE_VIEW,
     },
     {
       label: "Generate Payroll",
       icon: FileText,
       color: "purple",
-      route: "/hr/payroll/generate",
+      route: "/payroll/generate",
       permission: PERMISSION_KEYS.PAYROLL_GENERATE,
     },
     {

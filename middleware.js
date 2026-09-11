@@ -90,7 +90,6 @@ export async function middleware(request) {
     if (
       ALLOWED_PATHS.includes(pathname) ||
       pathname.startsWith("/settings/profile") ||
-      pathname.startsWith("/employee/profile") ||
       pathname.startsWith("/employee/upload-documents") ||
       pathname === "/" ||
       pathname === "/AboutUs" ||

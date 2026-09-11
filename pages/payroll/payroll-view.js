@@ -142,7 +142,7 @@ export default function PayrollView() {
   const stats = getStats();
 
   const handleDownload = (empid, month, year) => {
-    window.open(`/hr/payroll/payslip-preview/${empid}?month=${month}&year=${year}&download=true`, '_blank');
+    window.open(`/payroll/payslip-preview/${empid}?month=${month}&year=${year}&download=true`, '_blank');
   };
 
   return (
@@ -333,7 +333,7 @@ export default function PayrollView() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-2">
-                            <Link href={`/hr/payroll/${item.empid}`}>
+                            <Link href={`/payroll/${item.empid}`}>
                               <button className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer">
                                 <Eye className="w-4 h-4" />
                                 View

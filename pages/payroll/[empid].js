@@ -50,7 +50,7 @@ export default function EmployeePayroll() {
         {/* Modern Header */}
         <div className="mb-8">
           <nav className="flex items-center space-x-2 text-sm text-gray-500 mb-4">
-            <button onClick={() => router.push('/hr/payroll/payroll-view')} className="hover:text-blue-600 transition-colors">
+            <button onClick={() => router.push('/payroll/payroll-view')} className="hover:text-blue-600 transition-colors">
               Payroll Management
             </button>
             <span>/</span>
@@ -161,7 +161,7 @@ export default function EmployeePayroll() {
                       </td>
                       <td className="py-3 sm:py-4 px-3 sm:px-6">
                         <a
-                          href={`/hr/payroll/payslip-preview/${empid}?month=${row.month}&year=${row.year}`}
+                          href={`/payroll/payslip-preview/${empid}?month=${row.month}&year=${row.year}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center px-2 sm:px-3 py-1 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium uppercase"
