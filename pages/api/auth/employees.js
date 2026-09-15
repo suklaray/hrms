@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { checkPermission,isSuperAdmin } from "@/lib/rbac";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export default async function handler(req, res) {
@@ -26,6 +26,7 @@ export default async function handler(req, res) {
         message: "Forbidden: insufficient permissions",
       });
     }
+
     const loggedInUser = await prisma.users.findUnique({
       where: {
         empid: decoded.empid || decoded.id,
@@ -52,8 +53,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const currentRoleId =
-      loggedInUser.roleId || loggedInUser.rbacRole?.id;
+    const currentRoleId = loggedInUser.roleId || loggedInUser.rbacRole?.id;
 
     if (!currentRoleId) {
       return res.status(200).json({
@@ -63,6 +63,7 @@ export default async function handler(req, res) {
         total: 0,
       });
     }
+
     const allRoles = await prisma.role.findMany({
       where: {
         status: "active",
@@ -78,6 +79,7 @@ export default async function handler(req, res) {
         name: "asc",
       },
     });
+
     let visibleRoleIds = [];
     if (isSuperAdmin(loggedInUser)) {
       visibleRoleIds = allRoles.map((role) => role.id);
@@ -173,6 +175,7 @@ export default async function handler(req, res) {
         name: "asc",
       },
     });
+
     const roleCounts = {};
 
     visibleRoles.forEach((roleItem) => {

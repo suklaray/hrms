@@ -9,6 +9,86 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model company {
+  id                    Int      @id @default(autoincrement())
+  name                  String
+  address               String?
+  city                  String?
+  state                 String?
+  pinCode               String?
+  phone                 String
+  email                 String
+  website               String?
+  cin                   String
+  pan                   String
+  gstin                 String
+  epfoEstablishmentId   String
+  esicEmployerCode      String
+
+  payrollConfigurations PayrollConfiguration[]
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+enum PayrollCurrency {
+  USD
+  EUR
+  GBP
+  INR
+  JPY
+}
+
+enum PayrollCycle {
+  MONTHLY
+  WEEKLY
+  BI_WEEKLY
+}
+
+enum Approval {
+  YES
+  NO
+}
+
+enum PayrollStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+enum SalaryCalendar {
+  CALENDAR_MONTH
+  FINANCIAL_MONTH
+  CUSTOM
+}
+
+model PayrollConfiguration {
+  id                          Int              @id @default(autoincrement())
+  company_id                  Int
+  payroll_country             String
+  currency                    PayrollCurrency
+  payroll_effective_date      DateTime
+  payroll_cycle               PayrollCycle
+  working_days                Decimal          @db.Decimal(4, 2)
+  attendance_cut_off_date     DateTime
+  leave_cut_off_date          DateTime
+  overtime_cut_off_date       DateTime?
+  salary_payment_date         Int
+  financial_year_start_month  Int
+  financial_year_end_month    Int
+  salary_calendar             SalaryCalendar
+  approval                    Approval
+  status                      PayrollStatus
+  remarks                     String?
+
+  company                     company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
+
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+
+  @@index([company_id])
+}
+
 model addresses {
   id            Int       @id @default(autoincrement())
   employee_id   Int

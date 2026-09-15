@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   ListChecks,
+  UserCog
 } from "lucide-react";
 
 
@@ -27,7 +28,7 @@ const SIDEBAR_STRUCTURE = [
     permission: 'dashboard.view',
   },
   {
-    name: 'Recruitment',
+    name: 'Recruitment Management',
     icon: UserPlus,
     permission: 'recruitment.view',
     children: [
@@ -58,8 +59,23 @@ const SIDEBAR_STRUCTURE = [
     icon: DollarSign,
     permission: 'payroll.view',
     children: [
-      { title: 'Payroll Record', route: '/payroll/payroll-view', permission: 'payroll.view' },
-      { title: 'Generate Payroll', route: '/payroll/generate', permission: 'payroll.generate' },
+      {
+        name: 'Payroll Setup',
+        icon: DollarSign,
+        permission: 'payroll.generate',
+        children: [
+          {
+            name: 'Company Payroll Configuration',
+            icon: DollarSign,
+            permission: 'payroll.generate',
+            children: [
+              { title: 'Create New Configuration', route: '/hr/payroll/payroll-setup/payroll-create-config', permission: 'payroll.generate' }
+            ],
+          }
+        ]
+      },
+      { title: 'Payroll Record', route: '/hr/payroll/payroll-view', permission: 'payroll.view' },
+      { title: 'Generate Payroll', route: '/hr/payroll/generate', permission: 'payroll.generate' },
     ],
   },
   {
@@ -74,13 +90,21 @@ const SIDEBAR_STRUCTURE = [
   {
     name: 'Task Management',
     icon: ListChecks,
-    permission: ['task.view', 'task.create', 'report.view'],
+    permission: 'task.view',
     children: [
-      { title: 'Task Management', route: '/task-management/manage-tasks', permission: ['task.create', 'task.view'] },
+      { title: 'Task Management', route: '/task-management/manage-tasks', permission: 'task.create' },
       { title: 'Daily Reports', route: '/task-management/daily-reports', permission: 'report.view' },
     ],
   },
-
+  {
+    name: 'Roles & Titles',
+    icon: UserCog,
+    permission: 'settings.position_view',
+    children: [
+      { title: 'Designation Management', route: '/settings/position-management', permission: 'settings.position_manage' },
+      { title: 'Role Management', route: '/settings/employee-types', permission: 'settings.employee_types_manage' },
+    ],
+  },
   {
     name: 'Customer Connect',
     icon: Phone,
@@ -105,7 +129,7 @@ const SIDEBAR_STRUCTURE = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function Sidebar({ user: propUser, isEmployee = false }) {
+export default function Sidebar({ user: propUser }) {
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -117,14 +141,35 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
   const [openModules, setOpenModules] = useState({});
 
   const isActivePath = (path) => {
-    return router.pathname === path;
+    if (!path) return false;
+    return router.pathname === path || router.asPath === path;
+  };
+
+  const hasActiveRoute = (item, currentPath) => {
+    if (item.route && (item.route === currentPath || isActivePath(item.route))) return true;
+    if (item.children && Array.isArray(item.children)) {
+      return item.children.some((child) => hasActiveRoute(child, currentPath));
+    }
+    return false;
+  };
+
+  const getFirstRoute = (item) => {
+    if (item.route) return item.route;
+    if (item.children && Array.isArray(item.children)) {
+      for (const child of item.children) {
+        if (canSee(child.permission)) {
+          const found = getFirstRoute(child);
+          if (found) return found;
+        }
+      }
+    }
+    return null;
   };
 
   const canSee = useCallback(
     (permission) => {
       if (!permission) return true;
       if (isSuperAdminUser) return true;
-      if (Array.isArray(permission)) return permission.some(p => permissions.has(p));
       return permissions.has(permission);
     },
     [isSuperAdminUser, permissions]
@@ -168,12 +213,19 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
   // ── Auto-open dropdowns ───────────────────────────────────────────────────
   useEffect(() => {
     const next = {};
-    for (const item of SIDEBAR_STRUCTURE) {
-      if (!item.children) continue;
-      const routes = item.children.map((c) => c.route);
-      next[item.name] = routes.some((r) => isActivePath(r));
-    }
-    setOpenModules(next);
+    const checkOpen = (items) => {
+      for (const item of items) {
+        const key = item.name || item.title;
+        if (item.children && item.children.length > 0) {
+          if (hasActiveRoute(item, router.pathname)) {
+            next[key] = true;
+          }
+          checkOpen(item.children);
+        }
+      }
+    };
+    checkOpen(SIDEBAR_STRUCTURE);
+    setOpenModules((prev) => ({ ...prev, ...next }));
   }, [router.pathname]);
 
   // ── Screen size ───────────────────────────────────────────────────────────
@@ -198,7 +250,6 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
   };
 
   const isAccessEnabled =
-    isEmployee ||
     isSuperAdminUser ||
     (userStatus.verified && userStatus.formSubmitted) ||
     permissions.size > 0;
@@ -243,7 +294,7 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
 
     return (
       <li key={item.name}>
-        <Link href={item.route}>
+        <Link href={item.route || '#'}>
           <div
             className={`w-full px-3 py-2.5 rounded-lg transition cursor-pointer flex items-center gap-3 ${isActivePath(item.route) ? 'bg-indigo-600 text-white' : 'bg-gray-800 hover:bg-indigo-600'
               }`}
@@ -257,6 +308,72 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
     );
   };
 
+  // ── Render child items (supports recursive nesting for sub-tabs) ──────────
+  const renderChildItem = (child, depth = 1) => {
+    if (!canSee(child.permission)) return null;
+
+    // Submenu with nested children (e.g. Payroll Setup)
+    if (child.children && child.children.length > 0) {
+      const visibleSubChildren = child.children.filter((c) => canSee(c.permission));
+      if (visibleSubChildren.length === 0) return null;
+
+      const childKey = child.name || child.title || `sub-${depth}`;
+      const isSubOpen = openModules[childKey] || false;
+      const toggleSub = (e) => {
+        e.stopPropagation();
+        setOpenModules((prev) => ({ ...prev, [childKey]: !prev[childKey] }));
+      };
+      const isSubActive = hasActiveRoute(child, router.pathname);
+      const SubIcon = child.icon;
+
+      return (
+        <li key={childKey} className="space-y-1">
+          <button
+            type="button"
+            onClick={toggleSub}
+            className={`w-full text-left flex justify-between items-center px-3 py-2 rounded-lg transition cursor-pointer text-sm font-medium ${isSubActive
+              ? 'bg-indigo-600/70 text-white'
+              : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
+              }`}
+          >
+            <div className="flex items-center gap-2.5">
+              {SubIcon && <SubIcon size={15} className="flex-shrink-0" />}
+              <span>{child.name || child.title}</span>
+            </div>
+            {isSubOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+
+          {isSubOpen && (
+            <ul className="pl-3 pt-1 space-y-1 border-l-2 border-indigo-500/40 ml-2">
+              {visibleSubChildren.map((subChild) => renderChildItem(subChild, depth + 1))}
+            </ul>
+          )}
+        </li>
+      );
+    }
+
+    // Leaf item with route
+    if (child.route) {
+      const isCurrentActive = isActivePath(child.route);
+      return (
+        <li key={child.route}>
+          <Link href={child.route}>
+            <span
+              className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${isCurrentActive
+                ? 'bg-indigo-500 text-white font-medium'
+                : 'bg-gray-700 hover:bg-indigo-500 text-gray-200'
+                }`}
+            >
+              {child.title || child.name}
+            </span>
+          </Link>
+        </li>
+      );
+    }
+
+    return null;
+  };
+
   // ── Render dropdown module ────────────────────────────────────────────────
   const renderDropdown = (item) => {
     const Icon = item.icon || Settings;
@@ -267,18 +384,19 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
     const isOpen = openModules[item.name] || false;
     const toggle = () => setOpenModules((prev) => ({ ...prev, [item.name]: !prev[item.name] }));
     const canAccess = isAccessEnabled;
-    const isModuleActive = visibleChildren.some((c) => isActivePath(c.route));
+    const isModuleActive = hasActiveRoute(item, router.pathname);
+    const firstRoute = getFirstRoute(item);
 
     return (
       <li key={item.name}>
         <button
-          onClick={canAccess ? (isCollapsed ? () => router.push(visibleChildren[0].route) : toggle) : undefined}
+          onClick={canAccess ? (isCollapsed ? () => (firstRoute && router.push(firstRoute)) : toggle) : undefined}
           disabled={!canAccess}
           className={`w-full text-left flex justify-between items-center px-3 py-2.5 rounded-lg transition ${canAccess
-              ? isModuleActive
-                ? 'bg-indigo-600 text-white cursor-pointer'
-                : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer'
-              : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            ? isModuleActive
+              ? 'bg-indigo-600 text-white cursor-pointer'
+              : 'bg-gray-800 hover:bg-indigo-600 cursor-pointer'
+            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
             }`}
           title={isCollapsed ? item.name : ''}
         >
@@ -296,20 +414,7 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
 
         {!isCollapsed && isOpen && canAccess && (
           <ul className="pl-6 pt-2 space-y-2">
-            {visibleChildren.map((child) => (
-              <li key={child.route}>
-                <Link href={child.route}>
-                  <span
-                    className={`block text-sm px-3 py-2 rounded-lg transition cursor-pointer ${isActivePath(child.route)
-                        ? 'bg-indigo-500 text-white'
-                        : 'bg-gray-700 hover:bg-indigo-500'
-                      }`}
-                  >
-                    {child.title}
-                  </span>
-                </Link>
-              </li>
-            ))}
+            {visibleChildren.map((child) => renderChildItem(child))}
           </ul>
         )}
       </li>
@@ -324,16 +429,7 @@ export default function Sidebar({ user: propUser, isEmployee = false }) {
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            isEmployee ? (
-              <div>
-                <h2 className="text-xl font-bold">Employee Panel</h2>
-                <p className="text-sm text-gray-400">{user?.name}</p>
-              </div>
-            ) : (
-              <h2 className="text-2xl font-bold">HRMS Panel</h2>
-            )
-          )}
+          {!isCollapsed && <h2 className="text-2xl font-bold">HRMS Panel</h2>}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
