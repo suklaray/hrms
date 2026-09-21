@@ -1,0 +1,6 @@
+import { createRouteHandler } from "@/lib/apiAdapter";
+function handler(req, res) {
+  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+}
+
+export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

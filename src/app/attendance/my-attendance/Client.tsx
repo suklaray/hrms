@@ -1,0 +1,467 @@
+"use client";
+
+import { Suspense } from "react";
+import { useState, useEffect, useCallback } from 'react';
+import Head from "@/lib/compatHead";
+import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
+import SideBar from '@/Components/SideBar';
+import { formatTime } from '@/utils/dateTime';
+import LiveTimer from '@/utils/liveTimer';
+import RegularizationModal from '@/Components/RegularizationModal';
+import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+
+
+function MyAttendance() {
+    const [attendance, setAttendance] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+    const [user, setUser] = useState(null);
+    const [selectedAttendance, setSelectedAttendance] = useState(null);
+    const [absentRegMap, setAbsentRegMap] = useState({});
+    const [holidays, setHolidays] = useState([]);
+    const fetchAttendance = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError('');
+            const res = await fetch(`/api/hr/attendance/my-attendance?month=${currentMonth + 1}&year=${currentYear}`, {
+                method: "GET",
+                credentials: "include",
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setUser(data.user);
+                setAttendance(data.attendance);
+                setAbsentRegMap(data.absentRegMap || {});
+            } else {
+                setError('Failed to fetch attendance');
+            }
+        } catch (err) {
+            setError('Error fetching attendance');
+        } finally {
+            setLoading(false);
+        }
+    }, [currentMonth, currentYear]);
+    const fetchHolidays = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/calendar/yearly-events?year=${currentYear}`);
+            if (res.ok) {
+                const data = await res.json();
+                const holidayList = [];
+                Object.keys(data.events || {}).forEach(month => {
+                    data.events[month].forEach(event => {
+                        if (event.type === 'holiday') {
+                            holidayList.push(event);
+                        }
+                    });
+                });
+                setHolidays(holidayList);
+            }
+        } catch (error) {
+            console.error('Error fetching holidays:', error);
+        }
+    }, [currentYear]);
+    useEffect(() => {
+        fetchAttendance();
+        fetchHolidays();
+    }, [fetchAttendance, fetchHolidays]);
+
+    // Generate dynamic year options (current year and 2 years back)
+    const getYearOptions = () => {
+        const currentYear = new Date().getFullYear();
+        const years = [];
+        for (let i = 2; i >= 0; i--) {
+            years.push(currentYear - i);
+        }
+        return years;
+    };
+
+    const yearOptions = getYearOptions();
+
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    const getWorkingDaysUpToToday = (month, year) => {
+        const today = new Date();
+        const isCurrentMonth = month === today.getMonth() && year === today.getFullYear();
+        const lastDay = isCurrentMonth ? today.getDate() : new Date(year, month + 1, 0).getDate();
+
+        let workingDays = 0;
+        for (let day = 1; day <= lastDay; day++) {
+            const date = new Date(year, month, day);
+            const dayOfWeek = date.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                workingDays++;
+            }
+        }
+        return workingDays;
+    };
+
+    const getTotalWorkingDaysInMonth = (month, year) => {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        let workingDays = 0;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const dayOfWeek = date.getDay();
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                workingDays++;
+            }
+        }
+        return workingDays;
+    };
+
+    const getAttendanceWithMissingDays = () => {
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+        // Convert backend attendance into a map for quick lookup
+        const attendanceMap = new Map(
+            attendance.map(record => {
+                const [day, month, year] = record.date.split('-');
+
+                const isoDate = `${day}-${month}-${year}`;
+
+                return [isoDate, record];
+            })
+        );
+        console.log('Attendance Map:', attendanceMap); // Debugging line
+        const result = [];
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateObj = new Date(currentYear, currentMonth, day);
+
+            // Don't show future dates for current month
+            const today = new Date();
+            if (
+                currentYear === today.getFullYear() &&
+                currentMonth === today.getMonth() &&
+                day > today.getDate()
+            ) {
+                break;
+            }
+            const dateString =
+                `${String(day).padStart(2, '0')}-${String(currentMonth + 1).padStart(2, '0')}-${currentYear}`;
+            if (attendanceMap.has(dateString)) {
+                result.push(attendanceMap.get(dateString));
+            } else {
+                const dayOfWeek = dateObj.getDay();
+
+                result.push({
+                    date: dateString,
+                    first_check_in: null,
+                    last_check_in: null,
+                    check_out: null,
+                    total_hours: null,
+                    login_status: 'Logged Out',
+                    attendance_status:
+                        dayOfWeek === 0 || dayOfWeek === 6
+                            ? 'Weekend'
+                            : 'Absent',
+                    regularization: absentRegMap[dateString] || null,
+                });
+            }
+        }
+
+        return result.reverse(); // Reverse to show latest dates first
+    };
+    const attendanceData = getAttendanceWithMissingDays();
+    const presentDays = attendanceData.filter(
+        record =>
+            record.attendance_status === 'Present' ||
+            record.attendance_status === 'AutoCheckout'
+    ).length;
+
+    const absentDays = attendanceData.filter(
+        record => record.attendance_status === 'Absent'
+    ).length;
+    const totalWorkingDaysUpToToday = getWorkingDaysUpToToday(currentMonth, currentYear);
+    const totalWorkingDaysInMonth = getTotalWorkingDaysInMonth(currentMonth, currentYear);
+    // const absentDays = totalWorkingDaysUpToToday - presentDays;
+    const handleRegularization = (attendance) => {
+        setSelectedAttendance(attendance);
+    };
+    const downloadHolidaysPDF = () => {
+        if (holidays.length === 0) {
+            alert('No holidays found for this year');
+            return;
+        }
+
+        import('jspdf').then(({ jsPDF }) => {
+            const doc = new jsPDF();
+            doc.text(`Holidays ${currentYear}`, 20, 20);
+
+            let yPosition = 40;
+            holidays.forEach((holiday) => {
+                if (yPosition > 270) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                doc.text(`${holiday.date} - ${holiday.title}`, 20, yPosition);
+                yPosition += 10;
+            });
+
+            doc.save(`holidays-${currentYear}.pdf`);
+        });
+    };
+
+    return (
+        <>
+            <Head>
+                <title>My Attendance - HRMS</title>
+            </Head>
+            <div className="flex min-h-screen bg-gray-50">
+                <SideBar />
+                <div className="flex-1 min-w-0 p-6">
+                    {/* Header with user info */}
+                    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <Calendar className="h-8 w-8 text-blue-600" />
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900">My Attendance</h1>
+                                    <p className="text-gray-600">
+                                        {user ? `${user.name} (${user.email}) - ${user.role}` : 'Loading user info...'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Month/Year Selector */}
+                            <div className="flex items-center space-x-4">
+                                <select
+                                    value={currentMonth}
+                                    onChange={(e) => setCurrentMonth(parseInt(e.target.value))}
+                                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    {monthNames.map((month, index) => (
+                                        <option key={index} value={index}>{month}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={currentYear}
+                                    onChange={(e) => setCurrentYear(parseInt(e.target.value))}
+                                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    {yearOptions.map(year => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={downloadHolidaysPDF}
+                                    className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg text-sm font-medium cursor-pointer">
+                                    Holiday List PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="flex items-center">
+                                <Calendar className="h-8 w-8 text-blue-600" />
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium text-gray-600">Total Days ({monthNames[currentMonth]})</p>
+                                    <p className="text-2xl font-bold text-gray-900">{totalWorkingDaysInMonth}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="flex items-center">
+                                <CheckCircle className="h-8 w-8 text-green-600" />
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium text-gray-600">Present Days</p>
+                                    <p className="text-2xl font-bold text-gray-900">{presentDays}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="flex items-center">
+                                <XCircle className="h-8 w-8 text-red-600" />
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium text-gray-600">Absent Days</p>
+                                    <p className="text-2xl font-bold text-gray-900">{absentDays}</p>
+                                </div>
+                            </div>
+                        </div>
+
+
+
+                        <div className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="flex items-center">
+                                <Clock className="h-8 w-8 text-purple-600" />
+                                <div className="ml-4">
+                                    <p className="text-sm font-medium text-gray-600">Attendance Rate</p>
+                                    <p className="text-2xl font-bold text-gray-900">
+                                        {error ? 'Unable to load' : (totalWorkingDaysUpToToday > 0 ? `${Math.round((presentDays / totalWorkingDaysUpToToday) * 100)}%` : 'No data')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Attendance Table */}
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-lg font-semibold text-gray-900">
+                                Monthly Attendance Summary - {monthNames[currentMonth]} {currentYear}
+                            </h2>
+                        </div>
+
+                        {loading ? (
+                            <div className="p-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                <p className="mt-2 text-gray-600">Loading attendance records...</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">First Check In</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Check In</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Check Out</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hours</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Login Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Regularization Status</th>
+                                        </tr>
+                                    </thead>
+
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {attendanceData.length > 0 ? (
+                                            attendanceData.map((record, index) => {
+                                                const totalHours = record.total_hours ? Number(record.total_hours) : 0;
+                                                const loginStatus = record.check_in ? (record.check_out ? 'Logged Out' : 'Logged In') : 'No Login';
+                                                const attendanceStatus = record.attendance_status || 'Absent';
+                                                console.log('Rendering record:', record); // Debugging line
+                                                return (
+                                                    <tr key={index} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {record.date}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatTime(record.first_check_in)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatTime(record.last_check_in)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {formatTime(record.check_out)}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {/* {record.total_hours || '--'} */}
+                                                            <LiveTimer
+                                                                currentCheckInTime={record.currentCheckInTime}
+                                                                isLoggedIn={record.isLoggedIn}
+                                                                totalHours={record.total_hours}
+                                                                completedSeconds={record.completedSeconds}
+                                                            />
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.login_status === 'Logged Out' ? 'bg-gray-100 text-gray-800' :
+                                                                    record.login_status === 'Logged In' ? 'bg-green-100 text-green-800' :
+                                                                        'bg-red-100 text-red-800'
+                                                                }`}>
+                                                                {record.login_status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span
+                                                                className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${record.attendance_status === "Present"
+                                                                    ? "bg-green-100 text-green-800"
+                                                                    : record.attendance_status === "AutoCheckout"
+                                                                        ? "bg-yellow-100 text-yellow-800"
+                                                                        : record.attendance_status === "Weekend"
+                                                                            ? "bg-blue-100 text-blue-800"
+                                                                            : "bg-red-100 text-red-800"
+                                                                    }`}
+                                                            >
+                                                                {record.attendance_status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            {record.regularization ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full w-fit ${record.regularization.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                                            record.regularization.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                                                                'bg-yellow-100 text-yellow-800'
+                                                                        }`}>{record.regularization.status}</span>
+                                                                    {record.regularization.status === 'REJECTED' && record.regularization.rejection_reason && (
+                                                                        <span title={record.regularization.rejection_reason} className="text-xs text-red-600 truncate max-w-[140px]">{record.regularization.rejection_reason}</span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (() => {
+                                                                const today = new Date();
+                                                                const todayStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
+                                                                const isPresent =
+                                                                    record.attendance_status === "Present" || record.attendance_status === "AutoCheckout";
+
+                                                                const hasCheckInAndCheckOut =
+                                                                    record.first_check_in && record.check_out;
+
+                                                                if (
+                                                                    record.date === todayStr ||
+                                                                    isPresent ||
+                                                                    (record.attendance_status === "Absent" && hasCheckInAndCheckOut)
+                                                                ) {
+                                                                    return <span className="text-xs text-gray-400">—</span>;
+                                                                }
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleRegularization(record)}
+                                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-1 px-2 rounded-md"
+                                                                    >
+                                                                        Regularize
+                                                                    </button>
+                                                                );
+                                                            })()}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                                                    No attendance records found for {monthNames[currentMonth]} {currentYear}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+            {selectedAttendance && (
+                <RegularizationModal
+                    attendance={selectedAttendance}
+                    onClose={() => setSelectedAttendance(null)}
+                    onSubmitted={() => {
+                        setSelectedAttendance(null);
+                        fetchAttendance();
+                    }}
+                />
+            )}
+        </>
+    );
+}
+
+export default function ClientPageWrapper(props: any) {
+    return (
+        <Suspense fallback={null}>
+            <MyAttendance {...props} />
+        </Suspense>
+    );
+}

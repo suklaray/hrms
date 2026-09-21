@@ -1,0 +1,75 @@
+import { createRouteHandler } from "@/lib/apiAdapter";
+// /pages/api/hr/leave-requests.js
+import prisma from "@/lib/prisma";
+import jwt from "jsonwebtoken";
+import cookie from "cookie";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+async function handler(req, res) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    // Get user from token
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const { token } = cookies;
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
+    }
+
+    const currentUser = await prisma.users.findUnique({
+      where: { empid: decoded.empid || decoded.id },
+      select: { empid: true, role: true }
+    });
+
+    const leaveRequests = await prisma.leave_requests.findMany({
+      include: {
+        users: {
+          select: {
+            status: true,
+            role: true,
+            email: true 
+          }
+        }
+      },
+      orderBy: {
+        applied_at: 'desc', 
+      },
+    });
+
+    // Filter out inactive employees
+    const filteredLeaveRequests = leaveRequests.filter(req => 
+      req.users && req.users.status !== 'Inactive'
+    );
+
+    // Add pending leave count for each employee
+    const leaveRequestsWithCount = await Promise.all(
+      filteredLeaveRequests.map(async (leave) => {
+        const pendingCount = await prisma.leave_requests.count({
+          where: {
+            empid: leave.empid,
+            status: 'Pending'
+          }
+        });
+        return {
+          ...leave,
+          pendingCount
+        };
+      })
+    );
+
+    res.status(200).json({ success: true, data: leaveRequestsWithCount });
+  } catch (error) {
+    console.error("Error fetching leave requests:", error);
+    res.status(500).json({ success: false, error: "Server error" });
+  }
+}
+
+
+export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

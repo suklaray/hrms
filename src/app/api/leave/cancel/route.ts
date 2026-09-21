@@ -1,0 +1,70 @@
+import { createRouteHandler } from "@/lib/apiAdapter";
+import prisma from "@/lib/prisma";
+import { verifyEmployeeToken } from '@/lib/auth';
+
+async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  const user = await verifyEmployeeToken(req);
+  if (!user) return res.status(401).json({ message: 'Unauthorized' });
+
+  const { leaveId ,reason_to_cancel } = req.body;
+  // console.log(req.body);
+  if (!leaveId) {
+    return res.status(400).json({ message: 'Leave ID is required' });
+  }
+
+  try {
+    // First, get the leave request to verify ownership and check if it can be cancelled
+    const leaveRequest = await prisma.leave_requests.findFirst({
+      where: {
+        id: parseInt(leaveId),
+        empid: user.empid
+      }
+    });
+
+    if (!leaveRequest) {
+      return res.status(404).json({ message: 'Leave request not found' });
+    }
+    if (!reason_to_cancel?.trim()) {
+      return res.status(400).json({
+        message: 'Cancellation reason is required'
+      });
+    }
+    // Check if leave can be cancelled (only pending leaves that haven't started)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const leaveStartDate = new Date(leaveRequest.from_date);
+    leaveStartDate.setHours(0, 0, 0, 0);
+
+    if (leaveRequest.status !== 'Pending') {
+      return res.status(400).json({ 
+        message: `Cannot cancel ${leaveRequest.status.toLowerCase()} leave request` 
+      });
+    }
+
+    if (leaveStartDate <= today) {
+      return res.status(400).json({ 
+        message: 'Cannot cancel leave request as the leave date has already started or passed' 
+      });
+    }
+
+    // Update the leave request status to Cancelled
+    await prisma.leave_requests.update({
+      where: { id: parseInt(leaveId) },
+      data: { status: 'Cancelled', 
+      reason_to_cancel: reason_to_cancel.trim()
+     }
+    });
+
+    res.status(200).json({ message: 'Leave request cancelled successfully' });
+  } catch (err) {
+    console.error('Error cancelling leave request:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

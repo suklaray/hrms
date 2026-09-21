@@ -1,0 +1,230 @@
+import { createRouteHandler } from "@/lib/apiAdapter";
+import prisma from "@/lib/prisma";
+import { withSessionTimeout } from "@/lib/authMiddleware";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+async function handler(req, res) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ message: "Method not allowed" });
+  }
+
+  try {
+    const decoded = req.user;
+
+    const allowed = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
+    if (!allowed) return res.status(403).json({ message: "Forbidden" });
+
+    const { year } = req.query;
+    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+
+    // Get birthdays from employees table using dob
+    const birthdays = await prisma.employees.findMany({
+      where: {
+        dob: { not: null },
+      },
+      select: {
+        empid: true,
+        name: true,
+        dob: true,
+      },
+    });
+
+    // Get approved leaves for the year - only for current employee if role is employee
+    let leaveFilter = {
+      status: "Approved",
+      OR: [
+        {
+          AND: [
+            { from_date: { gte: new Date(targetYear, 0, 1) } },
+            { from_date: { lt: new Date(targetYear + 1, 0, 1) } },
+          ],
+        },
+        {
+          AND: [
+            { to_date: { gte: new Date(targetYear, 0, 1) } },
+            { to_date: { lt: new Date(targetYear + 1, 0, 1) } },
+          ],
+        },
+      ],
+    };
+
+    // If user cannot view all attendance, only show their own leaves
+    const canViewAllAttendance = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_VIEW);
+    if (!canViewAllAttendance) {
+      leaveFilter.empid = decoded.empid;
+    }
+
+    const approvedLeaves = await prisma.leave_requests.findMany({
+      where: leaveFilter,
+      select: {
+        empid: true,
+        name: true,
+        from_date: true,
+        to_date: true,
+        leave_type: true,
+        reason: true,
+      },
+    });
+
+    // Get calendar events for the year based on user role
+    const userEmail = decoded.email;
+    let visibilityFilter = {};
+
+    if (isSuperAdmin(decoded)) {
+      visibilityFilter = {};
+    } else {
+      // Filter by email address or 'all'
+      visibilityFilter = {
+        OR: [
+          { visible_to: "all" },
+          { visible_to: { startsWith: "all," } },
+          { visible_to: { contains: userEmail } },
+        ],
+      };
+    }
+
+    // console.log('User:', userEmail, 'Role:', userRole);
+    // console.log('Visibility filter:', visibilityFilter);
+
+    const calendarEvents = await prisma.calendar_events.findMany({
+      where: {
+        event_date: {
+          gte: new Date(targetYear, 0, 1),
+          lt: new Date(targetYear + 1, 0, 1),
+        },
+        ...visibilityFilter,
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        event_date: true,
+        event_type: true,
+        visible_to: true,
+      },
+    });
+
+    // console.log('Found events:', calendarEvents.length);
+    // console.log('Query filter used:', JSON.stringify({
+    //   event_date: {
+    //     gte: new Date(targetYear, 0, 1),
+    //     lt: new Date(targetYear + 1, 0, 1),
+    //   },
+    //   ...visibilityFilter,
+    // }, null, 2));
+    
+    // calendarEvents.forEach(event => {
+    //   console.log(`Event: ${event.title}, Type: ${event.event_type}, Visible: ${event.visible_to}, Date: ${event.event_date}`);
+    // });
+    
+    // Also query all events to see what's in the database
+    // const allEvents = await prisma.calendar_events.findMany({
+    //   select: { id: true, title: true, event_type: true, visible_to: true, event_date: true }
+    // });
+    // // console.log('All events in database:', allEvents.length);
+    // allEvents.forEach(event => {
+    //   console.log(`DB Event: ${event.title}, Type: ${event.event_type}, Visible: ${event.visible_to}, Date: ${event.event_date}`);
+    // });
+
+    const yearEvents = {};
+
+    // Helper: format date as YYYY-MM-DD in local time
+    const formatDateLocal = (date) => {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(date.getDate()).padStart(2, "0")}`;
+    };
+
+    // Process birthdays
+    birthdays.forEach((employee) => {
+      if (employee.dob) {
+        const dob = new Date(employee.dob);
+        const birthdayThisYear = new Date(
+          targetYear,
+          dob.getMonth(),
+          dob.getDate()
+        );
+        const month = birthdayThisYear.getMonth() + 1;
+
+        if (!yearEvents[month]) yearEvents[month] = [];
+        yearEvents[month].push({
+          id: `birthday-${employee.empid}`,
+          type: "birthday",
+          date: formatDateLocal(birthdayThisYear),
+          employee: employee.name,
+          title: `${employee.name}'s Birthday`,
+          color: "#f59e0b",
+        });
+      }
+    });
+
+    // Process approved leaves
+    approvedLeaves.forEach((leave) => {
+      const fromDate = new Date(leave.from_date);
+      const toDate = new Date(leave.to_date);
+
+      const currentDate = new Date(fromDate);
+      while (currentDate <= toDate) {
+        if (currentDate.getFullYear() === targetYear) {
+          const month = currentDate.getMonth() + 1;
+          if (!yearEvents[month]) yearEvents[month] = [];
+
+          yearEvents[month].push({
+            id: `leave-${leave.empid}-${formatDateLocal(currentDate)}`,
+            type: "leave",
+            date: formatDateLocal(currentDate),
+            employee: leave.name,
+            leave_type: leave.leave_type,
+            reason: leave.reason,
+            title: `${leave.name} - ${leave.leave_type}`,
+            color: "#ef4444",
+          });
+        }
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    });
+
+    // Process calendar events
+    calendarEvents.forEach((event) => {
+      const eventDate = new Date(event.event_date);
+      const dateStr = `${eventDate.getFullYear()}-${String(
+        eventDate.getMonth() + 1
+      ).padStart(2, "0")}-${String(eventDate.getDate()).padStart(2, "0")}`;
+      const month = eventDate.getMonth() + 1;
+
+      if (!yearEvents[month]) yearEvents[month] = [];
+
+      const eventType = event.event_type === "holiday" ? "holiday" : "event";
+      const color = event.event_type === "holiday" ? "#10b981" : "#8b5cf6";
+
+      yearEvents[month].push({
+        id: `calendar-${event.id}`,
+        type: eventType,
+        date: dateStr,
+        title: event.title,
+        description: event.description,
+        event_type: event.event_type,
+        visible_to: event.visible_to,
+        color: color,
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      events: yearEvents,
+      year: targetYear,
+    });
+  } catch (error) {
+    console.error("Yearly calendar events API error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
+const wrappedHandler = withSessionTimeout(handler);
+export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

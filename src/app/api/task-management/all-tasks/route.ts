@@ -1,0 +1,64 @@
+import { createRouteHandler } from "@/lib/apiAdapter";
+import prisma from '@/lib/prisma';
+import jwt from 'jsonwebtoken';
+import { parse } from 'cookie';
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const cookies = parse(req.headers.cookie || '');
+    const token = cookies.token;
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Check if user has permission to view all tasks
+    const hasAccess = (await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW)) || (await checkPermission(decoded, PERMISSION_KEYS.TASK_CREATE));
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: insufficient permissions' });
+    }
+
+    const tasks = await prisma.tasks.findMany({
+      include: {
+        assignee: {
+          select: {
+            name: true,
+            empid: true,
+            email: true
+          }
+        },
+        creator: {
+          select: {
+            name: true,
+            empid: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
+
+    // Transform the data to match expected format
+    const transformedTasks = tasks.map(task => ({
+      ...task,
+      assignedBy: task.creator
+    }));
+
+    return res.status(200).json({ tasks: transformedTasks });
+  } catch (error) {
+    console.error('Error fetching all tasks:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

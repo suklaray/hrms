@@ -39,12 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-#more files
-.env.local
-/public/uploads
-/lib/generated/prisma
-/uploads
-.env*.local
-/next.config.js
-deploy
