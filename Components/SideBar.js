@@ -16,7 +16,8 @@ import {
   Settings,
   LogOut,
   ListChecks,
-  UserCog
+  UserCog,
+  Banknote
 } from "lucide-react";
 
 
@@ -56,26 +57,27 @@ const SIDEBAR_STRUCTURE = [
   },
   {
     name: 'Payroll Management',
-    icon: DollarSign,
+    icon: Banknote,
     permission: 'payroll.view',
     children: [
       {
         name: 'Payroll Setup',
-        icon: DollarSign,
+        icon: Banknote,
         permission: 'payroll.generate',
         children: [
           {
-            name: 'Company Payroll Configuration',
-            icon: DollarSign,
+            name: 'Payroll Configuration',
+            icon: Banknote,
             permission: 'payroll.generate',
             children: [
-              { title: 'Create New Configuration', route: '/hr/payroll/payroll-setup/payroll-create-config', permission: 'payroll.generate' }
+              { title: 'Create Configuration', route: '/payroll/payroll-setup/payroll-create-config', permission: 'payroll.generate' },
+              { title: 'Manage Configurations', route: '/payroll/payroll-setup/payroll-get-configs', permission: 'payroll.view' },
             ],
           }
         ]
       },
-      { title: 'Payroll Record', route: '/hr/payroll/payroll-view', permission: 'payroll.view' },
-      { title: 'Generate Payroll', route: '/hr/payroll/generate', permission: 'payroll.generate' },
+      { title: 'Payroll Record', route: '/payroll/payroll-view', permission: 'payroll.view' },
+      { title: 'Generate Payroll', route: '/payroll/generate', permission: 'payroll.generate' },
     ],
   },
   {
@@ -116,13 +118,11 @@ const SIDEBAR_STRUCTURE = [
     icon: Settings,
     permission: 'settings.profile',
     children: [
-      { title: 'Profile Management', route: '/settings/profile', permission: 'settings.profile' },
+      { title: 'My profile', route: '/settings/profile', permission: 'settings.profile' },
       { title: 'My Attendance', route: '/attendance/my-attendance', permission: 'attendance.my' },
       { title: 'Leave Request', route: '/leave-request/leave-request', permission: 'leave.request' },
-      { title: 'Add Position', route: '/settings/position-management', permission: 'settings.position_manage' },
       { title: 'Payslip & Documents', route: '/payslip/payslip-lists', permission: 'payslip.view' },
-      { title: 'Manage Tasks', route: '/task-management/user-task', permission: ['task.my', 'report.submit'] },
-      { title: 'Employee Types', route: '/settings/employee-types', permission: 'settings.employee_types_manage' },
+      { title: 'My Tasks', route: '/task-management/user-task', permission: ['task.my', 'report.submit'] },
       { title: 'Bot Settings', route: '/settings/bot-settings', permission: 'settings.bot' },
     ],
   },

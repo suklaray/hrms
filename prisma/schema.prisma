@@ -64,18 +64,19 @@ enum SalaryCalendar {
 
 model PayrollConfiguration {
   id                          Int              @id @default(autoincrement())
+  uid                         String           @unique @default(cuid())
   company_id                  Int
   payroll_country             String
   currency                    PayrollCurrency
   payroll_effective_date      DateTime
   payroll_cycle               PayrollCycle
-  working_days                Decimal          @db.Decimal(4, 2)
-  attendance_cut_off_date     DateTime
-  leave_cut_off_date          DateTime
-  overtime_cut_off_date       DateTime?
+  working_days                Decimal           @db.Decimal(4, 2)
+  attendance_cut_off          Decimal           @db.Decimal(4, 2)
+  leave_cut_off               String
+  overtime_cut_off            Decimal?          @db.Decimal(4, 2)
   salary_payment_date         Int
-  financial_year_start_month  Int
-  financial_year_end_month    Int
+  financial_year_start_month  String
+  financial_year_end_month    String
   salary_calendar             SalaryCalendar
   approval                    Approval
   status                      PayrollStatus
