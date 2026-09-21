@@ -1,4 +1,5 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
@@ -11,15 +12,15 @@ function generatePassword() {
   return password;
 }
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { userId } = req.body;
+  
+
+  const { userId } = body;
 
   if (!userId) {
-    return res.status(400).json({ error: "User ID is required" });
+    return NextResponse.json({ error: "User ID is required" }, { status: 400 });
   }
 
   try {
@@ -31,14 +32,13 @@ async function handler(req, res) {
       data: { password: hashedPassword },
     });
 
-    res.status(200).json({ 
+    return NextResponse.json({ 
       message: "Password reset successfully", 
       newPassword 
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("Password reset error:", error);
-    res.status(500).json({ error: "Failed to reset password" });
+    return NextResponse.json({ error: "Failed to reset password" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

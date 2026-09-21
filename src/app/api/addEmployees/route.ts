@@ -1,18 +1,19 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 // /pages/api/recruitment/addEmployeeFromCandidate.js
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { generateRandomPassword } from "@/utils/helpers";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { candidateId, joiningDate, role, email, name } = req.body;
+
+
+  const { candidateId, joiningDate, role, email, name } = body;
 
   if (!candidateId || !joiningDate || !role || !email || !name) {
-    return res.status(400).json({ error: "Missing required fields" });
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   try {
@@ -22,23 +23,22 @@ async function handler(req, res) {
     //Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await prisma.user.create({
+    await prisma.users.create({
       data: {
-        candidate_id: candidateId,
+        empid: candidateId,
         name,
         email,
         password: hashedPassword,
         role,
-        joining_date: new Date(joiningDate),
+        date_of_joining: new Date(joiningDate),
       },
     });
 
-    return res.status(200).json({ message: "Employee added successfully" });
+    return NextResponse.json({ message: "Employee added successfully" }, { status: 200 });
   } catch (error) {
     console.error("Error adding employee:", error);
-    return res.status(500).json({ error: "Failed to add employee" });
+    return NextResponse.json({ error: "Failed to add employee" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

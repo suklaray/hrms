@@ -1,35 +1,23 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { getRequestBody } from "@/lib/routeHelper";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
-  const { candidateId } = req.body;
+export async function POST(req: NextRequest) {
+  const { candidateId } = (await getRequestBody(req)) || {};
 
   if (!candidateId) {
-    return res.status(400).json({ message: "Missing candidateId" });
+    return NextResponse.json({ message: "Missing candidateId" }, { status: 400 });
   }
 
   try {
-    // Generate a SHA-256 hash of the candidate ID to create a unique form link
-    // const hash = crypto.createHash("sha256").update(candidateId).digest("hex");
-    //Generate a random token instead of hash for better security
     const token = crypto.randomBytes(16).toString("hex"); // 32-character random token
     const expiry = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-    // Define the base URL and build the form link using the hash
-    //const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    //const formLink = `${baseUrl}/Recruitment/form/${hash}`;
 
-    const protocol = req.headers["x-forwarded-proto"] || "http";
-    const host = req.headers.host;
+    const protocol = req.headers.get("x-forwarded-proto") || "http";
+    const host = req.headers.get("host") || req.nextUrl.host;
     const baseUrl = `${protocol}://${host}`;
 
-    // Form link
-    // const formLink = `${baseUrl}/Recruitment/form/${hash}`;
-    //Form Link for Token
     const formLink = `${baseUrl}/Recruitment/form/${token}`;
 
     // Update the candidate record with the generated form link
@@ -43,22 +31,17 @@ async function handler(req, res) {
         ip_address: null,
         device_info: null,
         token_first_used_at: null,
-      }, // Store the token in the database
+      },
     });
 
     // Check if any record was updated
     if (result.count === 0) {
-      return res.status(404).json({ message: "Candidate not found" });
+      return NextResponse.json({ message: "Candidate not found" }, { status: 404 });
     }
 
-    res
-      .status(200)
-      .json({ message: "Form link generated successfully", formLink });
+    return NextResponse.json({ message: "Form link generated successfully", formLink }, { status: 200 });
   } catch (error) {
     console.error("Error generating form link:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

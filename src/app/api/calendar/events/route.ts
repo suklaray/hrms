@@ -1,25 +1,24 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withSessionTimeout } from "@/lib/authMiddleware";
+import { getAuthenticatedUser } from "@/lib/authMiddleware";
 import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { getQueryParams } from "@/lib/routeHelper";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
+  if (errorResponse) return errorResponse;
+  if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const decoded = req.user;
-
     const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
     if (!canView) {
-      return res.status(403).json({ message: "Forbidden: insufficient permissions" });
+      return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 
-    const { month, year } = req.query;
-    const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
-    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+    const { month, year } = await getQueryParams(req, context?.params);
+    const targetMonth = month ? parseInt(month, 10) : new Date().getMonth() + 1;
+    const targetYear = year ? parseInt(year, 10) : new Date().getFullYear();
 
     // Get birthdays from employees table
     const birthdays = await prisma.employees.findMany({
@@ -27,8 +26,7 @@ async function handler(req, res) {
       select: { empid: true, name: true, dob: true },
     });
 
-    // Get approved leaves for the month - only for current employee if role is employee
-    let leaveFilter = {
+    let leaveFilter: any = {
       status: "Approved",
       OR: [
         {
@@ -40,7 +38,6 @@ async function handler(req, res) {
       ],
     };
 
-    // If user does not have attendance.view (HR/admin), only show their own leaves
     const canViewAllLeaves = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_VIEW);
     if (!canViewAllLeaves) {
       leaveFilter.empid = decoded.empid;
@@ -58,7 +55,6 @@ async function handler(req, res) {
       },
     });
 
-    // Super admin sees all events; others filtered by email or 'all'
     const userEmail = decoded.email;
     let visibilityFilter = {};
 
@@ -90,17 +86,15 @@ async function handler(req, res) {
       },
     });
 
-    const events = [];
+    const events: any[] = [];
 
-    // Helper: format date as YYYY-MM-DD in local time
-    const formatDateLocal = (date) => {
+    const formatDateLocal = (date: Date) => {
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
         2,
         "0"
       )}-${String(date.getDate()).padStart(2, "0")}`;
     };
 
-    // Process birthdays
     birthdays.forEach((employee) => {
       if (employee.dob) {
         const dob = new Date(employee.dob);
@@ -122,7 +116,6 @@ async function handler(req, res) {
       }
     });
 
-    // Process approved leaves
     approvedLeaves.forEach((leave) => {
       const fromDate = new Date(leave.from_date);
       const toDate = new Date(leave.to_date);
@@ -134,7 +127,7 @@ async function handler(req, res) {
           currentDate.getFullYear() === targetYear
         ) {
           events.push({
-            id: `leave-${leave.empid}-${formatDateLocal(currentDate)}`, // Unique ID per day
+            id: `leave-${leave.empid}-${formatDateLocal(currentDate)}`,
             type: "leave",
             date: formatDateLocal(currentDate),
             employee: leave.name,
@@ -147,7 +140,6 @@ async function handler(req, res) {
       }
     });
 
-    // Process calendar events
     calendarEvents.forEach((event) => {
       const eventDate = new Date(event.event_date);
       const dateStr = formatDateLocal(eventDate);
@@ -165,24 +157,27 @@ async function handler(req, res) {
       });
     });
 
-    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    res.status(200).json({
-      success: true,
-      events,
-      month: targetMonth,
-      year: targetYear,
-      total: events.length,
-    });
-  } catch (error) {
+    return NextResponse.json(
+      {
+        success: true,
+        events,
+        month: targetMonth,
+        year: targetYear,
+        total: events.length,
+      },
+      { status: 200 }
+    );
+  } catch (error: any) {
     console.error("Calendar events API error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      },
+      { status: 500 }
+    );
   }
 }
-
-const wrappedHandler = withSessionTimeout(handler);
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

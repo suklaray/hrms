@@ -1,34 +1,35 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from '@/lib/getUserFromToken';
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
+
+  
 
   // Get token from cookies
-  const token = req.cookies.token;
+  const token = req.cookies.get('token')?.value;
   if (!token) {
-    return res.status(401).json({ message: 'Unauthorized - No token provided' });
+    return NextResponse.json({ message: 'Unauthorized - No token provided' }, { status: 401 });
   }
 
   const user = getUserFromToken(token);
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const hasAccess = (await checkPermission(user, PERMISSION_KEYS.LEAVE_CANCEL)) || (await checkPermission(user, PERMISSION_KEYS.LEAVE_APPROVE));
   if (!hasAccess) {
-    return res.status(403).json({ message: 'Unauthorized - Insufficient permissions' });
+    return NextResponse.json({ message: 'Unauthorized - Insufficient permissions' }, { status: 403 });
   }
 
-  const { leaveId , reason_to_cancel} = req.body;
+  const { leaveId , reason_to_cancel} = body;
 
   if (!leaveId) {
-    return res.status(400).json({ message: 'Leave ID is required' });
+    return NextResponse.json({ message: 'Leave ID is required' }, { status: 400 });
   }
 
   try {
@@ -40,12 +41,12 @@ async function handler(req, res) {
     });
 
     if (!leaveRequest) {
-      return res.status(404).json({ message: 'Leave request not found' });
+      return NextResponse.json({ message: 'Leave request not found' }, { status: 404 });
     }
      if (!reason_to_cancel?.trim()) {
-      return res.status(400).json({
+      return NextResponse.json({
         message: 'Cancellation reason is required'
-      });
+      }, { status: 400 });
     }
     // Check if leave can be cancelled (only pending leaves that haven't started)
     const today = new Date();
@@ -55,15 +56,15 @@ async function handler(req, res) {
     leaveStartDate.setHours(0, 0, 0, 0);
 
     if (leaveRequest.status !== 'Pending') {
-      return res.status(400).json({ 
+      return NextResponse.json({ 
         message: `Cannot cancel ${leaveRequest.status.toLowerCase()} leave request` 
-      });
+      }, { status: 400 });
     }
 
     if (leaveStartDate <= today) {
-      return res.status(400).json({ 
+      return NextResponse.json({ 
         message: 'Cannot cancel leave request as the leave date has already started or passed' 
-      });
+      }, { status: 400 });
     }
 
     // Update the leave request status to Cancelled
@@ -74,11 +75,10 @@ async function handler(req, res) {
        }
     });
 
-    res.status(200).json({ message: 'Leave request cancelled successfully' });
+    return NextResponse.json({ message: 'Leave request cancelled successfully' }, { status: 200 });
   } catch (err) {
     console.error('Error cancelling leave request:', err);
-    res.status(500).json({ message: 'Server error' });
+    return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

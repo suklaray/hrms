@@ -1,16 +1,18 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-import { withSessionTimeout } from "@/lib/authMiddleware";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/authMiddleware";
 import prisma from "@/lib/prisma";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  try {
-    const decoded = req.user;
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
+  if (errorResponse) return errorResponse;
+  if (!decoded) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  try {
     const canAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_MY);
     if (!canAccess) {
-      return res.status(403).json({ error: "Access denied" });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     // Fetch basic employee details from `users` table
@@ -26,7 +28,7 @@ async function handler(req, res) {
       },
     });
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     // Check if employee has checked in today but not checked out
     const today = new Date();
@@ -45,20 +47,20 @@ async function handler(req, res) {
     const workStartTime = attendance?.check_in || null;
 
     // Return user info + attendance status + JWT fields
-    res.status(200).json({
-      user: {
-        ...user,
-        isWorking,
-        workStartTime,
-        verified: decoded.verified,
-        form_submitted: decoded.form_submitted,
+    return NextResponse.json(
+      {
+        user: {
+          ...user,
+          isWorking,
+          workStartTime,
+          verified: decoded.verified,
+          form_submitted: decoded.form_submitted,
+        },
       },
-    });
+      { status: 200 }
+    );
   } catch (err) {
     console.error("Auth error in /me:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-const wrappedHandler = withSessionTimeout(handler);
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

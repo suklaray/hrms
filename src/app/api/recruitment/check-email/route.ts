@@ -1,8 +1,11 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  const { email } = req.body;
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
+
+  const { email } = body;
 
   try {
     // Check in all three tables: users, employees, and candidates
@@ -13,12 +16,11 @@ async function handler(req, res) {
     ]);
 
     const exists = !!(user || employee || candidate);
-    res.status(200).json({ exists });
+    return NextResponse.json({ exists }, { status: 200 });
   } catch (err) {
     console.error("Email check error", err);
-    res.status(500).json({ error: "Internal Server Error" });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

@@ -1,17 +1,5 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-import { formidable } from "formidable";
-import fs from "fs";
-import path from "path";
+import { NextRequest, NextResponse } from "next/server";
 import AWS from "aws-sdk";
-
-// Legacy config removed for App Router
-
-
-const uploadDir = path.join(process.cwd(), 'public/uploads');
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
 
 // Check if AWS credentials are available
 const hasAWSCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY;
@@ -24,81 +12,54 @@ const textract = hasAWSCredentials
     })
   : null;
 
-const extractAadharNumber = (text) => {
+const extractAadharNumber = (text: string) => {
   const aadharRegex = /\b\d{4}\s?\d{4}\s?\d{4}\b/g;
   const matches = text.match(aadharRegex);
   return matches ? matches[0].replace(/\s/g, '') : null;
 };
 
-const extractPANNumber = (text) => {
+const extractPANNumber = (text: string) => {
   const panRegex = /\b[A-Z]{5}[0-9]{4}[A-Z]{1}\b/g;
   const matches = text.match(panRegex);
   return matches ? matches[0] : null;
 };
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
-  const form = formidable({
-    uploadDir,
-    keepExtensions: true,
-    filename: (name, ext, part) => `${Date.now()}-${part.originalFilename}`,
-  });
-
+export async function POST(req: NextRequest) {
   try {
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve([fields, files]);
-      });
-    });
-
-    const file = files.file?.[0] || files.file;
-    const docType = fields.docType?.[0] || fields.docType;
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    const docType = (formData.get("docType") as string) || '';
     
-    if (!file) {
-      return res.status(400).json({ error: "No file provided" });
+    if (!file || typeof file === "string") {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     // If Textract is not available, return empty result
     if (!textract) {
-      // Clean up uploaded file
-      try {
-        fs.unlinkSync(file.filepath);
-      } catch (cleanupError) {
-        console.error("File cleanup error:", cleanupError);
-      }
-      
-      return res.status(200).json({
+      return NextResponse.json({
         extractedNumber: null,
         docType,
         message: "Document analysis service not available. Please enter details manually."
-      });
+      }, { status: 200 });
     }
 
-    const buffer = fs.readFileSync(file.filepath);
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const params = {
+    const params: AWS.Textract.AnalyzeDocumentRequest = {
       Document: { Bytes: buffer },
       FeatureTypes: ["FORMS"],
     };
 
     try {
-      const data = await new Promise((resolve, reject) => {
-        textract.analyzeDocument(params, (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        });
-      });
+      const data: any = await textract.analyzeDocument(params).promise();
 
       const extractedText = (data.Blocks || [])
-        .filter((b) => b.BlockType === "LINE")
-        .map((b) => b.Text)
+        .filter((b: any) => b.BlockType === "LINE")
+        .map((b: any) => b.Text)
         .join(" ");
 
-      let extractedNumber = null;
+      let extractedNumber: string | null = null;
       
       if (docType === 'aadhar') {
         extractedNumber = extractAadharNumber(extractedText);
@@ -106,39 +67,22 @@ async function handler(req, res) {
         extractedNumber = extractPANNumber(extractedText);
       }
 
-      // Clean up uploaded file
-      try {
-        fs.unlinkSync(file.filepath);
-      } catch (cleanupError) {
-        console.error("File cleanup error:", cleanupError);
-      }
-
-      return res.status(200).json({
+      return NextResponse.json({
         extractedNumber,
         docType,
-      });
+      }, { status: 200 });
 
     } catch (textractError) {
       console.error("Textract error:", textractError);
-      
-      // Clean up uploaded file on error
-      try {
-        fs.unlinkSync(file.filepath);
-      } catch (cleanupError) {
-        console.error("File cleanup error:", cleanupError);
-      }
-      
-      return res.status(200).json({
+      return NextResponse.json({
         extractedNumber: null,
         docType,
         message: "Document analysis failed. Please enter details manually."
-      });
+      }, { status: 200 });
     }
 
   } catch (err) {
     console.error("Processing failed:", err);
-    return res.status(500).json({ error: "Processing failed" });
+    return NextResponse.json({ error: "Processing failed" }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

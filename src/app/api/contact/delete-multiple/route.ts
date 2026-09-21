@@ -1,27 +1,27 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { ids } = req.body;
+  
+
+  const { ids } = body;
 
   if (!Array.isArray(ids) || ids.length === 0) {
-    return res.status(400).json({ error: "No messages selected." });
+    return NextResponse.json({ error: "No messages selected." }, { status: 400 });
   }
 
   try {
     await prisma.contact_submissions.deleteMany({
       where: { id: { in: ids } },
     });
-    return res.status(200).json({ success: true });
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Delete error:", error);
-    return res.status(500).json({ error: "Failed to delete messages." });
+    return NextResponse.json({ error: "Failed to delete messages." }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

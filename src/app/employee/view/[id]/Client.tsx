@@ -26,13 +26,74 @@ import { toast } from "react-toastify";
 import { swalConfirm } from '@/utils/confirmDialog';
 
 //import toast from "react-hot-toast";
+interface EmployeeRecord {
+  aadhar_card?: string | null;
+  pan_card?: string | null;
+  resume?: string | null;
+  experience_certificate?: string | null;
+  tenth_certificate?: string | null;
+  twelfth_certificate?: string | null;
+  degree_certificate?: string | null;
+  aadhar_number?: string | null;
+  pan_number?: string | null;
+  highest_qualification?: string | null;
+  education_certificates?: string | null;
+  dob?: string | null;
+  gender?: string | null;
+  [key: string]: unknown;
+}
+
+interface RbacRole {
+  name?: string;
+  [key: string]: unknown;
+}
+
+interface EmployeeUser {
+  role?: string;
+  verified?: string;
+  rbacRole?: RbacRole;
+  position?: string | null;
+  employee_type?: string | null;
+  [key: string]: unknown;
+}
+
+interface AddressRecord {
+  address_line1?: string | null;
+  address_line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+  country?: string | null;
+  [key: string]: unknown;
+}
+
+interface BankDetailRecord {
+  account_holder_name?: string | null;
+  bank_name?: string | null;
+  branch_name?: string | null;
+  account_number?: string | null;
+  ifsc_code?: string | null;
+  checkbook_document?: string | null;
+  [key: string]: unknown;
+}
+
+interface EmployeeData {
+  user?: EmployeeUser;
+  employee?: EmployeeRecord;
+  addresses?: AddressRecord[];
+  bankDetails?: BankDetailRecord[];
+  [key: string]: unknown;
+}
+
 function ViewEmployee() {
   const router = useRouter();
   const { id } = router.query;
 
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<EmployeeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState("");
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -49,8 +110,11 @@ function ViewEmployee() {
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [resubmitStates, setResubmitStates] = useState({});
-  const [resubmitReason, setResubmitReason] = useState({});
+  const [resubmitStates, setResubmitStates] = useState<Record<string, boolean>>({});
+  const [resubmitReason, setResubmitReason] = useState<Record<string, string>>({});
+
+  const hasPerm = (permissionKey: string) => isSuperAdminUser || userPermissions.includes(permissionKey);
+
   useEffect(() => {
     const fetchEverything = async () => {
       try {
@@ -64,11 +128,11 @@ function ViewEmployee() {
         });
 
         if (roleRes.ok) {
-          const userData = await roleRes.json();
-
-          // Handle both possible response structures
-          const user = userData?.user || userData;
-          setRole(user.role); // <-- this is what you're using
+          const authData = await roleRes.json();
+          const userObj = authData?.user || authData;
+          setRole(userObj.role);
+          setUserPermissions(authData?.permissions || userObj.permissions || []);
+          setIsSuperAdminUser(!!(authData?.isSuperAdmin || userObj.isSuperAdmin));
         } else {
           console.error("User not authenticated");
         }
@@ -159,19 +223,18 @@ function ViewEmployee() {
   }
 
   const { user, employee: employees, addresses, bankDetails } = data || {};
-  const { name, email, empid, password, employee_type } = user || {};
+  const name = user?.name as string | undefined;
+  const email = user?.email as string | undefined;
+  const empid = user?.empid as string | undefined;
+  const password = user?.password as string | undefined;
+  const employee_type = user?.employee_type as string | undefined;
 
   const handleSelectRole = async (selectedRole) => {
     setIsUpdatingRole(true);
     try {
-      const roleNameLower = selectedRole.name.toLowerCase();
-      const legacyEnum = ["admin", "hr", "employee", "superadmin"].includes(roleNameLower)
-        ? roleNameLower
-        : "employee";
-
-      const res = await axios.patch(
+      const res = await axios.put(
         `/api/auth/employee/update-role/${empid}`,
-        { roleId: selectedRole.id, role: legacyEnum },
+        { roleId: selectedRole.id },
         {
           headers: {
             "Content-Type": "application/json",
@@ -186,7 +249,7 @@ function ViewEmployee() {
           user: {
             ...prev.user,
             roleId: selectedRole.id,
-            role: legacyEnum,
+            role: res.data?.updatedUser?.role || selectedRole.name,
             rbacRole: selectedRole,
           },
         }));
@@ -231,7 +294,7 @@ function ViewEmployee() {
   };
   const handleEmployeeTypeChange = async (newType) => {
     try {
-      const res = await axios.patch(
+      const res = await axios.put(
         `/api/auth/employee/update-type/${empid}`,
         { employee_type: newType },
         {
@@ -264,7 +327,7 @@ function ViewEmployee() {
     }
 
     try {
-      const res = await axios.patch(
+      const res = await axios.put(
         `/api/auth/employee/update-position/${empid}`,
         { position },
         {
@@ -410,7 +473,7 @@ function ViewEmployee() {
     try {
       const formData = new FormData();
       formData.append('document', file);
-      formData.append('empid', empid);
+      formData.append('empid', String(id));
       formData.append('documentType', documentType);
 
       const response = await fetch('/api/employee/upload-document', {
@@ -439,7 +502,7 @@ function ViewEmployee() {
         });
 
         // Reset file input
-        const fileInput = document.getElementById(`file-${documentType}`);
+        const fileInput = document.getElementById(`file-${documentType}`) as HTMLInputElement | null;
         if (fileInput) fileInput.value = '';
 
       } else {
@@ -548,7 +611,7 @@ function ViewEmployee() {
                         className="rounded-full object-cover border-4 border-blue-200"
                         onError={(e) => {
                           e.currentTarget.style.display = "none";
-                          e.currentTarget.nextElementSibling.style.display =
+                          (e.currentTarget.nextElementSibling as HTMLElement).style.display =
                             "flex";
                         }}
                       />
@@ -585,7 +648,7 @@ function ViewEmployee() {
                         </div>
                       </div>
 
-                      {["admin", "hr", "superadmin"].includes(role) && (
+                      {hasPerm("employee.verify") && (
                         <button
                           onClick={handleVerifyEmployee}
                           disabled={isVerifying}
@@ -666,7 +729,7 @@ function ViewEmployee() {
                       label="DOB"
                       value={
                         employees?.dob
-                          ? new Date(employees.dob).toLocaleDateString()
+                          ? new Date(employees.dob as string).toLocaleDateString()
                           : "N/A"
                       }
                     />
@@ -679,7 +742,7 @@ function ViewEmployee() {
                       <p className="text-gray-900 font-medium">
                         {user?.position || "N/A"}
                       </p>
-                      {["admin", "hr", "superadmin"].includes(role) && (
+                      {hasPerm("employee.edit") && (
                         <div className="mt-2 flex gap-2">
                           <select
                             value={position}
@@ -710,7 +773,7 @@ function ViewEmployee() {
                       <p className="text-gray-900 font-medium capitalize">
                         {user?.employee_type || "N/A"}
                       </p>
-                      {["admin", "hr", "superadmin"].includes(role) && (
+                      {hasPerm("employee.edit") && (
                         <select
                           value={user?.employee_type || ""}
                           onChange={(e) =>
@@ -735,7 +798,7 @@ function ViewEmployee() {
                       <p className="text-gray-900 font-medium capitalize">
                         {user?.rbacRole?.name || user?.role || "N/A"}
                       </p>
-                      {["admin", "hr", "superadmin"].includes(role) && (
+                      {hasPerm("employee.edit") && (
                         <div className="mt-2 relative">
                           <button
                             type="button"
@@ -782,11 +845,10 @@ function ViewEmployee() {
                                         type="button"
                                         disabled={isUpdatingRole}
                                         onClick={() => handleSelectRole(r)}
-                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${
-                                          user?.roleId === r.id || user?.rbacRole?.name === r.name
-                                            ? "bg-indigo-50 font-semibold text-indigo-600"
-                                            : "text-gray-700"
-                                        }`}
+                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${user?.roleId === r.id || user?.rbacRole?.name === r.name
+                                          ? "bg-indigo-50 font-semibold text-indigo-600"
+                                          : "text-gray-700"
+                                          }`}
                                       >
                                         <div>
                                           <div className="font-medium">{r.name}</div>
@@ -1084,7 +1146,7 @@ function ViewEmployee() {
               </div>
 
               {/* System Credentials */}
-              {["admin", "hr", "superadmin"].includes(role) && (
+              {(hasPerm("employee.send_credentials") || hasPerm("employee.reset_password") || hasPerm("employee.edit")) && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100">
                   <div className="p-6 border-b border-gray-100">
                     <h3 className="text-lg font-semibold text-gray-900">
@@ -1216,8 +1278,8 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
     }));
   };
 
-  const isEmployee = userRole === 'employee';
-  const isAdminHR = ['admin', 'hr', 'superadmin'].includes(userRole);
+  const isEmployee = userRole?.toLowerCase() === 'employee';
+  const isAdminHR = userRole ? userRole.toLowerCase() !== 'employee' : false;
   const canInteract = empid && documentType && onResubmit;
 
   return (

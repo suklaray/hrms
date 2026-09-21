@@ -1,15 +1,16 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
-  const { id } = req.query;
+  
+
+  const { id } = query;
 
   if (!id) {
-    return res.status(400).json({ error: 'Employee ID is required' });
+    return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
   }
 
   try {
@@ -19,21 +20,20 @@ async function handler(req, res) {
     });
 
     if (user) {
-      return res.status(200).json({
+      return NextResponse.json({
         empid: user.empid,
         name: user.name,
         email: user.email,
         form_submitted: user.form_submitted
-      });
+      }, { status: 200 });
     }
 
     // If not found in users, return error
-    return res.status(404).json({ error: 'Employee not found' });
+    return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
 
   } catch (error) {
     console.error('Error fetching employee:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

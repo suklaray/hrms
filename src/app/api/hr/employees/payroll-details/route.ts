@@ -1,36 +1,38 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import type { DecodedToken } from "@/lib/jwtTypes";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  const { empid } = req.query;
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method Not Allowed' });
-  }
+  const { empid } = query;
+
+  
 
   if (!empid) {
-    return res.status(400).json({ message: 'Employee ID is required' });
+    return NextResponse.json({ message: 'Employee ID is required' }, { status: 400 });
   }
 
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: 'Access denied' });
+      return NextResponse.json({ message: 'Access denied' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     if (!decoded) {
-      return res.status(403).json({ message: 'Access denied' });
+      return NextResponse.json({ message: 'Access denied' }, { status: 403 });
     }
 
     const isSelf = (decoded.empid === empid || decoded.id === empid);
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_VIEW) || await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW);
 
     if (!isSelf && !hasAccess) {
-      return res.status(403).json({ message: 'Access denied: insufficient permissions' });
+      return NextResponse.json({ message: 'Access denied: insufficient permissions' }, { status: 403 });
     }
 
     // Get user data from users table using empid
@@ -39,11 +41,11 @@ async function handler(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ message: 'Employee not found' });
+      return NextResponse.json({ message: 'Employee not found' }, { status: 404 });
     }
 
     if (user.status === "Inactive") {
-      return res.status(403).json({ message: "Access denied. Employee is inactive." });
+      return NextResponse.json({ message: "Access denied. Employee is inactive." }, { status: 403 });
     }
 
     let bankDetails = null;
@@ -76,12 +78,12 @@ async function handler(req, res) {
       bankDetails: bankDetails,
     };
 
-    res.status(200).json(employee);
+    return NextResponse.json(employee, { status: 200 });
   } catch (error) {
     console.error('Error fetching employee details:', error);
-    res.status(500).json({ message: 'Database error' });
+    return NextResponse.json({ message: 'Database error' }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

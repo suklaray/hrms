@@ -1,10 +1,11 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { email } = req.body;
+  const { email } = body;
 
   try {
     const user = await prisma.users.findUnique({
@@ -12,30 +13,27 @@ async function handler(req, res) {
       select: { empid: true },
     });
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const requests = await prisma.leave_requests.findMany({
       where: { empid: user.empid },
-      orderBy: { created_at: "desc" },
+      orderBy: { applied_at: "desc" },
       select: {
-        start_date: true,
-        end_date: true,
+        from_date: true,
+        to_date: true,
         reason: true,
         status: true,
       },
     });
 
     const leaveStatus = requests.map((req) => ({
-      date: `${req.start_date} to ${req.end_date}`,
+      date: `${req.from_date} to ${req.to_date}`,
       reason: req.reason,
       status: req.status,
     }));
 
-    res.status(200).json({ leaveStatus });
+    return NextResponse.json({ leaveStatus }, { status: 200 });
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch leave status" });
+    return NextResponse.json({ error: "Failed to fetch leave status" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

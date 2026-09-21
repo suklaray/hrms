@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import { useState, useRef } from "react";
@@ -13,7 +13,7 @@ function ContactPage() {
     subject: "",
     message: "",
   });
-  const [formErrors, setFormErrors] = useState({});
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -213,7 +213,7 @@ function ContactPage() {
 
                   {submitted && (
                     <div className="text-center p-4 bg-green-100 border border-green-300 rounded-2xl animate-bounce">
-                      <p className="text-green-700 font-semibold">✨ Message sent successfully!</p>
+                      <p className="text-green-700 font-semibold">âœ¨ Message sent successfully!</p>
                     </div>
                   )}
                 </form>
@@ -273,3 +273,4 @@ export default function PageWrapper(props: any) {
     </Suspense>
   );
 }
+

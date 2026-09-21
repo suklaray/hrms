@@ -1,15 +1,16 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { email, username, password, name, role } = req.body;
+  
+
+  const { email, username, password, name, role } = body;
 
   if (!email || !username || !password || !name || !role) {
-    return res.status(400).json({ error: "Missing required fields" });
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   // Determine what to show as username based on role
@@ -52,12 +53,11 @@ async function handler(req, res) {
     };
 
     await transporter.sendMail(mailOptions);
-    res.status(200).json({ message: "Credentials sent successfully" });
+    return NextResponse.json({ message: "Credentials sent successfully" }, { status: 200 });
   } catch (error) {
     console.error("Error sending credentials:", error);
-    res.status(500).json({ error: "Failed to send credentials" });
+    return NextResponse.json({ error: "Failed to send credentials" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

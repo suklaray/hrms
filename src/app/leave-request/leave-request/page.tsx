@@ -26,7 +26,7 @@ async function getServerSideProps(context) {
   let userData = null;
   try {
     userData = await prisma.users.findUnique({
-      where: { empid: user.empid || user.id },
+      where: { empid: String(user.empid || user.id) },
       select: {
         empid: true,
         name: true,

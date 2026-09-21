@@ -1,16 +1,17 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import nodemailer from 'nodemailer';
 import prisma from '@/lib/prisma';
 
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { empid, password, role } = req.body;
+  
+
+  const { empid, password, role } = body;
 
   if (!empid || !password) {
-    return res.status(400).json({ error: 'Employee ID and password are required' });
+    return NextResponse.json({ error: 'Employee ID and password are required' }, { status: 400 });
   }
 
   try {
@@ -20,7 +21,7 @@ async function handler(req, res) {
     });
 
     if (!employee) {
-      return res.status(404).json({ error: 'Employee not found' });
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
     // Determine what to show as username based on role
@@ -97,14 +98,14 @@ async function handler(req, res) {
 
     await transporter.sendMail(mailOptions);
     
-    res.status(200).json({ 
+    return NextResponse.json({ 
       success: true, 
       message: 'Credentials sent successfully to employee email' 
-    });
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Error sending credentials:', error);
-    return res.status(500).json({
+    return NextResponse.json({
     success: false,
     error: {
       name: error.name,
@@ -114,10 +115,9 @@ async function handler(req, res) {
       response: error.response,
       responseCode: error.responseCode,
       stack: error.stack,
-    }, });
+    }, }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

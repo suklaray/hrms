@@ -1,38 +1,38 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { email, startDate, endDate, reason } = req.body;
+  const { email, startDate, endDate, reason, leave_type, leaveType } = body;
 
   if (!email || !startDate || !endDate || !reason) {
-    return res.status(400).json({ error: "All fields are required" });
+    return NextResponse.json({ error: "All fields are required" }, { status: 400 });
   }
 
   try {
     const user = await prisma.users.findUnique({
       where: { email },
-      select: { empid: true },
+      select: { empid: true, name: true },
     });
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     await prisma.leave_requests.create({
       data: {
         empid: user.empid,
-        start_date: new Date(startDate),
-        end_date: new Date(endDate),
+        name: user.name,
+        leave_type: leave_type || leaveType || "Casual Leave",
+        from_date: new Date(startDate),
+        to_date: new Date(endDate),
         reason,
       },
     });
 
-    res.status(200).json({ message: "Leave request submitted" });
+    return NextResponse.json({ message: "Leave request submitted" }, { status: 200 });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

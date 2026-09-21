@@ -1,6 +1,5 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-function handler(req, res) {
-  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
-}
+import { NextRequest, NextResponse } from "next/server";
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+export async function GET(req: NextRequest) {
+  return NextResponse.json({ status: 'OK', timestamp: new Date().toISOString() }, { status: 200 });
+}

@@ -16,13 +16,18 @@ function FormPreview() {
       try {
         const response = await axios.get("/api/auth/me");
         const userData = response.data.user;
-        
-        // Only allow admin, hr, superadmin to view preview
-        if (!["admin", "hr", "superadmin"].includes(userData.role)) {
+
+        const isSuperAdmin = response.data?.isSuperAdmin || userData?.isSuperAdmin;
+        const permissions: string[] = response.data?.permissions || userData?.permissions || [];
+        const hasAccess = isSuperAdmin ||
+          permissions.includes("recruitment.view") ||
+          permissions.includes("recruitment.create");
+
+        if (!hasAccess) {
           router.replace("/unauthorized-form-access");
           return;
         }
-        
+
         setUser(userData);
       } catch (error) {
         router.replace("/unauthorized-form-access");

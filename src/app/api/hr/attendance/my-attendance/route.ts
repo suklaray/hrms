@@ -1,10 +1,13 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from 'jsonwebtoken';
 import prisma from '@/lib/prisma';
 import { format } from 'date-fns';
 import cookie from "cookie";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { DecodedToken } from "@/types";
+
 const isValidCheckout = (dt) => {
   if (!dt) return false;
   const d = new Date(dt);
@@ -22,9 +25,9 @@ const calculateTotalWorkingHours = (sessions, dateKey) => {
   for (const s of validSessions) {
     const checkIn = new Date(s.check_in);
     if (isValidCheckout(s.check_out)) {
-      closedSeconds += (new Date(s.check_out) - checkIn) / 1000;
+      closedSeconds += (new Date(s.check_out).getTime() - checkIn.getTime()) / 1000;
     } else if (isToday) {
-      openSeconds += (now - checkIn) / 1000;
+      openSeconds += (now.getTime() - checkIn.getTime()) / 1000;
     }
   }
 
@@ -49,24 +52,22 @@ const getLoginStatus = (sessions) => {
   return "Not Logged In";
 };
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: 'Access denied' });
+      return NextResponse.json({ message: 'Access denied' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded) {
-      return res.status(403).json({ message: 'Access denied' });
-    };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as DecodedToken;
+    if (!decoded || !decoded.empid) {
+      return NextResponse.json({ message: 'Access denied' }, { status: 403 });
+    }
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_MY);
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
+      return NextResponse.json({ message: 'Unauthorized: insufficient permissions' }, { status: 403 });
     }
 
     const user = await prisma.users.findUnique({
@@ -74,7 +75,7 @@ async function handler(req, res) {
       select: { empid: true, name: true, email: true, role: true, position: true },
     });
 
-    const { month, year } = req.query;
+    const { month, year } = query;
     const targetMonth = month ? parseInt(month) - 1 : new Date().getMonth();
     const targetYear = year ? parseInt(year) : new Date().getFullYear();
 
@@ -122,21 +123,21 @@ async function handler(req, res) {
     const attendance = Object.entries(grouped).reverse().map(([date, sessions]) => {
       const formattedDate = format(new Date(date), "dd-MM-yyyy");
       const login_status = getLoginStatus(sessions);
-      const openSession = sessions.find(s => s.check_in && !isValidCheckout(s.check_out));
-      const validIns = sessions.map(s => new Date(s.check_in)).filter(x => !isNaN(x));
-      const validOuts = sessions.map(s => s.check_out).filter(isValidCheckout).map(x => new Date(x));
+      const openSession = (sessions as any[]).find(s => s.check_in && !isValidCheckout(s.check_out));
+      const validIns = (sessions as any[]).map(s => new Date(s.check_in)).filter(x => !isNaN(x.getTime()));
+      const validOuts = (sessions as any[]).map(s => s.check_out).filter(isValidCheckout).map(x => new Date(x));
 
-      const firstCheckIn = validIns.length ? new Date(Math.min(...validIns)) : null;
-      const lastCheckIn = validIns.length ? new Date(Math.max(...validIns)) : null;   
-      const CheckOut = validOuts.length ? new Date(Math.max(...validOuts)) : null;
+      const firstCheckIn = validIns.length ? new Date(Math.min(...validIns.map(d => d.getTime()))) : null;
+      const lastCheckIn = validIns.length ? new Date(Math.max(...validIns.map(d => d.getTime()))) : null;   
+      const CheckOut = validOuts.length ? new Date(Math.max(...validOuts.map(d => d.getTime()))) : null;
 
       const { totalSeconds, closedSeconds, formatted } = calculateTotalWorkingHours(sessions, date);
       const completedSeconds = closedSeconds;
-      const hasAutoCheckout = sessions.some(
+      const hasAutoCheckout = (sessions as any[]).some(
         s => s.attendance_status === "AutoCheckout"
       );
 
-      const attendance_status = sessions.some(
+      const attendance_status = (sessions as any[]).some(
         (s) => s.attendance_status === "AutoCheckout",
       )
         ? calculateAttendanceStatus(totalSeconds) === "Present"
@@ -160,12 +161,9 @@ async function handler(req, res) {
       };
     });
 
-    res.status(200).json({ user, attendance, absentRegMap });
+    return NextResponse.json({ user, attendance, absentRegMap }, { status: 200 });
   } catch (error) {
     console.error('Error fetching attendance:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

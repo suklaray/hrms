@@ -1,7 +1,7 @@
 // utils/confirmDialog.ts
 import Swal from 'sweetalert2';
 
-export const swalConfirm = (message = "Are you sure?", confirmText = "Yes") => {
+export const swalConfirm = (message: string = "Are you sure?", confirmText: boolean | string = "Yes") => {
   return (Swal.fire as any)({
     title: message,
     icon: 'warning',

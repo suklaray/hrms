@@ -1,24 +1,22 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: "Access denied" });
+      return NextResponse.json({ message: "Access denied" }, { status: 401 });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.REPORT_VIEW);
     if (!hasAccess) {
-      return res.status(403).json({ message: "Access denied: insufficient permissions" });
+      return NextResponse.json({ message: "Access denied: insufficient permissions" }, { status: 403 });
     }
     
     const reports = await prisma.daily_work_reports.findMany({
@@ -56,11 +54,10 @@ async function handler(req, res) {
       }
     });
 
-    return res.status(200).json({ reports: formattedReports, leaves });
+    return NextResponse.json({ reports: formattedReports, leaves }, { status: 200 });
   } catch (error) {
     console.error("Error fetching work reports:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

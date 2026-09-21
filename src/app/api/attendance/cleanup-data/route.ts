@@ -1,10 +1,8 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     // Find attendance records with unrealistic working hours (>24 hours)
@@ -28,7 +26,7 @@ async function handler(req, res) {
     for (const record of inconsistentRecords) {
       const checkIn = new Date(record.check_in);
       const checkOut = new Date(record.check_out);
-      const actualHours = (checkOut - checkIn) / (1000 * 60 * 60);
+      const actualHours = (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
 
       // If working hours exceed 24, cap the checkout at 24 hours after check-in
       if (actualHours > 24) {
@@ -56,16 +54,15 @@ async function handler(req, res) {
       }
     }
 
-    res.status(200).json({
+    return NextResponse.json({
       message: `Data cleanup completed. Fixed ${fixedCount} inconsistent records.`,
       totalFound: inconsistentRecords.length,
       fixedCount
-    });
+    }, { status: 200 });
 
   } catch (error) {
     console.error("Data cleanup error:", error);
-    res.status(500).json({ error: "Data cleanup failed", details: error.message });
+    return NextResponse.json({ error: "Data cleanup failed", details: error.message }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

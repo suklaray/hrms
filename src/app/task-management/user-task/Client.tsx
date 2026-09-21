@@ -280,7 +280,7 @@ function UserTasks({ permissions }) {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {paginatedTasks.length === 0 ? (
-                          <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-500">No tasks found.</td></tr>
+                          <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No tasks found.</td></tr>
                         ) : paginatedTasks.map((task, index) => {
                           const deadlineStatus = getDeadlineStatus(task.deadline, task.status);
                           return (
@@ -349,14 +349,14 @@ function UserTasks({ permissions }) {
                     <div className="relative">
                       <button type="button" onClick={() => setShowMonthDropdown(!showMonthDropdown)}
                         className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm w-32 text-left flex items-center justify-between">
-                        <span>{(() => { const [y, m] = selectedMonth.split('-'); return `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(m)-1]} ${y}`; })()}</span>
+                        <span>{(() => { const [y, m] = selectedMonth.split('-'); return `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][parseInt(m) - 1]} ${y}`; })()}</span>
                         <ChevronRight className={`w-4 h-4 text-gray-400 transform transition-transform ${showMonthDropdown ? 'rotate-90' : ''}`} />
                       </button>
                       {showMonthDropdown && (
                         <div className="absolute z-10 mt-1 w-32 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
                           {availableMonths.map(m => {
                             const [y, mn] = m.split('-');
-                            const label = `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mn)-1]} ${y}`;
+                            const label = `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][parseInt(mn) - 1]} ${y}`;
                             return (
                               <button key={m} type="button" onClick={() => { setSelectedMonth(m); setShowMonthDropdown(false); }}
                                 className={`w-full px-3 py-1.5 text-left text-sm hover:bg-gray-100 ${m === selectedMonth ? 'bg-blue-50 text-blue-600' : 'text-gray-900'}`}>
@@ -384,13 +384,13 @@ function UserTasks({ permissions }) {
                         if (rowType === 'dayoff') return (
                           <tr key={index} className="bg-blue-50">
                             <td className="px-6 py-3 text-sm font-medium text-blue-700">{row.date.toLocaleDateString()}</td>
-                            <td colSpan="4" className="px-6 py-3 text-center"><span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">Weekend / Day Off</span></td>
+                            <td colSpan={4} className="px-6 py-3 text-center"><span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">Weekend / Day Off</span></td>
                           </tr>
                         );
                         if (rowType === 'leave') return (
                           <tr key={index} className="bg-yellow-50">
                             <td className="px-6 py-3 text-sm font-medium text-yellow-700">{row.date.toLocaleDateString()}</td>
-                            <td colSpan="4" className="px-6 py-3 text-center">
+                            <td colSpan={4} className="px-6 py-3 text-center">
                               <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${row.leaveInfo.status === 'Approved' ? 'bg-green-100 text-green-700' : row.leaveInfo.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                 On Leave — {row.leaveInfo.leave_type} ({row.leaveInfo.status})
                               </span>
@@ -400,7 +400,7 @@ function UserTasks({ permissions }) {
                         if (rowType === 'missing') return (
                           <tr key={index} className="bg-red-50">
                             <td className="px-6 py-3 text-sm font-medium text-red-600">{row.date.toLocaleDateString()}</td>
-                            <td colSpan="4" className="px-6 py-3 text-center"><span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">No Report</span></td>
+                            <td colSpan={4} className="px-6 py-3 text-center"><span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">No Report</span></td>
                           </tr>
                         );
                         return (

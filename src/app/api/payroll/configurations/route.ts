@@ -1,32 +1,30 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
+export async function GET(req: NextRequest) {
+  const token = req.cookies.get('token')?.value;
+  if (!token) return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET!);
+  } catch {
+    return NextResponse.json({ success: false, message: 'Invalid token' }, { status: 401 });
   }
-
-  const token = req?.cookies?.token;
-  if (!token) return res.status(401).json({ success: false, message: 'Unauthorized' });
-  let decoded;
-  try { decoded = jwt.verify(token, process.env.JWT_SECRET); } catch { return res.status(401).json({ success: false, message: 'Invalid token' }); }
   const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
-  if (!hasAccess) return res.status(403).json({ success: false, message: 'Forbidden: insufficient permissions' });
+  if (!hasAccess) return NextResponse.json({ success: false, message: 'Forbidden: insufficient permissions' }, { status: 403 });
 
   try {
-    const configurations = await prisma.PayrollConfiguration.findMany({
+    const configurations = await prisma.payrollConfiguration.findMany({
       include: {
         company: true,
       },
     });
-    return res.status(200).json({ success: true, data: configurations });
-  } catch (error) {
+    return NextResponse.json({ success: true, data: configurations }, { status: 200 });
+  } catch (error: any) {
     console.error('Error fetching configurations:', error);
-    return res.status(500).json({ success: false, message: 'Internal server error' });
+    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

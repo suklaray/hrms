@@ -1,12 +1,12 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 // pages/api/leave/status.js
 import prisma from "@/lib/prisma";
 import { verifyEmployeeToken } from '@/lib/auth';
 
-async function handler(req, res) {
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   // Verify JWT token and get user data
   const user = await verifyEmployeeToken(req);
-  if (!user) return res.status(401).json({ message: 'Unauthorized' });
+  if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   try {
     const rows = await prisma.leave_requests.findMany({
@@ -28,12 +28,11 @@ async function handler(req, res) {
       },
     });
 
-    res.status(200).json(rows);
+    return NextResponse.json(rows, { status: 200 });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

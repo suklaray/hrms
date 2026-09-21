@@ -223,7 +223,7 @@ export function generateContextualResponse(intent, question, similarQuestions = 
       // Get role-based response instead of learned response
       const intentConfig = RESPONSE_MAP[intent];
       if (intentConfig) {
-        const mappedRole = ["hr", "admin", "superadmin", "ceo"].includes(userRole?.toLowerCase()) ? "management" : "employee";
+        const mappedRole = userRole?.toLowerCase() !== "employee" ? "management" : "employee";
         const responses = intentConfig.responses;
         
         let roleBasedResponse;

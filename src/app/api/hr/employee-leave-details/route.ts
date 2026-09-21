@@ -1,15 +1,16 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ success: false, message: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
-  const { empid } = req.query;
+  
+
+  const { empid } = query;
 
   if (!empid) {
-    return res.status(400).json({ success: false, message: 'Employee ID is required' });
+    return NextResponse.json({ success: false, message: 'Employee ID is required' }, { status: 400 });
   }
 
   try {
@@ -24,7 +25,7 @@ async function handler(req, res) {
     });
 
     if (!employee) {
-      return res.status(404).json({ success: false, message: 'Employee not found' });
+      return NextResponse.json({ success: false, message: 'Employee not found' }, { status: 404 });
     }
 
     // Get all leave requests for this employee
@@ -49,11 +50,10 @@ async function handler(req, res) {
       leaveHistory: leaveHistory
     };
 
-    res.status(200).json({ success: true, data: employeeData });
+    return NextResponse.json({ success: true, data: employeeData }, { status: 200 });
   } catch (error) {
     console.error('Error fetching employee leave details:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

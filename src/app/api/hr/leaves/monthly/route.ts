@@ -1,27 +1,29 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!['admin', 'hr', 'superadmin'].includes(decoded.role)) {
-      return res.status(403).json({ message: 'Access denied' });
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW);
+    if (!hasAccess) {
+      return NextResponse.json({ message: 'Access denied: insufficient permissions' }, { status: 403 });
     }
 
-    const { empid, month, year } = req.query;
+    const { empid, month, year } = query;
 
     if (!empid || !month || !year) {
-      return res.status(400).json({ message: 'Missing required parameters' });
+      return NextResponse.json({ message: 'Missing required parameters' }, { status: 400 });
     }
 
     // Get month number from month name
@@ -30,7 +32,7 @@ async function handler(req, res) {
     const monthNumber = monthNames.indexOf(month) + 1;
 
     if (monthNumber === 0) {
-      return res.status(400).json({ message: 'Invalid month' });
+      return NextResponse.json({ message: 'Invalid month' }, { status: 400 });
     }
 
     // Get start and end dates for the month
@@ -49,7 +51,7 @@ async function handler(req, res) {
     const leaveTypeMap = leaveTypes.reduce((acc, type) => {
       acc[type.type_name.toLowerCase()] = type.paid;
       return acc;
-    }, {});   
+    }, {});
 
     // Fetch leave requests for the employee in the specified month
     const leaves = await prisma.leave_requests.findMany({
@@ -88,7 +90,7 @@ async function handler(req, res) {
     console.log('Leave Type Map:', leaveTypeMap);
     console.log('Approved Leaves:', approvedLeaves.map(l => ({ type: l.leave_type, paid: leaveTypeMap[l.leave_type] })));
 
-    res.status(200).json({
+    return NextResponse.json({
       approved: {
         count: approvedLeaves.length,
         leaves: approvedLeaves
@@ -101,13 +103,12 @@ async function handler(req, res) {
         count: unpaidLeaves.length,
         leaves: unpaidLeaves
       }
-    });
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Error fetching monthly leaves:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

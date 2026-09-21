@@ -1,40 +1,40 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from "@/lib/prisma";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
+
+  
 
   try {
-    const { token } = cookie.parse(req.headers.cookie || '');
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const { token } = cookie.parse(req.headers.get('cookie') || '');
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.TASK_DELETE);
     if (!hasAccess) {
-      return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
+      return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
     }
 
-    const { taskIds } = req.body;
+    const { taskIds } = body;
     if (!taskIds || !Array.isArray(taskIds) || taskIds.length === 0) {
-      return res.status(400).json({ error: 'Task IDs are required' });
+      return NextResponse.json({ error: 'Task IDs are required' }, { status: 400 });
     }
 
     await prisma.tasks.deleteMany({
       where: { id: { in: taskIds } }
     });
 
-    return res.status(200).json({ message: 'Tasks deleted successfully' });
+    return NextResponse.json({ message: 'Tasks deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error('Delete tasks error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -29,7 +29,7 @@ function LeaveRequest({ user }) {
     attachment: ""
   });
   const [selectedReason, setSelectedReason] = useState(null);
-  const [errors, setErrors] = useState({});
+  const [errors, seterrors] = useState<Record<string, string>>({});
   const [cancellingLeave, setCancellingLeave] = useState(null);
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -67,7 +67,7 @@ const fileInputRef = useRef(null);
   };
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: Record<string, string> = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -795,3 +795,4 @@ export default function ClientPageWrapper(props: any) {
     </Suspense>
   );
 }
+

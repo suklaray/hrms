@@ -1,10 +1,8 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     const now = new Date();
@@ -36,20 +34,19 @@ async function handler(req, res) {
         });
       }
 
-      res.status(200).json({ 
+      return NextResponse.json({ 
         message: `Auto-checkout completed for ${overdueAttendance.length} records`,
         checkedOutCount: overdueAttendance.length
-      });
+      }, { status: 200 });
     } else {
-      res.status(200).json({ 
+      return NextResponse.json({ 
         message: "No overdue attendance records found",
         checkedOutCount: 0
-      });
+      }, { status: 200 });
     }
   } catch (error) {
     console.error("Auto-checkout error:", error);
-    res.status(500).json({ error: "Auto-checkout failed", details: error.message });
+    return NextResponse.json({ error: "Auto-checkout failed", details: error.message }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

@@ -1,27 +1,22 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import { runAutoCheckout } from "@/lib/autoCheckout";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      error: "Method not allowed",
-    });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     const result = await runAutoCheckout();
 
-    return res.status(200).json({
+    return NextResponse.json({
       message: `Auto-checkout completed for ${result.processedCount} records`,
       checkedOutCount: result.processedCount,
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error(error);
 
-    return res.status(500).json({
+    return NextResponse.json({
       error: "Auto-checkout failed",
-    });
+    }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

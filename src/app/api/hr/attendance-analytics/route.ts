@@ -1,10 +1,8 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     // Get total employees
@@ -30,7 +28,7 @@ async function handler(req, res) {
     // Calculate present: those with Present status OR worked >= 4 hours
     const presentToday = todayAttendance.filter(a => 
       a.attendance_status === "Present" || 
-      (a.total_hours && parseFloat(a.total_hours) >= 4)
+      (a.total_hours && parseFloat(a.total_hours?.toString() || "0") >= 4)
     ).length;
     
     // Absent = Total employees - Present - On Leave
@@ -68,7 +66,7 @@ async function handler(req, res) {
 
       const present = dayAttendance.filter(a => 
         a.attendance_status === "Present" || 
-        (a.total_hours && parseFloat(a.total_hours) >= 4)
+        (a.total_hours && parseFloat(a.total_hours?.toString() || "0") >= 4)
       ).length;
       const absent = Math.max(0, totalEmployees - present);
 
@@ -94,7 +92,7 @@ async function handler(req, res) {
 
     const monthlyPresent = monthlyAttendance.filter(a => 
       a.attendance_status === "Present" || 
-      (a.total_hours && parseFloat(a.total_hours) >= 4)
+      (a.total_hours && parseFloat(a.total_hours?.toString() || "0") >= 4)
     ).length;
     const monthlyAbsent = Math.max(0, (totalEmployees * 30) - monthlyPresent);
 
@@ -113,13 +111,13 @@ async function handler(req, res) {
 
     const yearlyPresent = yearlyAttendance.filter(a => 
       a.attendance_status === "Present" || 
-      (a.total_hours && parseFloat(a.total_hours) >= 4)
+      (a.total_hours && parseFloat(a.total_hours?.toString() || "0") >= 4)
     ).length;
     const yearlyAbsent = Math.max(0, (totalEmployees * 365) - yearlyPresent);
 
 
 
-    res.status(200).json({
+    return NextResponse.json({
       summary: {
         totalEmployees,
         presentToday,
@@ -136,12 +134,12 @@ async function handler(req, res) {
         { name: "Present", value: yearlyPresent },
         { name: "Absent", value: yearlyAbsent }
       ]
-    });
+    }, { status: 200 });
 
   } catch (error) {
     console.error("Analytics error:", error);
-    res.status(500).json({ error: "Failed to fetch analytics data" });
+    return NextResponse.json({ error: "Failed to fetch analytics data" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import { useState, useEffect } from 'react';
@@ -27,14 +27,14 @@ function AddEvent() {
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isFormValid, setIsFormValid] = useState(false);
   const [roles, setRoles] = useState([]);
   const [employmentTypes, setEmploymentTypes] = useState([]);
   const [positions, setPositions] = useState([]);
   const [visibilityTouched, setVisibilityTouched] = useState(false);
   const validateForm = () => {
-      const newErrors = {};
+      const newErrors: Record<string, string> = {};
       
       if (!formData.title.trim()) {
         newErrors.title = 'Title is required';
@@ -408,7 +408,7 @@ function AddEvent() {
                               onClick={() => removeEmployee(employee.empid)}
                               className="text-blue-600 hover:text-blue-800"
                             >
-                              ×
+                              Ã—
                             </button>
                           </span>
                         ))}
@@ -420,7 +420,7 @@ function AddEvent() {
                               onClick={() => removeGroup(group.key)}
                               className="text-green-600 hover:text-green-800"
                             >
-                              ×
+                              Ã—
                             </button>
                           </span>
                         ))}
@@ -678,3 +678,4 @@ export default function ClientPageWrapper(props: any) {
     </Suspense>
   );
 }
+

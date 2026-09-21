@@ -1,44 +1,41 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "";
 
 // Use the same session storage as authMiddleware
 let sessions = new Map();
 if (typeof global !== 'undefined') {
-  if (!global.__hrms_sessions) {
-    global.__hrms_sessions = new Map();
+  if (!(global as any).__hrms_sessions) {
+    (global as any).__hrms_sessions = new Map();
   }
-  sessions = global.__hrms_sessions;
+  sessions = (global as any).__hrms_sessions;
 }
 
-function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : {};
+export async function POST(req: NextRequest) {
+  const cookieHeader = req.headers.get("cookie");
+  const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
   const token = cookies.token;
 
   if (!token) {
-    return res.status(401).json({ error: "No authentication token" });
+    return NextResponse.json({ error: "No authentication token" }, { status: 401 });
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded: any = jwt.verify(token, JWT_SECRET);
     const userId = decoded.id;
     const userType = decoded.role === 'employee' ? 'employee' : 'admin';
     const sessionKey = `session_${userType}_${userId}`;
     
-    if (typeof global !== 'undefined' && global.__hrms_sessions) {
-      sessions = global.__hrms_sessions;
+    if (typeof global !== 'undefined' && (global as any).__hrms_sessions) {
+      sessions = (global as any).__hrms_sessions;
     }
     
     const session = sessions.get(sessionKey);
     
     if (!session) {
-      return res.status(401).json({ error: "No active session found" });
+      return NextResponse.json({ error: "No active session found" }, { status: 401 });
     }
     
     // Update session activity
@@ -47,14 +44,12 @@ function handler(req, res) {
       lastActivity: Date.now()
     });
     
-    return res.status(200).json({ 
+    return NextResponse.json({ 
       success: true,
       message: "Session activity updated"
-    });
+    }, { status: 200 });
     
   } catch (err) {
-    return res.status(401).json({ error: "Invalid or expired token" });
+    return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

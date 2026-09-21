@@ -1,12 +1,13 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  const { id } = req.query;
+export async function DELETE(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
-  if (req.method !== "DELETE") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+  const { id } = query;
+
+  
 
   try {
     // Set user status to Inactive instead of deleting
@@ -15,12 +16,11 @@ async function handler(req, res) {
       data: { status: "Inactive" },
     });
 
-    res.status(200).json({ message: "User made inactive successfully" });
+    return NextResponse.json({ message: "User made inactive successfully" }, { status: 200 });
   } catch (error) {
     console.error("Prisma Update Error:", error);
-    res.status(500).json({ error: "Failed to delete user" });
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

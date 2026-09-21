@@ -1,29 +1,29 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { token } = req.body;
-  if (!token) return res.status(401).json({ error: "Token is required" });
+  
+
+  const { token } = body;
+  if (!token) return NextResponse.json({ error: "Token is required" }, { status: 401 });
   const candidate = await prisma.candidates.findFirst({ where: { form_token: token } });
-  if (!candidate) return res.status(403).json({ error: "Invalid or expired token" });
+  if (!candidate) return NextResponse.json({ error: "Invalid or expired token" }, { status: 403 });
 
   try {
 
     if (!candidate) {
-      return res.status(404).json({ error: 'Candidate not found' });
+      return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
     }
 
-    return res.status(200).json({ 
+    return NextResponse.json({ 
       formSubmitted: candidate.form_submitted || false 
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error('Error checking form status:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

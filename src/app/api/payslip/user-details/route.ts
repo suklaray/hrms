@@ -1,29 +1,32 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-async function handler(req, res) {
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const cookies = cookie.parse(req.headers.cookie || "");
-  const token = cookies.token;
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+export async function GET(req: NextRequest) {
+  const cookieHeader = req.headers.get("cookie") || "";
+  const cookies = cookie.parse(cookieHeader);
+  const token = cookies.token || req.cookies.get("token")?.value;
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { empid } = req.query;
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    const empid = req.nextUrl.searchParams.get("empid");
+    if (!empid) return NextResponse.json({ error: "Employee ID required" }, { status: 400 });
+
     // Check if the user has permission to view payslip details
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW);
-    if (!hasAccess) return res.status(403).json({ error: "Forbidden: insufficient permissions" });
+    if (!hasAccess) return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+
     // Find user by empid
     const user = await prisma.users.findUnique({
       where: { empid: empid },
       select: { empid: true, name: true, email: true, role: true, contact_number: true, position: true }
     });
     
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     // Find employee record using main_employee_id matching users.empid
     const employee = await prisma.employees.findFirst({
@@ -44,11 +47,8 @@ async function handler(req, res) {
       bankDetails: bankDetails
     };
 
-    res.json(finalEmployee);
+    return NextResponse.json(finalEmployee, { status: 200 });
   } catch {
-    res.status(403).json({ error: "Invalid token" });
+    return NextResponse.json({ error: "Invalid token" }, { status: 403 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

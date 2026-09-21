@@ -170,9 +170,9 @@ function Candidates(user) {
     } else if (statusFilter === "Waiting") {
       matchesStatus =
         !candidate.status ||
-        candidate.status === "Waiting" 
-        // ||
-        // candidate.status === "Pending";
+        candidate.status === "Waiting"
+      // ||
+      // candidate.status === "Pending";
     } else if (statusFilter === "form_submitted") {
       matchesStatus = candidate.form_submitted === true;
     } else if (statusFilter === "form_not_submitted") {
@@ -226,9 +226,8 @@ function Candidates(user) {
     onClick,
   }) => (
     <div
-      className={`bg-white rounded-xl p-6 shadow-sm border cursor-pointer transition-all hover:shadow-md ${
-        isActive ? "border-blue-300 bg-blue-50" : "border-gray-100"
-      }`}
+      className={`bg-white rounded-xl p-6 shadow-sm border cursor-pointer transition-all hover:shadow-md ${isActive ? "border-blue-300 bg-blue-50" : "border-gray-100"
+        }`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between">
@@ -256,7 +255,7 @@ function Candidates(user) {
       Email: c.email || "",
       Contact: c.contact_number || "",
       "Interview Date": c.interview_date ? c.interview_date.split("T")[0] : "",
-      "Interview Start Time": c.interview_time_from ? 
+      "Interview Start Time": c.interview_time_from ?
         (() => {
           const [hours, minutes] = c.interview_time_from.split(':');
           const hour = parseInt(hours);
@@ -264,7 +263,7 @@ function Candidates(user) {
           const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
           return `${hour12}:${minutes} ${ampm}`;
         })() : "",
-      "Interview End Time": c.interview_time_to ? 
+      "Interview End Time": c.interview_time_to ?
         (() => {
           const [hours, minutes] = c.interview_time_to.split(':');
           const hour = parseInt(hours);
@@ -590,9 +589,8 @@ function Candidates(user) {
                                   handleSelectCandidate(candidate.candidate_id)
                                 }
                                 disabled={candidate.isEmployee}
-                                className={`rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${
-                                  candidate.isEmployee ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
+                                className={`rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${candidate.isEmployee ? 'opacity-50 cursor-not-allowed' : ''
+                                  }`}
                               />
                               {candidate.isEmployee && (
                                 <div className="absolute bottom-full left-0 mb-1 px-2 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
@@ -687,11 +685,10 @@ function Candidates(user) {
                               </Link>
                               <div>
                                 <span
-                                  className={`text-xs px-1 sm:px-2 py-1 rounded-full whitespace-nowrap inline-block ${
-                                    candidate.form_submitted
+                                  className={`text-xs px-1 sm:px-2 py-1 rounded-full whitespace-nowrap inline-block ${candidate.form_submitted
                                       ? "bg-green-100 text-green-800"
                                       : "bg-red-100 text-red-800"
-                                  }`}
+                                    }`}
                                 >
                                   <span className="hidden sm:inline">
                                     {candidate.form_submitted
@@ -708,11 +705,10 @@ function Candidates(user) {
                           <td className="px-6 py-4">
                             <button
                               onClick={() => handleVerification(candidate)}
-                              className={`text-xs font-medium px-3 py-1 rounded-full transition-colors cursor-pointer ${
-                                candidate.verification
+                              className={`text-xs font-medium px-3 py-1 rounded-full transition-colors cursor-pointer ${candidate.verification
                                   ? "bg-green-100 text-green-800 hover:bg-green-200"
                                   : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                              }`}
+                                }`}
                             >
                               {candidate.verification ? "Verified" : "Pending Verification"}
                             </button>
@@ -788,7 +784,7 @@ function Candidates(user) {
                       ))}
                       {paginatedCandidates.length === 0 && (
                         <tr>
-                          <td colSpan="9" className="px-6 py-12 text-center">
+                          <td colSpan={9} className="px-6 py-12 text-center">
                             <div className="text-gray-500">
                               <User className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                               <p className="text-lg font-medium">
@@ -818,11 +814,10 @@ function Candidates(user) {
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === 1
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
@@ -832,11 +827,10 @@ function Candidates(user) {
                       <button
                         key={page}
                         onClick={() => handlePageChange(page)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          page === currentPage
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${page === currentPage
                             ? "bg-blue-600 text-white"
                             : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                        }`}
+                          }`}
                       >
                         {page}
                       </button>
@@ -846,11 +840,10 @@ function Candidates(user) {
                   <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === totalPages
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                         : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>

@@ -1,50 +1,51 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import { checkPermission, isSuperAdmin } from '@/lib/rbac';
 import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
+
+  
 
   // Authentication
   let token = null;
-  if (req.headers.cookie) {
-    const parsed = cookie.parse(req.headers.cookie);
+  if (req.headers.get('cookie')) {
+    const parsed = cookie.parse(req.headers.get('cookie'));
     token = parsed.token;
   }
 
   if (!token) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   let approver;
   try {
     approver = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    return res.status(401).json({ error: 'Invalid token' });
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 
   const hasAccess = await checkPermission(approver, PERMISSION_KEYS.LEAVE_APPROVE);
   if (!hasAccess) {
-    return res.status(403).json({ success: false, error: 'Insufficient permissions to approve/reject leaves' });
+    return NextResponse.json({ success: false, error: 'Insufficient permissions to approve/reject leaves' }, { status: 403 });
   }
 
-  const { id, status, reason } = req.body;
+  const { id, status, reason } = body;
 
   if (!id || !status) {
-    return res.status(400).json({ success: false, error: 'Missing ID or status' });
+    return NextResponse.json({ success: false, error: 'Missing ID or status' }, { status: 400 });
   }
 
   // Validate reason for Rejected and Cancelled status
   if ((status === 'Rejected' || status === 'Cancelled') && (!reason || reason.trim() === '')) {
-    return res.status(400).json({ 
+    return NextResponse.json({ 
       success: false, 
       error: `Reason is required when ${status.toLowerCase()} a leave request` 
-    });
+    }, { status: 400 });
   }
 
   try {
@@ -53,11 +54,11 @@ async function handler(req, res) {
     });
 
     if (!leaveRequest) {
-      return res.status(404).json({ success: false, error: 'Leave request not found' });
+      return NextResponse.json({ success: false, error: 'Leave request not found' }, { status: 404 });
     }
 
     // Prepare update data based on status
-    let updateData = { status };
+    let updateData: Record<string, any> = { status };
     
     if (status === 'Rejected') {
       updateData.resoan_to_reject = reason;
@@ -78,12 +79,11 @@ async function handler(req, res) {
       data: updateData,
     });
 
-    res.status(200).json({ success: true, message: 'Status updated successfully' });
+    return NextResponse.json({ success: true, message: 'Status updated successfully' }, { status: 200 });
   } catch (error) {
     console.error('Error updating leave status:', error);
-    res.status(500).json({ success: false, error: 'Server error' });
+    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

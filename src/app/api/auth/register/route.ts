@@ -1,4 +1,5 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import prisma from "@/lib/prisma";
@@ -7,26 +8,19 @@ import { v4 as uuidv4 } from "uuid";
 import { isSuperAdmin, getAssignableRolesForUser, checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-function generateCandidateId() {
-  return `CAND${Date.now()}${Math.floor(Math.random() * 1000)}`;
-}
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-async function handler(req, res) {
-  
-  if (req.method !== "POST") {
-    return res.status(405).json({ success: false, message: "Method Not Allowed" });
-  }
-  
   try {
     // Get user from token
-    const cookies = cookie.parse(req.headers.cookie || '');
+    const cookies = cookie.parse(req.headers.get('cookie') || '');
     const { token } = cookies;
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_CREATE);
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
+      return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
     }
     const currentUser = decoded;
 
@@ -41,37 +35,59 @@ async function handler(req, res) {
       employee_type,
       role = "employee",
       rbacRoleId = null,
-    } = req.body;
+    } = body;
+
+    if (!name || !email || !employee_type) {
+      return NextResponse.json({
+        success: false,
+        message: "Name, email, and employee type are required.",
+      }, { status: 400 });
+    }
 
     // Dynamic DB role-hierarchy validation
     const assignableRoles = await getAssignableRolesForUser(currentUser);
     const assignableIds = new Set(assignableRoles.map((r) => r.id));
 
+    let parsedRbacRoleId: number | null = null;
+    let assignedLegacyRole: any = "employee";
+
     if (rbacRoleId) {
-      const parsedRbacRoleId = parseInt(rbacRoleId, 10);
+      parsedRbacRoleId = parseInt(rbacRoleId, 10);
       if (!isSuperAdmin(currentUser) && !assignableIds.has(parsedRbacRoleId)) {
-        return res.status(403).json({
+        return NextResponse.json({
           success: false,
           message: `You are not authorized to assign this role.`
-        });
+        }, { status: 403 });
       }
-    }
 
-    if (!name || !email || !employee_type) {
-      return res.status(400).json({
-        success: false,
-        message: "Name, email, and employee type are required.",
+      const roleRecord = await prisma.role.findUnique({
+        where: { id: parsedRbacRoleId },
+        select: { name: true }
       });
+      if (roleRecord) {
+        const lowerName = roleRecord.name.toLowerCase().replace(/\s+/g, '');
+        const knownEnums: Record<string, any> = {
+          superadmin: "superadmin",
+          admin: "admin",
+          hr: "hr",
+          ceo: "ceo",
+          employee: "employee"
+        };
+        assignedLegacyRole = knownEnums[lowerName] || "employee";
+      }
+    } else if (role && typeof role === 'string') {
+      const lowerName = role.toLowerCase().replace(/\s+/g, '');
+      const knownEnums: Record<string, any> = {
+        superadmin: "superadmin",
+        admin: "admin",
+        hr: "hr",
+        ceo: "ceo",
+        employee: "employee"
+      };
+      assignedLegacyRole = knownEnums[lowerName] || "employee";
     }
 
-    // const existingUser = await prisma.users.findUnique({ where: { email } });
-    // if (existingUser) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Email already registered.",
-    //   });
-    // }
-    // Generate candidate ID using same logic as addCandidate.js
+    // Generate candidate ID using standard logic
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
@@ -81,7 +97,7 @@ async function handler(req, res) {
     const rawPassword = uuidv4().slice(0, 8); // Secure 8-char password
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-     // Find the highest candidate ID across candidates and employees tables
+    // Find the highest candidate ID across candidates and employees tables
     const [lastCandidate, lastEmployee] = await Promise.all([
       prisma.candidates.findFirst({
         orderBy: { candidate_id: "desc" },
@@ -102,6 +118,7 @@ async function handler(req, res) {
 
     const serialStr = String(nextSerial).padStart(6, "0");
     const candidateId = `${datePrefix}${serialStr}`;
+
     // Double-check for uniqueness
     const [existingCandidate, existingEmployee] = await Promise.all([
       prisma.candidates.findFirst({ where: { candidate_id: candidateId } }),
@@ -109,12 +126,8 @@ async function handler(req, res) {
     ]);
 
     if (existingCandidate || existingEmployee) {
-      return res.status(500).json({ error: "ID generation conflict. Please try again." });
+      return NextResponse.json({ error: "ID generation conflict. Please try again." }, { status: 500 });
     }
-
-    // const empid = `${name.substring(0, 2).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
-    // const rawPassword = uuidv4().slice(0, 8);
-    // const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
     await prisma.users.create({
       data: {
@@ -127,28 +140,25 @@ async function handler(req, res) {
         date_of_joining: date_of_joining ? new Date(date_of_joining) : null,
         status: status || "Active",
         experience: experience ? parseInt(experience) : null,
-        role,
+        role: assignedLegacyRole,
         employee_type,
         candidate_id: candidateId,
-        roleId: rbacRoleId ? parseInt(rbacRoleId) : null,
+        roleId: parsedRbacRoleId,
       },
     });
 
-    return res.status(201).json({
+    return NextResponse.json({
       success: true,
       message: `Employee registered successfully with ID ${empid}`,
       empid,
       password: rawPassword, // Only sent once
-    });
+    }, { status: 201 });
 
   } catch (error) {
     console.error("Registration error:", error);
-    return res.status(500).json({
+    return NextResponse.json({
       success: false,
       message: "Server error. Please try again later.",
-    });
+    }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

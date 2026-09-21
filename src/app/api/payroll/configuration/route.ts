@@ -1,59 +1,52 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-
-  // 1. Check authentication & permissions
-  const token = req?.cookies?.token;
-  if (!token) return res.status(401).json({ message: 'Unauthorized' });
-  let decoded;
-  try { decoded = jwt.verify(token, process.env.JWT_SECRET); } catch { return res.status(401).json({ message: 'Invalid token' }); }
-  const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
-  if (!hasAccess) return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
-
-  // 2. Dispatch based on HTTP Method
-  switch (req.method) {
-    case 'POST':
-      return handlePost(req, res);
-    case 'PUT':
-    case 'PATCH':
-      return handlePut(req, res);
-    case 'GET':
-      return handleGet(req, res);
-    default:
-      res.setHeader('Allow', ['POST', 'PUT', 'PATCH', 'GET']);
-      return res.status(405).json({ success: false, message: `Method ${req.method} not allowed` });
+async function checkAuth(req: NextRequest) {
+  const token = req.cookies.get('token')?.value;
+  if (!token) return { error: NextResponse.json({ message: 'Unauthorized' }, { status: 401 }) };
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET!);
+  } catch {
+    return { error: NextResponse.json({ message: 'Invalid token' }, { status: 401 }) };
   }
+  const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
+  if (!hasAccess) return { error: NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 }) };
+  return { decoded };
 }
 
 // ─── POST (Create) ────────────────────────────────────────────────────────────
-async function handlePost(req, res) {
-  const {
-    company_id,
-    payroll_country,
-    currency,
-    payroll_effective_date,
-    payroll_cycle,
-    working_days,
-    attendance_cut_off,
-    leave_cut_off,
-    overtime_cut_off,
-    salary_payment_date,
-    financial_year_start_month,
-    financial_year_end_month,
-    salary_calendar,
-    status,
-    remarks
-  } = req.body;
-
-  if (!company_id || !payroll_country || !currency || !payroll_effective_date || !payroll_cycle || !working_days || !attendance_cut_off || !leave_cut_off || !salary_payment_date || !financial_year_start_month || !financial_year_end_month || !salary_calendar || !status) {
-    return res.status(400).json({ message: 'Missing required fields' });
-  }
+export async function POST(req: NextRequest) {
+  const auth = await checkAuth(req);
+  if (auth.error) return auth.error;
 
   try {
+    const body = await req.json().catch(() => ({}));
+    const {
+      company_id,
+      payroll_country,
+      currency,
+      payroll_effective_date,
+      payroll_cycle,
+      working_days,
+      attendance_cut_off,
+      leave_cut_off,
+      overtime_cut_off,
+      salary_payment_date,
+      financial_year_start_month,
+      financial_year_end_month,
+      salary_calendar,
+      status,
+      remarks
+    } = body;
+
+    if (!company_id || !payroll_country || !currency || !payroll_effective_date || !payroll_cycle || !working_days || !attendance_cut_off || !leave_cut_off || !salary_payment_date || !financial_year_start_month || !financial_year_end_month || !salary_calendar || !status) {
+      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+    }
+
     await prisma.payrollConfiguration.create({
       data: {
         company_id: Number(company_id),
@@ -75,24 +68,29 @@ async function handlePost(req, res) {
       }
     });
 
-    res.status(200).json({ type: 'success', message: 'Payroll configuration added successfully' });
-  } catch (error) {
+    return NextResponse.json({ type: 'success', message: 'Payroll configuration added successfully' }, { status: 200 });
+  } catch (error: any) {
     console.error('Error adding payroll configuration:', error);
-    res.status(500).json({ type: 'Internal server error', message: error.message });
+    return NextResponse.json({ type: 'Internal server error', message: error?.message }, { status: 500 });
   }
 }
 
-// ─── PUT / PATCH (Update / Toggle Status) ──────────────────────────────────────
-async function handlePut(req, res) {
-  const { id, ...updateData } = req.body;
-  if (!id) {
-    return res.status(400).json({ success: false, message: 'Configuration ID is required for update' });
-  }
+// ─── PUT (Update / Toggle Status) ──────────────────────────────────────────────
+export async function PUT(req: NextRequest) {
+  const auth = await checkAuth(req);
+  if (auth.error) return auth.error;
+
   try {
+    const body = await req.json().catch(() => ({}));
+    const { id, ...updateData } = body;
+    if (!id) {
+      return NextResponse.json({ success: false, message: 'Configuration ID is required for update' }, { status: 400 });
+    }
+
     const isNumericId = !isNaN(Number(id)) && /^\d+$/.test(String(id).trim());
     const whereClause = isNumericId ? { id: Number(id) } : { uid: String(id) };
 
-    const safeUpdateData = { ...updateData };
+    const safeUpdateData: any = { ...updateData };
     delete safeUpdateData.company;
     delete safeUpdateData.createdAt;
     delete safeUpdateData.updatedAt;
@@ -118,23 +116,30 @@ async function handlePut(req, res) {
       safeUpdateData.overtime_cut_off = null;
     }
 
-    // Allows partial updates (e.g. just status toggle) or full updates (editing the form)
     const updated = await prisma.payrollConfiguration.update({
       where: whereClause,
       data: safeUpdateData,
     });
-    return res.status(200).json({ success: true, message: 'Configuration updated successfully', data: updated });
-  } catch (error) {
+    return NextResponse.json({ success: true, message: 'Configuration updated successfully', data: updated }, { status: 200 });
+  } catch (error: any) {
     console.error('Error updating configuration:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    return NextResponse.json({ success: false, message: error?.message }, { status: 500 });
   }
 }
 
-// ─── GET (Get Payroll Configuration from uid or id) ───────────────────────────────
-async function handleGet(req, res) {
-  const { id } = req.query;
+// ─── PATCH (Alias to PUT) ─────────────────────────────────────────────────────
+export async function PATCH(req: NextRequest) {
+  return PUT(req);
+}
+
+// ─── GET (Get Payroll Configuration from uid or id) ───────────────────────────
+export async function GET(req: NextRequest) {
+  const auth = await checkAuth(req);
+  if (auth.error) return auth.error;
+
+  const id = req.nextUrl.searchParams.get('id');
   if (!id) {
-    return res.status(400).json({ success: false, message: 'Configuration ID is required to fetch' });
+    return NextResponse.json({ success: false, message: 'Configuration ID is required to fetch' }, { status: 400 });
   }
   try {
     const isNumericId = !isNaN(Number(id)) && /^\d+$/.test(String(id).trim());
@@ -148,14 +153,12 @@ async function handleGet(req, res) {
     });
 
     if (!configuration) {
-      return res.status(404).json({ success: false, message: 'Configuration not found' });
+      return NextResponse.json({ success: false, message: 'Configuration not found' }, { status: 404 });
     }
 
-    return res.status(200).json({ success: true, data: configuration });
-  } catch (error) {
+    return NextResponse.json({ success: true, data: configuration }, { status: 200 });
+  } catch (error: any) {
     console.error('Error getting configuration:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    return NextResponse.json({ success: false, message: error?.message }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

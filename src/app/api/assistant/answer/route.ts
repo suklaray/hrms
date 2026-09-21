@@ -1,4 +1,5 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import nlp from 'compromise';
 import prisma from "@/lib/prisma";
@@ -11,25 +12,25 @@ import {
 import { getRelevantFile } from "@/lib/fileKnowledge";
 const { findSimilarQuestions, generateContextualResponse } = await import("@/lib/assistantLearning");
 // Using simplified response generation
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { question, role } = req.body;
+  
+
+  const { question, role } = body;
   if (!question || !question.trim()) {
-    return res.status(400).json({ error: "Question is required" });
+    return NextResponse.json({ error: "Question is required" }, { status: 400 });
   }
 
   try {
     // Get user from token
-    const token = req.cookies.token || req.cookies.employeeToken;
+    const token = req.cookies.get('token')?.value || req.cookies.get('employeeToken')?.value;
     let user = null;
     let actualUserRole = "employee";
 
     if (token) {
       try {
-        user = jwt.verify(token, process.env.JWT_SECRET);
+        user = jwt.verify(token, process.env.JWT_SECRET) as any;
         
         // Fetch actual role from database
         if (user?.empid) {
@@ -65,7 +66,7 @@ async function handler(req, res) {
 
     if (botMode === "LLM") {
       const { getLLMAnswerFromRepo } = await import("@/lib/llm");
-      const llmResult = await getLLMAnswerFromRepo(question, intent, user, nlpContext);
+      const llmResult = await getLLMAnswerFromRepo(question, intent, user);
       answer = llmResult?.answer || "Sorry, I couldn't generate an answer.";
     } else {
       // Enhanced multi-strategy response generation
@@ -117,15 +118,15 @@ async function handler(req, res) {
         typeof answer === "object" && answer.frequency
           ? answer.frequency
           : null,
-      nlpFeatures: intent.nlpFeatures || {},
+      nlpFeatures: (intent as any).nlpFeatures || {},
       nlpContext,
-      similarity: intent.similarity || 0,
+      similarity: (intent as any).similarity || 0,
     };
 
-    res.status(200).json(responseData);
+    return NextResponse.json(responseData, { status: 200 });
   } catch (error) {
     console.error("Assistant error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -138,7 +139,7 @@ async function generateEnhancedAnswer(question, user, intent, userId, nlpContext
     const similarQuestions = await findSimilarQuestions(question, intent);
     if (similarQuestions.length > 0) {
       const bestMatch = similarQuestions[0];
-      const confidence = parseFloat(bestMatch.confidence_score) || 0;
+      const confidence = parseFloat(bestMatch.confidence_score?.toString() || "0") || 0;
       const nlpSimilarity = bestMatch.similarity_score || 0;
 
       // Use learned responses with NLP similarity scoring
@@ -173,7 +174,7 @@ async function generateNLPFileBasedAnswer(question, user, intent, userId, nlpCon
         intent.primaryIntent === "holiday"
       ) {
         const relevantFile = getRelevantFile(intent, question);
-        if (relevantFile && relevantFile.content) {
+        if (relevantFile && (relevantFile as any).content) {
           if (intent.primaryIntent === "holiday") {
             return formatHolidayContent(relevantFile);
           }
@@ -200,9 +201,9 @@ async function generateNLPFileBasedAnswer(question, user, intent, userId, nlpCon
   if (intent.primaryIntent === "policy" || intent.primaryIntent === "holiday") {
     const relevantFile = getRelevantFile(intent, question);
 
-    if (relevantFile && relevantFile.content) {
+    if (relevantFile && (relevantFile as any).content) {
       // Use NLP to better match content relevance
-      const contentDoc = nlp(relevantFile.content);
+      const contentDoc = nlp((relevantFile as any).content);
       const questionNouns = doc.nouns().out('array');
       const contentNouns = contentDoc.nouns().out('array');
       
@@ -252,7 +253,7 @@ function formatHolidayContentNLP(file, doc, nlpContext) {
       trimmed &&
       (trimmed.includes(":") || trimmed.includes("-") || /\d/.test(trimmed))
     ) {
-      formattedHolidays += `• ${trimmed}\n`;
+      formattedHolidays += `â€¢ ${trimmed}\n`;
     }
   }
 
@@ -260,17 +261,17 @@ function formatHolidayContentNLP(file, doc, nlpContext) {
     formattedHolidays = file.content.substring(0, 400);
   }
 
-  let contextualPrefix = "🎉 **Holiday List:**";
+  let contextualPrefix = "ðŸŽ‰ **Holiday List:**";
   if (timeWords.length > 0) {
     if (timeWords.some(w => ['next', 'upcoming', 'future'].includes(w))) {
-      contextualPrefix = "🎉 **Upcoming Holidays:**";
+      contextualPrefix = "ðŸŽ‰ **Upcoming Holidays:**";
     } else if (timeWords.some(w => ['current', 'this'].includes(w))) {
-      contextualPrefix = "🎉 **Current Holiday Information:**";
+      contextualPrefix = "ðŸŽ‰ **Current Holiday Information:**";
     }
   }
 
   return {
-    answer: `${contextualPrefix}\n\n${formattedHolidays}\n\n💾 **Download:** /api/bot/download?file=${encodeURIComponent(
+    answer: `${contextualPrefix}\n\n${formattedHolidays}\n\nðŸ’¾ **Download:** /api/bot/download?file=${encodeURIComponent(
       file.filename
     )}`,
     sourceFile: file.filename,
@@ -306,16 +307,16 @@ function formatPolicyContentNLP(file, question, doc, nlpContext) {
   }
 
   // NLP-enhanced section title
-  let contextualTitle = "📋 **Company Policy:**";
+  let contextualTitle = "ðŸ“‹ **Company Policy:**";
   if (questionNouns.length > 0) {
     const mainTopic = questionNouns[0];
-    contextualTitle = `📋 **${mainTopic.charAt(0).toUpperCase() + mainTopic.slice(1)} Policy:**`;
+    contextualTitle = `ðŸ“‹ **${mainTopic.charAt(0).toUpperCase() + mainTopic.slice(1)} Policy:**`;
   }
 
   return {
     answer: `${contextualTitle}\n\n${relevantContent}${
       content.length > relevantContent.length ? "..." : ""
-    }\n\n💾 **Download:** /api/bot/download?file=${encodeURIComponent(
+    }\n\nðŸ’¾ **Download:** /api/bot/download?file=${encodeURIComponent(
       file.filename
     )}`,
     sourceFile: file.filename,
@@ -331,4 +332,4 @@ function formatPolicyContent(file, question) {
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

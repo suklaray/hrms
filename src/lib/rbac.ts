@@ -32,19 +32,29 @@ export async function getUserPermissions(
     roleId = userOrRoleId.roleId ?? null;
     role = userOrRoleId.role ?? legacyRole;
     userId = userOrRoleId.empid || userOrRoleId.id || null;
-  } else if (
-    typeof userOrRoleId === "number" ||
-    (typeof userOrRoleId === "string" && !isNaN(parseInt(userOrRoleId)))
-  ) {
-    roleId = typeof userOrRoleId === 'number' ? userOrRoleId : parseInt(String(userOrRoleId), 10);
+  } else if (typeof userOrRoleId === "number") {
+    userId = userOrRoleId;
+  } else if (typeof userOrRoleId === "string") {
+    // If it could be a roleId number
+    if (/^\d+$/.test(userOrRoleId)) {
+      roleId = parseInt(userOrRoleId, 10);
+      userId = parseInt(userOrRoleId, 10);
+    } else {
+      userId = userOrRoleId;
+    }
   }
 
   let userRbacRoleName: string | null = null;
   if (userId) {
     try {
-      const dbUser = await prisma.users.findUnique({
-        where: typeof userId === "number" ? { id: userId } : { empid: String(userId) },
+      const isNum = typeof userId === "number";
+      const dbUser = await prisma.users.findFirst({
+        where: isNum
+          ? { OR: [{ id: userId }, { empid: String(userId) }] }
+          : { empid: String(userId) },
         select: {
+          id: true,
+          empid: true,
           roleId: true,
           role: true,
           rbacRole: { select: { id: true, name: true } },
@@ -69,9 +79,25 @@ export async function getUserPermissions(
     try {
       const allDbPerms = await prisma.permission.findMany({ select: { key: true } });
       return new Set(allDbPerms.map((p) => p.key));
-    } catch {
-      const { PERMISSIONS } = await import("@/lib/rbacPermissions");
-      return new Set(PERMISSIONS.map((p) => p.key));
+    } catch (error) {
+      console.error("Error fetching all permissions for superadmin:", error);
+      return new Set();
+    }
+  }
+
+  // If roleId not determined yet, try matching role name against DB roles
+  if (!roleId && role) {
+    try {
+      const roleRecord = await prisma.role.findFirst({
+        where: { name: { equals: role } },
+        select: { id: true, name: true },
+      });
+      if (roleRecord) {
+        roleId = roleRecord.id;
+        if (!userRbacRoleName) userRbacRoleName = roleRecord.name;
+      }
+    } catch (err) {
+      console.error("Error matching role by name:", err);
     }
   }
 
@@ -103,24 +129,31 @@ export async function getUserPermissions(
   return new Set();
 }
 
-/**
- * Check if a user has a specific permission.
- */
-export function hasPermission(
-  user: any,
-  permissionKey: string,
-  permissions?: Set<string>
-): boolean {
-  if (isSuperAdmin(user)) return true;
-  if (!permissions) return false;
-  return permissions.has(permissionKey);
-}
+import { NextResponse } from "next/server";
 
 /**
  * Wraps an API handler with permission checking.
  */
 export function withPermission(requiredPermission: string, handler: any) {
-  return async (req: any, res: any) => {
+  return async (req: any, resOrContext?: any) => {
+    const isAppRouter = req instanceof Request || (req && req.nextUrl) || (!resOrContext || typeof resOrContext.status !== 'function');
+
+    if (isAppRouter) {
+      const user = req.user;
+      if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+      if (isSuperAdmin(user)) return handler(req, resOrContext);
+
+      const permissions = await getUserPermissions(user);
+      if (!permissions.has(requiredPermission)) {
+        return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+      }
+
+      req.permissions = permissions;
+      return handler(req, resOrContext);
+    }
+
+    const res = resOrContext;
     const user = req.user;
     if (!user) return res.status(401).json({ error: "Unauthorized" });
 
@@ -137,14 +170,31 @@ export function withPermission(requiredPermission: string, handler: any) {
 }
 
 /**
- * Check permission inside a handler or server component.
+ * Unified permission checking function.
+ * Checks whether the user has the requested permission.
+ * - Super Admin always has full access (all permissions).
+ * - If a preloaded permissions Set or array is provided, checks against it immediately.
+ * - Otherwise, dynamically queries the database (roles, permissions, role_permissions) via getUserPermissions(user).
  */
-export async function checkPermission(user: any, permissionKey: string): Promise<boolean> {
+export async function checkPermission(
+  user: any,
+  permissionKey: string,
+  preloadedPermissions?: Set<string> | string[]
+): Promise<boolean> {
   if (!user) return false;
   if (isSuperAdmin(user)) return true;
+
+  if (preloadedPermissions) {
+    const permSet = preloadedPermissions instanceof Set ? preloadedPermissions : new Set(preloadedPermissions);
+    return permSet.has(permissionKey);
+  }
+
   const permissions = await getUserPermissions(user);
   return permissions.has(permissionKey);
 }
+
+// Unified alias: hasPermission and checkPermission are the same single function
+export const hasPermission = checkPermission;
 
 /**
  * Returns array of roles that `user` can search, view, or assign.

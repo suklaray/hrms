@@ -1,8 +1,11 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  const { id } = req.query;
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
+
+  const { id } = query;
 
   try {
     // Reconnect to database if connection is lost
@@ -14,7 +17,7 @@ async function handler(req, res) {
     });
 
     if (!candidate) {
-      return res.status(404).json({ error: 'Candidate not found' });
+      return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
     }
 
     // 2️⃣ Get profile photo from employees table where email matches
@@ -30,10 +33,10 @@ async function handler(req, res) {
       profilePhotoUrl = employee.profile_photo;
     }
 
-    res.status(200).json({
+    return NextResponse.json({
       ...candidate,
       profile_photo: profilePhotoUrl,
-    });
+    }, { status: 200 });
 
   } catch (err) {
     console.error('Error fetching candidate/employee:', err);
@@ -43,17 +46,16 @@ async function handler(req, res) {
       try {
         await prisma.$disconnect();
         await prisma.$connect();
-        return res.status(500).json({ error: 'Database connection lost. Please try again.' });
+        return NextResponse.json({ error: 'Database connection lost. Please try again.' }, { status: 500 });
       } catch (reconnectErr) {
         console.error('Failed to reconnect:', reconnectErr);
       }
     }
     
-    res.status(500).json({ error: 'Server error' });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   } finally {
     // Don't disconnect here as it might be used by other requests
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

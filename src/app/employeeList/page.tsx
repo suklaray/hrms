@@ -37,7 +37,7 @@ async function getServerSideProps(context) {
   try {
     // Include the role relation to get role name from Role table
     userData = await prisma.users.findUnique({
-      where: { empid: user.empid || user.id },
+      where: { empid: String(user.empid || user.id) },
       select: {
         empid: true,
         name: true,

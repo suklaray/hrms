@@ -1,19 +1,20 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyEmployeeToken } from "@/lib/auth";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
+
+  
 
   try {
     const user = await verifyEmployeeToken(req);
     if (!user) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { empid } = req.query;
+    const { empid } = query;
 
     // Check if employee has submitted documents
     const employee = await prisma.employees.findFirst({
@@ -42,11 +43,10 @@ async function handler(req, res) {
     const submittedCount = requiredDocs.filter(doc => doc && doc.trim() !== '').length;
     const submitted = submittedCount >= 4; // At least 4 out of 5 required docs
 
-    res.status(200).json({ submitted });
+    return NextResponse.json({ submitted }, { status: 200 });
   } catch (error) {
     console.error("Error checking document status:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

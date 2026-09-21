@@ -42,14 +42,138 @@ export function verifyToken(req: any, res?: any): DecodedToken | null {
   }
 }
 
+import { NextRequest, NextResponse } from "next/server";
+
+const IGNORE_ACTIVITY_ENDPOINTS = [
+  "/api/auth/me",
+  "/api/auth/employee/me"
+];
+
+export async function getAuthenticatedUser(req: NextRequest): Promise<{
+  user: DecodedToken | null;
+  errorResponse: NextResponse | null;
+}> {
+  const pathname = req.nextUrl?.pathname || req.url || '';
+  const shouldIgnoreActivity = IGNORE_ACTIVITY_ENDPOINTS.some((ep: string) => pathname.endsWith(ep));
+  const cookieHeader = (typeof req.headers?.get === 'function' ? req.headers.get('cookie') : null) || '';
+  const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
+  const token = cookies.token || (req.cookies && typeof req.cookies.get === 'function' ? req.cookies.get('token')?.value : undefined);
+
+  if (!token) {
+    return { user: null, errorResponse: NextResponse.json({ error: "No authentication token" }, { status: 401 }) };
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
+    const userId = decoded.id;
+    const userType = decoded.role === 'employee' ? 'employee' : 'admin';
+    const sessionKey = `session_${userType}_${userId}`;
+
+    const currentTime = Date.now();
+    const session = sessions.get(sessionKey);
+
+    if (session) {
+      const timeSinceLastActivity = currentTime - session.lastActivity;
+      if (timeSinceLastActivity > SESSION_TIMEOUT) {
+        sessions.delete(sessionKey);
+        const resp = NextResponse.json({ error: "Session expired due to inactivity" }, { status: 401 });
+        resp.cookies.set("token", "", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
+          expires: new Date(0),
+          path: "/",
+        });
+        return { user: null, errorResponse: resp };
+      }
+
+      if (!shouldIgnoreActivity) {
+        sessions.set(sessionKey, {
+          ...session,
+          lastActivity: currentTime,
+        });
+      }
+    }
+
+    return { user: decoded, errorResponse: null };
+  } catch {
+    return { user: null, errorResponse: NextResponse.json({ error: "Invalid or expired token" }, { status: 401 }) };
+  }
+}
+
 export function withSessionTimeout(handler: any) {
-  return async (req: any, res: any) => {
-    const IGNORE_ACTIVITY_ENDPOINTS = [
+  return async (req: any, resOrContext?: any) => {
+    const isAppRouter = req instanceof Request || (req && req.nextUrl) || (!resOrContext || typeof resOrContext.status !== 'function');
+
+    if (isAppRouter) {
+      const context = resOrContext;
+      const pathname = req.nextUrl?.pathname || req.url || '';
+      const shouldIgnoreActivity = IGNORE_ACTIVITY_ENDPOINTS.some((ep: string) => pathname.endsWith(ep));
+      const cookieHeader = (typeof req.headers?.get === 'function' ? req.headers.get('cookie') : null) || req.headers?.cookie || '';
+      const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
+      const token = cookies.token || (req.cookies && typeof req.cookies.get === 'function' ? req.cookies.get('token')?.value : undefined);
+
+      if (!token) {
+        return NextResponse.json({ error: "No authentication token" }, { status: 401 });
+      }
+
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
+        const userId = decoded.id;
+        const userType = decoded.role === 'employee' ? 'employee' : 'admin';
+        const sessionKey = `session_${userType}_${userId}`;
+        
+        const currentTime = Date.now();
+        const session = sessions.get(sessionKey);
+        
+        if (!session) {
+          const resp = NextResponse.json({ error: "No active session found" }, { status: 401 });
+          resp.cookies.set("token", "", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            expires: new Date(0),
+            path: "/",
+          });
+          return resp;
+        }
+        
+        const timeSinceLastActivity = currentTime - session.lastActivity;
+        
+        if (timeSinceLastActivity > SESSION_TIMEOUT) {
+          sessions.delete(sessionKey);
+          const resp = NextResponse.json({ error: "Session expired due to inactivity" }, { status: 401 });
+          resp.cookies.set("token", "", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            expires: new Date(0),
+            path: "/",
+          });
+          return resp;
+        }
+
+        if (!shouldIgnoreActivity) {
+          sessions.set(sessionKey, {
+            ...session,
+            lastActivity: currentTime
+          });
+        }
+
+        req.user = decoded;
+        return handler(req, context);
+      } catch {
+        return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
+      }
+    }
+
+    const res = resOrContext;
+    const IGNORE_ACTIVITY_ENDPOINTS_LEGACY = [
       "/api/auth/me",
       "/api/auth/employee/me"
     ];
     
-    const shouldIgnoreActivity = IGNORE_ACTIVITY_ENDPOINTS.includes(req.url);
+    const shouldIgnoreActivity = IGNORE_ACTIVITY_ENDPOINTS_LEGACY.includes(req.url);
     const cookieHeader = req.headers?.cookie || (typeof req?.headers?.get === 'function' ? req.headers.get('cookie') : '');
     const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
     const token = cookies.token;

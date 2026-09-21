@@ -9,7 +9,7 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
 
-async function getServerSideProps() {
+async function getServerSideProps(context?: any) {
   try {
     // Check if SUPER_ADMIN already exists
     const existingSuperAdmin = await prisma.users.findFirst({

@@ -1,21 +1,19 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-// /pages/api/hr/users.js
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withSessionTimeout } from "@/lib/authMiddleware";
+import { getAuthenticatedUser } from "@/lib/authMiddleware";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { user, errorResponse } = await getAuthenticatedUser(req);
+  if (errorResponse) return errorResponse;
+  if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-  const user = req.user;
-  if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-  const hasAccess = (await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_VIEW)) || (await checkPermission(user, PERMISSION_KEYS.PAYROLL_VIEW));
+  const hasAccess =
+    (await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_VIEW)) ||
+    (await checkPermission(user, PERMISSION_KEYS.PAYROLL_VIEW));
   if (!hasAccess) {
-    return res.status(403).json({ message: "Access denied: insufficient permissions" });
+    return NextResponse.json({ message: "Access denied: insufficient permissions" }, { status: 403 });
   }
 
   try {
@@ -38,27 +36,24 @@ async function handler(req, res) {
             },
           },
           select: {
-            id: true, 
+            id: true,
           },
         },
       },
     });
 
-    const transformedUsers = users.map((user) => ({
-      empid: user.empid,
-      name: user.name,
-      email: user.email,
-      phone: user.contact_number,
-      role: user.role,
-      payrollStatus: user.payroll.length > 0 ? "Generated" : "Pending",
+    const transformedUsers = users.map((u) => ({
+      empid: u.empid,
+      name: u.name,
+      email: u.email,
+      phone: u.contact_number,
+      role: u.role,
+      payrollStatus: u.payroll.length > 0 ? "Generated" : "Pending",
     }));
 
-    res.status(200).json({ users: transformedUsers });
+    return NextResponse.json({ users: transformedUsers }, { status: 200 });
   } catch (error) {
     console.error("Error fetching users with payroll:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
-
-const wrappedHandler = withSessionTimeout(handler);
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

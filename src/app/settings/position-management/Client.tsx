@@ -70,21 +70,28 @@ function PositionManagement() {
       try {
         const res = await fetch("/api/auth/me");
         if (res.ok) {
-          const userData = await res.json();
-          const role = userData.user?.role;
+          const authData = await res.json();
+          const role = authData.user?.role;
           setUserRole(role);
 
-          if (role === "employee") {
+          const isSuper = Boolean(authData.isSuperAdmin || authData.user?.isSuperAdmin);
+          const perms: string[] = authData.permissions || authData.user?.permissions || [];
+          const canView = isSuper || perms.includes("settings.position_view") || perms.includes("settings.position_manage");
+
+          if (!canView) {
+            setUserRole("unauthorized");
             setLoading(false);
             return;
           }
 
-          if (["superadmin", "admin", "hr"].includes(role)) {
-            fetchPositions();
-          }
+          fetchPositions();
+        } else {
+          setUserRole("unauthorized");
+          setLoading(false);
         }
       } catch (error) {
         console.error("Failed to fetch user:", error);
+        setUserRole("unauthorized");
         setLoading(false);
       }
     };
@@ -92,7 +99,7 @@ function PositionManagement() {
     checkAccess();
   }, []);
 
-  if (userRole === "employee") {
+  if (userRole === "unauthorized") {
     return (
       <>
         <Head>
@@ -103,7 +110,6 @@ function PositionManagement() {
             <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
             <p className="text-gray-600 mb-4">You don&apos;t have permission to access this page.</p>
-            {/*<p className="text-sm text-gray-500">Only HR, Admin, and Super Admin can manage positions.</p>*/}
           </div>
         </div>
       </>
@@ -483,7 +489,7 @@ function PositionManagement() {
                                               </select>
                                             ) : (
                                               <div className="text-sm text-red-500">
-                                                {userRole === "hr" ? "Position change is not permitted." : "Insufficient permissions"}
+                                                Insufficient permissions
                                               </div>
                                             )}
                                           </div>

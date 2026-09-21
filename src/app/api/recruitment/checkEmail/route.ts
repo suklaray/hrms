@@ -1,16 +1,17 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
+
+  
 
   try {
-    const { email } = req.query;
+    const { email } = query;
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     const [existingCandidate, existingUser, existingEmployee] = await Promise.all([
@@ -20,13 +21,12 @@ async function handler(req, res) {
     ]);
 
     const exists = !!(existingCandidate || existingUser || existingEmployee);
-    res.status(200).json({ exists });
+    return NextResponse.json({ exists }, { status: 200 });
   } catch (error) {
     console.error('Error checking email:', error);
-    res.status(500).json({ error: 'Failed to check email' });
+    return NextResponse.json({ error: 'Failed to check email' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

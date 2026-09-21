@@ -1,57 +1,53 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withSessionTimeout } from "@/lib/authMiddleware";
+import { getAuthenticatedUser } from "@/lib/authMiddleware";
 import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { getRequestBody } from "@/lib/routeHelper";
 
-async function handler(req, res) {
-  if (req.method !== "PUT") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function PUT(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
+  if (errorResponse) return errorResponse;
+  if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const decoded = req.user;
-
-    const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
-    if (!canView) {
-      return res.status(403).json({ message: "Forbidden: insufficient permissions" });
+    const canManage = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
+    if (!canManage) {
+      return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 
-    const { id, title, description, event_date, event_type, visible_to } = req.body;
+    const { id, title, description, event_date, event_type, visible_to } =
+      (await getRequestBody(req)) || {};
 
     if (!id) {
-      return res.status(400).json({ success: false, message: "Missing event ID" });
+      return NextResponse.json({ success: false, message: "Missing event ID" }, { status: 400 });
     }
 
-    // Fetch existing event
     const existingEvent = await prisma.calendar_events.findUnique({
       where: { id: Number(id) },
     });
 
     if (!existingEvent) {
-      return res.status(404).json({ success: false, message: "Event not found" });
+      return NextResponse.json({ success: false, message: "Event not found" }, { status: 404 });
     }
 
-    // 🧠 Role-based restriction
     if (!isSuperAdmin(decoded) && existingEvent.created_by !== decoded.email) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not allowed to edit this event",
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You are not allowed to edit this event",
+        },
+        { status: 403 }
+      );
     }
 
-    //  Merge visibility:
-    // 1. Start with previous visible_to list
-    // 2. Merge any new values user passed
-    // 3. Always include the creator’s (or updater’s) email
     const newVisibleTo = visible_to
-      ? visible_to.split(",").map(e => e.trim()).filter(e => e)
+      ? visible_to.split(",").map((e: string) => e.trim()).filter((e: string) => e)
       : [];
 
-    // Always include updater's email unless "all" is selected
-    const updatedVisibleTo = newVisibleTo.includes('all') 
-      ? 'all'
-      : Array.from(new Set([...newVisibleTo, (decoded as any)?.email])).join(",");
+    const updatedVisibleTo = newVisibleTo.includes("all")
+      ? "all"
+      : Array.from(new Set([...newVisibleTo, decoded.email])).join(",");
 
     const updatedEvent = await prisma.calendar_events.update({
       where: { id: Number(id) },
@@ -64,15 +60,16 @@ async function handler(req, res) {
       },
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Event updated successfully",
-      event: updatedEvent,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Event updated successfully",
+        event: updatedEvent,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Update event error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 });
   }
 }
-const wrappedHandler = withSessionTimeout(handler);
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

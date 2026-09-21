@@ -1,13 +1,14 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { name, email, subject, message } = req.body;
-  const errors = {};
+  
+
+  const { name, email, subject, message } = body;
+  const errors: Record<string, string> = {};
 
   // Field validations
   if (!name || name.trim() === "") errors.name = "Name is required.";
@@ -20,7 +21,7 @@ async function handler(req, res) {
 
   if (Object.keys(errors).length > 0) {
     console.warn("Validation failed:", errors);
-    return res.status(400).json({ success: false, errors });
+    return NextResponse.json({ success: false, errors }, { status: 400 });
   }
 
   try {
@@ -30,18 +31,18 @@ async function handler(req, res) {
 
     console.log("Contact saved:", result);
 
-    return res.status(200).json({
+    return NextResponse.json({
       success: true,
       message: "Message submitted successfully.",
-    });
+    }, { status: 200 });
   } catch (err) {
     console.error("Server error while saving contact:", err);
-    return res.status(500).json({
+    return NextResponse.json({
       success: false,
       error: "Something went wrong on the server.",
-    });
+    }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

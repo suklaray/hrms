@@ -1,94 +1,113 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-// pages/api/task-management/user-task.js
+import { NextRequest, NextResponse } from "next/server";
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from "@/lib/prisma";
 import { checkPermission } from '@/lib/rbac';
 import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
+import { getRequestBody } from "@/lib/routeHelper";
 
-async function handler(req, res) {
+async function authenticate(req: NextRequest) {
+  const cookies = cookie.parse(req.headers.get('cookie') || '');
+  const { token } = cookies;
+  
+  if (!token) {
+    return { error: 'Unauthorized', status: 401 } as const;
+  }
+
+  let decoded: any;
   try {
-    const cookies = cookie.parse(req.headers.cookie || '');
-    const { token } = cookies;
-    
-    if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    decoded = jwt.verify(token, process.env.JWT_SECRET || '');
+  } catch {
+    return { error: 'Invalid token', status: 401 } as const;
+  }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await prisma.users.findUnique({
-      where: { empid: decoded.empid || decoded.id },
-      select: { empid: true, role: true, name: true }
+  const user = await prisma.users.findUnique({
+    where: { empid: decoded.empid || decoded.id },
+    select: { empid: true, role: true, name: true }
+  });
+
+  if (!user) {
+    return { error: 'User not found', status: 401 } as const;
+  }
+
+  const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.TASK_MY);
+  if (!hasAccess) {
+    return { error: 'Forbidden: insufficient permissions', status: 403 } as const;
+  }
+
+  return { user, decoded };
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await authenticate(req);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+    const { user } = auth;
+
+    // Get tasks assigned to current user
+    const tasks = await prisma.tasks.findMany({
+      where: { assigned_to: user.empid },
+      orderBy: { created_at: 'desc' }
     });
 
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
-    }
+    // Get assigned by user names separately
+    const tasksWithAssigner = await Promise.all(
+      tasks.map(async (task) => {
+        const assigner = await prisma.users.findUnique({
+          where: { empid: task.assigned_by },
+          select: { name: true, empid: true }
+        });
+        return {
+          ...task,
+          assignedBy: assigner
+        };
+      })
+    );
 
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.TASK_MY);
-    if (!hasAccess) {
-      return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
-    }
-
-    if (req.method === 'GET') {
-      // Get tasks assigned to current user
-      const tasks = await prisma.tasks.findMany({
-        where: { assigned_to: user.empid },
-        orderBy: { created_at: 'desc' }
-      });
-
-      // Get assigned by user names separately
-      const tasksWithAssigner = await Promise.all(
-        tasks.map(async (task) => {
-          const assigner = await prisma.users.findUnique({
-            where: { empid: task.assigned_by },
-            select: { name: true, empid: true }
-          });
-          return {
-            ...task,
-            assignedBy: assigner
-          };
-        })
-      );
-
-      return res.status(200).json({ tasks: tasksWithAssigner });
-    }
-
-    if (req.method === 'PUT') {
-      // Update task status
-      const { taskId, status } = req.body;
-      
-      if (!taskId || !status) {
-        return res.status(400).json({ error: 'Task ID and status are required' });
-      }
-
-      // Verify task belongs to user
-      const task = await prisma.tasks.findFirst({
-        where: { 
-          id: parseInt(taskId),
-          assigned_to: user.empid 
-        }
-      });
-
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-
-      const updatedTask = await prisma.tasks.update({
-        where: { id: parseInt(taskId) },
-        data: { status }
-      });
-
-      return res.status(200).json({ message: 'Task status updated', task: updatedTask });
-    }
-
-    return res.status(405).json({ error: 'Method not allowed' });
-    
+    return NextResponse.json({ tasks: tasksWithAssigner }, { status: 200 });
   } catch (error) {
     console.error('User task API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const auth = await authenticate(req);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+    const { user } = auth;
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+    const body = await getRequestBody(req);
+    const { taskId, status } = body || {};
+    
+    if (!taskId || !status) {
+      return NextResponse.json({ error: 'Task ID and status are required' }, { status: 400 });
+    }
+
+    // Verify task belongs to user
+    const task = await prisma.tasks.findFirst({
+      where: { 
+        id: parseInt(taskId),
+        assigned_to: user.empid 
+      }
+    });
+
+    if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    const updatedTask = await prisma.tasks.update({
+      where: { id: parseInt(taskId) },
+      data: { status }
+    });
+
+    return NextResponse.json({ message: 'Task status updated', task: updatedTask }, { status: 200 });
+  } catch (error) {
+    console.error('User task API error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

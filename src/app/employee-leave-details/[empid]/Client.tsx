@@ -44,11 +44,11 @@ function EmployeeLeaveDetails() {
     }
   };
   useEffect(() => {
-  if (empid) {
-    fetchEmployeeData();
-    setLoading(false);
-  }
-}, [empid]);
+    if (empid) {
+      fetchEmployeeData();
+      setLoading(false);
+    }
+  }, [empid]);
 
 
   const getStatusColor = (status) => {
@@ -70,154 +70,154 @@ function EmployeeLeaveDetails() {
   };
 
 
-const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
-  if (currentStatus === 'Rejected' && newStatus === 'Approved') {
-    await swalConfirm(
-      'Cannot change status from Rejected to Approved. This action is not allowed.',
-      false
-    );
-    return;
-  }
-
-  if (
-    (currentStatus === 'Approved' || currentStatus === 'Rejected') &&
-    newStatus === 'Pending'
-  ) {
-    await swalConfirm(
-      'Cannot change status back to Pending once it has been Approved or Rejected.',
-      false
-    );
-    return;
-  }
-
-  let confirmMessage = '';
-
-  if (newStatus === 'Approved') {
-    confirmMessage =
-      'Are you sure you want to APPROVE this leave request? Once confirmed, this can only be changed to Rejected (one time only).';
-  } else if (newStatus === 'Rejected') {
-    if (currentStatus === 'Approved') {
-      confirmMessage =
-        'Are you sure you want to REJECT this leave request? This is a one-time change from Approved to Rejected and cannot be reversed.';
-    } else {
-      confirmMessage =
-        'Are you sure you want to REJECT this leave request? Once confirmed, this cannot be changed.';
+  const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
+    if (currentStatus === 'Rejected' && newStatus === 'Approved') {
+      await swalConfirm(
+        'Cannot change status from Rejected to Approved. This action is not allowed.',
+        false
+      );
+      return;
     }
-  } else if (newStatus === 'Cancelled') {
-    confirmMessage =
-      'Are you sure you want to CANCEL this leave request?';
-  }
 
-  const confirmed = await swalConfirm(confirmMessage);
+    if (
+      (currentStatus === 'Approved' || currentStatus === 'Rejected') &&
+      newStatus === 'Pending'
+    ) {
+      await swalConfirm(
+        'Cannot change status back to Pending once it has been Approved or Rejected.',
+        false
+      );
+      return;
+    }
 
-  if (!confirmed) return;
+    let confirmMessage = '';
 
-  // APPROVED → Save directly
-  if (newStatus === 'Approved') {
+    if (newStatus === 'Approved') {
+      confirmMessage =
+        'Are you sure you want to APPROVE this leave request? Once confirmed, this can only be changed to Rejected (one time only).';
+    } else if (newStatus === 'Rejected') {
+      if (currentStatus === 'Approved') {
+        confirmMessage =
+          'Are you sure you want to REJECT this leave request? This is a one-time change from Approved to Rejected and cannot be reversed.';
+      } else {
+        confirmMessage =
+          'Are you sure you want to REJECT this leave request? Once confirmed, this cannot be changed.';
+      }
+    } else if (newStatus === 'Cancelled') {
+      confirmMessage =
+        'Are you sure you want to CANCEL this leave request?';
+    }
+
+    const confirmed = await swalConfirm(confirmMessage);
+
+    if (!confirmed) return;
+
+    // APPROVED → Save directly
+    if (newStatus === 'Approved') {
+      try {
+        const res = await fetch('/api/hr/update-leave-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: leaveId,
+            status: newStatus
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          fetchEmployeeData();
+        }
+      } catch (error) {
+        console.error('Error updating status:', error);
+      }
+
+      return;
+    }
+
+    // REJECTED / CANCELLED → Open modal
+    if (newStatus === 'Rejected' || newStatus === 'Cancelled') {
+      setPendingLeave(leaveId);
+      setPendingStatus(newStatus);
+      setActionReason('');
+      setShowReasonModal(true);
+    }
+  };
+  const submitStatusWithReason = async () => {
+    if (!actionReason.trim()) {
+      await swalConfirm('Reason is required', false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/hr/update-leave-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: leaveId,
-          status: newStatus
+          id: pendingLeave,
+          status: pendingStatus,
+          reason: actionReason
         })
       });
 
       const data = await res.json();
 
       if (data.success) {
+        toast.success('Leave status updated successfully');
+        setShowReasonModal(false);
+        setActionReason('');
+        setPendingLeave(null);
+        setPendingStatus('');
+
         fetchEmployeeData();
+
       }
     } catch (error) {
       console.error('Error updating status:', error);
+      toast.error('Failed to update leave status');
     }
-
-    return;
-  }
-
-  // REJECTED / CANCELLED → Open modal
-  if (newStatus === 'Rejected' || newStatus === 'Cancelled') {
-    setPendingLeave(leaveId);
-    setPendingStatus(newStatus);
-    setActionReason('');
-    setShowReasonModal(true);
-  }
-};
-const submitStatusWithReason = async () => {
-  if (!actionReason.trim()) {
-    await swalConfirm('Reason is required', false);
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/hr/update-leave-status', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: pendingLeave,
-        status: pendingStatus,
-        reason: actionReason
-      })
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      toast.success('Leave status updated successfully');
-      setShowReasonModal(false);
-      setActionReason('');
-      setPendingLeave(null);
-      setPendingStatus('');
-
-      fetchEmployeeData();
-
-    }
-  } catch (error) {
-    console.error('Error updating status:', error);
-    toast.error('Failed to update leave status'); 
-  }
-};
+  };
 
 
   const calculateLeaveBalances = async (leaveHistory) => {
-  try {
-    const res = await fetch('/api/hr/leave-types');
-    const data = await res.json();
-    
-    if (data.success) {
-      const leaveTypes = data.data;
-      const currentYear = moment().year();
-      
-      const balances = leaveTypes.map(type => {
-        const normalizeType = (str) => str.replace(/[_\s]/g, '').toLowerCase();
-        
-        const approvedLeaves = leaveHistory.filter(leave => 
-          normalizeType(leave.leave_type) === normalizeType(type.type_name) && 
-          leave.status === 'Approved' &&
-          moment(leave.from_date).year() === currentYear
-        );
-        
-        const usedDays = approvedLeaves.reduce((sum, leave) => {
-          const days = moment(leave.to_date).diff(moment(leave.from_date), 'days') + 1;
-          return sum + days;
-        }, 0);
-        
-        return {
-          type_name: type.type_name,
-          max_days: type.max_days,
-          used: usedDays,
-          remaining: Math.max(0, type.max_days - usedDays),
-          paid: type.paid // Add this line
-        };
-      });
-      
-      setLeaveBalances(balances);
+    try {
+      const res = await fetch('/api/hr/leave-types');
+      const data = await res.json();
+
+      if (data.success) {
+        const leaveTypes = data.data;
+        const currentYear = moment().year();
+
+        const balances = leaveTypes.map(type => {
+          const normalizeType = (str) => str.replace(/[_\s]/g, '').toLowerCase();
+
+          const approvedLeaves = leaveHistory.filter(leave =>
+            normalizeType(leave.leave_type) === normalizeType(type.type_name) &&
+            leave.status === 'Approved' &&
+            moment(leave.from_date).year() === currentYear
+          );
+
+          const usedDays = approvedLeaves.reduce((sum, leave) => {
+            const days = moment(leave.to_date).diff(moment(leave.from_date), 'days') + 1;
+            return sum + days;
+          }, 0);
+
+          return {
+            type_name: type.type_name,
+            max_days: type.max_days,
+            used: usedDays,
+            remaining: Math.max(0, type.max_days - usedDays),
+            paid: type.paid // Add this line
+          };
+        });
+
+        setLeaveBalances(balances);
+      }
+    } catch (error) {
+      console.error('Error calculating leave balances:', error);
     }
-  } catch (error) {
-    console.error('Error calculating leave balances:', error);
-  }
-};
+  };
 
 
 
@@ -246,7 +246,7 @@ const submitStatusWithReason = async () => {
       </div>
     );
   }
-  
+
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -273,7 +273,7 @@ const submitStatusWithReason = async () => {
             { label: 'Leave Requests', href: '/view-leave-requests' },
             { label: employeeData?.name || 'Employee Details' }
           ]} />
-          
+
           {/* Employee Info Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
             <div className="flex items-center">
@@ -347,7 +347,7 @@ const submitStatusWithReason = async () => {
                 Leave History
               </h3>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -366,7 +366,7 @@ const submitStatusWithReason = async () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {(() => {
                     if (!employeeData.leaveHistory || employeeData.leaveHistory.length === 0) return null;
-                    
+
                     // Filter out past dates for completed leave requests
                     const today = moment().startOf('day');
                     const filteredLeaves = employeeData.leaveHistory.filter(leave => {
@@ -376,16 +376,16 @@ const submitStatusWithReason = async () => {
 
 
 
-                    
+
                     const totalPages = Math.ceil(filteredLeaves.length / itemsPerPage);
                     const startIndex = (currentPage - 1) * itemsPerPage;
                     const paginatedLeaves = filteredLeaves.slice(startIndex, startIndex + itemsPerPage);
-                    
+
                     return paginatedLeaves.map((leave, index) => {
                       const fromDate = moment(leave.from_date);
                       const toDate = moment(leave.to_date);
                       const duration = toDate.diff(fromDate, 'days') + 1;
-                  
+
 
                       return (
                         <tr key={leave.id} className="hover:bg-gray-50">
@@ -402,8 +402,8 @@ const submitStatusWithReason = async () => {
                             <div className="text-sm text-gray-900">{duration} day{duration > 1 ? 's' : ''}</div>
                           </td>
                           <td className="px-6 py-4">
-                            <div 
-                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
+                            <div
+                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600"
                               title="Click to view full reason"
                               onClick={() => {
                                 setSelectedReason(leave.reason);
@@ -434,9 +434,9 @@ const submitStatusWithReason = async () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {leave.attachment ? (
-                              <a 
-                                href={leave.attachment} 
-                                target="_blank" 
+                              <a
+                                href={leave.attachment}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center text-indigo-600 hover:text-indigo-900"
                               >
@@ -479,7 +479,7 @@ const submitStatusWithReason = async () => {
                   })()}
                   {(!employeeData.leaveHistory || employeeData.leaveHistory.length === 0) && (
                     <tr>
-                      <td colSpan="9" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                         <div className="flex flex-col items-center">
                           <Calendar className="w-12 h-12 text-gray-300 mb-4" />
                           <p>No leave history found for this employee</p>
@@ -490,7 +490,7 @@ const submitStatusWithReason = async () => {
                 </tbody>
               </table>
             </div>
-            
+
             {/* Pagination */}
             {employeeData.leaveHistory && (() => {
               const today = moment().startOf('day');
@@ -499,11 +499,11 @@ const submitStatusWithReason = async () => {
                 return toDate.isSameOrAfter(today);
               });
               const totalPages = Math.ceil(filteredLeaves.length / itemsPerPage);
-              
+
               const handlePageChange = (page) => {
                 setCurrentPage(page);
               };
-              
+
               return totalPages > 1 ? (
                 <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
                   <div className="text-sm text-gray-700">
@@ -513,37 +513,34 @@ const submitStatusWithReason = async () => {
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === 1
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
-                    
+
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <button
                         key={page}
                         onClick={() => handlePageChange(page)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          page === currentPage
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                        }`}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${page === currentPage
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                          }`}
                       >
                         {page}
                       </button>
                     ))}
-                    
+
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === totalPages
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>

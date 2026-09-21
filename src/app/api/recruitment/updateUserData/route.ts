@@ -1,29 +1,23 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getRequestBody } from "@/lib/routeHelper";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
-  const { token, device_info } = req.body;
+export async function POST(req: NextRequest) {
+  const { token, device_info } = (await getRequestBody(req)) || {};
 
   if (!token) {
-    return res.status(400).json({ message: "Token is required" });
+    return NextResponse.json({ message: "Token is required" }, { status: 400 });
   }
 
   try {
-    // Enhanced IP detection with multiple fallbacks
     const getClientIP = () => {
-      const forwarded = req.headers["x-forwarded-for"];
-      const realIP = req.headers["x-real-ip"];
-      const clientIP = req.headers["x-client-ip"];
-      const remoteAddr = req.connection?.remoteAddress || req.socket?.remoteAddress;
+      const forwarded = req.headers.get("x-forwarded-for");
+      const realIP = req.headers.get("x-real-ip");
+      const clientIP = req.headers.get("x-client-ip");
       
       if (forwarded) return forwarded.split(',')[0].trim();
       if (realIP) return realIP.trim();
       if (clientIP) return clientIP.trim();
-      if (remoteAddr) return remoteAddr;
       return 'unknown';
     };
     
@@ -33,9 +27,9 @@ async function handler(req, res) {
       ip_address, 
       device_info: device_info?.slice(0, 100),
       headers: {
-        'x-forwarded-for': req.headers["x-forwarded-for"],
-        'x-real-ip': req.headers["x-real-ip"],
-        'user-agent': req.headers["user-agent"]?.slice(0, 50)
+        'x-forwarded-for': req.headers.get("x-forwarded-for"),
+        'x-real-ip': req.headers.get("x-real-ip"),
+        'user-agent': req.headers.get("user-agent")?.slice(0, 50)
       }
     });
 
@@ -47,7 +41,7 @@ async function handler(req, res) {
     
     if (!candidate) {
       console.log('UpdateUserData - Candidate not found for token:', token);
-      return res.status(404).json({ message: "Candidate not found" });
+      return NextResponse.json({ message: "Candidate not found" }, { status: 404 });
     }
     
     console.log('UpdateUserData - Current candidate data:', {
@@ -72,7 +66,7 @@ async function handler(req, res) {
       });
       
       console.log('UpdateUserData - Force Updated:', { 
-        candidateId: candidate.candidate_id,
+        candidateId: candidate.candidate_id, 
         updatedIP: result.ip_address,
         updatedDevice: result.device_info?.slice(0, 50),
         success: true
@@ -81,16 +75,14 @@ async function handler(req, res) {
       console.log('UpdateUserData - No update needed, data already exists');
     }
 
-    res.status(200).json({ 
+    return NextResponse.json({ 
       message: "User data updated successfully",
       updated: needsUpdate,
       ip_address: ip_address,
       candidateId: candidate.candidate_id
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("Error updating user data:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

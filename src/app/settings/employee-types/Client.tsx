@@ -13,7 +13,7 @@ import { swalConfirm } from '@/utils/confirmDialog';
 function EmployeeTypes() {
   const router = useRouter();
   const [roles, setRoles] = useState([]);
-  const [groupedPermissions, setGroupedPermissions] = useState({});
+  const [groupedPermissions, setGroupedPermissions] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);

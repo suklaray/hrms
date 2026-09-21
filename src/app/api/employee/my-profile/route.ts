@@ -1,22 +1,20 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import { verifyEmployeeToken } from '@/lib/auth';
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     const user = await verifyEmployeeToken(req);
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Find user by id to ensure consistency and include verification fields
     const employee = await prisma.users.findUnique({
       where: { 
-        id: user.id 
+        id: Number(user.id) 
       },
       select: {
         empid: true,
@@ -33,16 +31,15 @@ async function handler(req, res) {
     });
 
     if (!employee) {
-      return res.status(404).json({ error: 'Employee not found' });
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
     console.log(`Employee profile fetched: ${employee.name} - Verified: ${employee.verified}, Form Submitted: ${employee.form_submitted}`);
 
-    res.status(200).json(employee);
+    return NextResponse.json(employee, { status: 200 });
   } catch (error) {
     console.error('Employee profile error:', error);
-    res.status(500).json({ error: 'Failed to fetch employee profile' });
+    return NextResponse.json({ error: 'Failed to fetch employee profile' }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

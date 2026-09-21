@@ -39,25 +39,25 @@ function EmployeeLeaveSummary() {
     try {
       const res = await fetch('/api/hr/leave-types');
       const data = await res.json();
-      
+
       if (data.success) {
         const leaveTypes = data.data;
         const currentYear = moment().year();
-        
+
         const balances = leaveTypes.map(type => {
           const normalizeType = (str) => str.replace(/[_\s]/g, '').toLowerCase();
-          
-          const approvedLeaves = leaveHistory.filter(leave => 
-            normalizeType(leave.leave_type) === normalizeType(type.type_name) && 
+
+          const approvedLeaves = leaveHistory.filter(leave =>
+            normalizeType(leave.leave_type) === normalizeType(type.type_name) &&
             leave.status === 'Approved' &&
             moment(leave.from_date).year() === currentYear
           );
-          
+
           const usedDays = approvedLeaves.reduce((sum, leave) => {
             const days = moment(leave.to_date).diff(moment(leave.from_date), 'days') + 1;
             return sum + days;
           }, 0);
-          
+
           return {
             type_name: type.type_name,
             max_days: type.max_days,
@@ -66,7 +66,7 @@ function EmployeeLeaveSummary() {
             paid: type.paid
           };
         });
-        
+
         setLeaveBalances(balances);
       }
     } catch (error) {
@@ -122,15 +122,15 @@ function EmployeeLeaveSummary() {
     return statusMatch && fromDateMatch && toDateMatch;
   }) || [];
 
-  const sortedLeaveHistory = filteredLeaveHistory.sort((a, b) => 
-    new Date(b.applied_at || b.created_at) - new Date(a.applied_at || a.created_at)
+  const sortedLeaveHistory = filteredLeaveHistory.sort((a, b) =>
+    new Date(b.applied_at || b.created_at).getTime() - new Date(a.applied_at || a.created_at).getTime()
   );
 
   // Calculate leave status counts from filtered data
   const leaveStatusCounts = {
-    approved: filteredLeaveHistory.filter(leave => leave.status === 'Approved').length,
-    pending: filteredLeaveHistory.filter(leave => leave.status === 'Pending').length,
-    rejected: filteredLeaveHistory.filter(leave => leave.status === 'Rejected').length
+    approved: filteredLeaveHistory.filter((leave: any) => leave.status === 'Approved').length,
+    pending: filteredLeaveHistory.filter((leave: any) => leave.status === 'Pending').length,
+    rejected: filteredLeaveHistory.filter((leave: any) => leave.status === 'Rejected').length
   };
 
   return (
@@ -155,68 +155,65 @@ function EmployeeLeaveSummary() {
 
         <div className="p-6 space-y-6">
           {/* Employee Info */}
-<div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-  <div className="flex items-start justify-between">
-    <div className="flex items-center">
-      <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-        <User className="w-8 h-8 text-indigo-600" />
-      </div>
-      <div className="ml-6">
-        <h2 className="text-xl font-semibold text-gray-900">{employeeData.name}</h2>
-        <p className="text-gray-600">Employee ID: {employeeData.empid}</p>
-        <p className="text-gray-600">Email: {employeeData.email}</p>
-      </div>
-    </div>
-    
-    {/* Small Leave Status Cards */}
-    <div className="flex gap-3">
-      <div 
-        className={`border rounded-lg p-3 cursor-pointer transition-all min-w-[80px] ${
-          statusFilter === 'Approved' 
-            ? 'bg-green-100 border-green-300 shadow-md' 
-            : 'bg-green-50 border-green-200 hover:bg-green-100'
-        }`}
-        onClick={() => handleStatusFilter('Approved')}
-      >
-        <div className="text-center">
-          <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-1" />
-          <p className="text-xs font-medium text-green-800">Approved</p>
-          <p className="text-lg font-bold text-green-900">{leaveStatusCounts.approved}</p>
-        </div>
-      </div>
-      
-      <div 
-        className={`border rounded-lg p-3 cursor-pointer transition-all min-w-[80px] ${
-          statusFilter === 'Pending' 
-            ? 'bg-yellow-100 border-yellow-300 shadow-md' 
-            : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
-        }`}
-        onClick={() => handleStatusFilter('Pending')}
-      >
-        <div className="text-center">
-          <Clock className="w-5 h-5 text-yellow-600 mx-auto mb-1" />
-          <p className="text-xs font-medium text-yellow-800">Pending</p>
-          <p className="text-lg font-bold text-yellow-900">{leaveStatusCounts.pending}</p>
-        </div>
-      </div>
-      
-      <div 
-        className={`border rounded-lg p-3 cursor-pointer transition-all min-w-[80px] ${
-          statusFilter === 'Rejected' 
-            ? 'bg-red-100 border-red-300 shadow-md' 
-            : 'bg-red-50 border-red-200 hover:bg-red-100'
-        }`}
-        onClick={() => handleStatusFilter('Rejected')}
-      >
-        <div className="text-center">
-          <XCircle className="w-5 h-5 text-red-600 mx-auto mb-1" />
-          <p className="text-xs font-medium text-red-800">Rejected</p>
-          <p className="text-lg font-bold text-red-900">{leaveStatusCounts.rejected}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center">
+                <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <User className="w-8 h-8 text-indigo-600" />
+                </div>
+                <div className="ml-6">
+                  <h2 className="text-xl font-semibold text-gray-900">{employeeData.name}</h2>
+                  <p className="text-gray-600">Employee ID: {employeeData.empid}</p>
+                  <p className="text-gray-600">Email: {employeeData.email}</p>
+                </div>
+              </div>
+
+              {/* Small Leave Status Cards */}
+              <div className="flex gap-3">
+                <div
+                  className={`border rounded-lg p-3 cursor-pointer transition-all min-w-[80px] ${statusFilter === 'Approved'
+                    ? 'bg-green-100 border-green-300 shadow-md'
+                    : 'bg-green-50 border-green-200 hover:bg-green-100'
+                    }`}
+                  onClick={() => handleStatusFilter('Approved')}
+                >
+                  <div className="text-center">
+                    <CheckCircle className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                    <p className="text-xs font-medium text-green-800">Approved</p>
+                    <p className="text-lg font-bold text-green-900">{leaveStatusCounts.approved}</p>
+                  </div>
+                </div>
+
+                <div
+                  className={`border rounded-lg p-3 cursor-pointer transition-all min-w-[80px] ${statusFilter === 'Pending'
+                    ? 'bg-yellow-100 border-yellow-300 shadow-md'
+                    : 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100'
+                    }`}
+                  onClick={() => handleStatusFilter('Pending')}
+                >
+                  <div className="text-center">
+                    <Clock className="w-5 h-5 text-yellow-600 mx-auto mb-1" />
+                    <p className="text-xs font-medium text-yellow-800">Pending</p>
+                    <p className="text-lg font-bold text-yellow-900">{leaveStatusCounts.pending}</p>
+                  </div>
+                </div>
+
+                <div
+                  className={`border rounded-lg p-3 cursor-pointer transition-all min-w-[80px] ${statusFilter === 'Rejected'
+                    ? 'bg-red-100 border-red-300 shadow-md'
+                    : 'bg-red-50 border-red-200 hover:bg-red-100'
+                    }`}
+                  onClick={() => handleStatusFilter('Rejected')}
+                >
+                  <div className="text-center">
+                    <XCircle className="w-5 h-5 text-red-600 mx-auto mb-1" />
+                    <p className="text-xs font-medium text-red-800">Rejected</p>
+                    <p className="text-lg font-bold text-red-900">{leaveStatusCounts.rejected}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
 
           {/* Date Filter */}
@@ -310,7 +307,7 @@ function EmployeeLeaveSummary() {
                 Showing {sortedLeaveHistory.length} of {employeeData.leaveHistory?.length || 0} records
               </p>
             </div>
-            
+
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -343,41 +340,41 @@ function EmployeeLeaveSummary() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {duration} day{duration > 1 ? 's' : ''}
                         </td>
-                          <td className="px-6 py-4">
-                            <div 
-                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
-                              title="Click to view full reason"
-                              onClick={() => {
-                                setSelectedReason(leave.reason);
-                                setShowViewReasonModal(true);
-                              }}
-                            >
-                              {leave.reason || "-"}
-                            </div>
-                          </td> 
-                          <td className="px-6 py-4">
-                            <div 
-                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
-                              title="Click to view full reason"
-                              onClick={() => {
-                                setSelectedReason(leave.resoan_to_reject);
-                                setShowViewReasonModal(true);
-                              }}
-                            >
-                              {leave.resoan_to_reject || "-"}
-                            </div>
-                          </td> <td className="px-6 py-4">
-                            <div 
-                              className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600" 
-                              title="Click to view full reason"
-                              onClick={() => {
-                                setSelectedReason(leave.reason_to_cancel);
-                                setShowViewReasonModal(true);
-                              }}
-                            >
-                              {leave.reason_to_cancel || "-"}
-                            </div>
-                          </td> 
+                        <td className="px-6 py-4">
+                          <div
+                            className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600"
+                            title="Click to view full reason"
+                            onClick={() => {
+                              setSelectedReason(leave.reason);
+                              setShowViewReasonModal(true);
+                            }}
+                          >
+                            {leave.reason || "-"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div
+                            className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600"
+                            title="Click to view full reason"
+                            onClick={() => {
+                              setSelectedReason(leave.resoan_to_reject);
+                              setShowViewReasonModal(true);
+                            }}
+                          >
+                            {leave.resoan_to_reject || "-"}
+                          </div>
+                        </td> <td className="px-6 py-4">
+                          <div
+                            className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600"
+                            title="Click to view full reason"
+                            onClick={() => {
+                              setSelectedReason(leave.reason_to_cancel);
+                              setShowViewReasonModal(true);
+                            }}
+                          >
+                            {leave.reason_to_cancel || "-"}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(leave.status)}`}>
                             {leave.status === 'Approved' && <CheckCircle className="w-3 h-3 mr-1" />}
@@ -389,9 +386,9 @@ function EmployeeLeaveSummary() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {leave.attachment ? (
-                            <a 
-                              href={leave.attachment} 
-                              target="_blank" 
+                            <a
+                              href={leave.attachment}
+                              target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center text-indigo-600 hover:text-indigo-900"
                             >
@@ -407,7 +404,7 @@ function EmployeeLeaveSummary() {
                   })}
                   {sortedLeaveHistory.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                         <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                         <p>No leave records found for the selected filters</p>
                       </td>

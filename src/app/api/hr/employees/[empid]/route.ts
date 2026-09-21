@@ -1,17 +1,9 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-// pages/api/hr/employee/[empid].js
-
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getQueryParams } from "@/lib/routeHelper";
 
-async function handler(req, res) {
-  const {
-    query: { empid },
-    method,
-  } = req;
-
-  if (method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { empid } = await getQueryParams(req, context?.params);
 
   try {
     const user = await prisma.users.findUnique({
@@ -19,12 +11,12 @@ async function handler(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "Employee not found" });
+      return NextResponse.json({ message: "Employee not found" }, { status: 404 });
     }
 
     // Check if user is inactive
     if (user.status === "Inactive") {
-      return res.status(403).json({ message: "Access denied. Employee is inactive." });
+      return NextResponse.json({ message: "Access denied. Employee is inactive." }, { status: 403 });
     }
 
     console.log("User contact_number:", user.contact_number);
@@ -62,12 +54,9 @@ async function handler(req, res) {
       bankDetails: bankDetails,
     };
 
-    return res.status(200).json({ employee });
+    return NextResponse.json({ employee }, { status: 200 });
   } catch (error) {
     console.error("Error fetching employee:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

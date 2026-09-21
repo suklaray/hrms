@@ -17,7 +17,7 @@ function EditEmployeeType() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [allRoles, setAllRoles] = useState([]);
-  const [groupedPermissions, setGroupedPermissions] = useState({});
+  const [groupedPermissions, setGroupedPermissions] = useState<Record<string, any[]>>({});
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
   const [parentSearchTerm, setParentSearchTerm] = useState('');

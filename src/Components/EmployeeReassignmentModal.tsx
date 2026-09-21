@@ -41,35 +41,10 @@ export default function EmployeeReassignmentModal({
   }, [isOpen, positionName, fetchEmployees]);
 
 const canReassignEmployee = (employee) => {
-  if (userRole === "superadmin") return true;
-
-  if (userRole === "admin") {
-    return employee.role === "hr" || employee.role === "employee";
-  }
-
-  if (userRole === "hr") {
-    return employee.role === "employee";
-  }
-
-  return false;
+  return true;
 };
 
   const handlePositionChange = async (empid, newPosition, employee) => {
-  if (!canReassignEmployee(employee)) {
-    let message = "Insufficient permissions";
-
-    if (userRole === "hr") {
-      message = "Position can only be changed by Admin or Super Admin";
-    }
-    if (
-      userRole === "admin" &&
-      (employee.role === "admin" || employee.role === "superadmin")
-    ) {
-      message = "Only Super Admin can change this position";
-    }
-    toast.error(message);
-    return;
-  }
   setReassigning(prev => ({ ...prev, [empid]: true }));
   try {
     await axios.put("/api/settings/position-employees", {
@@ -184,16 +159,6 @@ const canReassignEmployee = (employee) => {
                           </option>
                         ))}
                       </select>
-                      {!canReassignEmployee(employee) && (
-                        <p className="text-xs text-red-500 mt-1">
-                          {userRole === "hr" && employee.role !== "employee" &&
-                            "Position can only be changed by Admin or Super Admin"}
-
-                          {userRole === "admin" &&
-                            (employee.role === "admin" || employee.role === "superadmin") &&
-                            "Only Super Admin can change this position"}
-                        </p>
-                      )}
                       {reassigning[employee.empid] && (
                         <div className="flex items-center gap-2 mt-2">
                           <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600 border-t-transparent"></div>

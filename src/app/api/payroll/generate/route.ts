@@ -1,23 +1,23 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", ["POST"]);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
+export async function POST(req: NextRequest) {
+  const token = req.cookies.get('token')?.value;
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET!);
+  } catch {
+    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
-
-  const token = req.cookies?.token;
-  if (!token) return res.status(401).json({ error: 'Unauthorized' });
-  let decoded;
-  try { decoded = jwt.verify(token, process.env.JWT_SECRET); } catch { return res.status(401).json({ error: 'Invalid token' }); }
   const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
-  if (!hasAccess) return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
+  if (!hasAccess) return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
 
   try {
+    const body = await req.json().catch(() => ({}));
     const {
       empid,
       month,
@@ -34,12 +34,7 @@ async function handler(req, res) {
       payslip_pdf,
       allowance_details,
       deduction_details,
-      hra_include,
-      da_include,
-      pf_include,
-      ptax_include,
-      esic_include
-    } = req.body;
+    } = body;
 
     // Check if payroll already exists
     const existingPayroll = await prisma.payroll.findFirst({
@@ -51,7 +46,7 @@ async function handler(req, res) {
     });
 
     if (existingPayroll) {
-      return res.status(400).json({ error: `Payroll for ${month} ${year} already exists for this employee` });
+      return NextResponse.json({ error: `Payroll for ${month} ${year} already exists for this employee` }, { status: 400 });
     }
 
     const bs = Math.round((Number(basic_salary) || 0) * 100) / 100;
@@ -90,31 +85,15 @@ async function handler(req, res) {
       },
     });
 
-    // Update user status to 'Payroll Generated'
-    // try {
-    //   await prisma.users.update({
-    //     where: { empid },
-    //     data: {
-    //       status: 'Payroll Generated',
-    //     },
-    //   });
-    //   console.log(`Updated status for employee ${empid} to 'Payroll Generated'`);
-    // } catch (updateError) {
-    //   console.error('Error updating user status:', updateError);
-    // }
-
-    return res.status(200).json({ 
+    return NextResponse.json({ 
       message: "Payroll generated successfully",
       empid,
       month,
       year,
       net_pay: calculated_net_pay
-    });
-  } catch (err) {
+    }, { status: 200 });
+  } catch (err: any) {
     console.error("Error generating payroll:", err);
-    return res.status(500).json({ error: "Failed to generate payroll" });
+    return NextResponse.json({ error: "Failed to generate payroll" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

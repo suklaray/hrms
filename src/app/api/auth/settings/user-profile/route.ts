@@ -1,22 +1,18 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const cookies = cookie.parse(req.headers.cookie || "");
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const cookies = cookie.parse(req.headers.get('cookie') || "");
   const token = cookies.token;
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let decoded;
+  let decoded: any;
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET!);
   } catch {
-    return res.status(403).json({ error: "Invalid token" });
+    return NextResponse.json({ error: "Invalid token" }, { status: 403 });
   }
 
   try {
@@ -26,18 +22,16 @@ async function handler(req, res) {
         empid: true,
         name: true,
         email: true,
-        profile_photo: true, // Get profile photo from users table
+        profile_photo: true,
         role: true,
       },
     });
 
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    // For admin/hr users, use profile_photo from users table
-    // For regular employees, try to get from employees table as fallback
     let profilePic = user.profile_photo;
     
-    if (!profilePic && (user.role === 'employee')) {
+    if (!profilePic) {
       const employee = await prisma.employees.findFirst({
         where: { email: user.email },
         select: { profile_photo: true }
@@ -45,18 +39,15 @@ async function handler(req, res) {
       profilePic = employee?.profile_photo;
     }
 
-    res.status(200).json({
+    return NextResponse.json({
       empid: user.empid,
       name: user.name,
       email: user.email,
       role: user.role,
       profilePic: profilePic || null,
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("Database error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

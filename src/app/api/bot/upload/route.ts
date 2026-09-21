@@ -1,75 +1,59 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-import formidable from 'formidable';
+import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
-
-// Legacy config removed for App Router
-
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 const uploadDir = path.join(process.cwd(), 'hr-assistant-data');
 
-// Ensure upload directory exists
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export async function POST(req: NextRequest) {
   try {
-    // Verify user is superadmin
-    const token = req.cookies.token || req.cookies.employeeToken;
+    const token = req.cookies.get('token')?.value || req.cookies.get('employeeToken')?.value;
     if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = jwt.verify(token, process.env.JWT_SECRET);
-    if (user.role !== 'superadmin') {
-      return res.status(403).json({ error: 'Access denied' });
+    const user: any = jwt.verify(token, process.env.JWT_SECRET!);
+    const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_BOT);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied: insufficient permissions' }, { status: 403 });
     }
 
-    const form = formidable({
-      uploadDir,
-      keepExtensions: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB limit
-    });
+    const formData = await req.formData();
+    const file = formData.get('file') as File | null;
+    const description = (formData.get('description') as string) || '';
 
-    const [fields, files] = await form.parse(req);
-    const file = files.file[0];
-    const description = fields.description?.[0] || '';
-
-    if (!file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+    if (!file || typeof file === 'string' || !file.name) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Create metadata file
     const metadata = {
-      name: file.originalFilename,
+      name: file.name,
       description,
       size: file.size,
       uploadedAt: new Date().toISOString(),
       uploadedBy: user.empid || user.id,
     };
 
-    const metadataPath = path.join(uploadDir, `${file.originalFilename}.meta.json`);
-    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+    const metadataPath = path.join(uploadDir, `${file.name}.meta.json`);
+    await fs.promises.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
 
-    // Rename uploaded file to original name
-    const finalPath = path.join(uploadDir, file.originalFilename);
-    fs.renameSync(file.filepath, finalPath);
+    const finalPath = path.join(uploadDir, file.name);
+    const bytes = await file.arrayBuffer();
+    await fs.promises.writeFile(finalPath, Buffer.from(bytes));
 
-    res.status(200).json({ 
+    return NextResponse.json({
       message: 'File uploaded successfully',
-      filename: file.originalFilename 
-    });
+      filename: file.name
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed' });
+    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

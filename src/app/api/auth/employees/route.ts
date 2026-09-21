@@ -1,36 +1,35 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import type { DecodedToken } from "@/lib/jwtTypes";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({
-      success: false,
-      error: "Method Not Allowed",
-    });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
+
+  
 
   try {
     // Get user from token
-    const cookies = cookie.parse(req.headers.cookie || '');
+    const cookies = cookie.parse(req.headers.get('cookie') || '');
     const { token } = cookies;
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW);
     if (!hasAccess) {
-      return res.status(403).json({
+      return NextResponse.json({
         success: false,
         message: "Forbidden: insufficient permissions",
-      });
+      }, { status: 403 });
     }
 
     const loggedInUser = await prisma.users.findUnique({
       where: {
-        empid: decoded.empid || decoded.id,
+      empid: (decoded.empid || decoded.id) as string,
       },
       select: {
         id: true,
@@ -48,21 +47,21 @@ async function handler(req, res) {
     });
 
     if (!loggedInUser) {
-      return res.status(404).json({
+      return NextResponse.json({
         success: false,
         message: "User not found",
-      });
+      }, { status: 404 });
     }
 
     const currentRoleId = loggedInUser.roleId || loggedInUser.rbacRole?.id;
 
     if (!currentRoleId) {
-      return res.status(200).json({
+      return NextResponse.json({
         success: true,
         users: [],
         roles: [],
         total: 0,
-      });
+      }, { status: 200 });
     }
 
     const allRoles = await prisma.role.findMany({
@@ -113,8 +112,8 @@ async function handler(req, res) {
     const visibleRoles = allRoles.filter((role) =>
       uniqueVisibleRoleIds.includes(role.id)
     );
-    const { role } = req.query;
-    const filters = {
+    const { role } = query;
+    const filters: Record<string, any> = {
       status: {
         not: "Inactive",
       },
@@ -135,15 +134,15 @@ async function handler(req, res) {
       // If selected role does not belong to user's hierarchy,
       // return no users.
       if (!selectedRole) {
-        return res.status(200).json({
+        return NextResponse.json({
           success: true,
           users: [],
           roles: [],
           total: 0,
-        });
+        }, { status: 200 });
       }
 
-      filters.roleId = selectedRole.id;
+      (filters as any).roleId = selectedRole.id;
     }
     const users = await prisma.users.findMany({
       where: filters,
@@ -198,7 +197,7 @@ async function handler(req, res) {
       parentId: roleItem.parentId,
       count: roleCounts[roleItem.id] || 0,
     }));
-    return res.status(200).json({
+    return NextResponse.json({
       success: true,
       // Only employees from user's hierarchy
       users,
@@ -206,15 +205,14 @@ async function handler(req, res) {
       roles: rolesWithCounts,
 
       total: users.length,
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("Failed to fetch users:", error);
 
-    return res.status(500).json({
+    return NextResponse.json({
       success: false,
       error: "Internal Server Error",
-    });
+    }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

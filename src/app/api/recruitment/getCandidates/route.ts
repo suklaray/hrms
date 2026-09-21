@@ -1,10 +1,8 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     const candidates = await prisma.candidates.findMany({
@@ -28,13 +26,12 @@ async function handler(req, res) {
       })
     );
 
-    return res.status(200).json(candidatesWithEmployeeStatus);
+    return NextResponse.json(candidatesWithEmployeeStatus, { status: 200 });
 
   } catch (error) {
     console.error("Error fetching candidates:", error);
-    return res.status(500).json({ message: "Server Error" });
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

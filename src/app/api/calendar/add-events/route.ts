@@ -1,33 +1,34 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withSessionTimeout } from "@/lib/authMiddleware";
-import { checkPermission, isSuperAdmin } from "@/lib/rbac";
+import { getAuthenticatedUser } from "@/lib/authMiddleware";
+import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+import { getRequestBody } from "@/lib/routeHelper";
+
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
+  if (errorResponse) return errorResponse;
+  if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const decoded = req.user;
-
-    const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
-    if (!canView) {
-      return res.status(403).json({ message: "Forbidden: insufficient permissions" });
+    const canManage = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
+    if (!canManage) {
+      return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 
-    const { title, description, event_date, event_type, visible_to, selected_groups } = req.body;
+    const { title, description, event_date, event_type, visible_to, selected_groups } =
+      (await getRequestBody(req)) || {};
 
     if (!title || !event_date || !event_type) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
     const creatorEmail = decoded.email;
     if (!creatorEmail) {
-      return res.status(400).json({ message: "Creator email missing in token" });
+      return NextResponse.json({ message: "Creator email missing in token" }, { status: 400 });
     }
 
-    let finalVisibleTo = [];
+    let finalVisibleTo: string[] = [];
 
     // Handle "all" selection
     if (visible_to && visible_to.includes("all")) {
@@ -35,16 +36,16 @@ async function handler(req, res) {
     } else {
       // Process individual employee selections
       if (visible_to && Array.isArray(visible_to)) {
-        finalVisibleTo = [...visible_to.filter(email => email !== "all")];
+        finalVisibleTo = [...visible_to.filter((email: string) => email !== "all")];
       }
 
       // Process group selections
       if (selected_groups && Array.isArray(selected_groups)) {
         for (const group of selected_groups) {
           const [groupType, groupValue] = group.key.split(":");
-          
-          let whereClause = { status: { not: 'Inactive' } };
-          
+
+          let whereClause: any = { status: { not: "Inactive" } };
+
           if (groupType === "role") {
             whereClause.role = groupValue;
           } else if (groupType === "position") {
@@ -52,13 +53,13 @@ async function handler(req, res) {
           } else if (groupType === "employee_type") {
             whereClause.employee_type = groupValue;
           }
-          
+
           const groupEmployees = await prisma.users.findMany({
             where: whereClause,
-            select: { email: true }
+            select: { email: true },
           });
-          
-          const groupEmails = groupEmployees.map(emp => emp.email);
+
+          const groupEmails = groupEmployees.map((emp) => emp.email);
           finalVisibleTo = [...finalVisibleTo, ...groupEmails];
         }
       }
@@ -81,18 +82,22 @@ async function handler(req, res) {
       },
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Event added successfully",
-      event,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Event added successfully",
+        event,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Add event API error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }
-const wrappedHandler = withSessionTimeout(handler);
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

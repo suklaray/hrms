@@ -1,26 +1,25 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import type { DecodedToken } from "@/lib/jwtTypes";
 import cookie from "cookie";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
-    const cookies = cookie.parse(req.headers.cookie || "");
+    const cookies = cookie.parse(req.headers.get('cookie') || "");
     const token = cookies.token;
-    if (!token) return res.status(401).json({ message: "Unauthorized" });
+    if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     
     const user = await prisma.users.findUnique({
-      where: { empid: decoded.empid },
+      where: { empid: decoded.empid as string },
       select: { email: true }
     });
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
 
     const employee = await prisma.employees.findFirst({
       where: { email: user.email },
@@ -44,12 +43,12 @@ async function handler(req, res) {
     const submittedCount = requiredDocs.filter(doc => doc && doc.trim() !== '').length;
     const submitted = submittedCount >= 4;
 
-    res.status(200).json({ submitted });
+    return NextResponse.json({ submitted }, { status: 200 });
   } catch (error) {
     console.error("Error checking document status:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

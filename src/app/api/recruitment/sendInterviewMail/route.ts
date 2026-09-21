@@ -1,29 +1,26 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-// /pages/api/recruitment/sendInterviewMail.js
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "PUT") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
-  const { candidateId, status } = req.body;
+export async function PUT(req: NextRequest) {
+  const body = (await getRequestBody(req)) || {};
+  const { candidateId, status } = body;
 
   try {
     // Fetch candidate from DB using Prisma
-    const candidate = await prisma.candidate.findUnique({
+    const candidate = await prisma.candidates.findUnique({
       where: { candidate_id: candidateId },
     });
 
     if (!candidate) {
-      return res.status(404).json({ message: "Candidate not found" });
+      return NextResponse.json({ message: "Candidate not found" }, { status: 404 });
     }
 
     // Configure nodemailer
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT || 465,
+      port: Number(process.env.SMTP_PORT) || 465,
       secure: true,
       auth: {
         user: process.env.EMAIL_USER,
@@ -41,7 +38,7 @@ async function handler(req, res) {
       subject: "Interview Invitation - HRMS Recruitment",
       html: `
         <p>Dear ${candidate.name},</p>
-        <p>You have been invited for an interview scheduled on <strong>${candidate.interview_date.toDateString()}</strong>.</p>
+        <p>You have been invited for an interview scheduled on <strong>${candidate.interview_date ? new Date(candidate.interview_date).toDateString() : ''}</strong>.</p>
         <p>Please be available accordingly.</p>
         <br/>
         <p>Best regards,</p>
@@ -52,19 +49,14 @@ async function handler(req, res) {
     await transporter.sendMail(mailOptions);
 
     // Update candidate interview_mail_status using Prisma
-    await prisma.candidate.update({
+    await prisma.candidates.update({
       where: { candidate_id: candidateId },
       data: { interview_mail_status: status },
     });
 
-    res.status(200).json({ message: "Interview mail sent" });
+    return NextResponse.json({ message: "Interview mail sent" }, { status: 200 });
   } catch (error) {
     console.error("Email send error:", error);
-    res.status(500).json({ message: "Error sending email" });
-  } finally {
-    await prisma.$disconnect();
+    return NextResponse.json({ message: "Error sending email" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

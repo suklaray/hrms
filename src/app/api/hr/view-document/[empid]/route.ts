@@ -1,17 +1,17 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { empid, type } = req.query;
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ empid: string }> }
+) {
+  const { empid } = await params;
+  const type = req.nextUrl.searchParams.get('type');
 
   if (!empid || !type) {
-    return res.status(400).json({ error: 'Employee ID and document type are required' });
+    return NextResponse.json({ error: 'Employee ID and document type are required' }, { status: 400 });
   }
 
   try {
@@ -22,11 +22,11 @@ async function handler(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'Employee not found' });
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
     // Get document from employees table using email
-    const employee = await prisma.employees.findFirst({
+    const employee: any = await prisma.employees.findFirst({
       where: { email: user.email },
       select: {
         resume: true,
@@ -39,14 +39,15 @@ async function handler(req, res) {
     });
 
     if (!employee || !employee[type]) {
-      return res.status(404).json({ error: 'Document not found' });
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
-    const documentPath = employee[type].startsWith('/') ? employee[type].substring(1) : employee[type];
+    const docPath = employee[type];
+    const documentPath = docPath.startsWith('/') ? docPath.substring(1) : docPath;
     const filePath = path.join(process.cwd(), 'public', documentPath);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found on server' });
+      return NextResponse.json({ error: 'File not found on server' }, { status: 404 });
     }
 
     const fileBuffer = fs.readFileSync(filePath);
@@ -63,14 +64,16 @@ async function handler(req, res) {
       contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
     
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `inline; filename="${type}${fileExt}"`);
-    res.send(fileBuffer);
+    return new NextResponse(fileBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `inline; filename="${type}${fileExt}"`,
+      },
+    });
     
   } catch (error) {
     console.error('Error serving document:', error);
-    res.status(500).json({ error: 'Server error' });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

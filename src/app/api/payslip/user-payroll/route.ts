@@ -1,34 +1,36 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-async function handler(req, res) {
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const cookies = cookie.parse(req.headers.cookie || "");
-  const token = cookies.token;
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+export async function GET(req: NextRequest) {
+  const cookieHeader = req.headers.get("cookie") || "";
+  const cookies = cookie.parse(cookieHeader);
+  const token = cookies.token || req.cookies.get("token")?.value;
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   // Check if the user has permission to view payslip details
   const hasAccess = await checkPermission(token, PERMISSION_KEYS.PAYSLIP_VIEW);
-  if (!hasAccess) return res.status(403).json({ error: "Forbidden: insufficient permissions" });
+  if (!hasAccess) return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const { empid, month, year } = req.query;
+    jwt.verify(token, process.env.JWT_SECRET!);
+    const searchParams = req.nextUrl.searchParams;
+    const empid = searchParams.get("empid") || undefined;
+    const month = searchParams.get("month") || undefined;
+    const yearStr = searchParams.get("year");
+    const year = yearStr ? parseInt(yearStr) : undefined;
     
     // Use empid from URL parameter (for the specific payslip being viewed)
     const payslip = await prisma.payroll.findFirst({
-      where: { empid: empid, month, year: parseInt(year) }
+      where: { empid, month, year }
     });
     
-    if (!payslip) return res.status(404).json({ error: "Payslip not found" });
-    res.json(payslip);
+    if (!payslip) return NextResponse.json({ error: "Payslip not found" }, { status: 404 });
+    return NextResponse.json(payslip, { status: 200 });
   } catch {
-    res.status(403).json({ error: "Invalid token" });
+    return NextResponse.json({ error: "Invalid token" }, { status: 403 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

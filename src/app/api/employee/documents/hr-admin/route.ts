@@ -1,27 +1,26 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { DecodedToken } from "@/lib/jwtTypes";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+
 
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
+      return NextResponse.json({ message: 'No token provided' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' });
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
     // Check if HR/Admin/SuperAdmin has submitted documents
     const employee = await prisma.employees.findFirst({
-      where: { 
-        email: decoded.email 
+      where: {
+        email: decoded.email as string
       },
       select: {
         aadhar_card: true,
@@ -36,7 +35,7 @@ async function handler(req, res) {
     // Check if most required documents are submitted
     const requiredDocs = [
       employee?.aadhar_card,
-      employee?.pan_card, 
+      employee?.pan_card,
       employee?.resume,
       employee?.profile_photo,
       employee?.education_certificates
@@ -45,13 +44,13 @@ async function handler(req, res) {
     const submittedCount = requiredDocs.filter(doc => doc && doc.trim() !== '').length;
     const submitted = submittedCount >= 4; // At least 4 out of 5 required docs
 
-    res.status(200).json({ submitted });
+    return NextResponse.json({ submitted }, { status: 200 });
   } catch (error) {
     console.error("Error checking HR/Admin/SuperAdmin document status:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

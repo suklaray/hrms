@@ -1,23 +1,26 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 
-async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ message: "Method not allowed" });
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: "Email is required" });
+  
+
+  const { email } = body;
+  if (!email) return NextResponse.json({ message: "Email is required" }, { status: 400 });
 
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
-    return res.status(400).json({ message: "Invalid email format" });
+    return NextResponse.json({ message: "Invalid email format" }, { status: 400 });
     }
 
   try {
     const user = await prisma.users.findUnique({ where: { email } });
     if (!user) {
-      return res.status(404).json({ message: "Email not registered. Please enter a valid registered email." });
+      return NextResponse.json({ message: "Email not registered. Please enter a valid registered email." }, { status: 404 });
     }
 
     const token = crypto.randomBytes(32).toString("hex");
@@ -59,12 +62,11 @@ await transporter.sendMail({
   `
 });
 
-    res.status(200).json({ message: "If that email exists, a reset link has been sent." });
+    return NextResponse.json({ message: "If that email exists, a reset link has been sent." }, { status: 200 });
   } catch (error) {
     console.error("Forgot password error:", error);
-    res.status(500).json({ message: "Internal Server Error", error: error.message });
+    return NextResponse.json({ message: "Internal Server Error", error: error.message }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

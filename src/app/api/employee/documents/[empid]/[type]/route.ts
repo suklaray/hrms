@@ -1,35 +1,52 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyHRToken } from "@/lib/auth-hr";
 import fs from 'fs';
 import path from 'path';
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ empid: string; type: string }> }
+) {
   const user = await verifyHRToken(req);
   if (!user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { empid, type } = req.query;
+  const { empid, type } = await params;
 
   try {
     // Get employee data
-    const employee = await prisma.employees.findFirst({
+    let employee = await prisma.employees.findFirst({
       where: { 
-        user: { empid: empid }
+        OR: [
+          { main_employee_id: empid },
+          ...(isNaN(Number(empid)) ? [] : [{ empid: parseInt(empid, 10) }]),
+        ],
       },
       include: {
         bank_details: true,
-        user: true
       }
     });
 
+    // Fallback: if not found by main_employee_id/empid, check if empid matches a user in users table and match by email
     if (!employee) {
-      return res.status(404).json({ message: 'Employee not found' });
+      const userRecord = await prisma.users.findUnique({
+        where: { empid },
+        select: { email: true },
+      });
+      if (userRecord?.email) {
+        employee = await prisma.employees.findFirst({
+          where: { email: userRecord.email },
+          include: {
+            bank_details: true,
+          },
+        });
+      }
+    }
+
+    if (!employee) {
+      return NextResponse.json({ message: 'Employee not found' }, { status: 404 });
     }
 
     let filePath = '';
@@ -37,34 +54,35 @@ async function handler(req, res) {
     // Map document type to file path
     switch (type) {
       case 'aadhar':
-        filePath = employee.aadhar_card;
+        filePath = employee.aadhar_card || '';
         break;
       case 'pan':
-        filePath = employee.pan_card;
+        filePath = employee.pan_card || '';
         break;
       case 'resume':
-        filePath = employee.resume;
+        filePath = employee.resume || '';
         break;
       case 'experience':
-        filePath = employee.experience_certificate;
+        filePath = employee.experience_certificate || '';
         break;
       case 'checkbook':
-        filePath = employee.bank_details?.[0]?.checkbook_document;
+        filePath = employee.bank_details?.[0]?.checkbook_document || '';
         break;
       default:
-        return res.status(400).json({ message: 'Invalid document type' });
+        return NextResponse.json({ message: 'Invalid document type' }, { status: 400 });
     }
 
     if (!filePath) {
-      return res.status(404).json({ message: 'Document not found' });
+      return NextResponse.json({ message: 'Document not found' }, { status: 404 });
     }
 
-    // Construct full file path
-    const fullPath = path.join(process.cwd(), 'public', filePath);
+    // Construct full file path (strip any leading slash to avoid root-relative path resolution on Windows)
+    const cleanFilePath = filePath.replace(/^[/\\]+/, '');
+    const fullPath = path.join(process.cwd(), 'public', cleanFilePath);
 
     // Check if file exists
     if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({ message: 'File not found on server' });
+      return NextResponse.json({ message: 'File not found on server' }, { status: 404 });
     }
 
     // Get file stats
@@ -92,19 +110,19 @@ async function handler(req, res) {
         break;
     }
 
-    // Set headers
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Length', stats.size);
-    res.setHeader('Content-Disposition', `inline; filename="${path.basename(fullPath)}"`);
+    const fileBuffer = fs.readFileSync(fullPath);
 
-    // Stream the file
-    const fileStream = fs.createReadStream(fullPath);
-    fileStream.pipe(res);
+    return new NextResponse(fileBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': stats.size.toString(),
+        'Content-Disposition': `inline; filename="${path.basename(fullPath)}"`,
+      },
+    });
 
   } catch (error) {
     console.error('Document viewing error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

@@ -43,8 +43,8 @@ function ViewEmployeeType() {
   if (!role) return null;
 
   // Group permissions by category
-  const grouped = role.permissions.reduce((acc, rp) => {
-    const cat = rp.permission.category || 'General';
+  const grouped: Record<string, any[]> = (role.permissions || []).reduce((acc: Record<string, any[]>, rp: any) => {
+    const cat = rp.permission?.category || 'General';
     if (!acc[cat]) acc[cat] = [];
     acc[cat].push(rp.permission);
     return acc;

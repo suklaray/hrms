@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { isSuperAdmin } from "@/lib/rbac";
 
 import * as XLSX from "xlsx";
 import {
@@ -187,7 +188,7 @@ function createNavigationContext(intent, isAdmin, employeeType, relevantFile) {
   // Get structured response based on intent and sub-intent
   let baseResponse;
   const intentConfig = guides[intent.primaryIntent];
-  
+
   if (typeof intentConfig === 'object' && intent.subIntent && intentConfig[intent.subIntent]) {
     baseResponse = intentConfig[intent.subIntent];
   } else if (typeof intentConfig === 'object') {
@@ -198,10 +199,9 @@ function createNavigationContext(intent, isAdmin, employeeType, relevantFile) {
 
   const fileInfo = relevantFile?.content
     ? `\n\n📄 Preview:\n${String(relevantFile.content)
-        .slice(0, MAX_FILE_PREVIEW)
-        .replace(/\n/g, " ")}${
-        relevantFile.content.length > MAX_FILE_PREVIEW ? "..." : ""
-      }\n\n💾 Download: ${relevantFile.downloadUrl}`
+      .slice(0, MAX_FILE_PREVIEW)
+      .replace(/\n/g, " ")}${relevantFile.content.length > MAX_FILE_PREVIEW ? "..." : ""
+    }\n\n💾 Download: ${relevantFile.downloadUrl}`
     : "";
 
   return {
@@ -218,7 +218,7 @@ export async function getLLMAnswerFromRepo(question, intent, user = null) {
 
     const userRole = user?.role?.toLowerCase() || "employee";
     const employeeType = user?.employee_type || user?.type || "Regular";
-    const isAdmin = ["admin", "superadmin", "hr"].includes(userRole);
+    const isAdmin = isSuperAdmin(user);
 
     // ✅ Fetch relevant file first
     const relevantFile = await getRelevantFile(intent, question);
@@ -251,9 +251,8 @@ export async function getLLMAnswerFromRepo(question, intent, user = null) {
       return {
         answer: `📘 According to company documents:\n${String(
           fileToReturn.content
-        ).slice(0, MAX_FILE_PREVIEW)}${
-          fileToReturn.content.length > MAX_FILE_PREVIEW ? "..." : ""
-        }\n\n💾 Download: ${fileToReturn.downloadUrl}`,
+        ).slice(0, MAX_FILE_PREVIEW)}${fileToReturn.content.length > MAX_FILE_PREVIEW ? "..." : ""
+          }\n\n💾 Download: ${fileToReturn.downloadUrl}`,
         sourceFile: fileToReturn.filename,
         downloadUrl: fileToReturn.downloadUrl,
       };

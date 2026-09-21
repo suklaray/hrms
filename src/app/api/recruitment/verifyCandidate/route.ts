@@ -1,11 +1,13 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "PUT")
-    return res.status(405).json({ error: "Method not allowed" });
+export async function PUT(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { candidateId, verificationStatus } = req.body;
+  
+
+  const { candidateId, verificationStatus } = body;
 
   try {
     // Test database connectivity with retry
@@ -30,23 +32,23 @@ async function handler(req, res) {
       data: { verification: verificationStatus },
     });
 
-    res.status(200).json({ message: "Verification status updated", updatedCandidate });
+    return NextResponse.json({ message: "Verification status updated", updatedCandidate }, { status: 200 });
   } catch (error) {
     console.error("Error updating verification status:", error);
     
     // Handle specific database connectivity errors
     if (error.code === 'P1001' || error.message?.includes("Can't reach database")) {
-      return res.status(503).json({
+      return NextResponse.json({
         message: "Database temporarily unavailable",
         error: "Service is temporarily unavailable. Please try again in a few moments.",
         code: 'DB_CONNECTION_ERROR'
-      });
+      }, { status: 503 });
     }
     
-    res.status(500).json({ 
+    return NextResponse.json({ 
       error: "Internal Server Error",
       message: error.message 
-    });
+    }, { status: 500 });
   } finally {
     try {
       await prisma.$disconnect();
@@ -57,4 +59,3 @@ async function handler(req, res) {
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

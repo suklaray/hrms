@@ -58,19 +58,19 @@ function EmployeeReports() {
   };
 
   const filterReports = () => {
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     let start, end;
 
     if (fromDate && toDate) {
-      start = new Date(fromDate); start.setHours(0,0,0,0);
-      end = new Date(toDate); end.setHours(0,0,0,0);
+      start = new Date(fromDate); start.setHours(0, 0, 0, 0);
+      end = new Date(toDate); end.setHours(0, 0, 0, 0);
     } else {
       // Infer start from earliest report OR earliest leave, end = today
       const reportDates = reports.map(r => new Date(r.report_date).getTime());
       const leaveDates = leaves.map(l => new Date(l.from_date).getTime());
       const allDates = [...reportDates, ...leaveDates].filter(Boolean);
       if (allDates.length === 0) { setFilteredReports([]); return; }
-      start = new Date(Math.min(...allDates)); start.setHours(0,0,0,0);
+      start = new Date(Math.min(...allDates)); start.setHours(0, 0, 0, 0);
       end = today;
     }
 
@@ -85,15 +85,15 @@ function EmployeeReports() {
         if (searchTerm) {
           const lower = searchTerm.toLowerCase();
           if (!r.tasks_completed.toLowerCase().includes(lower) &&
-              !r.tasks_tomorrow.toLowerCase().includes(lower) &&
-              !(r.issues || '').toLowerCase().includes(lower)) return false;
+            !r.tasks_tomorrow.toLowerCase().includes(lower) &&
+            !(r.issues || '').toLowerCase().includes(lower)) return false;
         }
         return new Date(r.report_date).toLocaleDateString('en-CA') === dateStr;
       });
 
       const leaveOnDate = leaves.find(l => {
-        const from = new Date(l.from_date); from.setHours(0,0,0,0);
-        const to = new Date(l.to_date); to.setHours(0,0,0,0);
+        const from = new Date(l.from_date); from.setHours(0, 0, 0, 0);
+        const to = new Date(l.to_date); to.setHours(0, 0, 0, 0);
         return cur >= from && cur <= to;
       });
 
@@ -212,7 +212,7 @@ function EmployeeReports() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredReports.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="px-3 py-12 text-center">
+                      <td colSpan={5} className="px-3 py-12 text-center">
                         <div className="text-gray-500">
                           <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                           <h3 className="text-lg font-medium mb-2">No reports found</h3>
@@ -227,7 +227,7 @@ function EmployeeReports() {
                       if (rowType === 'dayoff') return (
                         <tr key={row.id} className="bg-blue-50">
                           <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-blue-700">{formatDate(row.report_date)}</td>
-                          <td colSpan="4" className="px-3 py-3 text-center">
+                          <td colSpan={4} className="px-3 py-3 text-center">
                             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">Weekend / Day Off</span>
                           </td>
                         </tr>
@@ -236,15 +236,14 @@ function EmployeeReports() {
                       if (rowType === 'leave') return (
                         <tr key={row.id} className="bg-yellow-50">
                           <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-yellow-700">{formatDate(row.report_date)}</td>
-                          <td colSpan="4" className="px-3 py-3 text-center">
-                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${
-                              row.leaveInfo.status === 'Approved' ? 'bg-green-100 text-green-700'
-                              : row.leaveInfo.status === 'Rejected' ? 'bg-red-100 text-red-700'
-                              : row.leaveInfo.status === 'Cancelled' ? 'bg-gray-100 text-gray-600'
-                              : 'bg-yellow-100 text-yellow-700'
-                            }`}>
-                              On Leave — {row.leaveInfo.leave_type} 
-                             </span>
+                          <td colSpan={4} className="px-3 py-3 text-center">
+                            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${row.leaveInfo.status === 'Approved' ? 'bg-green-100 text-green-700'
+                                : row.leaveInfo.status === 'Rejected' ? 'bg-red-100 text-red-700'
+                                  : row.leaveInfo.status === 'Cancelled' ? 'bg-gray-100 text-gray-600'
+                                    : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                              On Leave — {row.leaveInfo.leave_type}
+                            </span>
                           </td>
                         </tr>
                       );
@@ -252,7 +251,7 @@ function EmployeeReports() {
                       if (rowType === 'missing') return (
                         <tr key={row.id} className="bg-red-50">
                           <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-red-600">{formatDate(row.report_date)}</td>
-                          <td colSpan="4" className="px-3 py-3 text-center">
+                          <td colSpan={4} className="px-3 py-3 text-center">
                             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">No Report Submitted</span>
                           </td>
                         </tr>

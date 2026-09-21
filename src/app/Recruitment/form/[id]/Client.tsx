@@ -41,8 +41,8 @@ function CandidateForm() {
     dob: "",
     gender: "",
   });
-  const [errors, setErrors] = useState({});
-  const [touchedFields, setTouchedFields] = useState({});
+  const [errors, setErrors] = useState<Record<string, any>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
@@ -204,7 +204,7 @@ function CandidateForm() {
 
     // Skip validation for empty values unless it's a required field check
     if (!value || value.trim() === "") {
-      if (document.querySelector(`[name="${name}"]`)?.required) {
+      if ((document.querySelector(`[name="${name}"]`) as HTMLInputElement)?.required) {
         newErrors[name] = "This field is required";
       } else {
         delete newErrors[name];
@@ -616,7 +616,7 @@ function CandidateForm() {
   };
 
   const validateForm = () => {
-    let formErrors = {};
+    let formErrors: Record<string, any> = {};
 
     // Required text fields
     const requiredFields = [

@@ -1,61 +1,61 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-async function handler(req, res) {
-  function generateEmpid(name) {
-    return `${name?.split(" ")[0].toLowerCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+function generateEmpid(name: string) {
+  return `${name?.split(" ")[0].toLowerCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function generatePassword() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
+  let password = '';
+  
+  password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+  password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+  password += '0123456789'[Math.floor(Math.random() * 10)];
+  password += '@#$%&*'[Math.floor(Math.random() * 6)];
+  
+  for (let i = 4; i < 8; i++) {
+    password += chars[Math.floor(Math.random() * chars.length)];
+  }
+  
+  return password.split('').sort(() => Math.random() - 0.5).join('');
+}
+
+export async function GET(req: NextRequest) {
+  const email = req.nextUrl.searchParams.get('email');
+  if (!email) {
+    return NextResponse.json({ exists: false, employee: null }, { status: 200 });
   }
 
-  function generatePassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*';
-    let password = '';
+  try {
+    const existingEmployee = await prisma.users.findUnique({
+      where: { email },
+      select: {
+        empid: true,
+        name: true,
+        email: true,
+        position: true,
+        date_of_joining: true,
+        experience: true,
+        role: true,
+        employee_type: true,
+        status: true
+      }
+    });
     
-    // Ensure at least one uppercase, lowercase, number, and special char
-    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
-    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
-    password += '0123456789'[Math.floor(Math.random() * 10)];
-    password += '@#$%&*'[Math.floor(Math.random() * 6)];
-    
-    // Fill remaining 4 characters randomly
-    for (let i = 4; i < 8; i++) {
-      password += chars[Math.floor(Math.random() * chars.length)];
-    }
-    
-    // Shuffle the password
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+    return NextResponse.json({ 
+      exists: !!existingEmployee,
+      employee: existingEmployee 
+    }, { status: 200 });
+  } catch {
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
+}
 
-  if (req.method === "GET") {
-    // Check if employee already exists
-    const { email } = req.query;
-    try {
-      const existingEmployee = await prisma.users.findUnique({
-        where: { email },
-        select: {
-          empid: true,
-          name: true,
-          email: true,
-          position: true,
-          date_of_joining: true,
-          experience: true,
-          role: true,
-          employee_type: true,
-          status: true
-        }
-      });
-      
-      return res.status(200).json({ 
-        exists: !!existingEmployee,
-        employee: existingEmployee 
-      });
-    } catch (error) {
-      return res.status(500).json({ error: "Server error" });
-    }
-  }
-
-  if (req.method === "PUT") {
-    // Update existing employee
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
     const {
       email,
       position,
@@ -63,64 +63,60 @@ async function handler(req, res) {
       experience,
       role,
       employee_type,
-    } = req.body;
+    } = body;
 
-    try {
-      await prisma.users.update({
-        where: { email },
-        data: {
-          position,
-          date_of_joining: new Date(date_of_joining),
-          experience: experience || null,
-          role,
-          employee_type: employee_type || "Full_time",
-        },
-      });
+    await prisma.users.update({
+      where: { email },
+      data: {
+        position,
+        date_of_joining: new Date(date_of_joining),
+        experience: experience || null,
+        role,
+        employee_type: employee_type || "Full_time",
+      },
+    });
 
-      return res.status(200).json({
-        message: "Employee updated successfully",
-      });
-    } catch (error) {
-      console.error("Unable to update employee:", error);
-      return res.status(500).json({ message: "Server Error" });
-    }
+    return NextResponse.json({
+      message: "Employee updated successfully",
+    }, { status: 200 });
+  } catch (error) {
+    console.error("Unable to update employee:", error);
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
+}
 
-  if (req.method !== "POST") return res.status(405).end();
-
-  const {
-    name,
-    email,
-    position,
-    date_of_joining,
-    experience,
-    profile_photo,
-    role,
-    employee_type,
-    duration_months,
-  } = req.body;
-
+export async function POST(req: NextRequest) {
   try {
-    // Check if employee already exists
+    const body = await req.json().catch(() => ({}));
+    const {
+      name,
+      email,
+      position,
+      date_of_joining,
+      experience,
+      profile_photo,
+      role,
+      employee_type,
+      duration_months,
+    } = body;
+
     const existingEmployee = await prisma.users.findUnique({
       where: { email }
     });
 
     if (existingEmployee) {
-      return res.status(400).json({ message: "Employee already exists" });
+      return NextResponse.json({ message: "Employee already exists" }, { status: 400 });
     }
 
-    // Get candidate_id and form_submitted from candidates table
     const candidate = await prisma.candidates.findFirst({
       where: { email },
-      select: { candidate_id: true }
+      select: { candidate_id: true, form_submitted: true }
     });
 
     if (!candidate) {
-      return res.status(404).json({ message: "Candidate not found" });
+      return NextResponse.json({ message: "Candidate not found" }, { status: 404 });
     }
 
-    // Get candidate data from candidate_details table
     const candidateDetails = await prisma.candidate_details.findFirst({
       where: { candidate_id: candidate.candidate_id },
       include: {
@@ -130,20 +126,19 @@ async function handler(req, res) {
     });
 
     if (!candidateDetails) {
-      return res.status(404).json({ message: "Candidate details not found" });
+      return NextResponse.json({ message: "Candidate details not found" }, { status: 404 });
     }
 
     const empid = generateEmpid(name); 
     const password = generatePassword();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    /// Create user record
-    const newUser = await prisma.users.create({
+    await prisma.users.create({
       data: {
         empid,
         name,
         email,
-        contact_number: candidateDetails.contact_no, // ✓ Already added
+        contact_number: candidateDetails.contact_no,
         password: hashedPassword,
         position,
         date_of_joining: new Date(date_of_joining),
@@ -152,21 +147,20 @@ async function handler(req, res) {
         profile_photo: candidateDetails.profile_photo || profile_photo || null,
         role,
         verified: "not_verified",
-        form_submitted: candidate.form_submitted, 
+        form_submitted: (candidate as any).form_submitted ?? false, 
         employee_type: employee_type || "Full_time",
         candidate_id: candidate.candidate_id,
         duration_months: (employee_type === "Intern" || employee_type === "Contractor") ? duration_months : null,
       },
     });
 
-    // Create employee record from candidate_details
     const newEmployee = await prisma.employees.create({
       data: {
-        candidate_id: candidate.candidate_id,        // ✓ Candidate ID
-        main_employee_id: empid,                     // ✓ Same as users.empid
+        candidate_id: candidate.candidate_id,
+        main_employee_id: empid,
         name: candidateDetails.name,
         email: candidateDetails.email,
-        contact_no: candidateDetails.contact_no,     // ✓ Contact number in employees table
+        contact_no: candidateDetails.contact_no,
         password: candidateDetails.password,
         gender: candidateDetails.gender,
         dob: candidateDetails.dob,
@@ -182,8 +176,6 @@ async function handler(req, res) {
       },
     });
 
-
-    // Create employee address from candidate address
     if (candidateDetails.addresses[0]) {
       const addr = candidateDetails.addresses[0];
       await prisma.addresses.create({
@@ -199,7 +191,6 @@ async function handler(req, res) {
       });
     }
 
-    // Create employee bank details from candidate bank details
     if (candidateDetails.bank_details[0]) {
       const bank = candidateDetails.bank_details[0];
       await prisma.bank_details.create({
@@ -215,7 +206,6 @@ async function handler(req, res) {
       });
     }
 
-    // Create compliance documents
     const documents = [
       { doc_type: 'aadhar_card', file_path: candidateDetails.aadhar_card },
       { doc_type: 'pan_card', file_path: candidateDetails.pan_card },
@@ -238,22 +228,18 @@ async function handler(req, res) {
       }
     }
 
-    // Update candidate status to Selected
     await prisma.candidates.update({
       where: { candidate_id: candidate.candidate_id },
       data: { status: "Selected" }
     });
 
-    res.status(200).json({
+    return NextResponse.json({
       message: "Employee added successfully",
       empid,
       password, 
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("Unable to add employee:", error);
-    res.status(500).json({ message: "Server Error" });
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

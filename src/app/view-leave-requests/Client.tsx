@@ -341,7 +341,7 @@ function ViewLeaveRequests() {
                       {leaveTypes.length === 0 && (
                         <tr>
                           <td
-                            colSpan="4"
+                            colSpan={4}
                             className="px-6 py-12 text-center text-gray-500"
                           >
                             <Settings className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -380,11 +380,10 @@ function ViewLeaveRequests() {
                           }
                         });
                     }}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      activeTab === "pending"
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "pending"
                         ? "bg-white text-indigo-600 shadow-sm"
                         : "text-gray-600 hover:text-gray-900"
-                    }`}
+                      }`}
                   >
                     Pending Requests
                   </button>
@@ -394,11 +393,10 @@ function ViewLeaveRequests() {
                       setActiveTab("history");
                       setCurrentPage(1);
                     }}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      activeTab === "history"
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "history"
                         ? "bg-white text-indigo-600 shadow-sm"
                         : "text-gray-600 hover:text-gray-900"
-                    }`}
+                      }`}
                   >
                     All Leave History
                   </button>
@@ -561,7 +559,7 @@ function ViewLeaveRequests() {
                     {filteredData.length === 0 && (
                       <tr>
                         <td
-                          colSpan="6"
+                          colSpan={6}
                           className="px-6 py-12 text-center text-gray-500"
                         >
                           <div className="flex flex-col items-center">
@@ -602,11 +600,10 @@ function ViewLeaveRequests() {
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === 1
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
                             ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                             : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                        }`}
+                          }`}
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -616,11 +613,10 @@ function ViewLeaveRequests() {
                           <button
                             key={page}
                             onClick={() => handlePageChange(page)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                              page === currentPage
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${page === currentPage
                                 ? "bg-indigo-600 text-white"
                                 : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                            }`}
+                              }`}
                           >
                             {page}
                           </button>
@@ -630,11 +626,10 @@ function ViewLeaveRequests() {
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === totalPages
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
                             ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                             : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                        }`}
+                          }`}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>

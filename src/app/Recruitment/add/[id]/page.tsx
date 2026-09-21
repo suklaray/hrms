@@ -21,7 +21,7 @@ import {
 } from "react-icons/fa";
 import Image from "next/image";
 //import toast from "react-hot-toast";
-import {toast} from 'react-toastify';
+import { toast } from 'react-toastify';
 
 const AddEmployee = () => {
   const router = useRouter();
@@ -49,11 +49,11 @@ const AddEmployee = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Record<string, any>>({});
   const [positions, setPositions] = useState([]);
   const [candidate, setCandidate] = useState(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
-  const [availableRoles, setAvailableRoles] = useState(['employee', 'hr', 'admin']); // Default fallback
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState('');
 
   useEffect(() => {
@@ -72,26 +72,15 @@ const AddEmployee = () => {
         // console.log('User data:', res.data);
         const userRole = res.data.user.role?.toLowerCase();
         // console.log("role",userRole);
-        
+
         setCurrentUserRole(userRole);
-        
-        // Set available roles based on user role
-        let roles = [];
-        switch (userRole) {
-          case 'hr':
-            roles = ['employee'];
-            break;
-          case 'admin':
-            roles = ['employee', 'hr'];
-            break;
-          case 'superadmin':
-            roles = ['employee', 'hr', 'admin'];
-            break;
-          default:
-            roles = ['employee']; // fallback
+
+        // Set available roles dynamically from backend DB hierarchy
+        if (res.data.assignableRoles && res.data.assignableRoles.length > 0) {
+          setAvailableRoles(res.data.assignableRoles);
+        } else {
+          setAvailableRoles(['employee']);
         }
-        // console.log('Available roles:', roles);
-        setAvailableRoles(roles);
       })
       .catch((err) => {
         console.error('Error fetching user role:', err);
@@ -258,30 +247,30 @@ const AddEmployee = () => {
       console.error("Failed to copy:", err);
     }
   };
- const handleSendCredentials = async () => {
-        try {
-            const res = await fetch('/api/auth/sendCredentials', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: originalFormData?.email || form.email,
-                    username: employeeData?.empid,
-                    password: employeeData?.password,
-                    name: originalFormData?.name || form.name,
-                    role:originalFormData?.role || form.role
-                })
-            });
-            
-            if (res.ok) {
-                toast.success('Credentials sent successfully!');
-            } else {
-                toast.error('Failed to send credentials. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error sending credentials:', error);
-            toast.error('Failed to send credentials. Please try again.');
-        }
-    };
+  const handleSendCredentials = async () => {
+    try {
+      const res = await fetch('/api/auth/sendCredentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: originalFormData?.email || form.email,
+          username: employeeData?.empid,
+          password: employeeData?.password,
+          name: originalFormData?.name || form.name,
+          role: originalFormData?.role || form.role
+        })
+      });
+
+      if (res.ok) {
+        toast.success('Credentials sent successfully!');
+      } else {
+        toast.error('Failed to send credentials. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sending credentials:', error);
+      toast.error('Failed to send credentials. Please try again.');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -313,7 +302,7 @@ const AddEmployee = () => {
             setExistingEmployee(empRes.data.employee);
           }
         } else {
-          setOriginalFormData({ name: form.name, email: form.email,role:form.role });
+          setOriginalFormData({ name: form.name, email: form.email, role: form.role });
           setForm({
             name: "",
             email: "",
@@ -326,7 +315,7 @@ const AddEmployee = () => {
             duration_months: "",
           });
           setProfilePhotoUrl("");
-          setEmployeeData({ empid: data.empid, password: data.password});
+          setEmployeeData({ empid: data.empid, password: data.password });
           setCopiedField("");
           setMessage(
             "Employee added successfully! Please copy the credentials below."
@@ -426,9 +415,8 @@ const AddEmployee = () => {
                         className="w-32 h-32 rounded-full object-cover border-4 border-indigo-200 shadow-lg"
                       />
                       <div
-                        className={`absolute -bottom-2 -right-2 text-white rounded-full p-2 ${
-                          existingEmployee ? "bg-blue-500" : "bg-green-500"
-                        }`}
+                        className={`absolute -bottom-2 -right-2 text-white rounded-full p-2 ${existingEmployee ? "bg-blue-500" : "bg-green-500"
+                          }`}
                       >
                         <FaUser className="w-4 h-4" />
                       </div>
@@ -497,11 +485,10 @@ const AddEmployee = () => {
                       Full Name
                     </label>
                     <input
-                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                        existingEmployee && !isEditing
+                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${existingEmployee && !isEditing
                           ? "border-gray-200 bg-gray-50 text-gray-600"
                           : "border-gray-200 bg-white focus:border-indigo-500"
-                      }`}
+                        }`}
                       name="name"
                       value={form.name}
                       onChange={handleChange}
@@ -522,11 +509,10 @@ const AddEmployee = () => {
                       value={form.email}
                       onChange={handleChange}
                       required
-                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                        existingEmployee && !isEditing
+                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${existingEmployee && !isEditing
                           ? "border-gray-200 bg-gray-50 text-gray-600"
                           : "border-gray-200 bg-white focus:border-indigo-500"
-                      }`}
+                        }`}
                       readOnly={!!id || (existingEmployee && !isEditing)}
                     />
                     {emailExists && (
@@ -548,13 +534,12 @@ const AddEmployee = () => {
                       value={form.role}
                       onChange={handleChange}
                       required
-                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                        errors.role
+                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${errors.role
                           ? "border-red-500 bg-red-50"
                           : existingEmployee && !isEditing
-                          ? "border-gray-200 bg-gray-50 text-gray-600"
-                          : "border-gray-200 bg-white focus:border-indigo-500"
-                      }`}
+                            ? "border-gray-200 bg-gray-50 text-gray-600"
+                            : "border-gray-200 bg-white focus:border-indigo-500"
+                        }`}
                       disabled={existingEmployee && !isEditing}
                     >
                       <option value="" disabled>
@@ -578,13 +563,12 @@ const AddEmployee = () => {
                       Position
                     </label>
                     <select
-                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                        errors.position
+                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${errors.position
                           ? "border-red-500 bg-red-50"
                           : existingEmployee && !isEditing
-                          ? "border-gray-200 bg-gray-50 text-gray-600"
-                          : "border-gray-200 bg-white focus:border-indigo-500"
-                      }`}
+                            ? "border-gray-200 bg-gray-50 text-gray-600"
+                            : "border-gray-200 bg-white focus:border-indigo-500"
+                        }`}
                       name="position"
                       onChange={handleChange}
                       value={form.position}
@@ -618,13 +602,12 @@ const AddEmployee = () => {
                       value={form.employee_type}
                       onChange={handleChange}
                       required
-                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                        errors.employee_type
+                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${errors.employee_type
                           ? "border-red-500 bg-red-50"
                           : existingEmployee && !isEditing
-                          ? "border-gray-200 bg-gray-50 text-gray-600"
-                          : "border-gray-200 bg-white focus:border-indigo-500"
-                      }`}
+                            ? "border-gray-200 bg-gray-50 text-gray-600"
+                            : "border-gray-200 bg-white focus:border-indigo-500"
+                        }`}
                       disabled={existingEmployee && !isEditing}
                     >
                       <option value="" disabled>
@@ -649,11 +632,10 @@ const AddEmployee = () => {
                         {form.employee_type === "Intern" ? "Internship" : "Contract"} Duration (months)
                       </label>
                       <input
-                        className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                          existingEmployee && !isEditing
+                        className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${existingEmployee && !isEditing
                             ? "border-gray-200 bg-gray-50 text-gray-600"
                             : "border-gray-200 bg-white focus:border-indigo-500"
-                        }`}
+                          }`}
                         type="number"
                         name="duration_months"
                         placeholder={form.employee_type === "Intern" ? "e.g. 6" : "e.g. 12"}
@@ -674,13 +656,12 @@ const AddEmployee = () => {
                       Date of Joining
                     </label>
                     <input
-                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                        errors.date_of_joining
+                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${errors.date_of_joining
                           ? "border-red-500 bg-red-50"
                           : existingEmployee && !isEditing
-                          ? "border-gray-200 bg-gray-50 text-gray-600"
-                          : "border-gray-200 bg-white focus:border-indigo-500"
-                      }`}
+                            ? "border-gray-200 bg-gray-50 text-gray-600"
+                            : "border-gray-200 bg-white focus:border-indigo-500"
+                        }`}
                       type="date"
                       name="date_of_joining"
                       onChange={handleChange}
@@ -702,13 +683,12 @@ const AddEmployee = () => {
                       Experience (years)
                     </label>
                     <input
-                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                        errors.experience
+                      className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${errors.experience
                           ? "border-red-500 bg-red-50"
                           : existingEmployee && !isEditing
-                          ? "border-gray-200 bg-gray-50 text-gray-600"
-                          : "border-gray-200 bg-white focus:border-indigo-500"
-                      }`}
+                            ? "border-gray-200 bg-gray-50 text-gray-600"
+                            : "border-gray-200 bg-white focus:border-indigo-500"
+                        }`}
                       type="number"
                       name="experience"
                       placeholder="e.g. 2"
@@ -761,21 +741,19 @@ const AddEmployee = () => {
                   {message && (
                     <div className="md:col-span-2 mt-6">
                       <div
-                        className={`p-6 rounded-r-xl border-l-4 ${
-                          isEditing || message.includes("updated")
+                        className={`p-6 rounded-r-xl border-l-4 ${isEditing || message.includes("updated")
                             ? "bg-blue-50 border-blue-400"
                             : "bg-green-50 border-green-400"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center">
                             <div className="flex-shrink-0">
                               <svg
-                                className={`h-5 w-5 ${
-                                  isEditing || message.includes("updated")
+                                className={`h-5 w-5 ${isEditing || message.includes("updated")
                                     ? "text-blue-400"
                                     : "text-green-400"
-                                }`}
+                                  }`}
                                 viewBox="0 0 20 20"
                                 fill="currentColor"
                               >
@@ -788,11 +766,10 @@ const AddEmployee = () => {
                             </div>
                             <div className="ml-3">
                               <p
-                                className={`font-medium ${
-                                  isEditing || message.includes("updated")
+                                className={`font-medium ${isEditing || message.includes("updated")
                                     ? "text-blue-700"
                                     : "text-green-700"
-                                }`}
+                                  }`}
                               >
                                 {message}
                               </p>
@@ -800,7 +777,7 @@ const AddEmployee = () => {
                           </div>
                           {employeeData && (
                             <button
-                             type="button"
+                              type="button"
                               onClick={handleSendCredentials}
                               className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
                             >

@@ -9,20 +9,22 @@ import axios from "axios";
 function FormAlreadySubmitted() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const response = await axios.get("/api/auth/me");
         setUser(response.data.user);
+        const isSuper = response.data?.isSuperAdmin || response.data?.user?.isSuperAdmin;
+        const perms: string[] = response.data?.permissions || response.data?.user?.permissions || [];
+        setIsAdminUser(Boolean(isSuper || perms.includes("recruitment.view")));
       } catch (error) {
         console.log("Not authenticated");
       }
     };
     checkAuth();
   }, []);
-
-  const isAdminUser = user && ["admin", "superadmin", "HR"].includes(user.role);
 
   const handleBackToRecruitment = () => {
     router.push("/Recruitment/recruitment");

@@ -1,27 +1,24 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
 
+export async function GET(req: NextRequest) {
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get("token")?.value;
     if (!token) {
-      return res.status(401).json({ message: "Access denied" });
+      return NextResponse.json({ message: "Access denied" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
     if (!decoded) {
-      return res.status(403).json({ message: "Invalid token" });
+      return NextResponse.json({ message: "Invalid token" }, { status: 403 });
     }
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW);
-    if (!hasAccess) return res.status(403).json({ message: 'Forbidden: insufficient permissions' });
+    if (!hasAccess) return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
 
-    const { empid } = req.query;
+    const empid = req.nextUrl.searchParams.get("empid");
     const targetEmpid = empid || decoded.empid || decoded.id;
 
     const payslips = await prisma.payroll.findMany({
@@ -37,19 +34,16 @@ async function handler(req, res) {
       }
     });
 
-    res.status(200).json({
+    return NextResponse.json({
       success: true,
       payslips
-    });
+    }, { status: 200 });
 
   } catch (error) {
     console.error("Payslip lists API error:", error);
-    res.status(500).json({ 
+    return NextResponse.json({ 
       success: false,
       message: "Internal server error"
-    });
+    }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

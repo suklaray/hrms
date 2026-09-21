@@ -32,7 +32,7 @@ function TaskManagement() {
     const inProgress = tasks.filter(t => t.status === 'In Progress').length;
     const completed = tasks.filter(t => t.status === 'Completed').length;
     const overdue = tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'Completed').length;
-    
+
     setStats({ total, pending, inProgress, completed, overdue });
   }, [tasks]);
 
@@ -77,26 +77,26 @@ function TaskManagement() {
 
 
   const filteredTasks = tasks.filter(task => {
-    let matchesStatus = filter === 'all' 
-        || (filter === 'overdue' 
-            ? new Date(task.deadline) < new Date() && task.status !== 'Completed'
-            : task.status.toLowerCase().replace(' ', '') === filter);
+    let matchesStatus = filter === 'all'
+      || (filter === 'overdue'
+        ? new Date(task.deadline) < new Date() && task.status !== 'Completed'
+        : task.status.toLowerCase().replace(' ', '') === filter);
 
     let matchesDate = true;
     if (dateFilter) {
-        const taskDate = new Date(task.deadline).toDateString();
-        const filterDate = new Date(dateFilter).toDateString();
-        matchesDate = taskDate === filterDate;
+      const taskDate = new Date(task.deadline).toDateString();
+      const filterDate = new Date(dateFilter).toDateString();
+      matchesDate = taskDate === filterDate;
     }
 
     let matchesSearch = true;
     if (searchTerm) {
-        const lower = searchTerm.toLowerCase();
-        matchesSearch = task.title.toLowerCase().includes(lower) || 
-                    (task.description || '').toLowerCase().includes(lower) ||
-                    task.status.toLowerCase().includes(lower) ||
-                    (task.assignee?.name || '').toLowerCase().includes(lower) ||
-                    (task.assignedBy?.name || '').toLowerCase().includes(lower);
+      const lower = searchTerm.toLowerCase();
+      matchesSearch = task.title.toLowerCase().includes(lower) ||
+        (task.description || '').toLowerCase().includes(lower) ||
+        task.status.toLowerCase().includes(lower) ||
+        (task.assignee?.name || '').toLowerCase().includes(lower) ||
+        (task.assignedBy?.name || '').toLowerCase().includes(lower);
     }
 
     return matchesStatus && matchesDate && matchesSearch;
@@ -129,7 +129,7 @@ function TaskManagement() {
       </Head>
       <div className="flex min-h-screen bg-gray-50">
         <SideBar handleLogout={handleLogout} user={user} />
-        
+
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex justify-between items-center">
@@ -181,9 +181,8 @@ function TaskManagement() {
                     <button
                       key={key}
                       onClick={() => { setFilter(key); setCurrentPage(1); }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        filter === key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
                     >
                       {label}
                     </button>
@@ -225,7 +224,7 @@ function TaskManagement() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedTasks.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="px-6 py-12 text-center">
+                        <td colSpan={5} className="px-6 py-12 text-center">
                           <CheckCircle className="mx-auto h-12 w-12 text-gray-400" />
                           <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
                         </td>
@@ -267,21 +266,20 @@ function TaskManagement() {
                   >
                     Previous
                   </button>
-                  
+
                   {[...Array(totalPages)].map((_, i) => (
                     <button
                       key={i + 1}
                       onClick={() => setCurrentPage(i + 1)}
-                      className={`px-3 py-2 border rounded-md text-sm font-medium ${
-                        currentPage === i + 1
+                      className={`px-3 py-2 border rounded-md text-sm font-medium ${currentPage === i + 1
                           ? 'bg-blue-600 text-white border-blue-600'
                           : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {i + 1}
                     </button>
                   ))}
-                  
+
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}

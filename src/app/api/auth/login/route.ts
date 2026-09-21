@@ -1,4 +1,4 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -6,35 +6,30 @@ import cookie from "cookie";
 import { rateLimiter } from "@/lib/rateLimiter";
 import { createSession, SESSION_CONFIG } from "@/lib/authMiddleware";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Method Not Allowed" });
+export async function POST(req: NextRequest) {
+  const allow = rateLimiter()(req);
+  if (!allow) {
+    return NextResponse.json({ message: "Too many login attempts. Please try again later." }, { status: 429 });
   }
 
-  const allow = rateLimiter()(req, res);
-  if (!allow) return;
-
-  const { email, password } = req.body;
-   if (!email || !password) {
-    return res.status(400).json({ message: "Email/Username and password are required" });
+  const body = await req.json().catch(() => ({}));
+  const { email, password } = body;
+  if (!email || !password) {
+    return NextResponse.json({ message: "Email/Username and password are required" }, { status: 400 });
   }
+
   try {
     let user = await prisma.users.findUnique({ where: { email } });
     if (!user) {
       user = await prisma.users.findUnique({ where: { empid: email } });
     }
     if (!user) {
-      return res.status(401).json({ message: "Invalid email" });
+      return NextResponse.json({ message: "Invalid email" }, { status: 401 });
     }
-
-    // Checking role
-    // if (user.role !== "admin" && user.role !== "hr" && user.role !== "superadmin") {
-    //   return res.status(403).json({ message: "Access denied: Only Admins and HRs can log in here" });
-    // }
 
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-      return res.status(401).json({ message: "Invalid password" });
+      return NextResponse.json({ message: "Invalid password" }, { status: 401 });
     }
 
     // Check if user has submitted employee form
@@ -70,27 +65,26 @@ async function handler(req, res) {
       form_submitted: hasFormSubmitted,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { 
-      expiresIn: "12h" // 12 hours consistent with middleware
+    const token = jwt.sign(payload, process.env.JWT_SECRET!, { 
+      expiresIn: "12h"
     });
 
     // Create server-side session with user type
     createSession(user.id, user.role === 'employee' ? 'employee' : 'admin');
 
-    res.setHeader("Set-Cookie", cookie.serialize("token", token, {
+    const response = NextResponse.json({ message: "Login successful", token, user: payload }, { status: 200 });
+
+    response.headers.set("Set-Cookie", cookie.serialize("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: SESSION_CONFIG.JWT_EXPIRY / 1000, // Match JWT expiry
+      maxAge: SESSION_CONFIG.JWT_EXPIRY / 1000,
       path: "/",
     }));
 
-    res.status(200).json({ message: "Login successful", token, user: payload });
-  } catch (error) {
+    return response;
+  } catch (error: any) {
     console.error("Login Error:", error);
-    res.status(500).json({ message: "Error logging in", error: error.message });
+    return NextResponse.json({ message: "Error logging in", error: error?.message }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

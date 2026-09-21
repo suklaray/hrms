@@ -1,29 +1,32 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 // pages/api/auth/reset-password.js
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import cookie from "cookie";
 
-async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  const { newPassword } = req.body;
+  
+
+  const { newPassword } = body;
 
   if (!newPassword || newPassword.length < 6) {
-    return res.status(400).json({ error: "Password must be at least 6 characters long" });
+    return NextResponse.json({ error: "Password must be at least 6 characters long" }, { status: 400 });
   }
 
-  const cookies = cookie.parse(req.headers.cookie || "");
+  const cookies = cookie.parse(req.headers.get('cookie') || "");
   const token = cookies.token;
 
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let decoded;
   try {
     decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    return res.status(403).json({ error: "Invalid token" });
+    return NextResponse.json({ error: "Invalid token" }, { status: 403 });
   }
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -33,8 +36,7 @@ async function handler(req, res) {
     data: { password: hashedPassword },
   });
 
-  return res.status(200).json({ message: "Password updated successfully" });
+  return NextResponse.json({ message: "Password updated successfully" }, { status: 200 });
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

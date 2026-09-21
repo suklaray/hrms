@@ -17,7 +17,7 @@ import { PenIcon } from 'lucide-react';
 function ViewConfiguration() {
     const router = useRouter();
     const { id } = router.query;
-    const [data, setData] = useState({});
+    const [data, setData] = useState<any>({});
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {

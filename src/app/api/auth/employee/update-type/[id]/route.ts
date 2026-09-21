@@ -1,54 +1,54 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import type { DecodedToken } from "@/lib/jwtTypes";
+import { NextRequest, NextResponse } from "next/server";
 // pages/api/auth/employee/update-type/[id].js
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  const {
-    query: { id },
-    method,
-  } = req;
+export async function PUT(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
-  if (method !== "PATCH") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+  const params = context?.params ? await context.params : {};
+  const id = (params as any)?.id;
 
   try {
     // Check authentication
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: "Access denied" });
+      return NextResponse.json({ message: "Access denied" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded || !['admin', 'hr', 'superadmin'].includes(decoded.role)) {
-      return res.status(403).json({ message: "Access denied" });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_EDIT);
+    if (!hasAccess) {
+      return NextResponse.json({ message: "Access denied: insufficient permissions" }, { status: 403 });
     }
   } catch (authError) {
-    return res.status(401).json({ message: "Invalid token" });
+    return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
 
-  const { employee_type } = req.body;
+  const { employee_type } = body;
   const validTypes = ["Intern", "Full_time", "Contractor"];
 
   if (!employee_type || !validTypes.includes(employee_type)) {
-    return res.status(400).json({ message: "Invalid employee type" });
+    return NextResponse.json({ message: "Invalid employee type" }, { status: 400 });
   }
 
   try {
     // Convert id to string to match empid type
     const empidStr = String(id);
-    
+
     const updatedUser = await prisma.users.update({
       where: { empid: empidStr },
       data: { employee_type },
     });
 
-    return res.status(200).json({ message: "Employee type updated successfully", updatedUser });
+    return NextResponse.json({ message: "Employee type updated successfully", updatedUser }, { status: 200 });
   } catch (error) {
     console.error("Error updating employee type:", error);
-    return res.status(500).json({ message: "Internal server error", error: error.message });
+    return NextResponse.json({ message: "Internal server error", error: error.message }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

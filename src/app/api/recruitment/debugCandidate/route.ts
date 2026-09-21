@@ -1,15 +1,16 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
-  const { token } = req.query;
+  
+
+  const { token } = query;
 
   if (!token) {
-    return res.status(400).json({ message: "Token is required" });
+    return NextResponse.json({ message: "Token is required" }, { status: 400 });
   }
 
   try {
@@ -18,7 +19,7 @@ async function handler(req, res) {
       where: { form_token: token },
       select: {
         candidate_id: true,
-        candidate_name: true,
+        name: true,
         form_token: true,
         ip_address: true,
         device_info: true,
@@ -29,20 +30,19 @@ async function handler(req, res) {
     });
 
     if (!candidate) {
-      return res.status(404).json({ message: "Candidate not found" });
+      return NextResponse.json({ message: "Candidate not found" }, { status: 404 });
     }
 
-    res.status(200).json({
+    return NextResponse.json({
       message: "Candidate debug info",
       candidate,
       hasIP: !!candidate.ip_address,
       hasDevice: !!candidate.device_info,
       devicePreview: candidate.device_info?.slice(0, 100)
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("Debug error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

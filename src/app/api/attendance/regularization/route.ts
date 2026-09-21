@@ -1,34 +1,37 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import * as cookie from "cookie";
 import jwt from "jsonwebtoken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req: any, res: any) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
+
+  
 
   try {
-    const cookies = cookie.parse(req.headers.cookie || '');
+    const cookies = cookie.parse(req.headers.get('cookie') || '');
     const { token } = cookies;
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
     const user = decoded;
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_REGULARIZATION_CREATE);
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
+      return NextResponse.json({ message: 'Unauthorized: insufficient permissions' }, { status: 403 });
     }
 
-    const { attendance_id, attendance_date, check_in_time, requested_checkout, reason } = req.body;
+    const { attendance_id, attendance_date, check_in_time, requested_checkout, reason } = body;
 
     // Validation
     if (!attendance_date || !check_in_time || !requested_checkout || !reason?.trim()) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
     if (reason.trim().length > 500) {
-      return res.status(400).json({ error: 'Reason cannot exceed 500 characters' });
+      return NextResponse.json({ error: 'Reason cannot exceed 500 characters' }, { status: 400 });
     }
 
     const checkIn = new Date(check_in_time);
@@ -36,7 +39,7 @@ async function handler(req: any, res: any) {
     const attendanceDateParsed = new Date(attendance_date);
 
     if (checkOut <= checkIn) {
-      return res.status(400).json({ error: 'Check-out time must be after check-in time' });
+      return NextResponse.json({ error: 'Check-out time must be after check-in time' }, { status: 400 });
     }
 
     // Verify attendance belongs to this employee
@@ -51,9 +54,9 @@ async function handler(req: any, res: any) {
       });
 
       if (!attendance) {
-        return res.status(404).json({
+        return NextResponse.json({
           error: 'Attendance record not found'
-        });
+        }, { status: 404 });
       }
     }
 
@@ -67,9 +70,9 @@ async function handler(req: any, res: any) {
     });
 
     if (existing) {
-      return res.status(400).json({
+      return NextResponse.json({
         error: 'A pending regularization request already exists for this date'
-      });
+      }, { status: 400 });
     }
 
     // Create regularization request
@@ -85,17 +88,16 @@ async function handler(req: any, res: any) {
       }
     });
 
-    return res.status(201).json({
+    return NextResponse.json({
       message: 'Regularization request submitted successfully',
       request
-    });
+    }, { status: 201 });
 
   } catch (error) {
     console.error('Error submitting regularization request:', error);
-    return res.status(500).json({
+    return NextResponse.json({
       error: 'Failed to submit regularization request'
-    });
+    }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

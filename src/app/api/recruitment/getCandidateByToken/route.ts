@@ -1,44 +1,43 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { parse } from "cookie";
+import { getQueryParams } from "@/lib/routeHelper";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { token } = await getQueryParams(req, context?.params);
 
-  const { token } = req.query;
   // Get user session from JWT token
-  const cookies = parse(req.headers.cookie || "");
+  const cookies = parse(req.headers.get("cookie") || "");
   const userToken = cookies.token;
   const session = userToken ? await getUserFromToken(userToken) : null;
+
   // Enhanced IP detection with multiple fallbacks
   const getClientIP = () => {
-    const forwarded = req.headers["x-forwarded-for"];
-    const realIP = req.headers["x-real-ip"];
-    const clientIP = req.headers["x-client-ip"];
-    const remoteAddr = req.connection?.remoteAddress || req.socket?.remoteAddress;
-    
+    const forwarded = req.headers.get("x-forwarded-for");
+    const realIP = req.headers.get("x-real-ip");
+    const clientIP = req.headers.get("x-client-ip");
+
     if (forwarded) return forwarded.split(',')[0].trim();
     if (realIP) return realIP.trim();
     if (clientIP) return clientIP.trim();
-    if (remoteAddr) return remoteAddr;
     return 'unknown';
   };
-  
+
   const ip = getClientIP();
-  const userAgent = (req.headers["user-agent"] || "unknown-browser").slice(0, 200);
-  
-  console.log('IP Detection:', { 
-    ip, 
-    userAgent: userAgent.slice(0, 50), 
+  const userAgent = (req.headers.get("user-agent") || "unknown-browser").slice(0, 200);
+
+  console.log('IP Detection:', {
+    ip,
+    userAgent: userAgent.slice(0, 50),
     isLocalhost: ip === '::1' || ip === '127.0.0.1',
-    headers: Object.keys(req.headers) 
+    headers: Array.from(req.headers.keys())
   });
 
   if (!token) {
-    return res.status(400).json({ error: "Token is required" });
+    return NextResponse.json({ error: "Token is required" }, { status: 400 });
   }
 
   try {
@@ -58,37 +57,37 @@ async function handler(req, res) {
           ]
         }
       });
-      
+
       if (candidate) {
-        // Check if this is the authorized user (same device/IP) or admin
-        const allowedRoles = ["admin", "hr", "superadmin"];
-        if (session && allowedRoles.includes(session.role)) {
-          return res.status(403).json({ error: "submitted:Form already submitted" });
+        // Check if this is authorized staff or candidate
+        const isStaff = session && (await checkPermission(session, PERMISSION_KEYS.RECRUITMENT_VIEW));
+        if (isStaff) {
+          return NextResponse.json({ error: "submitted:Form already submitted" }, { status: 403 });
         }
-        
+
         // For submitted forms, validate device/IP before showing submitted message
         if (candidate.device_info && candidate.ip_address) {
           const sameIp = candidate.ip_address === ip;
           const sameUA = candidate.device_info.startsWith(userAgent.slice(0, 50));
           if (!sameIp || !sameUA) {
-            return res.status(404).json({ error: "Invalid or expired token" });
+            return NextResponse.json({ error: "Invalid or expired token" }, { status: 404 });
           }
         }
-        
-        return res.status(403).json({ error: "submitted:Form already submitted" });
+
+        return NextResponse.json({ error: "submitted:Form already submitted" }, { status: 403 });
       }
-      
-      return res.status(404).json({ error: "Invalid or expired token" });
+
+      return NextResponse.json({ error: "Invalid or expired token" }, { status: 404 });
     }
 
-    //  Check for Admin/HR/SuperAdmin roles (they can always view)
-    const allowedRoles = ["admin", "hr", "superadmin"];
-    if (session && allowedRoles.includes(session.role)) {
-      return res.status(200).json({ ...candidate, isAdmin: true });
+    // Check for authorized staff (they can always view)
+    const isStaff = session && (await checkPermission(session, PERMISSION_KEYS.RECRUITMENT_VIEW));
+    if (isStaff) {
+      return NextResponse.json({ ...candidate, isAdmin: true }, { status: 200 });
     }
 
     if (candidate.form_submitted) {
-      return res.status(403).json({ error: "submitted:Form already submitted" });
+      return NextResponse.json({ error: "submitted:Form already submitted" }, { status: 403 });
     }
 
     //  Optional: check token expiry
@@ -96,17 +95,17 @@ async function handler(req, res) {
       candidate.token_expiry &&
       new Date() > new Date(candidate.token_expiry)
     ) {
-      return res.status(403).json({ error: "expired:Form link has expired" });
+      return NextResponse.json({ error: "expired:Form link has expired" }, { status: 403 });
     }
 
     // First-time access → lock form to this device/IP
     if (!candidate.device_info && !candidate.ip_address) {
-      console.log('First-time access - saving device info:', { 
+      console.log('First-time access - saving device info:', {
         candidateId: candidate.candidate_id,
-        ip, 
-        userAgent: userAgent.slice(0, 50) 
+        ip,
+        userAgent: userAgent.slice(0, 50)
       });
-      
+
       try {
         // Save device info for first-time access (both admin and regular users)
         const updateResult = await prisma.candidates.update({
@@ -117,42 +116,39 @@ async function handler(req, res) {
             token_first_used_at: new Date(),
           },
         });
-        
-        console.log('Device info saved successfully:', { 
-          candidateId: candidate.candidate_id, 
+
+        console.log('Device info saved successfully:', {
+          candidateId: candidate.candidate_id,
           savedIP: updateResult.ip_address,
           savedDevice: updateResult.device_info?.slice(0, 50),
           updateSuccess: true
         });
-        
-        return res.status(200).json(candidate);
+
+        return NextResponse.json(candidate, { status: 200 });
       } catch (updateError) {
         console.error('Failed to save device info:', updateError);
         // Continue anyway, don't block form access
-        return res.status(200).json(candidate);
+        return NextResponse.json(candidate, { status: 200 });
       }
     }
 
     // 🔐 Subsequent accesses: validate same device/IP (only for non-admin users)
-    if (!session || !allowedRoles.includes(session.role)) {
+    if (!isStaff) {
       const sameIp = candidate.ip_address === ip;
       const sameUA =
         candidate.device_info &&
         candidate.device_info.startsWith(userAgent.slice(0, 50));
       if (!sameIp || !sameUA) {
-        return res.status(403).json({
+        return NextResponse.json({
           error: "locked:Form is locked to a different device",
-        });
+        }, { status: 403 });
       }
     }
 
     // ✅ All checks passed
-    res.status(200).json(candidate);
+    return NextResponse.json(candidate, { status: 200 });
   } catch (error) {
     console.error("Error fetching candidate by token:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

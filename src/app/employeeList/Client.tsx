@@ -351,8 +351,8 @@ function EmployeeListPage({ user }) {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${emp.status === "Active"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                             }`}
                         >
                           {emp.status}
@@ -381,7 +381,7 @@ function EmployeeListPage({ user }) {
                   ))}
                   {paginatedEmployees.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="px-6 py-12 text-center">
+                      <td colSpan={6} className="px-6 py-12 text-center">
                         <div className="text-gray-500">
                           <FaUsers className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                           <h3 className="text-lg font-medium mb-2">No employees found</h3>
@@ -408,8 +408,8 @@ function EmployeeListPage({ user }) {
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                     }`}
                 >
                   <FaChevronLeft className="w-4 h-4" />
@@ -420,8 +420,8 @@ function EmployeeListPage({ user }) {
                     key={page}
                     onClick={() => handlePageChange(page)}
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${page === currentPage
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                       }`}
                   >
                     {page}
@@ -432,8 +432,8 @@ function EmployeeListPage({ user }) {
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                     }`}
                 >
                   <FaChevronRight className="w-4 h-4" />

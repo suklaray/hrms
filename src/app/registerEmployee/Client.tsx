@@ -54,7 +54,7 @@ function RegisterEmployee() {
     const [message, setMessage] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [errors, setErrors] = useState({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [passwordCopied, setPasswordCopied] = useState(false);
     const [usernameCopied, setUsernameCopied] = useState(false);
     const [currentDate, setCurrentDate] = useState('');
@@ -913,14 +913,9 @@ function RegisterEmployee() {
                                                                         key={r.id}
                                                                         type="button"
                                                                         onClick={() => {
-                                                                            const roleNameLower = r.name.toLowerCase();
-                                                                            const legacyEnum = ["admin", "hr", "employee", "superadmin"].includes(roleNameLower)
-                                                                                ? roleNameLower
-                                                                                : "employee";
                                                                             setFormData((prev) => ({
                                                                                 ...prev,
                                                                                 rbacRoleId: r.id,
-                                                                                role: legacyEnum,
                                                                             }));
                                                                             setIsRoleDropdownOpen(false);
                                                                             setRoleSearchTerm("");
@@ -1061,9 +1056,9 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 
 export default function ClientPageWrapper(props: any) {
-  return (
-    <Suspense fallback={null}>
-      <RegisterEmployee {...props} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={null}>
+            <RegisterEmployee {...props} />
+        </Suspense>
+    );
 }

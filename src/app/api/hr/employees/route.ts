@@ -1,4 +1,4 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { getAccessibleRoles } from "@/lib/roleBasedAccess";
@@ -6,30 +6,28 @@ import { getAccessibleRoles } from "@/lib/roleBasedAccess";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+
 
   try {
     // Check authentication
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: "Access denied" });
+      return NextResponse.json({ message: "Access denied" }, { status: 401 });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded) {
-      return res.status(401).json({ message: "Access denied" });
+      return NextResponse.json({ message: "Access denied" }, { status: 401 });
     }
 
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW);
     if (!hasAccess) {
-      return res.status(403).json({ message: "Access denied: insufficient permissions" });
+      return NextResponse.json({ message: "Access denied: insufficient permissions" }, { status: 403 });
     }
 
     const employees = await prisma.users.findMany({
-      where: { 
+      where: {
         status: { not: "Inactive" } // Exclude inactive employees
       },
       select: {
@@ -49,7 +47,7 @@ async function handler(req, res) {
       employees.map(async (emp) => {
         const currentMonth = new Date().toLocaleString('default', { month: 'long' });
         const currentYear = new Date().getFullYear();
-        
+
         // Check current month payroll
         const currentPayroll = await prisma.payroll.findFirst({
           where: {
@@ -86,12 +84,11 @@ async function handler(req, res) {
       })
     );
 
-    return res.status(200).json({ employees: employeesWithPayrollStatus });
+    return NextResponse.json({ employees: employeesWithPayrollStatus }, { status: 200 });
   } catch (error) {
     console.error("Error fetching employees:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

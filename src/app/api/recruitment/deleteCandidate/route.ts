@@ -1,15 +1,16 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "DELETE") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function DELETE(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
-  const { candidate_id } = req.query;
+  
+
+  const { candidate_id } = query;
 
   if (!candidate_id) {
-    return res.status(400).json({ message: "Candidate ID is required" });
+    return NextResponse.json({ message: "Candidate ID is required" }, { status: 400 });
   }
 
   try {
@@ -17,12 +18,11 @@ async function handler(req, res) {
       where: { candidate_id: candidate_id }
     });
 
-    return res.status(200).json({ message: "Candidate deleted successfully" });
+    return NextResponse.json({ message: "Candidate deleted successfully" }, { status: 200 });
   } catch (error) {
     console.error("Error deleting candidate:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

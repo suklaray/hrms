@@ -1,16 +1,17 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
+import type { DecodedToken } from "@/lib/jwtTypes";
 import cookie from "cookie";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  if (req.method !== "GET") return res.status(405).end();
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
-    const { token } = cookie.parse(req.headers.cookie || "");
-    if (!token) return res.status(401).json({ error: "Unauthorized" });
+    const { token } = cookie.parse(req.headers.get('cookie') || "");
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     
     let user = null;
     let attendance = null;
@@ -21,11 +22,11 @@ async function handler(req, res) {
         await prisma.$connect();
         
         user = await prisma.users.findUnique({
-          where: { empid: decoded.empid || decoded.id },
+          where: { empid: (decoded.empid || decoded.id) as string },
           select: { empid: true }
         });
 
-        if (!user) return res.status(404).json({ error: "User not found" });
+        if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -49,13 +50,13 @@ async function handler(req, res) {
     const isWorking = !!(attendance?.check_in && !attendance?.check_out);
     const workStartTime = attendance?.check_in || null;
 
-    res.status(200).json({ isWorking, workStartTime });
+    return NextResponse.json({ isWorking, workStartTime }, { status: 200 });
   } catch (err) {
     console.error("Work status error:", err);
-    res.status(401).json({ error: "Invalid token" });
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   } finally {
     await prisma.$disconnect();
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

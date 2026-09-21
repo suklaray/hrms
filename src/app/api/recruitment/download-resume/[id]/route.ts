@@ -1,14 +1,13 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { id } = req.query;
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
 
   try {
     const candidate = await prisma.candidates.findUnique({
@@ -17,14 +16,14 @@ async function handler(req, res) {
     });
 
     if (!candidate || !candidate.resume) {
-      return res.status(404).json({ error: 'Resume not found' });
+      return NextResponse.json({ error: 'Resume not found' }, { status: 404 });
     }
 
     const resumePath = candidate.resume.startsWith('/') ? candidate.resume.substring(1) : candidate.resume;
     const filePath = path.join(process.cwd(), 'public', resumePath);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
     const fileBuffer = fs.readFileSync(filePath);
@@ -37,13 +36,15 @@ async function handler(req, res) {
       contentType = 'image/png';
     }
     
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `inline; filename="resume${fileExt}"`);
-    res.send(fileBuffer);
+    return new NextResponse(fileBuffer, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `inline; filename="resume${fileExt}"`,
+      },
+    });
     
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+  } catch {
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

@@ -1,17 +1,18 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import type { DecodedToken } from "@/lib/jwtTypes";
 
-async function handler(req, res) {
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: 'Unauthorized' });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' });
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
     // Get all leave types
@@ -26,7 +27,7 @@ async function handler(req, res) {
     // Get approved leaves for this user
     const approvedLeaves = await prisma.leave_requests.findMany({
       where: {
-        empid: decoded.empid,
+        empid: decoded.empid as string,
         status: 'Approved'
       },
       select: {
@@ -45,7 +46,7 @@ async function handler(req, res) {
         .reduce((total, leave) => {
           const fromDate = new Date(leave.from_date);
           const toDate = new Date(leave.to_date);
-          const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+          const days = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
           return total + days;
         }, 0);
 
@@ -59,12 +60,12 @@ async function handler(req, res) {
       };
     });
 
-    res.status(200).json(balances);
+    return NextResponse.json(balances, { status: 200 });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error' });
+    return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

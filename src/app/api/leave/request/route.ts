@@ -1,71 +1,53 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
-import formidable from 'formidable';
+import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/prisma';
 import { verifyEmployeeToken } from '@/lib/auth';
 
-// Legacy config removed for App Router
-
-
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
+export async function POST(req: NextRequest) {
   const user = await verifyEmployeeToken(req);
-  if (!user) return res.status(401).json({ message: 'Unauthorized' });
+  if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
   const uploadDir = path.join(process.cwd(), 'public', 'uploads');
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-  const form = formidable({ 
-    keepExtensions: true,
-    uploadDir: uploadDir
-  });
+  try {
+    const formData = await req.formData();
+    const leave_type = formData.get('leave_type') as string;
+    const reason = formData.get('reason') as string;
+    const from_date_val = formData.get('from_date') as string;
+    const to_date_val = formData.get('to_date') as string;
 
-  form.parse(req, async (err, fields, files) => {
-    if (err) {
-      console.error("Form parsing error:", err);
-      return res.status(500).json({ message: 'Form parsing error' });
-    }
+    const from_date = new Date(from_date_val);
+    const to_date = new Date(to_date_val);
 
-    const leave_type = Array.isArray(fields.leave_type) ? fields.leave_type[0] : fields.leave_type;
-    const reason = Array.isArray(fields.reason) ? fields.reason[0] : fields.reason;
-    const from_date = new Date(Array.isArray(fields.from_date) ? fields.from_date[0] : fields.from_date);
-    const to_date = new Date(Array.isArray(fields.to_date) ? fields.to_date[0] : fields.to_date);
+    let attachment: string | null = null;
+    const file = formData.get('attachment') as File | null;
 
-    let attachment = null;
-    const file = Array.isArray(files.attachment) ? files.attachment[0] : files.attachment;
-    
-    if (file && file.filepath) {
-      const fileName = `${Date.now()}-${file.originalFilename}`;
+    if (file && typeof file !== 'string' && file.name) {
+      const fileName = `${Date.now()}-${file.name}`;
       const finalPath = path.join(uploadDir, fileName);
-      fs.renameSync(file.filepath, finalPath);
+      const bytes = await file.arrayBuffer();
+      await fs.promises.writeFile(finalPath, Buffer.from(bytes));
       attachment = `/uploads/${fileName}`;
     }
 
-    try {
-      await prisma.leave_requests.create({
-        data: {
-          empid: user.empid,
-          name: user.name,
-          leave_type,
-          from_date: new Date(from_date),
-          to_date: new Date(to_date),
-          applied_at: new Date(),
-          reason,
-          attachment,
-        },
-      });
+    await prisma.leave_requests.create({
+      data: {
+        empid: user.empid,
+        name: user.name,
+        leave_type,
+        from_date: new Date(from_date),
+        to_date: new Date(to_date),
+        applied_at: new Date(),
+        reason,
+        attachment,
+      },
+    });
 
-      res.status(200).json({ message: 'Leave request submitted successfully' });
-    } catch (err) {
-      console.error("Database error:", err);
-      res.status(500).json({ message: 'Database error' });
-    }
-  });
+    return NextResponse.json({ message: 'Leave request submitted successfully' }, { status: 200 });
+  } catch (err: any) {
+    console.error("Leave request error:", err);
+    return NextResponse.json({ message: 'Database error' }, { status: 500 });
+  }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

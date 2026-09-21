@@ -1,15 +1,15 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { parse } from "cookie";
 import prisma from "@/lib/prisma";
 
-async function handler(req, res) {
-  const cookies = parse(req.headers.cookie || "");
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const cookies = parse(req.headers.get('cookie') || "");
   const token = cookies.token;
   const user = token ? getUserFromToken(token) : null;
 
   if (!user) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -19,14 +19,13 @@ async function handler(req, res) {
     });
 
     if (!currentUser || currentUser.status !== "Active") {
-      return res.status(401).json({ error: "User not found or inactive" });
+      return NextResponse.json({ error: "User not found or inactive" }, { status: 401 });
     }
 
-    res.status(200).json({ role: currentUser.role });
+    return NextResponse.json({ role: currentUser.role }, { status: 200 });
   } catch (error) {
     console.error("Error fetching current role:", error);
-    res.status(500).json({ error: "Failed to fetch role" });
+    return NextResponse.json({ error: "Failed to fetch role" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

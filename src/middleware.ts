@@ -110,8 +110,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // For admin/hr: check verification
-    if (["admin", "hr"].includes(role)) {
+    // For non-superadmin users: check verification
+    if (role !== "superadmin") {
       const needsVerification = !isVerified && !hasFormSubmitted;
       if (needsVerification) {
         return NextResponse.redirect(new URL("/dashboard", request.url));

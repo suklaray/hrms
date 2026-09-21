@@ -1,25 +1,31 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withSessionTimeout } from "@/lib/authMiddleware";
+import { getAuthenticatedUser } from "@/lib/authMiddleware";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { getPendingRegularization } from "@/lib/checkPendingRegularization";
 
-async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).end();
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
+  if (errorResponse) return errorResponse;
+  if (!decoded) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const decoded = req.user;
     const empid = decoded.empid;
 
     const canCheckin = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_MY);
-    if (!canCheckin) return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
+    if (!canCheckin) {
+      return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+    }
 
     const pendingAttendance = await getPendingRegularization(empid);
     if (pendingAttendance) {
-      return res.status(400).json({
-        error: "Please submit yesterday's attendance regularization before checking in."
-      });
+      return NextResponse.json(
+        {
+          error: "Please submit yesterday's attendance regularization before checking in.",
+        },
+        { status: 400 }
+      );
     }
 
     await prisma.$transaction([
@@ -29,12 +35,9 @@ async function handler(req, res) {
       }),
     ]);
 
-    res.status(200).json({ message: "Check-in successful" });
-  } catch (err) {
+    return NextResponse.json({ message: "Check-in successful" }, { status: 200 });
+  } catch (err: any) {
     console.error("Check-in failed:", err);
-    res.status(500).json({ error: "Check-in failed", details: err.message });
+    return NextResponse.json({ error: "Check-in failed", details: err.message }, { status: 500 });
   }
 }
-
-const wrappedHandler = withSessionTimeout(handler);
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

@@ -1,7 +1,12 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
+import { DecodedToken } from "@/lib/jwtTypes";
+
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 const uploadDir = path.join(process.cwd(), 'hr-assistant-data');
 
@@ -10,27 +15,25 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
 
   try {
-    // Verify user is superadmin
-    const token = req.cookies.token || req.cookies.employeeToken;
+    const token = req.cookies.get('token')?.value || req.cookies.get('employeeToken')?.value;
     if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = jwt.verify(token, process.env.JWT_SECRET);
-    if (user.role !== 'superadmin') {
-      return res.status(403).json({ error: 'Access denied' });
+    const user = jwt.verify(token, process.env.JWT_SECRET as string) as DecodedToken;
+    const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_BOT);
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'Access denied: insufficient permissions' }, { status: 403 });
     }
 
-    const { filename, content } = req.body;
+    const { filename, content } = body;
 
     if (!filename || !content) {
-      return res.status(400).json({ error: 'Filename and content are required' });
+      return NextResponse.json({ error: 'Filename and content are required' }, { status: 400 });
     }
 
     // Create the file
@@ -49,15 +52,15 @@ async function handler(req, res) {
     const metadataPath = path.join(uploadDir, `${filename}.meta.json`);
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
 
-    res.status(200).json({ 
+    return NextResponse.json({
       message: 'Content saved successfully',
-      filename 
-    });
+      filename
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Text save error:', error);
-    res.status(500).json({ error: 'Save failed' });
+    return NextResponse.json({ error: 'Save failed' }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

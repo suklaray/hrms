@@ -1,21 +1,20 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { withSessionTimeout } from "@/lib/authMiddleware";
+import { getAuthenticatedUser } from "@/lib/authMiddleware";
 import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { getQueryParams } from "@/lib/routeHelper";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
-
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   try {
-    const decoded = req.user;
+    const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
+    if (errorResponse) return errorResponse;
+    if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     const allowed = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
-    if (!allowed) return res.status(403).json({ message: "Forbidden" });
+    if (!allowed) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
 
-    const { year } = req.query;
+    const { year } = await getQueryParams(req, context?.params);
     const targetYear = year ? parseInt(year) : new Date().getFullYear();
 
     // Get birthdays from employees table using dob
@@ -31,7 +30,7 @@ async function handler(req, res) {
     });
 
     // Get approved leaves for the year - only for current employee if role is employee
-    let leaveFilter = {
+    let leaveFilter: any = {
       status: "Approved",
       OR: [
         {
@@ -84,9 +83,6 @@ async function handler(req, res) {
       };
     }
 
-    // console.log('User:', userEmail, 'Role:', userRole);
-    // console.log('Visibility filter:', visibilityFilter);
-
     const calendarEvents = await prisma.calendar_events.findMany({
       where: {
         event_date: {
@@ -105,32 +101,10 @@ async function handler(req, res) {
       },
     });
 
-    // console.log('Found events:', calendarEvents.length);
-    // console.log('Query filter used:', JSON.stringify({
-    //   event_date: {
-    //     gte: new Date(targetYear, 0, 1),
-    //     lt: new Date(targetYear + 1, 0, 1),
-    //   },
-    //   ...visibilityFilter,
-    // }, null, 2));
-    
-    // calendarEvents.forEach(event => {
-    //   console.log(`Event: ${event.title}, Type: ${event.event_type}, Visible: ${event.visible_to}, Date: ${event.event_date}`);
-    // });
-    
-    // Also query all events to see what's in the database
-    // const allEvents = await prisma.calendar_events.findMany({
-    //   select: { id: true, title: true, event_type: true, visible_to: true, event_date: true }
-    // });
-    // // console.log('All events in database:', allEvents.length);
-    // allEvents.forEach(event => {
-    //   console.log(`DB Event: ${event.title}, Type: ${event.event_type}, Visible: ${event.visible_to}, Date: ${event.event_date}`);
-    // });
-
-    const yearEvents = {};
+    const yearEvents: Record<number, any[]> = {};
 
     // Helper: format date as YYYY-MM-DD in local time
-    const formatDateLocal = (date) => {
+    const formatDateLocal = (date: Date) => {
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
         2,
         "0"
@@ -211,20 +185,17 @@ async function handler(req, res) {
       });
     });
 
-    res.status(200).json({
+    return NextResponse.json({
       success: true,
       events: yearEvents,
       year: targetYear,
-    });
-  } catch (error) {
+    }, { status: 200 });
+  } catch (error: any) {
     console.error("Yearly calendar events API error:", error);
-    res.status(500).json({
+    return NextResponse.json({
       success: false,
       message: "Internal server error",
       error: error.message,
-    });
+    }, { status: 500 });
   }
 }
-
-const wrappedHandler = withSessionTimeout(handler);
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(wrappedHandler);

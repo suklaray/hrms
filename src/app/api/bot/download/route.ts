@@ -1,48 +1,44 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 
 const uploadDir = path.join(process.cwd(), 'hr-assistant-data');
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export async function GET(req: NextRequest) {
   try {
-    // Verify user is authenticated
-    const token = req.cookies.token || req.cookies.employeeToken;
+    const token = req.cookies.get('token')?.value || req.cookies.get('employeeToken')?.value;
     if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET);
+    jwt.verify(token, process.env.JWT_SECRET!);
 
-    const { filename } = req.query;
+    const filename = req.nextUrl.searchParams.get('filename');
     if (!filename) {
-      return res.status(400).json({ error: 'Filename required' });
+      return NextResponse.json({ error: 'Filename required' }, { status: 400 });
     }
 
     const filePath = path.join(uploadDir, filename);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
     const fileContent = fs.readFileSync(filePath);
     const stats = fs.statSync(filePath);
 
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', stats.size);
-    
-    res.send(fileContent);
+    return new NextResponse(fileContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': stats.size.toString(),
+      },
+    });
 
   } catch (error) {
     console.error('Download error:', error);
-    res.status(500).json({ error: 'Download failed' });
+    return NextResponse.json({ error: 'Download failed' }, { status: 500 });
   }
 }
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

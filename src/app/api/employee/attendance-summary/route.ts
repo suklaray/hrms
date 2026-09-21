@@ -1,19 +1,20 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyEmployeeToken } from "@/lib/auth";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
+
+  
 
   try {
     const user = await verifyEmployeeToken(req);
     if (!user) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const { month, year } = req.query;
+    const { month, year } = query;
 
     // Get target month start and end dates
     const targetMonth = month ? parseInt(month) - 1 : new Date().getMonth();
@@ -41,11 +42,10 @@ async function handler(req, res) {
       },
     });
 
-    res.status(200).json(attendance);
+    return NextResponse.json(attendance, { status: 200 });
   } catch (error) {
     console.error("Error fetching attendance summary:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

@@ -1,40 +1,44 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { getRequestBody } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { DecodedToken } from "@/lib/jwtTypes";
 
-async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const body = (await getRequestBody(req)) || {};
+
+
 
   try {
-    const { token } = cookie.parse(req.headers.cookie || '');
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const { token } = cookie.parse(req.headers.get('cookie') || '');
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    const { currentPassword, newPassword } = req.body;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
+
+    const { currentPassword, newPassword } = body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Missing fields' });
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      return NextResponse.json({ error: 'New password must be at least 6 characters' }, { status: 400 });
     }
 
     const user = await prisma.users.findUnique({
-      where: { empid: decoded.empid || decoded.id },
+      where: { empid: (decoded.empid || decoded.id) as string },
       select: { empid: true, password: true }
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      return res.status(400).json({ error: 'Current password is incorrect' });
+      return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
     }
 
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
@@ -44,12 +48,12 @@ async function handler(req, res) {
       data: { password: hashedNewPassword },
     });
 
-    return res.status(200).json({ message: 'Password updated successfully' });
+    return NextResponse.json({ message: 'Password updated successfully' }, { status: 200 });
   } catch (error) {
     console.error('Change password error:', error);
-    return res.status(500).json({ error: 'Server error' });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

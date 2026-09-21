@@ -1,33 +1,34 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
+
+  
 
   try {
-    const cookies = cookie.parse(req.headers.cookie || '');
+    const cookies = cookie.parse(req.headers.get('cookie') || '');
     const token = cookies.token;
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const hasAccess =
       (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS)) ||
       (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW));
-    if (!hasAccess) return res.status(403).json({ error: 'Forbidden: insufficient permissions' });
+    if (!hasAccess) return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
   } catch {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
   }
 
-  const { email } = req.query;
+  const { email } = query;
 
   if (!email) {
-    return res.status(400).json({ error: 'Email is required' });
+    return NextResponse.json({ error: 'Email is required' }, { status: 400 });
   }
 
   try {
@@ -49,17 +50,17 @@ async function handler(req, res) {
 
     // Return empty object if employee not found (candidate might not be in employees table yet)
     if (!employee) {
-      return res.status(200).json({
+      return NextResponse.json({
         aadhar_card: null,
         pan_card: null,
         bank_details: null,
         experience_certificate: null,
         resume: null,
         education_certificates: null
-      });
+      }, { status: 200 });
     }
 
-    res.status(200).json(employee);
+    return NextResponse.json(employee, { status: 200 });
 
   } catch (err) {
     console.error('Error fetching candidate documents:', err);
@@ -69,20 +70,20 @@ async function handler(req, res) {
       try {
         await prisma.$disconnect();
         await prisma.$connect();
-        return res.status(500).json({ 
+        return NextResponse.json({ 
           message: 'Database connection lost. Please try again.',
           aadhar_card: null,
           pan_card: null,
           bank_details: null,
           experience_certificate: null,
           resume: null
-        });
+        }, { status: 500 });
       } catch (reconnectErr) {
         console.error('Failed to reconnect:', reconnectErr);
       }
     }
     
-    res.status(500).json({ 
+    return NextResponse.json({ 
       message: 'Internal server error',
       aadhar_card: null,
       pan_card: null,
@@ -90,10 +91,9 @@ async function handler(req, res) {
       experience_certificate: null,
       resume: null,
       education_certificates: null
-    });
+    }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

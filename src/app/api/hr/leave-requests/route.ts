@@ -1,30 +1,29 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { NextRequest, NextResponse } from "next/server";
 // /pages/api/hr/leave-requests.js
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import type { DecodedToken } from "@/lib/jwtTypes";
 import cookie from "cookie";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     // Get user from token
-    const cookies = cookie.parse(req.headers.cookie || '');
+    const cookies = cookie.parse(req.headers.get('cookie') || '');
     const { token } = cookies;
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW);
     if (!hasAccess) {
-      return res.status(403).json({ message: 'Unauthorized: insufficient permissions' });
+      return NextResponse.json({ message: 'Unauthorized: insufficient permissions' }, { status: 403 });
     }
 
     const currentUser = await prisma.users.findUnique({
-      where: { empid: decoded.empid || decoded.id },
+      where: { empid: (decoded.empid || decoded.id) as string },
       select: { empid: true, role: true }
     });
 
@@ -64,12 +63,12 @@ async function handler(req, res) {
       })
     );
 
-    res.status(200).json({ success: true, data: leaveRequestsWithCount });
+    return NextResponse.json({ success: true, data: leaveRequestsWithCount }, { status: 200 });
   } catch (error) {
     console.error("Error fetching leave requests:", error);
-    res.status(500).json({ success: false, error: "Server error" });
+    return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
   }
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

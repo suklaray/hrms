@@ -1,18 +1,15 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 
-async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
-  }
-
-  const { email, password } = req.body;
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  const { email, password } = body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required" });
+    return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
   }
 
   try {
@@ -21,12 +18,12 @@ async function handler(req, res) {
     });
 
     if (!user || user.role !== "employee") {
-      return res.status(401).json({ error: "Unauthorized: Invalid credentials or role" });
+      return NextResponse.json({ error: "Unauthorized: Invalid credentials or role" }, { status: 401 });
     }
 
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-      return res.status(401).json({ error: "Unauthorized: Invalid credentials or role" });
+      return NextResponse.json({ error: "Unauthorized: Invalid credentials or role" }, { status: 401 });
     }
 
     const payload = {
@@ -37,9 +34,11 @@ async function handler(req, res) {
       role: user.role,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
+    const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: "1d" });
 
-    res.setHeader("Set-Cookie", cookie.serialize("token", token, {
+    const response = NextResponse.json({ message: "Login successful" }, { status: 200 });
+
+    response.headers.set("Set-Cookie", cookie.serialize("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -47,12 +46,9 @@ async function handler(req, res) {
       path: "/",
     }));
 
-    res.status(200).json({ message: "Login successful" });
+    return response;
   } catch (error) {
     console.error("Login Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
-
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

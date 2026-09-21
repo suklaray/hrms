@@ -1,21 +1,19 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import { parse } from 'cookie';
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
-    const cookies = parse(req.headers.cookie || '');
+    const cookies = parse(req.headers.get('cookie') || '');
     const token = cookies.token;
     
     if (!token) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -23,7 +21,7 @@ async function handler(req, res) {
     // Check if user has permission to view all tasks
     const hasAccess = (await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW)) || (await checkPermission(decoded, PERMISSION_KEYS.TASK_CREATE));
     if (!hasAccess) {
-      return res.status(403).json({ error: 'Access denied: insufficient permissions' });
+      return NextResponse.json({ error: 'Access denied: insufficient permissions' }, { status: 403 });
     }
 
     const tasks = await prisma.tasks.findMany({
@@ -54,11 +52,10 @@ async function handler(req, res) {
       assignedBy: task.creator
     }));
 
-    return res.status(200).json({ tasks: transformedTasks });
+    return NextResponse.json({ tasks: transformedTasks }, { status: 200 });
   } catch (error) {
     console.error('Error fetching all tasks:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

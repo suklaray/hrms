@@ -1,25 +1,22 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { NextRequest, NextResponse } from "next/server";
 import { SESSION_CONFIG } from "@/lib/authMiddleware";
 
-async function handler(req, res) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
     // Return session configuration for frontend synchronization
-    res.status(200).json({
+    return NextResponse.json({
       sessionTimeout: SESSION_CONFIG.TIMEOUT,
       jwtExpiry: SESSION_CONFIG.JWT_EXPIRY,
       warningOffset: SESSION_CONFIG.WARNING_OFFSET,
       // Additional helpful info
       warningTime: SESSION_CONFIG.TIMEOUT - SESSION_CONFIG.WARNING_OFFSET,
       countdownDuration: SESSION_CONFIG.WARNING_OFFSET / 1000
-    });
+    }, { status: 200 });
   } catch (error) {
     console.error("Session config error:", error);
-    res.status(500).json({ message: "Error retrieving session configuration" });
+    return NextResponse.json({ message: "Error retrieving session configuration" }, { status: 500 });
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

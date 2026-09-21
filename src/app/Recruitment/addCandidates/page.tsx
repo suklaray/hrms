@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense } from "react";
 import { useState, useEffect } from "react";
@@ -24,7 +24,7 @@ function AddCandidate() {
   });
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isFormValid, setIsFormValid] = useState(false);
   const [emailChecking, setEmailChecking] = useState(false);
   const [openTimeFrom, setOpenTimeFrom] = useState(false);
@@ -469,7 +469,7 @@ const validateTimeField = (fieldName, value, currentFormData) => {
               onClick={() => router.push("/Recruitment/recruitment")}
               className="flex items-center px-4 py-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
             >
-              ← Back to Recruitment
+              â† Back to Recruitment
             </button>
           </div>
           {/* Header */}
@@ -903,3 +903,4 @@ export default function PageWrapper(props: any) {
     </Suspense>
   );
 }
+

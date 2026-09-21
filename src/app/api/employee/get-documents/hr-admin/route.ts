@@ -1,26 +1,24 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+﻿import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  
 
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.get('token')?.value;
     if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
+      return NextResponse.json({ message: 'No token provided' }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' });
+      return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
     }
 
     const employee = await prisma.employees.findFirst({
       where: { 
-        email: decoded.email 
+        email: decoded.email as string 
       },
       select: {
         contact_no: true,
@@ -59,7 +57,7 @@ async function handler(req, res) {
     });
 
     if (!employee) {
-      return res.status(200).json({ exists: false });
+      return NextResponse.json({ exists: false }, { status: 200 });
     }
 
     // Flatten the data structure for the frontend
@@ -98,20 +96,20 @@ async function handler(req, res) {
                         flattenedData.resume || flattenedData.profile_photo || flattenedData.bank_details;
 
     if (!hasDocuments) {
-      return res.status(200).json({ exists: false });
+      return NextResponse.json({ exists: false }, { status: 200 });
     }
 
-    res.status(200).json({ 
+    return NextResponse.json({ 
       exists: true, 
       data: flattenedData 
-    });
+    }, { status: 200 });
 
   } catch (error) {
     console.error('Error fetching HR/Admin documents:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   } finally {
     await prisma.$disconnect();
   }
 }
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);
+

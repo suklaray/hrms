@@ -37,7 +37,7 @@ function EditCandidate() {
       { value: `${hour24Str}:30`, display: `${hour12}:30 ${ampm}` }
     ];
   }).flat();
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<Record<string, any>>({});
   const [originalEmail, setOriginalEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

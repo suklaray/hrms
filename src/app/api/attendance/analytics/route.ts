@@ -1,23 +1,24 @@
-import { createRouteHandler } from "@/lib/apiAdapter";
+import { getQueryParams } from "@/lib/routeHelper";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { getAccessibleRoles } from "@/lib/roleBasedAccess";
 import cookie from "cookie";
 import { formatMonthShort } from "@/utils/dateTime";
 
-async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const query = await getQueryParams(req, context?.params);
 
-  const cookies = cookie.parse(req.headers.cookie || "");
+
+
+  const cookies = cookie.parse(req.headers.get('cookie') || "");
   const token = cookies.token;
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
+  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const user = getUserFromToken(token);
-  if (!user) return res.status(401).json({ error: "Invalid token" });
+  if (!user) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
-  const { period = 'today' } = req.query;
+  const { period = 'today' } = query;
 
   try {
     const now = new Date();
@@ -39,11 +40,11 @@ async function handler(req, res) {
     const workingDays = period === 'today' ? 1 : calculateWorkingDays(startDate, endDate);
 
     // Get total employees based on role permissions
-    // Get total employees based on role permissions
+    const accessibleRoles = await getAccessibleRoles(user);
     let totalEmployees = await prisma.users.count({
-      where: { 
+      where: {
         status: { not: 'Inactive' },
-        role: { in: getAccessibleRoles(user.role) }
+        ...(accessibleRoles && accessibleRoles.length > 0 ? { role: { in: accessibleRoles } } : {})
       }
     });
     if (totalEmployees === 0) {
@@ -59,21 +60,21 @@ async function handler(req, res) {
 
     // For today: count unique employees, for other periods: use all records
     let presentCount, absentCount, totalForCalculation;
-    
+
     if (period === 'today') {
       // For today, count unique employees to avoid double-counting
       const uniqueEmployees = [...new Set(attendanceData.map(a => a.empid))];
       const employeeStatus = {};
-      
+
       // Get the latest status for each employee today
       uniqueEmployees.forEach(empid => {
         const empRecords = attendanceData.filter(a => a.empid === empid);
-        const latestRecord = empRecords.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date))[0];
+        const latestRecord = empRecords.sort((a, b) => new Date(b.created_at || b.date).getTime() - new Date(a.created_at || a.date).getTime())[0];
         employeeStatus[empid] = latestRecord?.attendance_status || 'Absent';
       });
-      
+
       presentCount = Object.values(employeeStatus).filter(status => status === 'Present').length;
-      
+
       // If no attendance records exist for today, show 0 present, 0 absent
       if (attendanceData.length === 0) {
         absentCount = 0;
@@ -85,13 +86,13 @@ async function handler(req, res) {
     } else {
       // For month/year, calculate based on employee-days
       const expectedAttendanceDays = totalEmployees * workingDays;
-      
+
       // Count unique employee-day combinations
       const employeeDayMap = new Map();
       attendanceData.forEach(record => {
         const dateKey = record.date.toDateString();
         const empDayKey = `${record.empid}-${dateKey}`;
-        
+
         if (!employeeDayMap.has(empDayKey)) {
           employeeDayMap.set(empDayKey, record.attendance_status);
         } else {
@@ -101,7 +102,7 @@ async function handler(req, res) {
           }
         }
       });
-      
+
       presentCount = Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
       const recordedDays = employeeDayMap.size;
       absentCount = expectedAttendanceDays - presentCount;
@@ -113,106 +114,106 @@ async function handler(req, res) {
 
     // Average check-in/out
     // Get first check-in and last check-out per employee per day
-   function extractDailyTimes(attendance) {
-  const map = new Map();
+    function extractDailyTimes(attendance) {
+      const map = new Map();
 
-  attendance.forEach(record => {
-    const dateKey = record.date.toISOString().split("T")[0]; // prevents timezone issues
-    const key = `${record.empid}-${dateKey}`;
+      attendance.forEach(record => {
+        const dateKey = record.date.toISOString().split("T")[0]; // prevents timezone issues
+        const key = `${record.empid}-${dateKey}`;
 
-    if (!map.has(key)) {
-      map.set(key, {
-        checkin: record.check_in ? new Date(record.check_in) : null,
-        checkout: record.check_out ? new Date(record.check_out) : null,
+        if (!map.has(key)) {
+          map.set(key, {
+            checkin: record.check_in ? new Date(record.check_in) : null,
+            checkout: record.check_out ? new Date(record.check_out) : null,
+          });
+        } else {
+          const entry = map.get(key);
+
+          // earliest check-in
+          if (record.check_in) {
+            const ci = new Date(record.check_in);
+            if (!entry.checkin || ci < entry.checkin) {
+              entry.checkin = ci;
+            }
+          }
+
+          // latest check-out
+          if (record.check_out) {
+            const co = new Date(record.check_out);
+            if (!entry.checkout || co > entry.checkout) {
+              entry.checkout = co;
+            }
+          }
+        }
       });
-    } else {
-      const entry = map.get(key);
 
-      // earliest check-in
-      if (record.check_in) {
-        const ci = new Date(record.check_in);
-        if (!entry.checkin || ci < entry.checkin) {
-          entry.checkin = ci;
-        }
-      }
-
-      // latest check-out
-      if (record.check_out) {
-        const co = new Date(record.check_out);
-        if (!entry.checkout || co > entry.checkout) {
-          entry.checkout = co;
-        }
-      }
+      return Array.from(map.values());
     }
-  });
 
-  return Array.from(map.values());
-}
+    // Convert date → minutes
+    function toMinutes(dateObj) {
+      return dateObj.getHours() * 60 + dateObj.getMinutes();
+    }
 
-// Convert date → minutes
-function toMinutes(dateObj) {
-  return dateObj.getHours() * 60 + dateObj.getMinutes();
-}
+    // Convert minutes →  "HH:MM"
+    function formatTime(minutes) {
+      const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+      const m = String(minutes % 60).padStart(2, "0");
+      return `${h}:${m}`;
+    }
 
-// Convert minutes →  "HH:MM"
-function formatTime(minutes) {
-  const h = String(Math.floor(minutes / 60)).padStart(2, "0");
-  const m = String(minutes % 60).padStart(2, "0");
-  return `${h}:${m}`;
-}
+    // Get median from an array of numbers
+    function median(values) {
+      if (!values || values.length === 0) return "--";
 
-// Get median from an array of numbers
-function median(values) {
-  if (!values || values.length === 0) return "--";
+      const sorted = [...values].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
 
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
+      if (sorted.length % 2 !== 0) {
+        return formatTime(sorted[mid]);
+      }
 
-  if (sorted.length % 2 !== 0) {
-    return formatTime(sorted[mid]);
-  }
+      // average of two middle values for even count
+      return formatTime(Math.round((sorted[mid - 1] + sorted[mid]) / 2));
+    }
 
-  // average of two middle values for even count
-  return formatTime(Math.round((sorted[mid - 1] + sorted[mid]) / 2));
-}
+    // ---- MAIN FLOW ----
 
-// ---- MAIN FLOW ----
+    // Build structured per-day times
+    const daily = extractDailyTimes(attendanceData);
 
-// Build structured per-day times
-const daily = extractDailyTimes(attendanceData);
+    // Extract check-in minutes
+    const checkInMinutes = daily
+      .filter(d => d.checkin)
+      .map(d => toMinutes(d.checkin));
 
-// Extract check-in minutes
-const checkInMinutes = daily
-  .filter(d => d.checkin)
-  .map(d => toMinutes(d.checkin));
+    // Extract check-out minutes
+    const checkOutMinutes = daily
+      .filter(d => d.checkout)
+      .map(d => toMinutes(d.checkout));
 
-// Extract check-out minutes
-const checkOutMinutes = daily
-  .filter(d => d.checkout)
-  .map(d => toMinutes(d.checkout));
-
-// Final median check-in/out times
-const medianCheckinTime = median(checkInMinutes);
-const medianCheckoutTime = median(checkOutMinutes);
+    // Final median check-in/out times
+    const medianCheckinTime = median(checkInMinutes);
+    const medianCheckoutTime = median(checkOutMinutes);
     const avgCheckinTime = medianCheckinTime || '--';
     const avgCheckoutTime = medianCheckoutTime || '--';
 
     // Average working hours - calculate real-time from attendance data
     const currentTime = new Date();
     const realTimeHours = [];
-    
+
     // Group attendance by employee-day and calculate real-time hours
     const hoursEmployeeDayMap = new Map();
     attendanceData.forEach(record => {
       const dateKey = record.date.toDateString();
       const empDayKey = `${record.empid}-${dateKey}`;
-      
+
       if (!hoursEmployeeDayMap.has(empDayKey)) {
         hoursEmployeeDayMap.set(empDayKey, []);
       }
       hoursEmployeeDayMap.get(empDayKey).push(record);
     });
-    
+
     // Calculate total hours for each employee-day
     hoursEmployeeDayMap.forEach(dayRecords => {
       let totalSeconds = 0;
@@ -220,18 +221,18 @@ const medianCheckoutTime = median(checkOutMinutes);
         if (record.check_in) {
           const checkIn = new Date(record.check_in);
           const checkOut = record.check_out ? new Date(record.check_out) : currentTime;
-          totalSeconds += (checkOut - checkIn) / 1000;
+          totalSeconds += (checkOut.getTime() - checkIn.getTime()) / 1000;
         }
       });
       if (totalSeconds > 0) {
         realTimeHours.push(totalSeconds / 3600);
       }
     });
-    
+
     const avgWorkingHours = realTimeHours.length > 0
       ? (realTimeHours.reduce((a, b) => a + b, 0) / realTimeHours.length).toFixed(1)
       : '0';
-    
+
     console.log('Analytics - realTimeHours:', realTimeHours);
     console.log('Analytics - avgWorkingHours:', avgWorkingHours);
 
@@ -244,13 +245,13 @@ const medianCheckoutTime = median(checkOutMinutes);
       }
     });
 
-  console.log(`Period: ${period}, Leave requests found: ${leaveRequests.length}`);
-  console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+    console.log(`Period: ${period}, Leave requests found: ${leaveRequests.length}`);
+    console.log(`Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
     const totalLeaveDays = leaveRequests.reduce((sum, leave) => {
-      const leaveStart = new Date(Math.max(new Date(leave.from_date), startDate));
-      const leaveEnd = new Date(Math.min(new Date(leave.to_date), endDate));
-      const days = Math.ceil((leaveEnd - leaveStart) / (1000 * 60 * 60 * 24)) + 1;
+      const leaveStart = new Date(Math.max(new Date(leave.from_date).getTime(), startDate.getTime()));
+      const leaveEnd = new Date(Math.min(new Date(leave.to_date).getTime(), endDate.getTime()));
+      const days = Math.ceil((leaveEnd.getTime() - leaveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       return sum + Math.max(0, days);
     }, 0);
     console.log(`Total leave days calculated: ${totalLeaveDays}`);
@@ -259,15 +260,15 @@ const medianCheckoutTime = median(checkOutMinutes);
       ? new Set(leaveRequests.map(leave => leave.empid)).size
       : 0;
 
-    const leaveUtilization = period === 'year' 
+    const leaveUtilization = period === 'year'
       ? totalLeaveDays
       : period === 'month'
         ? totalLeaveDays  // Show total leave days for month too
-        : totalLeaveDays > 0 
+        : totalLeaveDays > 0
           ? Math.round(totalLeaveDays / Math.max(totalEmployees, 1))
           : 0;
 
-  
+
     const trendData = await generateRealTrendData(period, startDate, endDate, prisma, totalEmployees);
 
     // Department-wise attendance
@@ -281,10 +282,10 @@ const medianCheckoutTime = median(checkOutMinutes);
         attendance_status: 'Present'
       }
     });
-    
+
     const pieAttendanceRate = expectedTotalDays ? Math.round((actualPresentDays / expectedTotalDays) * 100) : 0;
     const pieAbsenteeismRate = Math.max(0, 100 - pieAttendanceRate);
-    
+
     const pieData = [
       { name: 'Present', value: pieAttendanceRate },
       { name: 'Absent', value: pieAbsenteeismRate },
@@ -311,10 +312,10 @@ const medianCheckoutTime = median(checkOutMinutes);
       yearlyPieData: pieData
     };
 
-    res.status(200).json(analytics);
+    return NextResponse.json(analytics, { status: 200 });
   } catch (error) {
     console.error('Error fetching attendance analytics:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -325,13 +326,13 @@ function calculateWorkingDays(startDate, endDate) {
   const holidays = [
     '2024-01-01', '2024-01-26', '2024-08-15', '2024-10-02', '2024-12-25'
   ];
-  
+
   let count = 0;
   const current = new Date(startDate);
   while (current <= endDate) {
     const dayOfWeek = current.getDay();
     const dateStr = current.toISOString().split('T')[0];
-    
+
     // Skip weekends and holidays
     if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.includes(dateStr)) {
       count++;
@@ -365,7 +366,7 @@ async function generateRealTrendData(period, startDate, endDate, prisma, totalEm
     for (let i = 0; i < 12 && current <= endDate; i++) {
       const periodStart = new Date(current.getFullYear(), current.getMonth(), 1);
       const periodEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
-      
+
       const workingDays = calculateWorkingDays(periodStart, periodEnd);
       const expectedAttendanceDays = totalEmployees * workingDays;
 
@@ -393,7 +394,7 @@ async function generateRealTrendData(period, startDate, endDate, prisma, totalEm
       const weekEnd = new Date(current);
       weekEnd.setDate(weekEnd.getDate() + 6);
       if (weekEnd > endDate) weekEnd.setTime(endDate.getTime());
-      
+
       const workingDays = calculateWorkingDays(weekStart, weekEnd);
       const expectedAttendanceDays = totalEmployees * workingDays;
 
@@ -451,13 +452,13 @@ async function getDepartmentAttendance(startDate, endDate, prisma) {
     select: { empid: true, role: true }
   });
 
-  const roleStats = {};
+  const roleStats: Record<string, { present: number; total: number }> = {};
   for (const user of users) {
     if (!roleStats[user.role]) roleStats[user.role] = { present: 0, total: 0 };
     const userAttendance = await prisma.attendance.findMany({
       where: { empid: user.empid, date: { gte: startDate, lte: endDate } }
     });
-    
+
     // Use employee-day logic for consistency
     const employeeDayMap = new Map();
     userAttendance.forEach(record => {
@@ -469,7 +470,7 @@ async function getDepartmentAttendance(startDate, endDate, prisma) {
         employeeDayMap.set(empDayKey, 'Present');
       }
     });
-    
+
     roleStats[user.role].present += Array.from(employeeDayMap.values()).filter(status => status === 'Present').length;
     roleStats[user.role].total += employeeDayMap.size;
   }
@@ -483,4 +484,3 @@ async function getDepartmentAttendance(startDate, endDate, prisma) {
 }
 
 
-export const { GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS } = createRouteHandler(handler);

@@ -166,7 +166,7 @@ function DailyReports() {
   return results.sort((a, b) => {
     const dateA = new Date(a.report_date);
     const dateB = new Date(b.report_date);
-    if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+    if (dateA.getTime() !== dateB.getTime()) return dateA.getTime() - dateB.getTime();
     const order = { submitted: 0, worked_dayoff: 1, leave: 2, dayoff: 3, missing: 4 };
     if (a.rowType !== b.rowType) return (order[a.rowType] ?? 5) - (order[b.rowType] ?? 5);
     return (a.user?.name || "").localeCompare(b.user?.name || "");

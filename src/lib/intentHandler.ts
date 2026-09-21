@@ -956,10 +956,8 @@ function chooseRoleResponse(responseObject, role = "employee") {
   }
 
   if (typeof responseObject === "object" && responseObject !== null) {
-    // Map hr, admin, superadmin, ceo to management category
-    const mappedRole = ["hr", "admin", "superadmin", "ceo"].includes(
-      role?.toLowerCase()
-    )
+    // Map non-employee roles to management category
+    const mappedRole = role?.toLowerCase() !== "employee"
       ? "management"
       : "employee";
     console.log(`Input role: ${role}, Mapped to: ${mappedRole}`);
@@ -1045,7 +1043,7 @@ I can help you with:
 ⏰ Attendance
 🎉 Holidays
 📞 Contact HR info
-${["hr", "admin", "superadmin", "ceo"].includes(role?.toLowerCase()) ? 
+${role?.toLowerCase() !== "employee" ? 
 `👥 Employee Management
 🏢 Recruitment
 📄 Document Management
@@ -1070,7 +1068,7 @@ ${["hr", "admin", "superadmin", "ceo"].includes(role?.toLowerCase()) ?
       const guessedResponse = getResponseFromMap(intent, role);
 
       // Role-specific clarification options
-      const isManagement = ["hr", "admin", "superadmin", "ceo"].includes(role?.toLowerCase());
+      const isManagement = role?.toLowerCase() !== "employee";
       const clarificationOptions = isManagement 
         ? "payslip, leave, attendance, employees, recruitment, documents, payroll, or something else?"
         : "payslip, leave, attendance, holidays, or something else?";
@@ -1250,7 +1248,7 @@ export function handleConfirmationResponse(userId: any, isPositive: any, role: a
   } else {
     // Clear lastIntent and ask what they need help with
     setConversationContext(userId, { lastIntent: null });
-    const isManagement = ["hr", "admin", "superadmin", "ceo"].includes((role || 'employee')?.toLowerCase());
+    const isManagement = (role || 'employee')?.toLowerCase() !== "employee";
     const helpOptions = isManagement 
       ? "payslip, leave, attendance, employees, recruitment, documents, payroll, or contact information."
       : "payslip, leave, attendance, holidays, or contact information.";
