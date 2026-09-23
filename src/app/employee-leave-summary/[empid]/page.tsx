@@ -273,21 +273,11 @@ function EmployeeLeaveSummary() {
                   <tbody className="divide-y divide-blue-100">
                     {leaveBalances.map((balance, index) => (
                       <tr key={index} className="hover:bg-blue-50">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          {balance.type_name.replace(/_/g, ' ')}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {balance.max_days}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {balance.used}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-semibold text-green-600">
-                          {balance.remaining}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">
-                          {balance.paid ? 'Paid' : 'Unpaid'}
-                        </td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{balance.type_name.replace(/_/g, ' ')}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{balance.max_days}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{balance.used}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-green-600">{balance.remaining}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{balance.paid ? 'Paid' : 'Unpaid'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -328,18 +318,10 @@ function EmployeeLeaveSummary() {
                     const duration = moment(leave.to_date).diff(moment(leave.from_date), 'days') + 1;
                     return (
                       <tr key={leave.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {leave.leave_type}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(leave.from_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(leave.to_date)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {duration} day{duration > 1 ? 's' : ''}
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{leave.leave_type}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(leave.from_date)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(leave.to_date)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{duration} day{duration > 1 ? 's' : ''}</td>
                         <td className="px-6 py-4">
                           <div
                             className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600"
@@ -363,7 +345,8 @@ function EmployeeLeaveSummary() {
                           >
                             {leave.resoan_to_reject || "-"}
                           </div>
-                        </td> <td className="px-6 py-4">
+                        </td>
+                        <td className="px-6 py-4">
                           <div
                             className="text-sm text-gray-900 max-w-xs truncate cursor-pointer hover:text-indigo-600"
                             title="Click to view full reason"

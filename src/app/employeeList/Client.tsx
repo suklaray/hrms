@@ -6,17 +6,12 @@ import Head from "@/lib/compatHead";
 import SideBar from "@/Components/SideBar";
 import { useRouter } from "@/lib/compatRouter";
 import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown, FaChevronLeft, FaChevronRight, FaDownload } from "react-icons/fa";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import prisma from "@/lib/prisma";
 import { toast } from "react-toastify";
 import { swalConfirm } from '@/utils/confirmDialog';
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-import { hasPermission } from "@/lib/rbac";
 
 
 
-function EmployeeListPage({ user }) {
+function EmployeeListPage({ user, canDeleteEmployee = false }) {
   const [employees, setEmployees] = useState([]);
   const [roles, setRoles] = useState([]);
   const [filter, setFilter] = useState("All");
@@ -68,9 +63,7 @@ function EmployeeListPage({ user }) {
   };
 
   const handleDelete = async (id) => {
-    // Check permission before allowing delete
-    const canDelete = await hasPermission(user.id, PERMISSION_KEYS.EMPLOYEE_DELETE);
-    if (!canDelete) {
+    if (!canDeleteEmployee) {
       toast.error("You don't have permission to delete employees");
       return;
     }
@@ -367,14 +360,15 @@ function EmployeeListPage({ user }) {
                           >
                             <FaEye size={14} />
                           </button>
-                          {/* Delete button - protected by permission check in handler */}
-                          <button
-                            onClick={() => handleDelete(emp.id)}
-                            className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors cursor-pointer"
-                            title="Delete Employee"
-                          >
-                            <FaTrash size={14} />
-                          </button>
+                          {canDeleteEmployee && (
+                            <button
+                              onClick={() => handleDelete(emp.id)}
+                              className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors cursor-pointer"
+                              title="Delete Employee"
+                            >
+                              <FaTrash size={14} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
