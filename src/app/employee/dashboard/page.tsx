@@ -51,18 +51,14 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
         // Always use propUser for profile data if available (name, email, etc.)
         if (propUser) setUser(propUser);
 
-        // Always fetch attendance state from DB — propUser never has isWorking/workStartTime
-        // because getServerSideProps does not query the attendance table
-        const res = await fetch("/api/auth/employee/me", { credentials: "include" });
+        // Fetch only attendance state; Redux provides the authenticated user profile.
+        const res = await fetch("/api/employee/work-status", { credentials: "include" });
         if (!res.ok) return router.replace("/login");
         const data = await res.json();
 
-        // If no propUser (direct navigation), also set profile from API
-        if (!propUser) setUser(data.user);
-
-        setIsWorking(data.user.isWorking);
-        if (data.user.isWorking && data.user.workStartTime) {
-          setWorkStartTime(new Date(data.user.workStartTime));
+        setIsWorking(data.isWorking);
+        if (data.isWorking && data.workStartTime) {
+          setWorkStartTime(new Date(data.workStartTime));
         } else {
           setWorkStartTime(null);
         }
@@ -171,16 +167,15 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
       const data = await res.json();
 
       if (res.ok) {
-        const [userRes, statsRes] = await Promise.all([
-          fetch("/api/auth/employee/me", { credentials: "include" }),
+        const [statusRes, statsRes] = await Promise.all([
+          fetch("/api/employee/work-status", { credentials: "include" }),
           fetch("/api/employee/stats", { credentials: "include" })
         ]);
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUser(userData.user);
-          setIsWorking(userData.user.isWorking);
-          if (userData.user.isWorking && userData.user.workStartTime) {
-            setWorkStartTime(new Date(userData.user.workStartTime));
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          setIsWorking(statusData.isWorking);
+          if (statusData.isWorking && statusData.workStartTime) {
+            setWorkStartTime(new Date(statusData.workStartTime));
           } else {
             setWorkStartTime(null);
           }

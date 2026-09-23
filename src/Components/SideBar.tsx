@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/lib/compatRouter";
+import { useAppShell } from "@/contexts/AppShellContext";
+import { isSidebarShellActive } from "@/lib/appShell";
+import { useAppSelector } from "@/store/hooks";
 import {
   ChevronDown,
   ChevronUp,
@@ -12,7 +15,6 @@ import {
   UserPlus,
   Users,
   Clock,
-  DollarSign,
   Shield,
   Phone,
   Settings,
@@ -131,16 +133,32 @@ const SIDEBAR_STRUCTURE = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export default function Sidebar({ user: propUser, handleLogout: propHandleLogout }: any = {}) {
+export default function Sidebar({
+  user: propUser,
+  handleLogout: propHandleLogout,
+  isSharedShell = false,
+}: any = {}) {
   const router = useRouter();
+  const { showAppShell } = useAppShell();
+  const authUser = useAppSelector((state) => state.auth.user);
+  const reduxPermissions = useAppSelector((state) => state.auth.permissions);
+  const initialized = useAppSelector((state) => state.auth.initialized);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [user, setUser] = useState(propUser || null);
+  const [user, setUser] = useState(propUser || authUser || null);
   const [loading, setLoading] = useState(true);
   const [userStatus, setUserStatus] = useState({ verified: false, formSubmitted: false });
-  const [permissions, setPermissions] = useState(new Set());
-  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  const [permissions, setPermissions] = useState(new Set(reduxPermissions || []));
+  const [isSuperAdminUser, setIsSuperAdminUser] = useState(Boolean(authUser?.isSuperAdmin));
   const [openModules, setOpenModules] = useState({});
+
+  if (showAppShell && !isSharedShell) {
+    return null;
+  }
+
+  if (!isSharedShell && isSidebarShellActive()) {
+    return null;
+  }
 
   const isActivePath = (path) => {
     if (!path) return false;
@@ -172,45 +190,29 @@ export default function Sidebar({ user: propUser, handleLogout: propHandleLogout
     (permission) => {
       if (!permission) return true;
       if (isSuperAdminUser) return true;
-      return permissions.has(permission);
+
+      const permissionList = Array.isArray(permission) ? permission : [permission];
+      return permissionList.some((item) => {
+        if (!item) return false;
+        return permissions.has(item);
+      });
     },
     [isSuperAdminUser, permissions]
   );
 
-  // ── Fetch user + permissions ──────────────────────────────────────────────
+  // ── Sync with centralized auth state ─────────────────────────────────────
   useEffect(() => {
-    const init = async () => {
-      try {
-        let userData = propUser;
-        if (!propUser) {
-          const res = await fetch('/api/auth/me');
-          if (res.ok) {
-            const json = await res.json();
-            userData = json.user;
-          }
-        }
-        if (userData) {
-          setUser(userData);
-          setUserStatus({
-            verified: userData.verified === 'verified',
-            formSubmitted: userData.form_submitted || false,
-          });
-        }
+    const resolvedUser = propUser ?? authUser ?? null;
+    setUser(resolvedUser);
+    setUserStatus({
+      verified: resolvedUser?.verified === 'verified',
+      formSubmitted: resolvedUser?.form_submitted || false,
+    });
+    setIsSuperAdminUser(Boolean(resolvedUser?.isSuperAdmin));
+    setPermissions(new Set(Array.isArray(reduxPermissions) ? reduxPermissions : []));
 
-        const sbRes = await fetch('/api/sidebar');
-        if (sbRes.ok) {
-          const data = await sbRes.json();
-          setIsSuperAdminUser(data.isSuperAdmin);
-          setPermissions(new Set(data.permissions));
-        }
-      } catch (err) {
-        console.error('Sidebar init failed:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, [propUser]);
+    setLoading(false);
+  }, [propUser, authUser, reduxPermissions, initialized]);
 
   // ── Auto-open dropdowns ───────────────────────────────────────────────────
   useEffect(() => {

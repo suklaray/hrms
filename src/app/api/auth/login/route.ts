@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import { rateLimiter } from "@/lib/rateLimiter";
 import { createSession, SESSION_CONFIG } from "@/lib/authMiddleware";
+import { getUserPermissions, isSuperAdmin } from "@/lib/rbac";
 
 export async function POST(req: NextRequest) {
   const allow = rateLimiter()(req);
@@ -54,6 +55,9 @@ export async function POST(req: NextRequest) {
       hasFormSubmitted = true;
     }
 
+    const permissions = await getUserPermissions(user);
+    const isSuper = isSuperAdmin(user);
+
     const payload = {
       id: user.id,
       empid: user.empid,
@@ -63,6 +67,8 @@ export async function POST(req: NextRequest) {
       email: user.email,
       verified: user.verified,
       form_submitted: hasFormSubmitted,
+      isSuperAdmin: isSuper,
+      permissions: Array.from(permissions),
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET!, { 
@@ -72,7 +78,13 @@ export async function POST(req: NextRequest) {
     // Create server-side session with user type
     createSession(user.id, user.role === 'employee' ? 'employee' : 'admin');
 
-    const response = NextResponse.json({ message: "Login successful", token, user: payload }, { status: 200 });
+    const response = NextResponse.json({
+      message: "Login successful",
+      token,
+      user: payload,
+      permissions: Array.from(permissions),
+      isSuperAdmin: isSuper,
+    }, { status: 200 });
 
     response.headers.set("Set-Cookie", cookie.serialize("token", token, {
       httpOnly: true,

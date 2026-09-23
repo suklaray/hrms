@@ -2,10 +2,15 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch } from '@/store/hooks';
+import { logoutSuccess } from '@/store/authSlice';
 
 const AutoLogoutTimer = () => {
   const router = useRouter();
   const pathname = usePathname() || '/';
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const dispatch = useAppDispatch();
   const [showWarning, setShowWarning] = useState(false);
   const [showActivityReminder, setShowActivityReminder] = useState(false);
   const [countdown, setCountdown] = useState(60);
@@ -13,6 +18,7 @@ const AutoLogoutTimer = () => {
   const logoutTimerRef = useRef<any>(null);
   const countdownIntervalRef = useRef<any>(null);
   const reminderTimerRef = useRef<any>(null);
+  const lastActivitySyncRef = useRef(0);
 
   const publicPaths = [
     '/', '/login', '/AboutUs', '/Contact',
@@ -46,6 +52,8 @@ const AutoLogoutTimer = () => {
       });
     } catch (error) {
       console.error('Logout failed:', error);
+    } finally {
+      dispatch(logoutSuccess());
     }
 
     router.replace('/login');
@@ -99,6 +107,24 @@ const AutoLogoutTimer = () => {
     }
   };
 
+  const syncActivity = () => {
+    const now = Date.now();
+    if (now - lastActivitySyncRef.current < 30 * 1000) return;
+
+    lastActivitySyncRef.current = now;
+    void fetch('/api/session/activity', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    }).then((response) => {
+      if (response.status === 401) {
+        handleLogout();
+      }
+    }).catch(() => {
+      // A transient network error should not log out an active user.
+    });
+  };
+
   const startTimers = () => {
     clearAllTimers();
 
@@ -140,9 +166,13 @@ const AutoLogoutTimer = () => {
 
   useEffect(() => {
     const handleUserActivity = () => {
+      if (!isAuthenticated) return;
+
       if (showActivityReminder) {
         setShowActivityReminder(false);
       }
+
+      syncActivity();
       
       if (!showWarning) {
         resetTimers();
@@ -160,12 +190,12 @@ const AutoLogoutTimer = () => {
         document.removeEventListener(event, handleUserActivity, true);
       });
     };
-  }, [showWarning, showActivityReminder]);
+  }, [isAuthenticated, showWarning, showActivityReminder]);
 
   useEffect(() => {
     const isPublic = checkIsPublicPath(pathname);
 
-    if (isPublic) {
+    if (isPublic || !isAuthenticated) {
       clearAllTimers();
       setShowWarning(false);
       setShowActivityReminder(false);
@@ -177,7 +207,7 @@ const AutoLogoutTimer = () => {
     return () => {
       clearAllTimers();
     };
-  }, [pathname]);
+  }, [isAuthenticated, pathname]);
 
   const renderActivityReminder = () => {
     if (!showActivityReminder) return null;

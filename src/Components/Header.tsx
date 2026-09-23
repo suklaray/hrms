@@ -16,13 +16,22 @@ import {
   Bell,
 } from "lucide-react";
 import { formatDayMonthDate } from "@/utils/dateTime";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { logoutSuccess } from "@/store/authSlice";
 
 const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) => {
-  const [user, setUser] = useState(propUser || null);
+  const reduxUser = useAppSelector((state) => state.auth.user);
+  const authInitialized = useAppSelector((state) => state.auth.initialized);
+  const [user, setUser] = useState(propUser ?? reduxUser ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [sseConnected, setSseConnected] = useState(false);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const dispatch = useAppDispatch();
+  const effectiveUser = propUser ?? reduxUser ?? null;
+  const authReady = hasHydrated || authInitialized || Boolean(propUser) || Boolean(reduxUser);
+  const showLoggedInView = hasHydrated && Boolean(effectiveUser);
 
   // Debug: Log notification changes
   // useEffect(() => {
@@ -226,37 +235,31 @@ const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) =>
 
   const router = useRouter();
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        //  console.log("Fetch /api/auth/me", res);
-        if (res.status === 401) {
-          setUser(null);
-        } else if (res.ok) {
-          const data = await res.json();
-          // console.log("User data:", data);
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-        console.error("Failed to fetch user", err);
-        setUser(null);
-      }
-    };
-
-    fetchUser();
-  }, [router.pathname]);
+    setHasHydrated(true);
+    setUser(effectiveUser);
+  }, [effectiveUser]);
 
   const handleLogout = async () => {
     if (propHandleLogout) {
       return propHandleLogout();
     }
-    await fetch("/api/auth/logout");
-    document.cookie = "token=; Max-Age=0; path=/";
-    setUser(null);
-    router.push("/");
-    router.reload();
+
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.error("Logout error", err);
+    } finally {
+      dispatch(logoutSuccess());
+      document.cookie = "token=; Max-Age=0; path=/";
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      setUser(null);
+      router.push("/");
+      router.refresh();
+    }
   };
 
   // notification function called on check-in - DISABLED FOR SSE
@@ -314,19 +317,17 @@ const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) =>
               <span>Contact</span>
             </Link>
 
-            {user ? (
+            {showLoggedInView ? (
               <div className="flex items-center space-x-4">
                 <Link
-                  href={
-                      "/dashboard"
-                  }
+                  href="/dashboard"
                   className="flex items-center space-x-2 px-3 py-2 bg-white/20 rounded-full hover:bg-white/30 transition-all duration-200 cursor-pointer"
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-white font-medium hover:text-yellow-300 transition-colors">
-                    {user.name}
+                    {effectiveUser.name}
                   </span>
                 </Link>
                 <button
@@ -352,7 +353,7 @@ const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) =>
                 </Link>
               </div>
             )}
-            {user && (
+            {showLoggedInView && (
               <button
                 className="relative flex items-center justify-center w-10 h-10 bg-white/20 rounded-full hover:bg-white/30 transition-all duration-200"
                 onClick={() => {
@@ -427,17 +428,17 @@ const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) =>
               <span>Contact</span>
             </Link>
 
-            {user ? (
+            {showLoggedInView ? (
               <div className="space-y-2 pt-2 border-t border-white/20">
                 <Link
-                  href= "/dashboard"   
+                  href="/dashboard"
                   className="flex items-center space-x-3 px-4 py-3 hover:bg-white/10 rounded-lg transition-all duration-200 cursor-pointer"
                   onClick={() => setMenuOpen(false)}
                 >
                   <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-white font-medium">{user.name}</span>
+                  <span className="text-white font-medium">{effectiveUser.name}</span>
                 </Link>
                 <button
                   onClick={() => {
@@ -466,7 +467,7 @@ const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) =>
                 </Link>
               </div>
             )}
-            {user && (
+            {showLoggedInView && (
               <div className="flex px-4">
                 <button
                   className="relative flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200"
