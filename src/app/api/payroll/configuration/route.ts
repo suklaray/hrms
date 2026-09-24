@@ -36,20 +36,30 @@ export async function POST(req: NextRequest) {
       leave_cut_off,
       overtime_cut_off,
       salary_payment_date,
-      financial_year_start_month,
-      financial_year_end_month,
+      financial_year_id,
       salary_calendar,
       status,
       remarks
     } = body;
 
-    if (!company_id || !payroll_country || !currency || !payroll_effective_date || !payroll_cycle || !working_days || !attendance_cut_off || !leave_cut_off || !salary_payment_date || !financial_year_start_month || !financial_year_end_month || !salary_calendar || !status) {
-      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
+    if (!company_id || !payroll_country || !currency || !payroll_effective_date || !payroll_cycle || !working_days || !attendance_cut_off || !leave_cut_off || !salary_payment_date || !financial_year_id || !salary_calendar || !status) {
+      return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
     }
 
-    await prisma.payrollConfiguration.create({
+    const existingConfig = await prisma.payroll_configuration.findFirst({
+      where: {
+        company_id: company_id,
+        financial_year_id: financial_year_id,
+      },
+    });
+
+    if (existingConfig) {
+      return NextResponse.json({ success: false, message: 'Payroll configuration already exists for this company and financial year' }, { status: 400 });
+    }
+
+    await prisma.payroll_configuration.create({
       data: {
-        company_id: Number(company_id),
+        company_id,
         payroll_country,
         currency,
         payroll_effective_date: new Date(payroll_effective_date),
@@ -59,8 +69,7 @@ export async function POST(req: NextRequest) {
         leave_cut_off,
         overtime_cut_off,
         salary_payment_date: Number(salary_payment_date),
-        financial_year_start_month: String(financial_year_start_month),
-        financial_year_end_month: String(financial_year_end_month),
+        financial_year_id,
         salary_calendar,
         approval: "NO",
         status,
@@ -68,10 +77,10 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ type: 'success', message: 'Payroll configuration added successfully' }, { status: 200 });
+    return NextResponse.json({ success: true, message: 'Payroll configuration added successfully' }, { status: 200 });
   } catch (error: any) {
     console.error('Error adding payroll configuration:', error);
-    return NextResponse.json({ type: 'Internal server error', message: error?.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: error?.message }, { status: 500 });
   }
 }
 
@@ -82,23 +91,24 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { id, ...updateData } = body;
-    if (!id) {
+    const configId = body.uid || body.id;
+    if (!configId) {
       return NextResponse.json({ success: false, message: 'Configuration ID is required for update' }, { status: 400 });
     }
 
-    const isNumericId = !isNaN(Number(id)) && /^\d+$/.test(String(id).trim());
-    const whereClause = isNumericId ? { id: Number(id) } : { uid: String(id) };
+    const isNumericId = !isNaN(Number(configId)) && /^\d+$/.test(String(configId).trim());
+    const whereClause = isNumericId ? { id: Number(configId) } : { uid: String(configId) };
 
-    const safeUpdateData: any = { ...updateData };
+    const safeUpdateData: any = { ...body };
     delete safeUpdateData.company;
+    delete safeUpdateData.financial_year;
     delete safeUpdateData.createdAt;
     delete safeUpdateData.updatedAt;
     delete safeUpdateData.id;
     delete safeUpdateData.uid;
 
     if (safeUpdateData.company_id !== undefined && safeUpdateData.company_id !== null && safeUpdateData.company_id !== '') {
-      safeUpdateData.company_id = Number(safeUpdateData.company_id);
+      safeUpdateData.company_id = String(safeUpdateData.company_id);
     }
     if (safeUpdateData.payroll_effective_date !== undefined && safeUpdateData.payroll_effective_date !== null && safeUpdateData.payroll_effective_date !== '') {
       safeUpdateData.payroll_effective_date = new Date(safeUpdateData.payroll_effective_date);
@@ -116,7 +126,7 @@ export async function PUT(req: NextRequest) {
       safeUpdateData.overtime_cut_off = null;
     }
 
-    const updated = await prisma.payrollConfiguration.update({
+    const updated = await prisma.payroll_configuration.update({
       where: whereClause,
       data: safeUpdateData,
     });
@@ -137,18 +147,19 @@ export async function GET(req: NextRequest) {
   const auth = await checkAuth(req);
   if (auth.error) return auth.error;
 
-  const id = req.nextUrl.searchParams.get('id');
+  const id = req.nextUrl.searchParams.get('uid') || req.nextUrl.searchParams.get('id');
   if (!id) {
     return NextResponse.json({ success: false, message: 'Configuration ID is required to fetch' }, { status: 400 });
   }
   try {
     const isNumericId = !isNaN(Number(id)) && /^\d+$/.test(String(id).trim());
-    const configuration = await prisma.payrollConfiguration.findFirst({
+    const configuration = await prisma.payroll_configuration.findFirst({
       where: isNumericId
         ? { OR: [{ id: Number(id) }, { uid: String(id) }] }
         : { uid: String(id) },
       include: {
         company: true,
+        financial_year: true
       },
     });
 

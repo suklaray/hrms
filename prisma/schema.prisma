@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  engineType = "binary"
+  provider      = "prisma-client-js"
+  engineType    = "binary"
   binaryTargets = ["native", "rhel-openssl-1.1.x"]
 }
 
@@ -10,25 +10,28 @@ datasource db {
 }
 
 model company {
-  id                    Int      @id @default(autoincrement())
-  name                  String
-  address               String?
-  city                  String?
-  state                 String?
-  pinCode               String?
-  phone                 String
-  email                 String
-  website               String?
-  cin                   String
-  pan                   String
-  gstin                 String
-  epfoEstablishmentId   String
-  esicEmployerCode      String
+  id                  Int     @id @default(autoincrement())
+  uid                 String  @unique @default(cuid())
+  name                String
+  address             String?
+  city                String?
+  state               String?
+  pinCode             String?
+  phone               String
+  email               String
+  website             String?
+  cin                 String
+  pan                 String
+  gstin               String
+  epfoEstablishmentId String
+  esicEmployerCode    String
 
-  payrollConfigurations PayrollConfiguration[]
+  payroll_configurations payroll_configuration[]
+  financial_years        financial_year[]
 
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  payroll_periods payroll_period[]
 }
 
 enum PayrollCurrency {
@@ -62,32 +65,101 @@ enum SalaryCalendar {
   CUSTOM
 }
 
-model PayrollConfiguration {
-  id                          Int              @id @default(autoincrement())
-  uid                         String           @unique @default(cuid())
-  company_id                  Int
-  payroll_country             String
-  currency                    PayrollCurrency
-  payroll_effective_date      DateTime
-  payroll_cycle               PayrollCycle
-  working_days                Decimal           @db.Decimal(4, 2)
-  attendance_cut_off          Decimal           @db.Decimal(4, 2)
-  leave_cut_off               String
-  overtime_cut_off            Decimal?          @db.Decimal(4, 2)
-  salary_payment_date         Int
-  financial_year_start_month  String
-  financial_year_end_month    String
-  salary_calendar             SalaryCalendar
-  approval                    Approval
-  status                      PayrollStatus
-  remarks                     String?
+model payroll_configuration {
+  id                     Int             @id @default(autoincrement())
+  uid                    String          @unique @default(cuid())
+  company_id             String
+  payroll_country        String
+  currency               PayrollCurrency
+  payroll_effective_date DateTime
+  payroll_cycle          PayrollCycle
+  working_days           Decimal         @db.Decimal(4, 2)
+  attendance_cut_off     Decimal         @db.Decimal(4, 2)
+  leave_cut_off          String
+  overtime_cut_off       Decimal?        @db.Decimal(4, 2)
+  salary_payment_date    Int
+  financial_year_id      String
+  salary_calendar        SalaryCalendar
+  approval               Approval
+  status                 PayrollStatus
+  remarks                String?
 
-  company                     company          @relation(fields: [company_id], references: [id], onDelete: Cascade)
+  company        company        @relation(fields: [company_id], references: [uid], onDelete: Cascade)
+  financial_year financial_year @relation(fields: [financial_year_id], references: [uid], onDelete: Restrict)
 
-  createdAt                   DateTime         @default(now())
-  updatedAt                   DateTime         @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  payroll_periods payroll_period[]
+
+  @@index([company_id, financial_year_id])
+  @@index([company_id, status])
+}
+
+enum FinancialYearStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+model financial_year {
+  id  Int    @id @default(autoincrement())
+  uid String @unique @default(cuid())
+
+  company_id String
+  company    company @relation(fields: [company_id], references: [uid], onDelete: Cascade)
+
+  name       String
+  start_date DateTime            @db.Date
+  end_date   DateTime            @db.Date
+  status     FinancialYearStatus @default(DRAFT)
+
+  lock Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payroll_configurations payroll_configuration[]
+  payroll_periods        payroll_period[]
 
   @@index([company_id])
+  @@index([company_id, status])
+}
+
+enum PayrollPeriodStatus {
+  OPEN
+  PROCESSING
+  COMPLETED
+  CLOSED
+}
+
+model payroll_period {
+  id  Int    @id @default(autoincrement())
+  uid String @unique @default(cuid())
+
+  company_id String
+  company    company @relation(fields: [company_id], references: [uid], onDelete: Cascade)
+
+  financial_year_id String
+  financial_year    financial_year @relation(fields: [financial_year_id], references: [uid], onDelete: Restrict)
+
+  payroll_configuration_id String
+  payroll_configuration    payroll_configuration @relation(fields: [payroll_configuration_id], references: [uid], onDelete: Restrict)
+
+  period_name  String
+  period_start DateTime @db.Date
+  period_end   DateTime @db.Date
+
+  salary_payment_date DateTime? @db.Date
+
+  status PayrollPeriodStatus @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([company_id, period_start, period_end])
+  @@index([company_id])
+  @@index([financial_year_id])
+  @@index([payroll_configuration_id])
 }
 
 model addresses {
@@ -188,7 +260,7 @@ model compliance_status {
 model employees {
   empid                                         Int                    @id @default(autoincrement())
   candidate_id                                  String?
-  main_employee_id                              String?                // Same as users.empid
+  main_employee_id                              String? // Same as users.empid
   name                                          String?
   email                                         String?                @unique(map: "employees_email_unique")
   contact_no                                    String?
@@ -218,44 +290,44 @@ model employees {
 }
 
 model candidate_details {
-  id                                            Int                    @id @default(autoincrement())
-  candidate_id                                  String?
-  name                                          String?
-  email                                         String?                @unique(map: "candidates_unique_email")
-  contact_no                                    String?
-  password                                      String?
-  gender                                        String?
-  dob                                           DateTime?
-  aadhar_card                                   String?
-  pan_card                                      String?
-  education_certificates                        String?
-  resume                                        String?
-  experience_certificate                        String?
-  profile_photo                                 String?
-  aadhar_number                                 String?
-  pan_number                                    String?
-  highest_qualification                         String?
-  addresses                                     candidates_addresses[]
-  bank_details                                  candidates_bank_details[]
-  created_at                                    DateTime?              @default(now())
+  id                     Int                       @id @default(autoincrement())
+  candidate_id           String?
+  name                   String?
+  email                  String?                   @unique(map: "candidates_unique_email")
+  contact_no             String?
+  password               String?
+  gender                 String?
+  dob                    DateTime?
+  aadhar_card            String?
+  pan_card               String?
+  education_certificates String?
+  resume                 String?
+  experience_certificate String?
+  profile_photo          String?
+  aadhar_number          String?
+  pan_number             String?
+  highest_qualification  String?
+  addresses              candidates_addresses[]
+  bank_details           candidates_bank_details[]
+  created_at             DateTime?                 @default(now())
 }
 
 model candidates_addresses {
-  id                    Int       @id @default(autoincrement())
-  candidate_id          Int
-  address_line1         String
-  address_line2         String?
-  city                  String
-  state                 String
-  country               String
-  pincode               String
-  candidate_details     candidate_details @relation(fields: [candidate_id], references: [id])
+  id                Int               @id @default(autoincrement())
+  candidate_id      Int
+  address_line1     String
+  address_line2     String?
+  city              String
+  state             String
+  country           String
+  pincode           String
+  candidate_details candidate_details @relation(fields: [candidate_id], references: [id])
 
   @@index([candidate_id])
 }
 
 model candidates_bank_details {
-  id                  Int       @id @default(autoincrement())
+  id                  Int               @id @default(autoincrement())
   candidate_id        Int
   account_holder_name String
   bank_name           String
@@ -263,7 +335,7 @@ model candidates_bank_details {
   account_number      String
   ifsc_code           String
   checkbook_document  String?
-  candidate_details           candidate_details @relation(fields: [candidate_id], references: [id])
+  candidate_details   candidate_details @relation(fields: [candidate_id], references: [id])
 
   @@index([candidate_id])
 }
@@ -291,37 +363,37 @@ model leave_balances {
 }
 
 model leave_requests {
-  id         Int                    @id @default(autoincrement())
-  empid      String
-  from_date  DateTime
-  to_date    DateTime
-  reason     String?
-  applied_at DateTime?              @default(now())
-  attachment String?
-  leave_type String
-  name       String
-  status     leave_requests_status? @default(Pending)
-  resoan_to_reject String? @db.VarChar(255)
-  reason_to_cancel String? @db.VarChar(255)
-  users      users                  @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  id               Int                    @id @default(autoincrement())
+  empid            String
+  from_date        DateTime
+  to_date          DateTime
+  reason           String?
+  applied_at       DateTime?              @default(now())
+  attachment       String?
+  leave_type       String
+  name             String
+  status           leave_requests_status? @default(Pending)
+  resoan_to_reject String?                @db.VarChar(255)
+  reason_to_cancel String?                @db.VarChar(255)
+  users            users                  @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
 
   @@index([empid])
 }
 
 model attendance_regularization {
-  id                Int                                @id @default(autoincrement())
-  attendance_id     Int?
-  empid             String
-  attendance_date   DateTime
-  check_in_time     DateTime
+  id                 Int                              @id @default(autoincrement())
+  attendance_id      Int?
+  empid              String
+  attendance_date    DateTime
+  check_in_time      DateTime
   requested_checkout DateTime
-  reason            String                             @db.VarChar(500)
-  status            attendance_regularization_status   @default(PENDING)
-  reviewed_by       String?
-  reviewed_at       DateTime?
-  rejection_reason  String?                            @db.VarChar(500)
-  created_at        DateTime                           @default(now())
-  users             users                              @relation(fields: [empid], references: [empid], onDelete: Cascade)
+  reason             String                           @db.VarChar(500)
+  status             attendance_regularization_status @default(PENDING)
+  reviewed_by        String?
+  reviewed_at        DateTime?
+  rejection_reason   String?                          @db.VarChar(500)
+  created_at         DateTime                         @default(now())
+  users              users                            @relation(fields: [empid], references: [empid], onDelete: Cascade)
 
   @@index([empid])
   @@index([attendance_id])
@@ -329,37 +401,37 @@ model attendance_regularization {
 }
 
 model users {
-  id               Int                      @id @default(autoincrement())
-  empid            String                   @unique
-  name             String
-  email            String                   @unique
-  contact_number   String?
-  password         String
-  position         String?
-  date_of_joining  DateTime?
-  status           String?                  @default("Active")
-  experience       Int?
-  profile_photo    String?
-  created_at       DateTime?                @default(now())
-  roleId           Int?
-  role             users_role               @default(employee)
-  verified         users_verified?          @default(not_verified)
-  form_submitted   Boolean                  @default(false)
-  resetToken       String?
-  resetTokenExpiry DateTime?                @db.Timestamp(6)
-  employee_type    employees_employee_type? @default(Full_time)
-  candidate_id     String?
-  duration_months  Int?
-  rbacRole         Role?                    @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  leave_balances   leave_balances[]
-  leave_requests   leave_requests[]
-  payroll          payroll[]
-  createdTasks     tasks[]                  @relation("TaskCreator")
-  assignedTasks    tasks[]                  @relation("TaskAssignee")
-  positions        positions[]
-  daily_work_reports daily_work_reports[]
-  resubmissionRequests document_resubmission_requests[] @relation("ResubmissionEmployee")
-  requestedResubmissions document_resubmission_requests[] @relation("ResubmissionRequestor")
+  id                        Int                              @id @default(autoincrement())
+  empid                     String                           @unique
+  name                      String
+  email                     String                           @unique
+  contact_number            String?
+  password                  String
+  position                  String?
+  date_of_joining           DateTime?
+  status                    String?                          @default("Active")
+  experience                Int?
+  profile_photo             String?
+  created_at                DateTime?                        @default(now())
+  roleId                    Int?
+  role                      users_role                       @default(employee)
+  verified                  users_verified?                  @default(not_verified)
+  form_submitted            Boolean                          @default(false)
+  resetToken                String?
+  resetTokenExpiry          DateTime?                        @db.Timestamp(6)
+  employee_type             employees_employee_type?         @default(Full_time)
+  candidate_id              String?
+  duration_months           Int?
+  rbacRole                  Role?                            @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  leave_balances            leave_balances[]
+  leave_requests            leave_requests[]
+  payroll                   payroll[]
+  createdTasks              tasks[]                          @relation("TaskCreator")
+  assignedTasks             tasks[]                          @relation("TaskAssignee")
+  positions                 positions[]
+  daily_work_reports        daily_work_reports[]
+  resubmissionRequests      document_resubmission_requests[] @relation("ResubmissionEmployee")
+  requestedResubmissions    document_resubmission_requests[] @relation("ResubmissionRequestor")
   attendance_regularization attendance_regularization[]
   sessions session[]
 
@@ -380,29 +452,30 @@ model session {
 }
 
 model payroll {
-  id                Int       @id @default(autoincrement())
+  id                Int             @id @default(autoincrement())
   empid             String?
   month             String?
   year              Int?
   basic_salary      Decimal?
   hra               Decimal?
-  bonus             Decimal?  @default(0.00)
+  bonus             Decimal?        @default(0.00)
   da                Decimal?
   allowances        Decimal?
   deductions        Decimal?
   net_pay           Decimal?
-  generated_on      DateTime? @default(now())
+  generated_on      DateTime?       @default(now())
   payslip_pdf       String?
-  payslip_status    payslip_status?    @default(pending)
-  pf                Decimal?  @default(0.00)
-  ptax              Decimal?  @default(0.00)
-  esic              Decimal?  @default(0.00)
+  payslip_status    payslip_status? @default(pending)
+  pf                Decimal?        @default(0.00)
+  ptax              Decimal?        @default(0.00)
+  esic              Decimal?        @default(0.00)
   allowance_details String?
   deduction_details String?
-  users             users?    @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+  users             users?          @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([empid])
 }
+
 enum payslip_status {
   pending
   generated
@@ -466,7 +539,7 @@ model assistant_learning {
 model tasks {
   id          Int      @id @default(autoincrement())
   title       String
-  description String? @db.VarChar(500)
+  description String?  @db.VarChar(500)
   assigned_to String
   assigned_by String
   deadline    DateTime
@@ -505,16 +578,16 @@ model daily_work_reports {
 }
 
 model document_resubmission_requests {
-  id               Int      @id @default(autoincrement())
-  employee_empid   String
-  document_type    String
-  requested_by     String
-  reason           String?
-  status           String   @default("pending")
-  created_at       DateTime @default(now())
-  completed_at     DateTime?
-  employee         users    @relation("ResubmissionEmployee", fields: [employee_empid], references: [empid], onDelete: Cascade)
-  requestor        users    @relation("ResubmissionRequestor", fields: [requested_by], references: [empid], onDelete: Cascade)
+  id             Int       @id @default(autoincrement())
+  employee_empid String
+  document_type  String
+  requested_by   String
+  reason         String?
+  status         String    @default("pending")
+  created_at     DateTime  @default(now())
+  completed_at   DateTime?
+  employee       users     @relation("ResubmissionEmployee", fields: [employee_empid], references: [empid], onDelete: Cascade)
+  requestor      users     @relation("ResubmissionRequestor", fields: [requested_by], references: [empid], onDelete: Cascade)
 
   @@index([employee_empid])
   @@index([requested_by])
@@ -522,8 +595,8 @@ model document_resubmission_requests {
 
 model notifications {
   id             Int      @id @default(autoincrement())
-  recipient_type String   // 'user' or 'role'
-  recipient_id   String   // empid for user, role name for role
+  recipient_type String // 'user' or 'role'
+  recipient_id   String // empid for user, role name for role
   title          String
   message        String   @db.Text
   type           String?
@@ -610,7 +683,6 @@ enum candidates_status {
   Document_Submitted @map("Document Submitted")
   Selected
   Rejected
-  
 }
 
 enum users_role {

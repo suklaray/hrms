@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import ClientPage from "./Client";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission, getUserPermissions, isSuperAdmin } from "@/lib/rbac";
+import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
 
-async function getServerSideProps(context) {
+async function getServerSideProps(context: { req: any; params?: Record<string, string | string[]>; query?: { [x: string]: string | string[]; }; }) {
   const { req } = context;
   const token = req?.cookies?.token || "";
   const user = getUserFromToken(token);
@@ -60,7 +60,7 @@ export default async function Page(props: {
   try {
     gsspResult = await getServerSideProps(context);
   } catch (err) {
-    console.error("Error running getServerSideProps in payroll/payroll-setup/view-config/[id]/edit:", err);
+    console.error("Error running getServerSideProps in payroll/payroll-setup/payroll-create-periods:", err);
   }
 
   if (gsspResult?.redirect?.destination) {

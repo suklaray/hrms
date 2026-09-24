@@ -15,8 +15,6 @@ import Pageheader from '@/Components/PageHeader';
 import { PayrollDetailsSkeleton } from '@/Components/Skeletons';
 import { swalConfirm } from '@/utils/confirmDialog';
 
-
-
 const formatDateForInput = (val) => {
     if (!val) return "";
     if (typeof val === 'string') {
@@ -30,6 +28,24 @@ const formatDateForInput = (val) => {
         return "";
     }
 };
+
+interface changes {
+    company_id: string;
+    payroll_country: string;
+    currency: string;
+    payroll_effective_date: string;
+    payroll_cycle: string;
+    working_days: string;
+    attendance_cut_off: string;
+    leave_cut_off: string;
+    overtime_cut_off: string;
+    salary_payment_date: string;
+    financial_year_start_month: string;
+    financial_year_end_month: string;
+    salary_calendar: string;
+    status: string;
+    remarks?: string
+}
 
 const PayrollEditConfig = () => {
     const router = useRouter();
@@ -222,9 +238,24 @@ const PayrollEditConfig = () => {
     };
 
     // Calculate changed fields between current form and initialForm
-    const getChangedFields = (current, initial) => {
+    const getChangedFields = (current: changes, initial: changes) => {
         if (!initial) return {};
-        const changes = {};
+        const changes: changes = {
+            company_id: "",
+            payroll_country: "",
+            currency: "",
+            payroll_effective_date: "",
+            payroll_cycle: "",
+            working_days: "",
+            attendance_cut_off: "",
+            leave_cut_off: "",
+            overtime_cut_off: "",
+            salary_payment_date: "",
+            financial_year_start_month: "",
+            financial_year_end_month: "",
+            salary_calendar: "",
+            status: ""
+        };
 
         // Numeric fields
         const numericFields = [
@@ -1582,9 +1613,9 @@ const PayrollEditConfig = () => {
 
 
 export default function ClientPageWrapper(props: any) {
-  return (
-    <Suspense fallback={null}>
-      <PayrollEditConfig {...props} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={null}>
+            <PayrollEditConfig {...props} />
+        </Suspense>
+    );
 }

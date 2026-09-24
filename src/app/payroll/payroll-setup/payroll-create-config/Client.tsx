@@ -4,16 +4,21 @@ import { Suspense } from "react";
 import { useState, useEffect } from 'react'
 import Head from "@/lib/compatHead";
 import { useRouter } from "@/lib/compatRouter";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import SideBar from '@/Components/SideBar';
 import OnlyPaymentDayPicker from "@/Components/DateOnlyCalenderSelector";
-import { getUserFromToken } from "@/lib/getUserFromToken";
 import { ChevronDown, Search, Check, RotateCcw, Send } from "lucide-react";
 import { toast } from "react-toastify";
 import Pageheader from '@/Components/PageHeader';
+import getMonthName from "@/lib/monthPicker";
 
-
+interface FinancialYear {
+    status: string;
+    uid: string;
+    end_date(end_date: any): unknown;
+    start_date(start_date: any): unknown;
+    id: string;
+    name: string;
+}
 
 const PayrollCreateConfig = () => {
     const router = useRouter();
@@ -21,9 +26,11 @@ const PayrollCreateConfig = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
     const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+    const [isFinancialYearDropdownOpen, setIsFinancialYearDropdownOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [searchCountryTerm, setSearchCountryTerm] = useState('');
     const [searchCurrencyTerm, setSearchCurrencyTerm] = useState('');
+    const [searchFinancialYearTerm, setSearchFinancialYearTerm] = useState('');
     const [form, setForm] = useState({
         company_id: "",
         payroll_country: "",
@@ -35,14 +42,14 @@ const PayrollCreateConfig = () => {
         leave_cut_off: "Leave rejection",
         overtime_cut_off: null,
         salary_payment_date: "",
-        financial_year_start_month: "",
-        financial_year_end_month: "",
+        financial_year_id: "",
         salary_calendar: "",
         status: "ACTIVE",
         remarks: "",
     });
     const [countries, setCountries] = useState([]);
     const [currencies, setCurrencies] = useState([]);
+    const [financialYears, setFinancialYears] = useState<FinancialYear[]>([]);
     const [loading, setLoading] = useState(false);
     const [currencyLoading, setCurrencyLoading] = useState(false);
 
@@ -61,6 +68,20 @@ const PayrollCreateConfig = () => {
             }
         };
         fetchCompanies();
+
+        // Fetch all financial years
+        const fetchFinancialYears = async () => {
+            try {
+                const res = await fetch("/api/payroll/financial-year");
+                if (res.ok) {
+                    const result = await res.json();
+                    setFinancialYears(result.data || []);
+                }
+            } catch (error) {
+                console.error("Error fetching financial years:", error);
+            }
+        };
+        fetchFinancialYears();
 
         // Get all countries from open free api
         fetch("https://countries.dev/countries")
@@ -123,8 +144,7 @@ const PayrollCreateConfig = () => {
             leave_cut_off: "Leave rejection",
             overtime_cut_off: null,
             salary_payment_date: "",
-            financial_year_start_month: "",
-            financial_year_end_month: "",
+            financial_year_id: "",
             salary_calendar: "",
             status: "ACTIVE",
             remarks: "",
@@ -170,54 +190,6 @@ const PayrollCreateConfig = () => {
             });
 
     };
-
-    // Financial year validation at the time of creation
-    function validateFinancialYear(startMonth, endMonth) {
-        if (!startMonth) {
-            toast.error("Please select a financial year start month.");
-            return false;
-        }
-
-        if (!endMonth) {
-            toast.error("Please select a financial year end month.");
-            return false;
-        }
-
-        const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
-
-        if (!monthRegex.test(startMonth)) {
-            toast.error("Invalid financial year start month.");
-            return false;
-        }
-
-        if (!monthRegex.test(endMonth)) {
-            toast.error("Invalid financial year end month.");
-            return false;
-        }
-
-        const [startYear, startMonthNumber] = startMonth.split("-").map(Number);
-        const [endYear, endMonthNumber] = endMonth.split("-").map(Number);
-
-        const start = startYear * 12 + startMonthNumber;
-        const end = endYear * 12 + endMonthNumber;
-
-        if (start === end) {
-            toast.error("Financial year start and end month cannot be the same.");
-            return false;
-        }
-
-        if (end < start) {
-            toast.error("Financial year end cannot be before the start.");
-            return false;
-        }
-
-        if (end - start > 11) {
-            toast.error("Financial year cannot be more than 12 months.");
-            return false;
-        }
-
-        return true;
-    }
 
     return (
         <>
@@ -327,10 +299,10 @@ const PayrollCreateConfig = () => {
                                                 >
                                                     <span className="truncate">
                                                         {companies?.find(
-                                                            (c) => String(c.id) === String(form.company_id)
+                                                            (c) => String(c.uid) === String(form.company_id)
                                                         )
                                                             ? companies.find(
-                                                                (c) => String(c.id) === String(form.company_id)
+                                                                (c) => String(c.uid) === String(form.company_id)
                                                             ).name
                                                             : "— No company selected —"}
                                                     </span>
@@ -406,12 +378,12 @@ const PayrollCreateConfig = () => {
                                                                     .map((c) => (
 
                                                                         <button
-                                                                            key={c.id}
+                                                                            key={c.uid}
                                                                             type="button"
                                                                             onClick={() => {
                                                                                 setForm((p) => ({
                                                                                     ...p,
-                                                                                    company_id: c.id,
+                                                                                    company_id: c.uid,
                                                                                 }));
                                                                                 setIsDropdownOpen(false);
                                                                                 setSearchTerm("");
@@ -430,7 +402,7 @@ const PayrollCreateConfig = () => {
                                                                                 last:border-0
                                                                                 transition-colors
                                                                                 ${String(form.company_id) ===
-                                                                                    String(c.id)
+                                                                                    String(c.uid)
                                                                                     ? "bg-[#edf4f9] text-[#3f6f91]"
                                                                                     : "text-[#4b5563] hover:bg-[#f6f8fa]"
                                                                                 }
@@ -442,7 +414,7 @@ const PayrollCreateConfig = () => {
                                                                             </span>
 
                                                                             {String(form.company_id) ===
-                                                                                String(c.id) && (
+                                                                                String(c.uid) && (
                                                                                     <Check className="w-3.5 h-3.5 text-indigo-400" />
                                                                                 )}
 
@@ -1141,11 +1113,11 @@ const PayrollCreateConfig = () => {
 
                                     <div>
                                         <h3 className="text-[12px] font-semibold text-[#374151]">
-                                            Financial Year & Salary Calendar
+                                            Financial Year, Salary Calendar & Status
                                         </h3>
 
                                         <p className="text-[10px] text-[#7b8490]">
-                                            Define the financial year and payroll calendar
+                                            Define the financial year, payroll calendar and status
                                         </p>
                                     </div>
                                 </div>
@@ -1154,43 +1126,187 @@ const PayrollCreateConfig = () => {
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-                                        {/* FY Start */}
+                                        {/* FY Select */}
                                         <div>
                                             <label className="block text-[11px] font-semibold text-[#4b5563] mb-1.5">
-                                                Financial Year Start Month
+                                                Select Financial Year
                                                 <span className="text-red-500 ml-0.5">*</span>
                                             </label>
 
-                                            <input
-                                                type='month'
-                                                value={form.financial_year_start_month}
-                                                onChange={(e) => {
-                                                    setForm((p) => ({ ...p, financial_year_start_month: e.target.value }))
-                                                }}
-                                                className='w-full h-[38px] border border-[#cfd5db] rounded-md px-3 text-[12px] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/10'
-                                            />
+                                            <div className="relative">
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsFinancialYearDropdownOpen(!isFinancialYearDropdownOpen);
+                                                        setIsCountryDropdownOpen(false);
+                                                        setIsCurrencyDropdownOpen(false);
+                                                    }}
+                                                    className={`
+                                                        w-full
+                                                        h-[38px]
+                                                        border
+                                                        border-[#cfd5db]
+                                                        rounded-md
+                                                        px-3
+                                                        bg-white
+                                                        text-left
+                                                        text-[12px]
+                                                        text-[#374151]
+                                                        hover:border-[#aeb7c1]
+                                                        focus:outline-none
+                                                        focus:ring-2
+                                                        focus:ring-indigo-400/10
+                                                        focus:border-indigo-400
+                                                        flex
+                                                        items-center
+                                                        justify-between
+                                                        transition
+                                                        cursor-pointer
+                                                    `}
+                                                >
+                                                    <span className="truncate">
+                                                        {financialYears?.find(
+                                                            (f) => String(f.uid) === String(form.financial_year_id)
+                                                        )
+                                                            ? financialYears.find(
+                                                                (f) => String(f.uid) === String(form.financial_year_id)
+                                                            ).name
+                                                            : "— No financial year selected —"}
+                                                    </span>
+
+                                                    <ChevronDown
+                                                        className={`w-4 h-4 text-[#8b949e] transition-transform ${isFinancialYearDropdownOpen ? "rotate-180" : ""
+                                                            }`}
+                                                    />
+                                                </button>
+
+                                                {isFinancialYearDropdownOpen && (
+                                                    <div className="
+                                                        absolute
+                                                        z-50
+                                                        mt-1
+                                                        w-full
+                                                        bg-white
+                                                        border
+                                                        border-[#d5dbe1]
+                                                        rounded-md
+                                                        shadow-lg
+                                                        overflow-hidden
+                                                    ">
+
+                                                        <div className="p-2 border-b border-[#e8ebee] bg-[#f8f9fa]">
+                                                            <div className="flex items-center gap-2 px-2 py-1.5 bg-white border border-[#d9dde2] rounded-sm">
+
+                                                                <Search className="w-3.5 h-3.5 text-[#8b949e]" />
+
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Search financial year..."
+                                                                    value={searchFinancialYearTerm}
+                                                                    onChange={(e) =>
+                                                                        setSearchFinancialYearTerm(e.target.value)
+                                                                    }
+                                                                    className="
+                                                                        w-full
+                                                                        text-[11px]
+                                                                        text-[#374151]
+                                                                        bg-transparent
+                                                                        focus:outline-none
+                                                                    "
+                                                                    autoFocus
+                                                                />
+
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="overflow-y-auto max-h-56">
+
+                                                            {financialYears?.filter(
+                                                                (f) =>
+                                                                    (f?.name || "")
+                                                                        .toLowerCase()
+                                                                        .includes(searchFinancialYearTerm.toLowerCase())
+                                                            ).length === 0 ? (
+
+                                                                <div className="p-4 text-[11px] text-[#7b8490] text-center">
+                                                                    No matching companies found
+                                                                </div>
+
+                                                            ) : (
+
+                                                                financialYears
+                                                                    ?.filter((f) =>
+                                                                        (f?.name || "")
+                                                                            .toLowerCase()
+                                                                            .includes(
+                                                                                searchFinancialYearTerm.toLowerCase()
+                                                                            )
+                                                                    )
+                                                                    .map((f) => (
+
+                                                                        <button
+                                                                            key={f.uid}
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                setForm((p) => ({
+                                                                                    ...p,
+                                                                                    financial_year_id: f.uid,
+                                                                                }));
+                                                                                setIsFinancialYearDropdownOpen(false);
+                                                                                setSearchFinancialYearTerm("");
+                                                                            }}
+                                                                            disabled={f.status === 'DRAFT'}
+                                                                            className={`
+                                                                                w-full
+                                                                                px-3
+                                                                                py-2.5
+                                                                                text-left
+                                                                                text-[11px]
+                                                                                flex
+                                                                                items-center
+                                                                                justify-between
+                                                                                border-b
+                                                                                border-[#f0f2f4]
+                                                                                last:border-0
+                                                                                transition-colors
+                                                                                ${String(form.financial_year_id) ===
+                                                                                    String(f.uid)
+                                                                                    ? "bg-[#edf4f9] text-[#3f6f91]"
+                                                                                    : "text-[#4b5563] hover:bg-[#f6f8fa]"
+                                                                                }
+                                                                                ${f.status === 'DRAFT' ? 'opacity-50 cursor-not-allowed' : ''}
+                                                                            `}
+                                                                        >
+
+                                                                            <span className="font-medium">
+                                                                                {f.name}
+                                                                            </span>
+
+                                                                            <div className="text-[10px] text-[#9aa1a9] mt-0.5">
+                                                                                {'From' + ' ' + getMonthName(f.start_date) + ' ' + 'To' + ' ' + getMonthName(f.end_date)}
+                                                                            </div>
+
+                                                                            <div className="text-[10px] text-[#4b5563] mt-0.5">
+                                                                                {f.status}
+                                                                            </div>
+
+                                                                            {String(form.financial_year_id) === String(f.uid) && (
+                                                                                <Check className="w-3.5 h-3.5 text-indigo-400" />
+                                                                            )}
+
+                                                                        </button>
+
+                                                                    ))
+
+                                                            )}
+
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                            </div>
                                         </div>
-
-
-                                        {/* FY End */}
-                                        <div>
-                                            <label className="block text-[11px] font-semibold text-[#4b5563] mb-1.5">
-                                                Financial Year End Month
-                                                <span className="text-red-500 ml-0.5">*</span>
-                                            </label>
-                                            <input
-                                                type='month'
-                                                value={form.financial_year_end_month}
-                                                onChange={(e) => {
-                                                    const v = validateFinancialYear(form.financial_year_start_month, e.target.value);
-                                                    if (v) {
-                                                        setForm((p) => ({ ...p, financial_year_end_month: e.target.value }))
-                                                    }
-                                                }}
-                                                className='w-full h-[38px] border border-[#cfd5db] rounded-md px-3 text-[12px] focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/10'
-                                            />
-                                        </div>
-
 
                                         {/* Salary Calendar */}
                                         <div>
@@ -1248,35 +1364,6 @@ const PayrollCreateConfig = () => {
                                             </select>
                                         </div>
 
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            {/* ===================================================== */}
-                            {/* STATUS & REMARKS */}
-                            {/* ===================================================== */}
-
-                            <div className="border border-[#d9dde2] mb-5">
-
-                                <div className="h-10 px-4 flex items-center bg-gray-50 border-b border-[#d9dde2]">
-                                    <div className="w-1 h-4 bg-indigo-400 rounded-full mr-3" />
-
-                                    <div>
-                                        <h3 className="text-[12px] font-semibold text-[#374151]">
-                                            Status & Additional Information
-                                        </h3>
-
-                                        <p className="text-[10px] text-[#7b8490]">
-                                            Set configuration status and add optional remarks
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="p-4">
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
                                         {/* Status */}
                                         <div>
                                             <label className="block text-[11px] font-semibold text-[#4b5563] mb-1.5">
@@ -1329,9 +1416,37 @@ const PayrollCreateConfig = () => {
                                             </select>
                                         </div>
 
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            {/* ===================================================== */}
+                            {/* REMARKS */}
+                            {/* ===================================================== */}
+
+                            <div className="border border-[#d9dde2] mb-5">
+
+                                <div className="h-10 px-4 flex items-center bg-gray-50 border-b border-[#d9dde2]">
+                                    <div className="w-1 h-4 bg-indigo-400 rounded-full mr-3" />
+
+                                    <div>
+                                        <h3 className="text-[12px] font-semibold text-[#374151]">
+                                            Additional Information
+                                        </h3>
+
+                                        <p className="text-[10px] text-[#7b8490]">
+                                            Add optional remarks
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4">
+
+                                    <div className="grid grid-cols-1 gap-4">
 
                                         {/* Remarks */}
-                                        <div className="md:col-span-2">
+                                        <div>
 
                                             <label className="block text-[11px] font-semibold text-[#4b5563] mb-1.5">
                                                 Remarks
@@ -1426,7 +1541,7 @@ const PayrollCreateConfig = () => {
                                     gap-2
                                     h-[38px]
                                     px-6
-                                    bg-indigo-400
+                                    bg-indigo-500
                                     hover:bg-indigo-600
                                     active:bg-[#395f7d]
                                     text-white
@@ -1449,7 +1564,7 @@ const PayrollCreateConfig = () => {
                                     ) : (
                                         <>
                                             <Send className="w-3.5 h-3.5" />
-                                            Submit Configuration
+                                            Create Configuration
                                         </>
                                     )}
                                 </button>
@@ -1467,9 +1582,9 @@ const PayrollCreateConfig = () => {
 
 
 export default function ClientPageWrapper(props: any) {
-  return (
-    <Suspense fallback={null}>
-      <PayrollCreateConfig {...props} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={null}>
+            <PayrollCreateConfig {...props} />
+        </Suspense>
+    );
 }
