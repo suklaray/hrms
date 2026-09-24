@@ -326,7 +326,7 @@ const GetFinancialYears = () => {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50/80">
                                     <tr>
-                                        {["#", "Financial Year", "Company", "Start Date", "End Date", "Status", "Lock State", "Actions"].map((h) => (
+                                        {["#", "Financial Year", "Company", "Start Date", "End Date", "Status", "Lock State"].map((h) => (
                                             <th
                                                 key={h}
                                                 className="px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider"
@@ -449,7 +449,7 @@ const GetFinancialYears = () => {
                                                 </td>
 
                                                 {/* Actions */}
-                                                <td className="px-6 py-3.5 whitespace-nowrap">
+                                                {/* <td className="px-6 py-3.5 whitespace-nowrap">
                                                     <div className="flex items-center gap-1.5">
                                                         <Link
                                                             href={`/payroll/financial-year-setup/view-financial-year/${fy.uid}`}
@@ -466,7 +466,7 @@ const GetFinancialYears = () => {
                                                             <PenIcon size={13} />
                                                         </Link>
                                                     </div>
-                                                </td>
+                                                </td> */}
                                             </tr>
                                         ))}
                                     </tbody>

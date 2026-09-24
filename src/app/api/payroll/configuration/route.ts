@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         salary_payment_date: Number(salary_payment_date),
         financial_year_id,
         salary_calendar,
-        approval: "NO",
+        approval: "PENDING",
         status,
         remarks
       }

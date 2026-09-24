@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     // Fetch basic employee details from `users` table
     const user = await prisma.users.findUnique({
-      where: { id: decoded.id },
+      where: { id: Number(decoded.id) },
       select: {
         empid: true,
         name: true,

@@ -5,10 +5,12 @@ import SideBar from "@/Components/SideBar";
 import Head from "@/lib/compatHead";
 import getFinancialYear from "@/lib/financialYearCalculation";
 import { Check, ChevronDown, RotateCcw, Search, Send } from "lucide-react";
+import { useRouter } from "@/lib/compatRouter";
 import { Suspense, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 const FinancialYearSetup = () => {
+    const router = useRouter();
     const [companies, setCompanies] = useState([]);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -107,6 +109,9 @@ const FinancialYearSetup = () => {
             const result = await res.json();
             toast.success(result?.message || "Financial year created successfully");
             handleReset();
+            setTimeout(() => {
+                router.push("/payroll/financial-year-setup/payroll-get-financial-years");
+            }, 1000);
         } catch (error) {
             console.error("Error creating financial year:", error);
             toast.error("Something went wrong");

@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "@/lib/compatRouter";
-import { useEffect, useState } from "react";
 import Head from "@/lib/compatHead";
 import SideBar from "@/Components/SideBar";
+import Pageheader from "@/Components/PageHeader";
+import { PayrollDetailsSkeleton } from "@/Components/Skeletons";
 import axios from "axios";
 import {
   Copy,
@@ -22,10 +23,10 @@ import {
   Check,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { toast } from "react-toastify";
-import { swalConfirm } from '@/utils/confirmDialog';
+import { swalConfirm } from "@/utils/confirmDialog";
 
-//import toast from "react-hot-toast";
 interface EmployeeRecord {
   aadhar_card?: string | null;
   pan_card?: string | null;
@@ -40,20 +41,30 @@ interface EmployeeRecord {
   education_certificates?: string | null;
   dob?: string | null;
   gender?: string | null;
+  contact_no?: string | null;
   [key: string]: unknown;
 }
 
 interface RbacRole {
+  id?: number;
   name?: string;
+  description?: string;
   [key: string]: unknown;
 }
 
 interface EmployeeUser {
+  id?: number;
   role?: string;
+  roleId?: number;
   verified?: string;
   rbacRole?: RbacRole;
   position?: string | null;
   employee_type?: string | null;
+  contact_number?: string | null;
+  name?: string;
+  email?: string;
+  empid?: string;
+  password?: string;
   [key: string]: unknown;
 }
 
@@ -99,18 +110,18 @@ function ViewEmployee() {
   const [isResetting, setIsResetting] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [position, setPosition] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [isOpen1, setIsOpen1] = useState(false);
-  const [isOpen2, setIsOpen2] = useState(false);
-  const [isOpen3, setIsOpen3] = useState(false);
-  const [positions, setPositions] = useState([]);
-  const [rolesList, setRolesList] = useState([]);
+  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen1, setIsOpen1] = useState(true);
+  const [isOpen2, setIsOpen2] = useState(true);
+  const [isOpen3, setIsOpen3] = useState(true);
+  const [positions, setPositions] = useState<any[]>([]);
+  const [rolesList, setRolesList] = useState<any[]>([]);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [roleSearchTerm, setRoleSearchTerm] = useState("");
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [resubmitStates, setResubmitStates] = useState<Record<string, boolean>>({});
+  const [resubmitStates, setResubmitStates] = useState<Record<string, boolean | string>>({});
   const [resubmitReason, setResubmitReason] = useState<Record<string, string>>({});
 
   const hasPerm = (permissionKey: string) => isSuperAdminUser || userPermissions.includes(permissionKey);
@@ -118,13 +129,13 @@ function ViewEmployee() {
   useEffect(() => {
     const fetchEverything = async () => {
       try {
-        //  Fetch currently logged-in user
+        // Fetch currently logged-in user
         const roleRes = await fetch("/api/auth/me", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
-          credentials: "include", //  required for cookie-based JWT
+          credentials: "include",
         });
 
         if (roleRes.ok) {
@@ -139,20 +150,20 @@ function ViewEmployee() {
 
         // Fetch roles from roles table
         try {
-          const rolesRes = await axios.get('/api/settings/employee-types', { withCredentials: true });
+          const rolesRes = await axios.get("/api/settings/employee-types", { withCredentials: true });
           const available = rolesRes.data?.assignableRoles || rolesRes.data?.roles || [];
           setRolesList(available);
-        } catch (rErr) {
-          console.log('Could not fetch roles list:', rErr.message);
+        } catch (rErr: any) {
+          console.log("Could not fetch roles list:", rErr?.message);
           setRolesList([]);
         }
 
         // Fetch positions
         try {
-          const posRes = await axios.get('/api/settings/positions');
+          const posRes = await axios.get("/api/settings/positions");
           setPositions(posRes.data);
-        } catch (posError) {
-          console.log('Could not fetch positions:', posError.message);
+        } catch (posError: any) {
+          console.log("Could not fetch positions:", posError?.message);
           setPositions([]);
         }
 
@@ -172,64 +183,12 @@ function ViewEmployee() {
     fetchEverything();
   }, [id]);
 
-  if (loading) {
-    return (
-      <>
-        <Head>
-          <title>Employee Details - HRMS</title>
-        </Head>
-        <div className="flex min-h-screen bg-gray-50">
-          <SideBar />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full border-4 border-gray-200 mx-auto"></div>
-                <div className="w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin absolute top-0 left-1/2 transform -translate-x-1/2"></div>
-              </div>
-              <p className="text-gray-600 mt-4 font-medium text-lg">
-                Loading employee details...
-              </p>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (!data) {
-    return (
-      <>
-        <Head>
-          <title>Employee Details - HRMS</title>
-        </Head>
-        <div className="flex min-h-screen bg-gray-50">
-          <SideBar />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-red-600 text-lg font-medium mb-4">
-                Employee not found
-              </p>
-              <button
-                onClick={() => router.push("/employeeList")}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
-              >
-                Back to Employee List
-              </button>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
   const { user, employee: employees, addresses, bankDetails } = data || {};
   const name = user?.name as string | undefined;
   const email = user?.email as string | undefined;
   const empid = user?.empid as string | undefined;
-  const password = user?.password as string | undefined;
-  const employee_type = user?.employee_type as string | undefined;
 
-  const handleSelectRole = async (selectedRole) => {
+  const handleSelectRole = async (selectedRole: any) => {
     setIsUpdatingRole(true);
     try {
       const res = await axios.put(
@@ -247,7 +206,7 @@ function ViewEmployee() {
         setData((prev) => ({
           ...prev,
           user: {
-            ...prev.user,
+            ...prev?.user,
             roleId: selectedRole.id,
             role: res.data?.updatedUser?.role || selectedRole.name,
             rbacRole: selectedRole,
@@ -257,7 +216,7 @@ function ViewEmployee() {
         setRoleSearchTerm("");
         toast.success(`User role updated to ${selectedRole.name}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to update role:", err);
       toast.error(err.response?.data?.message || "Failed to update role.");
     } finally {
@@ -265,7 +224,7 @@ function ViewEmployee() {
     }
   };
 
-  const handleRoleChange = async (newRole) => {
+  const handleRoleChange = async (newRole: string) => {
     try {
       const res = await axios.patch(
         `/api/auth/employee/update-role/${empid}`,
@@ -282,7 +241,7 @@ function ViewEmployee() {
         setData((prev) => ({
           ...prev,
           user: {
-            ...prev.user,
+            ...prev?.user,
             role: newRole,
           },
         }));
@@ -292,7 +251,8 @@ function ViewEmployee() {
       console.error("Failed to update role:", err);
     }
   };
-  const handleEmployeeTypeChange = async (newType) => {
+
+  const handleEmployeeTypeChange = async (newType: string) => {
     try {
       const res = await axios.put(
         `/api/auth/employee/update-type/${empid}`,
@@ -309,7 +269,7 @@ function ViewEmployee() {
         setData((prev) => ({
           ...prev,
           user: {
-            ...prev.user,
+            ...prev?.user,
             employee_type: newType,
           },
         }));
@@ -342,7 +302,7 @@ function ViewEmployee() {
         setData((prev) => ({
           ...prev,
           user: {
-            ...prev.user,
+            ...prev?.user,
             position: position,
           },
         }));
@@ -378,9 +338,7 @@ function ViewEmployee() {
 
   const handleSendCredentials = async () => {
     if (!newPassword || !empid) {
-      toast.error(
-        "No password available to send. Please reset password first."
-      );
+      toast.error("No password available to send. Please reset password first.");
       return;
     }
 
@@ -389,7 +347,7 @@ function ViewEmployee() {
       const res = await axios.post("/api/employee/sendCredentials", {
         empid: empid,
         password: newPassword,
-        role: user?.role
+        role: user?.role,
       });
 
       if (res.status === 200) {
@@ -403,7 +361,7 @@ function ViewEmployee() {
     }
   };
 
-  const handleRequestResubmission = async (documentType, reason) => {
+  const handleRequestResubmission = async (documentType: string, reason: string) => {
     const confirmed = await swalConfirm(
       `Are you sure you want to request resubmission of ${getDocumentDisplayName(documentType)}?\n\nThis will notify the employee to upload a new document.`
     );
@@ -412,84 +370,82 @@ function ViewEmployee() {
       return;
     }
 
-    setResubmitStates(prev => ({ ...prev, [documentType]: true }));
+    setResubmitStates((prev) => ({ ...prev, [documentType]: true }));
 
     try {
-      const response = await fetch('/api/employee/request-resubmission', {
-        method: 'POST',
+      const response = await fetch("/api/employee/request-resubmission", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           empid: empid,
           documentType: documentType,
           reason,
         }),
-        credentials: 'include'
+        credentials: "include",
       });
 
       if (response.ok) {
         const result = await response.json();
         toast.success(`Resubmission request sent to ${result.employeeName}`);
 
-        // Keep the button in "Request Sent" state
         setTimeout(() => {
-          setResubmitStates(prev => ({ ...prev, [documentType]: 'sent' }));
+          setResubmitStates((prev) => ({ ...prev, [documentType]: "sent" }));
         }, 1000);
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Failed to send resubmission request');
-        setResubmitStates(prev => ({ ...prev, [documentType]: false }));
+        toast.error(error.error || "Failed to send resubmission request");
+        setResubmitStates((prev) => ({ ...prev, [documentType]: false }));
       }
     } catch (error) {
-      console.error('Error requesting resubmission:', error);
-      toast.error('Failed to send resubmission request');
-      setResubmitStates(prev => ({ ...prev, [documentType]: false }));
+      console.error("Error requesting resubmission:", error);
+      toast.error("Failed to send resubmission request");
+      setResubmitStates((prev) => ({ ...prev, [documentType]: false }));
     }
   };
 
-  const getDocumentDisplayName = (documentType) => {
-    const names = {
-      'aadhar_card': 'Aadhar Card',
-      'pan_card': 'PAN Card',
-      'resume': 'Resume',
-      'experience_certificate': 'Experience Certificate',
-      'education_certificates': 'Education Certificates',
-      'profile_photo': 'Profile Photo',
-      'checkbook_document': 'Checkbook Document'
+  const getDocumentDisplayName = (documentType: string) => {
+    const names: Record<string, string> = {
+      aadhar_card: "Aadhar Card",
+      pan_card: "PAN Card",
+      resume: "Resume",
+      experience_certificate: "Experience Certificate",
+      education_certificates: "Education Certificates",
+      profile_photo: "Profile Photo",
+      checkbook_document: "Checkbook Document",
     };
 
     return names[documentType] || documentType;
   };
 
-  const handleResubmitDocument = async (documentType, file) => {
+  const handleResubmitDocument = async (documentType: string, file: File) => {
     if (!file) {
-      toast.error('Please select a file to upload');
+      toast.error("Please select a file to upload");
       return;
     }
 
-    setResubmitStates(prev => ({ ...prev, [documentType]: true }));
+    setResubmitStates((prev) => ({ ...prev, [documentType]: true }));
 
     try {
       const formData = new FormData();
-      formData.append('document', file);
-      formData.append('empid', String(id));
-      formData.append('documentType', documentType);
+      formData.append("document", file);
+      formData.append("empid", String(id));
+      formData.append("documentType", documentType);
 
-      const response = await fetch('/api/employee/upload-document', {
-        method: 'POST',
+      const response = await fetch("/api/employee/upload-document", {
+        method: "POST",
         body: formData,
-        credentials: 'include'
+        credentials: "include",
       });
 
       if (response.ok) {
         const result = await response.json();
-        toast.success('Document resubmitted successfully!');
+        toast.success("Document resubmitted successfully!");
 
-        // Update the local data to reflect the new document
-        setData(prev => {
+        setData((prev) => {
           const newData = { ...prev };
-          if (documentType === 'checkbook_document') {
+          if (documentType === "checkbook_document") {
             if (newData.bankDetails && newData.bankDetails[0]) {
               newData.bankDetails[0][documentType] = result.filePath;
             }
@@ -501,19 +457,17 @@ function ViewEmployee() {
           return newData;
         });
 
-        // Reset file input
         const fileInput = document.getElementById(`file-${documentType}`) as HTMLInputElement | null;
-        if (fileInput) fileInput.value = '';
-
+        if (fileInput) fileInput.value = "";
       } else {
         const error = await response.json();
-        toast.error(error.error || 'Failed to resubmit document');
+        toast.error(error.error || "Failed to resubmit document");
       }
     } catch (error) {
-      console.error('Error resubmitting document:', error);
-      toast.error('Failed to resubmit document');
+      console.error("Error resubmitting document:", error);
+      toast.error("Failed to resubmit document");
     } finally {
-      setResubmitStates(prev => ({ ...prev, [documentType]: false }));
+      setResubmitStates((prev) => ({ ...prev, [documentType]: false }));
     }
   };
 
@@ -522,7 +476,7 @@ function ViewEmployee() {
 
     setIsVerifying(true);
     try {
-      const isCurrentlyVerified = user?.verified === 'verified';
+      const isCurrentlyVerified = user?.verified === "verified";
       const updatedVerificationStatus = !isCurrentlyVerified;
 
       const res = await axios.put("/api/auth/employee/updateVerification", {
@@ -534,11 +488,11 @@ function ViewEmployee() {
         setData((prev) => ({
           ...prev,
           user: {
-            ...prev.user,
-            verified: updatedVerificationStatus ? 'verified' : 'not_verified',
+            ...prev?.user,
+            verified: updatedVerificationStatus ? "verified" : "not_verified",
           },
         }));
-        toast.success(`Employee ${updatedVerificationStatus ? 'verified' : 'unverified'} successfully!`);
+        toast.success(`Employee ${updatedVerificationStatus ? "verified" : "unverified"} successfully!`);
       }
     } catch (err) {
       console.error("Failed to update verification:", err);
@@ -551,580 +505,659 @@ function ViewEmployee() {
   return (
     <>
       <Head>
-        <title>Employee Details - HRMS</title>
+        <title>{name ? `${name} - Employee Details` : "Employee Details - HRMS"}</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
         <SideBar />
-        <div className="flex-1 overflow-auto">
-          {/* Breadcrumb Navigation */}
-          <div className="bg-white border-b border-gray-200 px-6 py-3">
-            <nav className="flex items-center space-x-2 text-sm">
-              <button
-                onClick={() => router.push("/employeeList")}
-                className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
-              >
-                Employee List
-              </button>
-              <span className="text-gray-400">/</span>
-              <span className="text-gray-600">Employee Details</span>
-              {name && (
-                <>
-                  <span className="text-gray-400">/</span>
-                  <span className="text-gray-900 font-medium">{name}</span>
-                </>
-              )}
-            </nav>
-          </div>
+        <div className="flex-1 overflow-auto p-6">
+          <Pageheader
+            title="View Employee Profile"
+            description="View and manage employee profile and documents"
+            href="/employeeList"
+          />
 
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Employee Details
-                </h1>
-                <p className="text-gray-600">
-                  View and manage employee information
-                </p>
-              </div>
-              <button
-                onClick={() => router.push("/employeeList")}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors cursor-pointer"
+          {loading ? (
+            <PayrollDetailsSkeleton />
+          ) : !data ? (
+            <div className="bg-white shadow-sm border border-gray-200 p-12 text-center">
+              <p className="text-red-600 text-sm font-medium mb-3">Employee not found</p>
+              <Link
+                href="/employeeList"
+                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700 transition-colors"
               >
-                ← Back to List
-              </button>
+                Back to Employee List
+              </Link>
             </div>
-          </div>
+          ) : (
+            <div className="bg-white shadow-sm border border-gray-200 p-6 mb-6">
+              {/* Top Subheader Bar */}
+              <div className="h-10 bg-gray-100 border-b border-gray-300 flex items-center justify-between px-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-[#333]">
+                    {name || "Employee"}
+                  </span>
 
-          <div className="p-6">
-            <div className="mx-auto space-y-6">
-              {/* Profile Header */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                <div className="flex items-center space-x-6">
-                  <div className="flex-shrink-0">
-                    {employees?.profile_photo ? (
-                      <Image
-                        src={`/api/hr/view-document/${empid}?type=profile_photo`}
-                        alt="Profile"
-                        width={96}
-                        height={96}
-                        className="rounded-full object-cover border-4 border-blue-200"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                          (e.currentTarget.nextElementSibling as HTMLElement).style.display =
-                            "flex";
-                        }}
-                      />
-                    ) : null}
-                    <div
-                      className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-gray-200"
-                      style={{
-                        display: employees?.profile_photo ? "none" : "flex",
-                      }}
+                  <span className="text-[12px] text-[#777]">/</span>
+
+                  <span className="text-[12px] text-[#666]">
+                    {empid}
+                  </span>
+
+                  {user?.position && (
+                    <>
+                      <span className="text-[12px] text-[#777]">/</span>
+                      <span className="text-[12px] text-[#666]">
+                        {user.position}
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-[#777]">Verification</span>
+                    <span
+                      className={`px-2.5 py-1 text-[11px] font-semibold ${
+                        user?.verified === "verified"
+                          ? "text-lime-700 bg-lime-200 border border-lime-400 rounded-full"
+                          : "text-red-700 bg-red-200 border border-red-400 rounded-full"
+                      }`}
                     >
-                      <User className="w-8 h-8" />
-                    </div>
+                      {user?.verified === "verified" ? "Verified" : "Not Verified"}
+                    </span>
                   </div>
 
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{name}</h2>
-                        <p className="text-gray-600">{email}</p>
-                        <div className="flex items-center space-x-4 mt-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            ID: {empid}
-                          </span>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 capitalize">
-                            {user?.rbacRole?.name || user?.role || "N/A"}
-                          </span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${user?.verified === 'verified'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-gray-100 text-gray-800'
-                            }`}>
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            {user?.verified === 'verified' ? 'Verified' : 'Not Verified'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {hasPerm("employee.verify") && (
-                        <button
-                          onClick={handleVerifyEmployee}
-                          disabled={isVerifying}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${user?.verified === 'verified'
-                            ? 'bg-yellow-600 hover:bg-yellow-700 disabled:bg-yellow-400 text-white'
-                            : 'bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white'
-                            }`}
-                        >
-                          <CheckCircle size={16} className={isVerifying ? "animate-spin" : ""} />
-                          {isVerifying
-                            ? (user?.verified === 'verified' ? "Unverifying..." : "Verifying...")
-                            : (user?.verified === 'verified' ? "Unverify" : "Verify")
-                          }
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  {hasPerm("employee.verify") && (
+                    <button
+                      onClick={handleVerifyEmployee}
+                      disabled={isVerifying}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
+                        user?.verified === "verified"
+                          ? "bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-300"
+                          : "bg-lime-100 hover:bg-lime-200 text-lime-800 border border-lime-300"
+                      }`}
+                    >
+                      <CheckCircle size={12} className={isVerifying ? "animate-spin" : ""} />
+                      <span>
+                        {isVerifying
+                          ? user?.verified === "verified"
+                            ? "Unverifying..."
+                            : "Verifying..."
+                          : user?.verified === "verified"
+                          ? "Unverify"
+                          : "Verify Employee"}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Complete Registration Form Link */}
-              {(!employees ||
-                !employees.contact_no ||
-                !addresses?.length ||
-                !bankDetails?.length) && (
-                  <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-orange-600" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-orange-900">
-                            Complete Your Registration
-                          </h3>
-                          <p className="text-orange-700 text-sm">
-                            Some details are missing. Please complete your profile
-                            by filling the registration form.
-                          </p>
-                        </div>
+              {/* Main Content */}
+              <div className="mt-4">
+                {/* Complete Registration Notice */}
+                {(!employees ||
+                  !employees.contact_no ||
+                  !addresses?.length ||
+                  !bankDetails?.length) && (
+                  <div className="border border-amber-300 bg-amber-50/80 p-3 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <FileText className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                      <div>
+                        <span className="text-[12px] font-semibold text-amber-900 mr-2">
+                          Incomplete Profile:
+                        </span>
+                        <span className="text-[12px] text-amber-800">
+                          Some registration details are missing. Please complete the registration form.
+                        </span>
                       </div>
-                      <button
-                        onClick={() => {
-                          const formUrl = `/employee/upload-documents/${empid}?name=${encodeURIComponent(
-                            name
-                          )}&email=${encodeURIComponent(email)}`;
-                          window.open(formUrl, "_blank");
-                        }}
-                        className="inline-flex items-center px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Complete Form
-                      </button>
                     </div>
+                    <button
+                      onClick={() => {
+                        const formUrl = `/employee/upload-documents/${empid}?name=${encodeURIComponent(
+                          name || ""
+                        )}&email=${encodeURIComponent(email || "")}`;
+                        window.open(formUrl, "_blank");
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-medium rounded transition-colors whitespace-nowrap cursor-pointer"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Complete Form</span>
+                    </button>
                   </div>
                 )}
 
-              {/* Personal Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                <div className="p-6 border-b border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Personal Details
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Employee personal information
-                  </p>
+                {/* Profile Avatar & Header Card */}
+                <div className="border border-gray-200 mb-4 bg-white p-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-shrink-0">
+                      {employees?.profile_photo ? (
+                        <Image
+                          src={`/api/hr/view-document/${empid}?type=profile_photo`}
+                          alt="Profile"
+                          width={56}
+                          height={56}
+                          className="w-14 h-14 rounded-full object-cover border border-gray-300"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                            (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex";
+                          }}
+                        />
+                      ) : null}
+                      <div
+                        className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-300"
+                        style={{
+                          display: employees?.profile_photo ? "none" : "flex",
+                        }}
+                      >
+                        <User className="w-6 h-6" />
+                      </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <h2 className="text-[14px] font-semibold text-[#222]">{name}</h2>
+                        <p className="text-[12px] text-[#666]">{email}</p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-300 rounded">
+                          ID: {empid}
+                        </span>
+                        <span className="px-2.5 py-0.5 text-[11px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-200 rounded capitalize">
+                          Role: {user?.rbacRole?.name || user?.role || "N/A"}
+                        </span>
+                        <span className="px-2.5 py-0.5 text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200 rounded capitalize">
+                          Type: {user?.employee_type || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <Detail label="Employee ID" value={empid} />
-                    <Detail label="Name" value={name} />
-                    <Detail label="Email" value={email} />
-                    <Detail
-                      label="Contact No"
-                      value={employees?.contact_no || phoneNumber || "N/A"}
-                    />
-                    <Detail
-                      label="DOB"
-                      value={
-                        employees?.dob
-                          ? new Date(employees.dob as string).toLocaleDateString()
-                          : "N/A"
-                      }
-                    />
-                    <Detail label="Gender" value={employees?.gender || "N/A"} />
 
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">
-                        Position
-                      </p>
-                      <p className="text-gray-900 font-medium">
-                        {user?.position || "N/A"}
-                      </p>
-                      {hasPerm("employee.edit") && (
-                        <div className="mt-2 flex gap-2">
-                          <select
-                            value={position}
-                            onChange={(e) => setPosition(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          >
-                            <option value="">Select Position</option>
-                            {positions.map((pos) => (
-                              <option key={pos.id} value={pos.position_name}>
-                                {pos.position_name}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            onClick={handlePositionUpdate}
-                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          >
-                            Update
-                          </button>
+                {/* Personal & Address 2-Column Grid */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+                  {/* Personal Information */}
+                  <div className="border border-gray-200">
+                    <div className="h-9 bg-gray-100 border-b border-[#cfcfcf] flex items-center px-3">
+                      <span className="text-[12px] font-semibold text-[#333]">
+                        Personal & Employment Information
+                      </span>
+                    </div>
+
+                    <div className="bg-white">
+                      {/* Employee ID */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Employee ID
                         </div>
-                      )}
-                    </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          {empid}
+                        </div>
+                      </div>
 
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">
-                        Employment Type
-                      </p>
-                      <p className="text-gray-900 font-medium capitalize">
-                        {user?.employee_type || "N/A"}
-                      </p>
-                      {hasPerm("employee.edit") && (
-                        <select
-                          value={user?.employee_type || ""}
-                          onChange={(e) =>
-                            handleEmployeeTypeChange(e.target.value)
-                          }
-                          className="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        >
-                          <option value="" disabled>
-                            Change Employment Type
-                          </option>
-                          <option value="Intern">Intern</option>
-                          <option value="Full_time">Full-time</option>
-                          <option value="Contractor">Contractor</option>
-                        </select>
-                      )}
-                    </div>
+                      {/* Name */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Full Name
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          {name}
+                        </div>
+                      </div>
 
-                    <div className="relative">
-                      <p className="text-sm font-medium text-gray-700 mb-1">
-                        User Role
-                      </p>
-                      <p className="text-gray-900 font-medium capitalize">
-                        {user?.rbacRole?.name || user?.role || "N/A"}
-                      </p>
-                      {hasPerm("employee.edit") && (
-                        <div className="mt-2 relative">
-                          <button
-                            type="button"
-                            onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
-                            className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-left text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                          >
-                            <span className="truncate">
-                              {user?.rbacRole?.name || (user?.role ? user.role.toUpperCase() : "Change User Role")}
-                            </span>
-                            <ChevronDown className={`w-4 h-4 ml-2 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""}`} />
-                          </button>
+                      {/* Email */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Email Address
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          {email}
+                        </div>
+                      </div>
 
-                          {isRoleDropdownOpen && (
-                            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-hidden flex flex-col min-w-[200px]">
-                              <div className="p-2 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                                <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                                <input
-                                  type="text"
-                                  placeholder="Search role..."
-                                  value={roleSearchTerm}
-                                  onChange={(e) => setRoleSearchTerm(e.target.value)}
-                                  className="w-full text-xs bg-transparent focus:outline-none"
-                                  autoFocus
-                                />
-                              </div>
+                      {/* Contact Number */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Contact Number
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          {employees?.contact_no || phoneNumber || "N/A"}
+                        </div>
+                      </div>
 
-                              <div className="overflow-y-auto max-h-48 divide-y divide-gray-50">
-                                {rolesList.filter((r) =>
-                                  r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
-                                  (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
-                                ).length === 0 ? (
-                                  <div className="p-3 text-xs text-gray-500 text-center">
-                                    No matching roles
-                                  </div>
-                                ) : (
-                                  rolesList
-                                    .filter((r) =>
-                                      r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
-                                      (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
-                                    )
-                                    .map((r) => (
-                                      <button
-                                        key={r.id}
-                                        type="button"
-                                        disabled={isUpdatingRole}
-                                        onClick={() => handleSelectRole(r)}
-                                        className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${user?.roleId === r.id || user?.rbacRole?.name === r.name
-                                          ? "bg-indigo-50 font-semibold text-indigo-600"
-                                          : "text-gray-700"
-                                          }`}
-                                      >
-                                        <div>
-                                          <div className="font-medium">{r.name}</div>
-                                          {r.description && (
-                                            <div className="text-[10px] text-gray-400 truncate max-w-[180px]">
-                                              {r.description}
-                                            </div>
-                                          )}
-                                        </div>
-                                        {(user?.roleId === r.id || user?.rbacRole?.name === r.name) && (
-                                          <Check className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
-                                        )}
-                                      </button>
-                                    ))
-                                )}
-                              </div>
+                      {/* DOB */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Date of Birth
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          {employees?.dob ? new Date(employees.dob as string).toLocaleDateString() : "N/A"}
+                        </div>
+                      </div>
+
+                      {/* Gender */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Gender
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          {employees?.gender || "N/A"}
+                        </div>
+                      </div>
+
+                      {/* Position */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Position
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          <div>{user?.position || "N/A"}</div>
+                          {hasPerm("employee.edit") && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <select
+                                value={position}
+                                onChange={(e) => setPosition(e.target.value)}
+                                className="px-2 py-1 border border-gray-300 rounded text-[11px] bg-white text-[#333] focus:outline-none focus:border-indigo-500"
+                              >
+                                <option value="">Select Position</option>
+                                {positions.map((pos) => (
+                                  <option key={pos.id} value={pos.position_name}>
+                                    {pos.position_name}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={handlePositionUpdate}
+                                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-medium rounded transition-colors cursor-pointer"
+                              >
+                                Update
+                              </button>
                             </div>
                           )}
                         </div>
-                      )}
+                      </div>
+
+                      {/* Employment Type */}
+                      <div className="flex min-h-[42px] border-b border-[#ededed]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          Employment Type
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                          <div className="capitalize">{user?.employee_type || "N/A"}</div>
+                          {hasPerm("employee.edit") && (
+                            <select
+                              value={user?.employee_type || ""}
+                              onChange={(e) => handleEmployeeTypeChange(e.target.value)}
+                              className="mt-1.5 px-2 py-1 border border-gray-300 rounded text-[11px] bg-white text-[#333] focus:outline-none focus:border-indigo-500"
+                            >
+                              <option value="" disabled>Change Employment Type</option>
+                              <option value="Intern">Intern</option>
+                              <option value="Full_time">Full-time</option>
+                              <option value="Contractor">Contractor</option>
+                            </select>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* User Role */}
+                      <div className="flex min-h-[42px]">
+                        <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                          User Role
+                        </div>
+                        <div className="flex-1 px-3 py-2 text-[12px] text-[#222] relative">
+                          <div className="capitalize">{user?.rbacRole?.name || user?.role || "N/A"}</div>
+                          {hasPerm("employee.edit") && (
+                            <div className="mt-1.5 relative max-w-[220px]">
+                              <button
+                                type="button"
+                                onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
+                                className="w-full flex items-center justify-between px-2.5 py-1 border border-gray-300 rounded bg-white text-left text-[11px] font-medium text-gray-700 hover:bg-gray-50 focus:outline-none cursor-pointer"
+                              >
+                                <span className="truncate">
+                                  {user?.rbacRole?.name || (user?.role ? user.role.toUpperCase() : "Change User Role")}
+                                </span>
+                                <ChevronDown className={`w-3.5 h-3.5 ml-1 transition-transform ${isRoleDropdownOpen ? "rotate-180" : ""}`} />
+                              </button>
+
+                              {isRoleDropdownOpen && (
+                                <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded shadow-md max-h-56 overflow-hidden flex flex-col min-w-[200px]">
+                                  <div className="p-1.5 border-b border-gray-100 bg-gray-50 flex items-center gap-1.5">
+                                    <Search className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                                    <input
+                                      type="text"
+                                      placeholder="Search role..."
+                                      value={roleSearchTerm}
+                                      onChange={(e) => setRoleSearchTerm(e.target.value)}
+                                      className="w-full text-[11px] bg-transparent focus:outline-none"
+                                      autoFocus
+                                    />
+                                  </div>
+
+                                  <div className="overflow-y-auto max-h-44 divide-y divide-gray-50">
+                                    {rolesList.filter((r) =>
+                                      r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
+                                      (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
+                                    ).length === 0 ? (
+                                      <div className="p-2 text-[11px] text-gray-500 text-center">
+                                        No matching roles
+                                      </div>
+                                    ) : (
+                                      rolesList
+                                        .filter((r) =>
+                                          r.name.toLowerCase().includes(roleSearchTerm.toLowerCase()) ||
+                                          (r.description && r.description.toLowerCase().includes(roleSearchTerm.toLowerCase()))
+                                        )
+                                        .map((r) => (
+                                          <button
+                                            key={r.id}
+                                            type="button"
+                                            disabled={isUpdatingRole}
+                                            onClick={() => handleSelectRole(r)}
+                                            className={`w-full text-left px-2.5 py-1.5 text-[11px] hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${
+                                              user?.roleId === r.id || user?.rbacRole?.name === r.name
+                                                ? "bg-indigo-50 font-semibold text-indigo-600"
+                                                : "text-gray-700"
+                                            }`}
+                                          >
+                                            <div>
+                                              <div className="font-medium">{r.name}</div>
+                                              {r.description && (
+                                                <div className="text-[10px] text-gray-400 truncate max-w-[170px]">
+                                                  {r.description}
+                                                </div>
+                                              )}
+                                            </div>
+                                            {(user?.roleId === r.id || user?.rbacRole?.name === r.name) && (
+                                              <Check className="w-3 h-3 text-indigo-600 flex-shrink-0" />
+                                            )}
+                                          </button>
+                                        ))
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Address */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                {/* Accordion Header */}
-                <button
-                  onClick={() => setIsOpen(!isOpen)}
-                  className="w-full flex items-center justify-between p-6 border-b border-gray-100 focus:outline-none"
-                >
-                  <div className="text-left">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Address Information
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Employee residential address
-                    </p>
-                  </div>
-                  {isOpen ? (
-                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-600" />
-                  )}
-                </button>
+                  {/* Address Information */}
+                  <div className="border border-gray-200">
+                    <div
+                      onClick={() => setIsOpen(!isOpen)}
+                      className="h-9 bg-gray-100 border-b border-[#cfcfcf] flex items-center justify-between px-3 cursor-pointer select-none"
+                    >
+                      <span className="text-[12px] font-semibold text-[#333]">
+                        Residential Address Information
+                      </span>
+                      {isOpen ? <ChevronUp size={14} className="text-[#666]" /> : <ChevronDown size={14} className="text-[#666]" />}
+                    </div>
 
-                {/* Accordion Body */}
-                {isOpen && (
-                  <div className="p-6">
-                    {addresses?.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <Detail
-                          label="Address Line 1"
-                          value={addresses[0]?.address_line1 || "N/A"}
-                        />
-                        <Detail
-                          label="Address Line 2"
-                          value={addresses[0]?.address_line2 || "N/A"}
-                        />
-                        <Detail
-                          label="City"
-                          value={addresses[0]?.city || "N/A"}
-                        />
-                        <Detail
-                          label="State"
-                          value={addresses[0]?.state || "N/A"}
-                        />
-                        <Detail
-                          label="Pincode"
-                          value={addresses[0]?.pincode || "N/A"}
-                        />
-                        <Detail
-                          label="Country"
-                          value={addresses[0]?.country || "N/A"}
-                        />
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="text-gray-500">
-                          No address information available
-                        </p>
+                    {isOpen && (
+                      <div className="bg-white">
+                        <div className="flex min-h-[42px] border-b border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Address Line 1
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {addresses?.[0]?.address_line1 || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Address Line 2
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {addresses?.[0]?.address_line2 || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            City
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {addresses?.[0]?.city || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            State
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {addresses?.[0]?.state || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            PIN Code
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {addresses?.[0]?.pincode || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Country
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {addresses?.[0]?.country || "N/A"}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Documents */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                {/* Accordion Header */}
-                <button
-                  onClick={() => setIsOpen1(!isOpen1)}
-                  className="w-full flex items-center justify-between p-6 border-b border-gray-100 focus:outline-none"
-                >
-                  <div className="text-left">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Documents
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Employee identification and certificates
-                    </p>
+                {/* Bank Details */}
+                <div className="border border-gray-200 mb-4">
+                  <div
+                    onClick={() => setIsOpen3(!isOpen3)}
+                    className="h-9 bg-gray-100 border-b border-[#cfcfcf] flex items-center justify-between px-3 cursor-pointer select-none"
+                  >
+                    <span className="text-[12px] font-semibold text-[#333]">
+                      Banking & Payment Details
+                    </span>
+                    {isOpen3 ? <ChevronUp size={14} className="text-[#666]" /> : <ChevronDown size={14} className="text-[#666]" />}
                   </div>
-                  {isOpen1 ? (
-                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-600" />
+
+                  {isOpen3 && (
+                    <div className="bg-white">
+                      <div className="grid grid-cols-1 md:grid-cols-2">
+                        <div className="flex min-h-[42px] border-b md:border-r border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Account Holder
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {bankDetails?.[0]?.account_holder_name || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Bank Name
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {bankDetails?.[0]?.bank_name || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b md:border-r border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Branch Name
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {bankDetails?.[0]?.branch_name || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Account Number
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {bankDetails?.[0]?.account_number || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px] border-b md:border-b-0 md:border-r border-[#ededed]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            IFSC Code
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
+                            {bankDetails?.[0]?.ifsc_code || "N/A"}
+                          </div>
+                        </div>
+
+                        <div className="flex min-h-[42px]">
+                          <div className="w-[42%] bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-r border-[#ededed]">
+                            Checkbook / Passbook
+                          </div>
+                          <div className="flex-1 px-3 py-2 text-[12px]">
+                            <FileDetail
+                              label=""
+                              file={bankDetails?.[0]?.checkbook_document}
+                              documentType="checkbook_document"
+                              empid={empid}
+                              onResubmit={handleResubmitDocument}
+                              onRequestResubmission={handleRequestResubmission}
+                              isResubmitting={resubmitStates.checkbook_document}
+                              userRole={role}
+                              resubmitStates={resubmitStates}
+                              resubmitReason={resubmitReason}
+                              setResubmitReason={setResubmitReason}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </button>
-                {isOpen1 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <tbody className="divide-y divide-gray-100">
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Aadhar Card</td>
-                          <td className="px-6 py-4">
-                            <FileDetail label="" file={employees?.aadhar_card} documentType="aadhar_card" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.aadhar_card} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Aadhar Number</td>
-                          <td className="px-6 py-3 text-sm text-gray-900 font-medium">{employees?.aadhar_number || "N/A"}</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">PAN Card</td>
-                          <td className="px-6 py-4">
-                            <FileDetail label="" file={employees?.pan_card} documentType="pan_card" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.pan_card} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">PAN Number</td>
-                          <td className="px-6 py-3 text-sm text-gray-900 font-medium">{employees?.pan_number || "N/A"}</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Resume</td>
-                          <td className="px-6 py-4">
-                            <FileDetail label="" file={employees?.resume} documentType="resume" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.resume} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
-                          </td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Experience Certificate</td>
-                          <td className="px-6 py-4">
-                            <FileDetail label="" file={employees?.experience_certificate} documentType="experience_certificate" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.experience_certificate} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                </div>
+
+                {/* Identity & Employment Documents Table */}
+                <div className="border border-gray-200 mb-4">
+                  <div
+                    onClick={() => setIsOpen1(!isOpen1)}
+                    className="h-9 bg-gray-100 border-b border-[#cfcfcf] flex items-center justify-between px-3 cursor-pointer select-none"
+                  >
+                    <span className="text-[12px] font-semibold text-[#333]">
+                      Identity & Employment Documents
+                    </span>
+                    {isOpen1 ? <ChevronUp size={14} className="text-[#666]" /> : <ChevronDown size={14} className="text-[#666]" />}
                   </div>
-                )}
-              </div>
-              {/* Qualification */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                {/* Accordion Header */}
-                <button
-                  onClick={() => setIsOpen2(!isOpen2)}
-                  className="w-full flex items-center justify-between p-6 border-b border-gray-100 focus:outline-none"
-                >
-                  <div className="text-left">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Education & Qualification
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Employee educational background
-                    </p>
-                  </div>
-                  {isOpen2 ? (
-                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-600" />
-                  )}
-                </button>
-                {isOpen2 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <tbody className="divide-y divide-gray-100">
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Highest Qualification</td>
-                          <td className="px-6 py-3 text-sm text-gray-900 font-medium">{employees?.highest_qualification || "N/A"}</td>
-                        </tr>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">Education Certificates</td>
-                          <td className="px-6 py-4">
-                            <FileDetail label="" file={employees?.education_certificates} documentType="education_certificates" empid={empid} onResubmit={handleResubmitDocument} onRequestResubmission={handleRequestResubmission} isResubmitting={resubmitStates.education_certificates} userRole={role} resubmitStates={resubmitStates} resubmitReason={resubmitReason} setResubmitReason={setResubmitReason} />
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
 
-              {/* Bank Details */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                {/* Accordion Header */}
-                <button
-                  onClick={() => setIsOpen3(!isOpen3)}
-                  className="w-full flex items-center justify-between p-6 border-b border-gray-100 focus:outline-none"
-                >
-                  <div className="text-left">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Bank Details
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Employee banking information
-                    </p>
-                  </div>
-                  {isOpen2 ? (
-                    <ChevronUp className="w-5 h-5 text-gray-600" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-600" />
-                  )}
-                </button>
-                {isOpen3 && (
-                  <div className="overflow-x-auto">
-                    {bankDetails?.length > 0 ? (
-                      <table className="w-full">
-                        <tbody className="divide-y divide-gray-100">
-                          <tr className="hover:bg-gray-50">
-                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
-                              Account Holder
-                            </td>
-                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
-                              {bankDetails[0]?.account_holder_name || "N/A"}
-                            </td>
+                  {isOpen1 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-[#f3f3f3]">
+                            <th className="border-r border-b border-[#d5d5d5] px-3 py-2 text-left text-[11px] font-semibold text-[#555] w-[22%]">
+                              Document Type
+                            </th>
+                            <th className="border-r border-b border-[#d5d5d5] px-3 py-2 text-left text-[11px] font-semibold text-[#555] w-[28%]">
+                              Document Number / Details
+                            </th>
+                            <th className="border-b border-[#d5d5d5] px-3 py-2 text-left text-[11px] font-semibold text-[#555]">
+                              File & Verification / Resubmission
+                            </th>
                           </tr>
+                        </thead>
 
-                          <tr className="hover:bg-gray-50">
-                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
-                              Bank Name
+                        <tbody>
+                          <tr className="bg-white">
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333] font-medium">
+                              Aadhar Card
                             </td>
-                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
-                              {bankDetails[0]?.bank_name || "N/A"}
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333]">
+                              {employees?.aadhar_number || "N/A"}
                             </td>
-                          </tr>
-
-                          <tr className="hover:bg-gray-50">
-                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
-                              Branch Name
-                            </td>
-                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
-                              {bankDetails[0]?.branch_name || "N/A"}
-                            </td>
-                          </tr>
-
-                          <tr className="hover:bg-gray-50">
-                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
-                              Account Number
-                            </td>
-                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
-                              {bankDetails[0]?.account_number || "N/A"}
-                            </td>
-                          </tr>
-
-                          <tr className="hover:bg-gray-50">
-                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
-                              IFSC Code
-                            </td>
-                            <td className="px-6 py-3 text-sm text-gray-900 font-medium">
-                              {bankDetails[0]?.ifsc_code || "N/A"}
-                            </td>
-                          </tr>
-
-                          <tr className="hover:bg-gray-50">
-                            <td className="px-6 py-3 w-48 bg-gray-50 text-sm font-medium text-gray-600 border-r border-gray-100">
-                              Checkbook Document
-                            </td>
-
-                            <td className="px-6 py-4">
+                            <td className="border-b border-[#ededed] px-3 py-2 text-[12px]">
                               <FileDetail
                                 label=""
-                                file={bankDetails[0]?.checkbook_document}
-                                documentType="checkbook_document"
+                                file={employees?.aadhar_card}
+                                documentType="aadhar_card"
                                 empid={empid}
                                 onResubmit={handleResubmitDocument}
                                 onRequestResubmission={handleRequestResubmission}
-                                isResubmitting={resubmitStates.checkbook_document}
+                                isResubmitting={resubmitStates.aadhar_card}
+                                userRole={role}
+                                resubmitStates={resubmitStates}
+                                resubmitReason={resubmitReason}
+                                setResubmitReason={setResubmitReason}
+                              />
+                            </td>
+                          </tr>
+
+                          <tr className="bg-[#fafafa]">
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333] font-medium">
+                              PAN Card
+                            </td>
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333]">
+                              {employees?.pan_number || "N/A"}
+                            </td>
+                            <td className="border-b border-[#ededed] px-3 py-2 text-[12px]">
+                              <FileDetail
+                                label=""
+                                file={employees?.pan_card}
+                                documentType="pan_card"
+                                empid={empid}
+                                onResubmit={handleResubmitDocument}
+                                onRequestResubmission={handleRequestResubmission}
+                                isResubmitting={resubmitStates.pan_card}
+                                userRole={role}
+                                resubmitStates={resubmitStates}
+                                resubmitReason={resubmitReason}
+                                setResubmitReason={setResubmitReason}
+                              />
+                            </td>
+                          </tr>
+
+                          <tr className="bg-white">
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333] font-medium">
+                              Resume
+                            </td>
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#666]">
+                              Curriculum Vitae
+                            </td>
+                            <td className="border-b border-[#ededed] px-3 py-2 text-[12px]">
+                              <FileDetail
+                                label=""
+                                file={employees?.resume}
+                                documentType="resume"
+                                empid={empid}
+                                onResubmit={handleResubmitDocument}
+                                onRequestResubmission={handleRequestResubmission}
+                                isResubmitting={resubmitStates.resume}
+                                userRole={role}
+                                resubmitStates={resubmitStates}
+                                resubmitReason={resubmitReason}
+                                setResubmitReason={setResubmitReason}
+                              />
+                            </td>
+                          </tr>
+
+                          <tr className="bg-[#fafafa]">
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333] font-medium">
+                              Experience Certificate
+                            </td>
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#666]">
+                              Work History Document
+                            </td>
+                            <td className="border-b border-[#ededed] px-3 py-2 text-[12px]">
+                              <FileDetail
+                                label=""
+                                file={employees?.experience_certificate}
+                                documentType="experience_certificate"
+                                empid={empid}
+                                onResubmit={handleResubmitDocument}
+                                onRequestResubmission={handleRequestResubmission}
+                                isResubmitting={resubmitStates.experience_certificate}
                                 userRole={role}
                                 resubmitStates={resubmitStates}
                                 resubmitReason={resubmitReason}
@@ -1134,124 +1167,191 @@ function ViewEmployee() {
                           </tr>
                         </tbody>
                       </table>
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="text-gray-500">
-                          No bank details available
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+                </div>
 
-              {/* System Credentials */}
-              {(hasPerm("employee.send_credentials") || hasPerm("employee.reset_password") || hasPerm("employee.edit")) && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                  <div className="p-6 border-b border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      System Credentials
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Employee login credentials and access management
-                    </p>
+                {/* Education & Qualification Table */}
+                <div className="border border-gray-200 mb-4">
+                  <div
+                    onClick={() => setIsOpen2(!isOpen2)}
+                    className="h-9 bg-gray-100 border-b border-[#cfcfcf] flex items-center justify-between px-3 cursor-pointer select-none"
+                  >
+                    <span className="text-[12px] font-semibold text-[#333]">
+                      Education & Qualification
+                    </span>
+                    {isOpen2 ? <ChevronUp size={14} className="text-[#666]" /> : <ChevronDown size={14} className="text-[#666]" />}
                   </div>
-                  <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Detail label="Employee ID" value={empid} />
-                      <div>
-                        <p className="text-sm font-medium text-gray-700 mb-3">
-                          Password Management
-                        </p>
-                        <div className="space-y-3">
+
+                  {isOpen2 && (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-[#f3f3f3]">
+                            <th className="border-r border-b border-[#d5d5d5] px-3 py-2 text-left text-[11px] font-semibold text-[#555] w-[22%]">
+                              Category
+                            </th>
+                            <th className="border-r border-b border-[#d5d5d5] px-3 py-2 text-left text-[11px] font-semibold text-[#555] w-[28%]">
+                              Qualification Detail
+                            </th>
+                            <th className="border-b border-[#d5d5d5] px-3 py-2 text-left text-[11px] font-semibold text-[#555]">
+                              Certificate Document & Actions
+                            </th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          <tr className="bg-white">
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333] font-medium">
+                              Highest Qualification
+                            </td>
+                            <td className="border-r border-b border-[#ededed] px-3 py-2 text-[12px] text-[#333]">
+                              {employees?.highest_qualification || "N/A"}
+                            </td>
+                            <td className="border-b border-[#ededed] px-3 py-2 text-[12px]">
+                              <FileDetail
+                                label=""
+                                file={employees?.education_certificates}
+                                documentType="education_certificates"
+                                empid={empid}
+                                onResubmit={handleResubmitDocument}
+                                onRequestResubmission={handleRequestResubmission}
+                                isResubmitting={resubmitStates.education_certificates}
+                                userRole={role}
+                                resubmitStates={resubmitStates}
+                                resubmitReason={resubmitReason}
+                                setResubmitReason={setResubmitReason}
+                              />
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* System Credentials */}
+                {(hasPerm("employee.send_credentials") ||
+                  hasPerm("employee.reset_password") ||
+                  hasPerm("employee.edit")) && (
+                  <div className="border border-gray-200">
+                    <div className="h-9 bg-gray-100 border-b border-[#cfcfcf] flex items-center px-3">
+                      <span className="text-[12px] font-semibold text-[#333]">
+                        System Credentials & Access Management
+                      </span>
+                    </div>
+
+                    <div className="bg-white p-3">
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <div className="border border-[#ededed]">
+                          <div className="bg-[#fafafa] px-3 py-2 text-[11px] font-medium text-[#555] border-b border-[#ededed]">
+                            Employee ID (Login Username)
+                          </div>
+                          <div className="px-3 py-2.5 text-[12px] text-[#222] font-semibold">
+                            {empid}
+                          </div>
+                        </div>
+
+                        <div className="border border-[#ededed] p-3 flex flex-col justify-center">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-medium text-[#555]">
+                              Password Management
+                            </span>
+                            <button
+                              onClick={handlePasswordReset}
+                              disabled={isResetting}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-[11px] font-medium rounded transition-colors cursor-pointer"
+                            >
+                              <RefreshCw size={12} className={isResetting ? "animate-spin" : ""} />
+                              <span>{isResetting ? "Resetting..." : "Reset Password"}</span>
+                            </button>
+                          </div>
+
                           {newPassword && (
-                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-green-800">
-                                    New Password:
-                                  </span>
-                                  <span className="font-mono text-sm bg-white px-2 py-1 rounded border">
-                                    {showPassword ? newPassword : "••••••••"}
-                                  </span>
-                                  <button
-                                    onClick={() =>
-                                      setShowPassword(!showPassword)
-                                    }
-                                    className="text-green-600 hover:text-green-800 p-1"
-                                  >
-                                    {showPassword ? (
-                                      <EyeOff size={16} />
-                                    ) : (
-                                      <Eye size={16} />
-                                    )}
-                                  </button>
-                                </div>
+                            <div className="mt-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-medium text-emerald-800">
+                                  New Password:
+                                </span>
+                                <span className="font-mono text-[12px] bg-white px-2 py-0.5 rounded border border-emerald-300">
+                                  {showPassword ? newPassword : "••••••••"}
+                                </span>
+                                <button
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  className="text-emerald-700 hover:text-emerald-900 p-0.5 cursor-pointer"
+                                >
+                                  {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                              </div>
+
+                              <div className="flex items-center gap-1.5">
                                 <button
                                   onClick={() => {
                                     navigator.clipboard.writeText(newPassword);
-                                    toast.success(
-                                      "Password copied to clipboard!"
-                                    );
+                                    toast.success("Password copied to clipboard!");
                                   }}
-                                  className="flex items-center gap-1 px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded text-sm font-medium"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded text-[11px] font-medium cursor-pointer"
                                 >
-                                  <Copy size={14} />
-                                  Copy
+                                  <Copy size={12} />
+                                  <span>Copy</span>
                                 </button>
                                 <button
                                   onClick={handleSendCredentials}
                                   disabled={isSending}
-                                  className="flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded text-sm font-medium transition-colors"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
                                 >
-                                  <Mail size={14} />
-                                  {isSending
-                                    ? "Sending..."
-                                    : "Send Credentials"}
+                                  <Mail size={12} />
+                                  <span>{isSending ? "Sending..." : "Send Credentials"}</span>
                                 </button>
                               </div>
                             </div>
                           )}
-                          <button
-                            onClick={handlePasswordReset}
-                            disabled={isResetting}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-sm font-medium transition-colors"
-                          >
-                            <RefreshCw
-                              size={16}
-                              className={isResetting ? "animate-spin" : ""}
-                            />
-                            {isResetting ? "Resetting..." : "Reset Password"}
-                          </button>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </>
   );
 }
 
-function Detail({ label, value }) {
-  return (
-    <div>
-      <p className="text-sm font-medium text-gray-700 mb-1">{label}</p>
-      <p className="text-gray-900 font-medium">{value}</p>
-    </div>
-  );
-}
-
-function FileDetail({ label, file, documentType, empid, onResubmit, onRequestResubmission, isResubmitting, userRole, resubmitStates, resubmitReason, setResubmitReason }) {
-  const [selectedFile, setSelectedFile] = useState(null);
+function FileDetail({
+  label,
+  file,
+  documentType,
+  empid,
+  onResubmit,
+  onRequestResubmission,
+  isResubmitting,
+  userRole,
+  resubmitStates,
+  resubmitReason,
+  setResubmitReason,
+}: {
+  label: string;
+  file?: string | null;
+  documentType: string;
+  empid?: string;
+  onResubmit: (documentType: string, file: File) => void;
+  onRequestResubmission: (documentType: string, reason: string) => void;
+  isResubmitting?: boolean | string;
+  userRole?: string;
+  resubmitStates?: Record<string, boolean | string>;
+  resubmitReason?: Record<string, string>;
+  setResubmitReason: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showResubmit, setShowResubmit] = useState(false);
 
-  const handleFileSelect = (e) => {
-    setSelectedFile(e.target.files[0]);
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
   };
 
   const handleResubmitClick = () => {
@@ -1278,98 +1378,105 @@ function FileDetail({ label, file, documentType, empid, onResubmit, onRequestRes
     }));
   };
 
-  const isEmployee = userRole?.toLowerCase() === 'employee';
-  const isAdminHR = userRole ? userRole.toLowerCase() !== 'employee' : false;
+  const isEmployee = userRole?.toLowerCase() === "employee";
+  const isAdminHR = userRole ? userRole.toLowerCase() !== "employee" : false;
   const canInteract = empid && documentType && onResubmit;
 
   return (
-    <div className="flex flex-wrap items-start gap-3">
-      <p className="text-sm font-medium text-gray-700 w-full">{label}</p>
-      <div className="flex flex-wrap items-center gap-3 w-full">
-        {file ? (
-          <a
-            href={`/api/hr/view-document/${empid}?type=${documentType}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors whitespace-nowrap"
+    <div className="flex flex-wrap items-center gap-2">
+      {label && <span className="text-[11px] text-[#555] mr-1">{label}</span>}
+
+      {file ? (
+        <a
+          href={`/api/hr/view-document/${empid}?type=${documentType}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded border border-indigo-200 transition-colors whitespace-nowrap"
+        >
+          <FileText size={12} />
+          <span>View Document</span>
+        </a>
+      ) : (
+        <span className="text-[#888] text-[11px] italic">Not uploaded</span>
+      )}
+
+      {canInteract && isEmployee && (
+        !showResubmit ? (
+          <button
+            onClick={() => setShowResubmit(true)}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-orange-100 hover:bg-orange-200 text-orange-700 rounded transition-colors whitespace-nowrap cursor-pointer"
           >
-            <FileText className="w-4 h-4 mr-1" />
-            View Document
-          </a>
+            <Upload size={12} />
+            <span>Resubmit</span>
+          </button>
         ) : (
-          <span className="text-gray-400 text-sm">No document uploaded</span>
-        )}
-
-        {canInteract && isEmployee && (
-          !showResubmit ? (
-            <button
-              onClick={() => setShowResubmit(true)}
-              className="inline-flex items-center px-3 py-1.5 text-sm bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors whitespace-nowrap"
-            >
-              <Upload className="w-3 h-3 mr-1" />
-              Resubmit
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <input
-                id={`file-${documentType}`}
-                type="file"
-                onChange={handleFileSelect}
-                accept=".pdf,.jpg,.jpeg,.png"
-                className="text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              <button
-                onClick={handleResubmitClick}
-                disabled={!selectedFile || isResubmitting}
-                className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded transition-colors whitespace-nowrap"
-              >
-                {isResubmitting ? 'Uploading...' : 'Upload'}
-              </button>
-              <button
-                onClick={() => { setShowResubmit(false); setSelectedFile(null); }}
-                className="px-3 py-1 text-sm bg-gray-500 hover:bg-gray-600 text-white rounded transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          )
-        )}
-
-        {canInteract && isAdminHR && (
-          <>
-            <textarea
-              value={resubmitReason?.[documentType] || ""}
-              onChange={(e) => setResubmitReason((prev) => ({ ...prev, [documentType]: e.target.value }))}
-              placeholder="Reason for resubmission"
-              rows={1}
-              className="border border-gray-300 rounded-md px-3 py-1.5 text-sm flex-1 min-w-[160px] resize-none"
+          <div className="flex items-center gap-1.5">
+            <input
+              id={`file-${documentType}`}
+              type="file"
+              onChange={handleFileSelect}
+              accept=".pdf,.jpg,.jpeg,.png"
+              className="text-[11px] text-gray-500 file:mr-2 file:py-0.5 file:px-2 file:rounded file:border-0 file:text-[11px] file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
             />
             <button
-              onClick={handleRequestResubmission}
-              disabled={isResubmitting || resubmitStates?.[documentType] === 'sent'}
-              className={`inline-flex items-center px-3 py-1.5 text-sm rounded-md transition-colors whitespace-nowrap ${resubmitStates?.[documentType] === 'sent'
-                ? 'bg-green-100 text-green-700 cursor-default'
-                : isResubmitting
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-red-100 hover:bg-red-200 text-red-700'
-                }`}
+              onClick={handleResubmitClick}
+              disabled={!selectedFile || !!isResubmitting}
+              className="px-2.5 py-1 text-[11px] font-medium bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white rounded transition-colors whitespace-nowrap cursor-pointer"
             >
-              <Upload className="w-3 h-3 mr-1" />
-              {resubmitStates?.[documentType] === 'sent' ? 'Request Sent' : isResubmitting ? 'Sending...' : 'Request Resubmission'}
+              {isResubmitting ? "Uploading..." : "Upload"}
             </button>
-          </>
-        )}
-      </div>
+            <button
+              onClick={() => {
+                setShowResubmit(false);
+                setSelectedFile(null);
+              }}
+              className="px-2 py-1 text-[11px] bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )
+      )}
+
+      {canInteract && isAdminHR && (
+        <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
+          <input
+            type="text"
+            value={resubmitReason?.[documentType] || ""}
+            onChange={(e) =>
+              setResubmitReason((prev) => ({
+                ...prev,
+                [documentType]: e.target.value,
+              }))
+            }
+            placeholder="Reason for resubmission"
+            className="border border-gray-300 rounded px-2 py-1 text-[11px] text-[#222] flex-1 min-w-[130px] focus:outline-none focus:border-indigo-500"
+          />
+          <button
+            onClick={handleRequestResubmission}
+            disabled={!!isResubmitting || resubmitStates?.[documentType] === "sent"}
+            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded transition-colors whitespace-nowrap cursor-pointer ${
+              resubmitStates?.[documentType] === "sent"
+                ? "bg-emerald-100 text-emerald-700 border border-emerald-300 cursor-default"
+                : isResubmitting
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-red-50 hover:bg-red-100 text-red-700 border border-red-200"
+            }`}
+          >
+            <Upload size={12} />
+            <span>
+              {resubmitStates?.[documentType] === "sent"
+                ? "Request Sent"
+                : isResubmitting
+                ? "Sending..."
+                : "Request Resubmission"}
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-
-
 
 export default function ClientPageWrapper(props: any) {
   return (

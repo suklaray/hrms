@@ -87,12 +87,12 @@ const SIDEBAR_STRUCTURE = [
             ],
           },
           {
-            name: "Payroll Periods",
+            name: "Salary Calendar",
             icon: Calendar,
             permission: 'payroll.generate',
             children: [
-              { title: 'Create Periods', route: '/payroll/payroll-setup/payroll-create-periods', permission: 'payroll.generate' },
-              { title: 'Manage Periods', route: '/payroll/payroll-setup/payroll-get-periods', permission: 'payroll.view' },
+              { title: 'Create Calendar', route: '/payroll/payroll-setup/payroll-create-periods', permission: 'payroll.generate' },
+              { title: 'Manage Calendars', route: '/payroll/payroll-setup/payroll-get-periods', permission: 'payroll.view' },
             ]
           }
         ]

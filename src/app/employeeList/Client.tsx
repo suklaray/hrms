@@ -55,11 +55,10 @@ function EmployeeStatusBadge({ status }: { status: string }) {
     const isActive = status?.toLowerCase() === "active";
     return (
         <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border select-none ${
-                isActive
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-red-50 text-red-700 border-red-200"
-            }`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border select-none ${isActive
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : "bg-red-50 text-red-700 border-red-200"
+                }`}
         >
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
             <span>{isActive ? "Active" : (status || "Inactive")}</span>
@@ -117,11 +116,6 @@ function EmployeeListPage({ user }: { user: any }) {
     };
 
     const handleDelete = async (id: number | string) => {
-        const canDelete = await hasPermission(user?.id, PERMISSION_KEYS.EMPLOYEE_DELETE);
-        if (!canDelete) {
-            toast.error("You don't have permission to delete employees");
-            return;
-        }
 
         const confirm = await swalConfirm(
             "Do you want to remove this employee and make the user inactive? You won't be able to access this employee."
@@ -594,13 +588,13 @@ function EmployeeListPage({ user }: { user: any }) {
                                                     {/* Actions */}
                                                     <td className="px-6 py-3.5 whitespace-nowrap text-[12px]">
                                                         <div className="flex items-center gap-1.5">
-                                                            <button
-                                                                onClick={() => handleView(emp.id)}
+                                                            <Link
+                                                                href={`/employee/view/${emp.id}`}
                                                                 className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded border border-indigo-200 transition-colors cursor-pointer"
                                                                 title="View Employee Profile"
                                                             >
                                                                 <Eye size={13} />
-                                                            </button>
+                                                            </Link>
                                                             <button
                                                                 onClick={() => handleDelete(emp.id)}
                                                                 className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded border border-red-200 transition-colors cursor-pointer"
@@ -637,11 +631,10 @@ function EmployeeListPage({ user }: { user: any }) {
                                 <button
                                     onClick={() => handlePageChange(currentPage - 1)}
                                     disabled={currentPage === 1}
-                                    className={`inline-flex items-center justify-center p-1.5 rounded-md border text-[12px] transition-colors ${
-                                        currentPage === 1
-                                            ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50"
-                                            : "border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                    }`}
+                                    className={`inline-flex items-center justify-center p-1.5 rounded-md border text-[12px] transition-colors ${currentPage === 1
+                                        ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50"
+                                        : "border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                        }`}
                                 >
                                     <ChevronLeft size={14} />
                                 </button>
@@ -662,11 +655,10 @@ function EmployeeListPage({ user }: { user: any }) {
                                                 )}
                                                 <button
                                                     onClick={() => handlePageChange(page)}
-                                                    className={`h-7 w-7 rounded-md text-[12px] font-semibold transition-all cursor-pointer ${
-                                                        page === currentPage
-                                                            ? "bg-indigo-600 text-white shadow-xs"
-                                                            : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-                                                    }`}
+                                                    className={`h-7 w-7 rounded-md text-[12px] font-semibold transition-all cursor-pointer ${page === currentPage
+                                                        ? "bg-indigo-600 text-white shadow-xs"
+                                                        : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                                                        }`}
                                                 >
                                                     {page}
                                                 </button>
@@ -677,11 +669,10 @@ function EmployeeListPage({ user }: { user: any }) {
                                 <button
                                     onClick={() => handlePageChange(currentPage + 1)}
                                     disabled={currentPage === totalPages}
-                                    className={`inline-flex items-center justify-center p-1.5 rounded-md border text-[12px] transition-colors ${
-                                        currentPage === totalPages
-                                            ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50"
-                                            : "border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                    }`}
+                                    className={`inline-flex items-center justify-center p-1.5 rounded-md border text-[12px] transition-colors ${currentPage === totalPages
+                                        ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50/50"
+                                        : "border-gray-200 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                        }`}
                                 >
                                     <ChevronRight size={14} />
                                 </button>

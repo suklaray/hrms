@@ -49,8 +49,9 @@ enum PayrollCycle {
 }
 
 enum Approval {
-  YES
-  NO
+  APPROVED
+  PENDING
+  REJECTED
 }
 
 enum PayrollStatus {
@@ -80,7 +81,7 @@ model payroll_configuration {
   salary_payment_date    Int
   financial_year_id      String
   salary_calendar        SalaryCalendar
-  approval               Approval
+  approval               Approval        @default(PENDING)
   status                 PayrollStatus
   remarks                String?
 

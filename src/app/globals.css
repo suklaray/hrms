@@ -79,3 +79,14 @@
   font-size: 14px !important;
   padding: 6px 12px !important;
 }
+
+/* Hide native password reveal and clear buttons (e.g. Edge / IE / WebKit) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+}
+
