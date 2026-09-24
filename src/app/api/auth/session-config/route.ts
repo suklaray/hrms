@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { SESSION_CONFIG } from "@/lib/authMiddleware";
+import { SESSION_CONFIG } from "@/lib/sessionConfig";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   

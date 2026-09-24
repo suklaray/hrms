@@ -1,33 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
+import prisma from "@/lib/prisma";
 import { destroySession } from "@/lib/authMiddleware";
 
 async function performLogout(req: NextRequest) {
-  // Extract user ID from token to destroy session
   try {
     const cookieHeader = req.headers.get("cookie") || "";
     const cookies = cookieHeader ? cookie.parse(cookieHeader) : {};
     const token = cookies.token || req.cookies.get("token")?.value;
-    
-    if (token) {
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-      const userType = decoded.role === 'employee' ? 'employee' : 'admin';
-      destroySession(decoded.id, userType);
+    const sessionToken = cookies.sessionToken || req.cookies.get("sessionToken")?.value;
+
+    if (sessionToken) {
+      await destroySession(sessionToken);
+      await prisma.session.deleteMany({ where: { sessionToken } }).catch(() => undefined);
     }
-  } catch (e: any) {
-    console.error('Error destroying session:', e?.message);
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "") as { id?: number | string; role?: string };
+        if (decoded?.id) {
+          await prisma.session.deleteMany({ where: { userId: Number(decoded.id) } }).catch(() => undefined);
+        }
+      } catch (error) {
+        console.error("Error destroying session:", error);
+      }
+    }
+  } catch (error) {
+    console.error("Error preparing logout:", error);
   }
 
   const response = NextResponse.json({ message: "Logout successful" }, { status: 200 });
 
-  response.headers.set("Set-Cookie", cookie.serialize("token", "", {
+  response.cookies.set("token", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     expires: new Date(0),
     path: "/",
-  }));
+  });
+
+  response.cookies.set("sessionToken", "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    expires: new Date(0),
+    path: "/",
+  });
 
   return response;
 }

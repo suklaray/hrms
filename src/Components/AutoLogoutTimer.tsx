@@ -1,267 +1,225 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useIdleTimer, type EventsType } from "react-idle-timer";
+import {
+  ACTIVITY_THROTTLE_MS,
+  IDLE_TIMEOUT_MS,
+  PROMPT_BEFORE_MS,
+} from "@/lib/sessionConfig";
 
 const AutoLogoutTimer = () => {
   const router = useRouter();
-  const pathname = usePathname() || '/';
+  const pathname = usePathname() || "/";
+  const lastPingRef = useRef(0);
+  const pendingPingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoutRequestedRef = useRef(false);
   const [showWarning, setShowWarning] = useState(false);
-  const [showActivityReminder, setShowActivityReminder] = useState(false);
-  const [countdown, setCountdown] = useState(60);
-  const warningTimerRef = useRef<any>(null);
-  const logoutTimerRef = useRef<any>(null);
-  const countdownIntervalRef = useRef<any>(null);
-  const reminderTimerRef = useRef<any>(null);
 
   const publicPaths = [
-    '/', '/login', '/AboutUs', '/Contact',
-    '/Recruitment/form', '/Recruitment/docs_submitted',
-    '/form-already-submitted', '/unauthorized-form-access',
-    '/form-link-expired', '/form-locked-device'
+    "/",
+    "/login",
+    "/AboutUs",
+    "/Contact",
+    "/Recruitment/form",
+    "/Recruitment/docs_submitted",
+    "/form-already-submitted",
+    "/unauthorized-form-access",
+    "/form-link-expired",
+    "/form-locked-device",
   ];
 
-  const checkIsPublicPath = (currentPath: string) => {
-    return publicPaths.some(path => 
-      (path === '/' && currentPath === '/') ||
-      (path !== '/' && currentPath === path) ||
-      (path === '/Recruitment/form' && currentPath.startsWith('/Recruitment/form'))
+  const checkIsPublicPath = (currentPath: string) =>
+    publicPaths.some(
+      (path) =>
+        (path === "/" && currentPath === "/") ||
+        (path !== "/" && currentPath === path) ||
+        (path === "/Recruitment/form" && currentPath.startsWith("/Recruitment/form")),
     );
-  };
 
-  const handleLogout = async () => {
-    clearAllTimers();
-    setShowWarning(false);
+  const isPublic = checkIsPublicPath(pathname);
+
+  const forceLogout = useCallback(async () => {
+    if (logoutRequestedRef.current) return;
+    logoutRequestedRef.current = true;
 
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: 'inactivity_timeout',
-        }),
-        credentials: 'include',
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "session_invalid" }),
+        credentials: "include",
       });
     } catch (error) {
-      console.error('Logout failed:', error);
+      console.error("Logout request failed:", error);
     }
 
-    router.replace('/login');
-  };
+    if (pathname !== "/login") {
+      router.replace("/login");
+    }
+  }, [pathname, router]);
 
-  const displayActivityReminder = () => {
-    setShowActivityReminder(true);
-    
-    setTimeout(() => {
-      setShowActivityReminder(false);
-    }, 5000);
-  };
+  const handleSessionExpired = useCallback(async () => {
+    if (logoutRequestedRef.current) return;
+    await forceLogout();
+  }, [forceLogout]);
 
-  const showWarningModal = () => {
-    setShowWarning(true);
-    setCountdown(60);
+  const pingServer = useCallback(async (): Promise<{ ok: boolean; status: number }> => {
+    const now = Date.now();
+    const elapsed = now - lastPingRef.current;
 
-    let remainingSeconds = 60;
-    
-    countdownIntervalRef.current = setInterval(() => {
-      remainingSeconds -= 1;
-      setCountdown(remainingSeconds);
-
-      if (remainingSeconds <= 0) {
-        clearInterval(countdownIntervalRef.current);
-        handleLogout();
+    if (elapsed >= ACTIVITY_THROTTLE_MS) {
+      lastPingRef.current = now;
+      try {
+        const res = await fetch("/api/session/activity", {
+          method: "POST",
+          credentials: "include",
+        });
+        return { ok: res.ok, status: res.status };
+      } catch (error) {
+        console.error("[AUTO-LOGOUT] Activity ping failed:", error);
+        return { ok: false, status: 0 };
       }
-    }, 1000);
-  };
+    }
 
-  const keepWorking = async () => {
-    clearAllTimers();
-    setShowWarning(false);
+    if (pendingPingRef.current) {
+      clearTimeout(pendingPingRef.current);
+    }
 
+    const delay = ACTIVITY_THROTTLE_MS - elapsed;
+    return new Promise((resolve) => {
+      pendingPingRef.current = setTimeout(async () => {
+        pendingPingRef.current = null;
+        lastPingRef.current = Date.now();
+
+        try {
+          const res = await fetch("/api/session/activity", {
+            method: "POST",
+            credentials: "include",
+          });
+          resolve({ ok: res.ok, status: res.status });
+        } catch (error) {
+          console.error("[AUTO-LOGOUT] trailing ping failed:", error);
+          resolve({ ok: false, status: 0 });
+        }
+      }, delay);
+    });
+  }, []);
+
+  const fetchServerStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/session/activity', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
+      const res = await fetch("/api/session/status", {
+        credentials: "include",
+        cache: "no-store",
       });
 
-      if (!response.ok) {
-        handleLogout();
+      if (res.status === 401) {
+        return { valid: false, statusCode: 401 };
+      }
+
+      if (!res.ok) {
+        return { valid: null, statusCode: res.status };
+      }
+
+      const data = await res.json();
+      return { ...data, valid: !!data.valid };
+    } catch (error) {
+      console.error("Status fetch failed:", error);
+      return { valid: null, statusCode: 0, error: "network" };
+    }
+  }, []);
+
+  const activityEvents: EventsType[] = [
+    "mousemove",
+    "mousedown",
+    "mouseup",
+    "click",
+    "pointerdown",
+    "pointermove",
+    "keydown",
+    "keyup",
+    "input",
+    "change",
+    "touchstart",
+    "touchmove",
+    "wheel",
+    "scroll",
+    "focus",
+    "visibilitychange",
+  ];
+
+  const safePromptBeforeIdle = Math.max(1000, Math.min(PROMPT_BEFORE_MS, Math.max(IDLE_TIMEOUT_MS - 1000, 1000)));
+
+  const { reset } = useIdleTimer({
+    timeout: IDLE_TIMEOUT_MS,
+    promptBeforeIdle: safePromptBeforeIdle,
+    debounce: 200,
+    events: activityEvents,
+    crossTab: true,
+    startOnMount: true,
+    disabled: isPublic,
+    onAction: async () => {
+      reset();
+      setShowWarning(false);
+
+      const result: { ok: boolean; status: number } = await pingServer();
+      if (result.ok === false && result.status === 401) {
+        await handleSessionExpired();
+      }
+    },
+    onPrompt: async () => {
+      setShowWarning(true);
+
+      const status = await fetchServerStatus();
+      if (status && status.valid === false) {
+        await handleSessionExpired();
         return;
       }
-
-      startTimers();
-    } catch (error) {
-      console.error('Session refresh failed:', error);
-      handleLogout();
-    }
-  };
-
-  const startTimers = () => {
-    clearAllTimers();
-
-    reminderTimerRef.current = setTimeout(() => {
-      displayActivityReminder();
-    }, 2 * 60 * 1000);
-
-    warningTimerRef.current = setTimeout(() => {
-      showWarningModal();
-    }, 4 * 60 * 1000);
-
-    logoutTimerRef.current = setTimeout(() => {
-      handleLogout();
-    }, 5 * 60 * 1000);
-  };
-
-  const clearAllTimers = () => {
-    if (reminderTimerRef.current) {
-      clearTimeout(reminderTimerRef.current);
-      reminderTimerRef.current = null;
-    }
-    if (warningTimerRef.current) {
-      clearTimeout(warningTimerRef.current);
-      warningTimerRef.current = null;
-    }
-    if (logoutTimerRef.current) {
-      clearTimeout(logoutTimerRef.current);
-      logoutTimerRef.current = null;
-    }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-  };
-
-  const resetTimers = () => {
-    startTimers();
-  };
-
-  useEffect(() => {
-    const handleUserActivity = () => {
-      if (showActivityReminder) {
-        setShowActivityReminder(false);
-      }
-      
-      if (!showWarning) {
-        resetTimers();
-      }
-    };
-
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-    
-    events.forEach(event => {
-      document.addEventListener(event, handleUserActivity, true);
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleUserActivity, true);
-      });
-    };
-  }, [showWarning, showActivityReminder]);
-
-  useEffect(() => {
-    const isPublic = checkIsPublicPath(pathname);
-
-    if (isPublic) {
-      clearAllTimers();
+    },
+    onIdle: async () => {
       setShowWarning(false);
-      setShowActivityReminder(false);
-      return;
-    }
+      await forceLogout();
+    },
+  });
 
-    startTimers();
-
+  useEffect(() => {
     return () => {
-      clearAllTimers();
+      if (pendingPingRef.current) {
+        clearTimeout(pendingPingRef.current);
+        pendingPingRef.current = null;
+      }
     };
-  }, [pathname]);
+  }, []);
 
-  const renderActivityReminder = () => {
-    if (!showActivityReminder) return null;
-
-    return (
-      <div style={reminderStyles.container as any}>
-        <div style={reminderStyles.content as any}>
-          <span style={reminderStyles.icon}>⏰</span>
-          <span style={reminderStyles.text}>
-            Move your mouse or you&apos;ll be logged out due to inactivity!
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  const renderWarningModal = () => {
-    if (!showWarning) return null;
-
-    return (
-      <div style={modalStyles.overlay as any}>
-        <div style={modalStyles.container as any}>
-          <h3 style={modalStyles.title}>Session Expiring Soon</h3>
-          <p style={modalStyles.text}>
-            Your session will expire due to inactivity in:
-          </p>
-          <div style={modalStyles.countdown}>
-            {countdown} second{countdown !== 1 ? 's' : ''}
-          </div>
-          <button onClick={keepWorking} style={modalStyles.button as any}>
-            Keep Working
-          </button>
-        </div>
-      </div>
-    );
-  };
+  if (isPublic) return null;
+  if (!showWarning) return null;
 
   return (
-    <>
-      {renderActivityReminder()}
-      {renderWarningModal()}
-    </>
+    <div
+      style={{
+        position: "fixed",
+        right: "20px",
+        bottom: "20px",
+        zIndex: 9999,
+        backgroundColor: "#fff7ed",
+        border: "1px solid #fdba74",
+        color: "#9a5b00",
+        borderRadius: "10px",
+        padding: "12px 16px",
+        boxShadow: "0 8px 24px rgba(0, 0, 0, 0.12)",
+        maxWidth: "320px",
+        fontFamily: "sans-serif",
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: "4px" }}>
+        Your session is about to expire.
+      </div>
+      <div style={{ fontSize: "14px", lineHeight: 1.4 }}>
+        Move your mouse, click, or press a key to continue.
+      </div>
+    </div>
   );
-};
-
-const modalStyles = {
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.65)', display: 'flex', alignItems: 'center', zIndex: 999999, fontFamily: 'sans-serif', justifyContent: 'center' },
-  container: { backgroundColor: '#fff', padding: '30px', borderRadius: '8px', maxWidth: '420px', width: '90%', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
-  title: { margin: '0 0 12px 0', color: '#d32f2f', fontSize: '20px', fontWeight: '600' },
-  text: { color: '#4a4a4a', fontSize: '14px', lineHeight: '1.5', margin: '0 0 20px 0' },
-  countdown: { fontSize: '24px', fontWeight: '700', color: '#333', marginBottom: '24px', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '4px' },
-  button: { backgroundColor: '#0070f3', color: '#fff', border: 'none', padding: '12px 24px', fontSize: '14px', fontWeight: '600', borderRadius: '4px', cursor: 'pointer' }
-};
-
-const reminderStyles = {
-  container: {
-    position: 'fixed',
-    top: '20px',
-    right: '20px',
-    zIndex: 999998,
-    fontFamily: 'sans-serif',
-    transform: 'translateX(0)',
-    transition: 'transform 0.3s ease-out, opacity 0.3s ease-out'
-  },
-  content: {
-    backgroundColor: '#ff9800',
-    color: '#fff',
-    padding: '12px 20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
-    display: 'flex',
-    alignItems: 'center',
-    maxWidth: '350px',
-    border: '2px solid #f57c00'
-  },
-  icon: {
-    fontSize: '18px',
-    marginRight: '10px'
-  },
-  text: {
-    fontSize: '14px',
-    fontWeight: '500',
-    lineHeight: '1.4'
-  }
 };
 
 export default AutoLogoutTimer;

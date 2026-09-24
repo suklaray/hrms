@@ -361,8 +361,22 @@ model users {
   resubmissionRequests document_resubmission_requests[] @relation("ResubmissionEmployee")
   requestedResubmissions document_resubmission_requests[] @relation("ResubmissionRequestor")
   attendance_regularization attendance_regularization[]
+  sessions session[]
 
   @@index([roleId])
+}
+
+model session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expiresAt    DateTime
+  lastActivity DateTime @default(now())
+  createdAt    DateTime @default(now())
+  user         users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model payroll {
