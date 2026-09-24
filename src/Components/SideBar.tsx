@@ -19,7 +19,8 @@ import {
   LogOut,
   ListChecks,
   UserCog,
-  Banknote
+  Banknote,
+  Calendar
 } from "lucide-react";
 
 
@@ -75,11 +76,27 @@ const SIDEBAR_STRUCTURE = [
               { title: 'Create Configuration', route: '/payroll/payroll-setup/payroll-create-config', permission: 'payroll.generate' },
               { title: 'Manage Configurations', route: '/payroll/payroll-setup/payroll-get-configs', permission: 'payroll.view' },
             ],
+          },
+          {
+            name: 'Financial Year',
+            icon: Calendar,
+            permission: 'payroll.generate',
+            children: [
+              { title: 'Create Financial Year', route: '/payroll/financial-year-setup/payroll-create-financial-year', permission: 'payroll.generate' },
+              { title: 'Manage Financial Years', route: '/payroll/financial-year-setup/payroll-get-financial-years', permission: 'payroll.view' },
+            ],
+          },
+          {
+            name: "Payroll Periods",
+            icon: Calendar,
+            permission: 'payroll.generate',
+            children: [
+              { title: 'Create Periods', route: '/payroll/payroll-setup/payroll-create-periods', permission: 'payroll.generate' },
+              { title: 'Manage Periods', route: '/payroll/payroll-setup/payroll-get-periods', permission: 'payroll.view' },
+            ]
           }
         ]
       },
-      { title: 'Payroll Record', route: '/payroll/payroll-view', permission: 'payroll.view' },
-      { title: 'Generate Payroll', route: '/payroll/generate', permission: 'payroll.generate' },
     ],
   },
   {
