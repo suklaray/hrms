@@ -8,8 +8,6 @@ import { TableSkeleton } from "@/Components/Skeletons";
 import { useRouter } from "@/lib/compatRouter";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
-import { hasPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import Link from "next/link";
 import {
     Calendar,
@@ -116,13 +114,7 @@ function EmployeeListPage({ user }: { user: any }) {
         router.push(`/employee/view/${id}`);
     };
 
-    const handleDelete = async (id: number | string) => {
-        const canDelete = await hasPermission(user?.id, PERMISSION_KEYS.EMPLOYEE_DELETE);
-        if (!canDelete) {
-            toast.error("You don't have permission to delete employees");
-            return;
-        }
-
+    const handleDelete = async (id: number | string) => { 
         const confirm = await swalConfirm(
             "Do you want to remove this employee and make the user inactive? You won't be able to access this employee."
         );

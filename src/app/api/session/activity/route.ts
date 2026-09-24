@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Authentication cookies are required" }, { status: 401 });
     }
 
-    let decoded: { id?: number | string; role?: string };
+    let decoded: { id?: number | string };
     try {
-      decoded = jwt.verify(token, JWT_SECRET) as { id?: number | string; role?: string };
+      decoded = jwt.verify(token, JWT_SECRET) as { id?: number | string };
     } catch {
       return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
     }
@@ -31,7 +31,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (!session || !session.user) {
-      await prisma.session.deleteMany({ where: { sessionToken } }).catch(() => undefined);
       return NextResponse.json({ error: "No active session found" }, { status: 401 });
     }
 
@@ -44,28 +43,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Session expired" }, { status: 401 });
     }
 
-    const refreshed = await refreshSessionActivity(session);
-    if (!refreshed) {
-      return NextResponse.json({ error: "Unable to refresh session" }, { status: 500 });
-    }
+    // refreshSessionActivity mutates session.expiresAt and session.lastActivity in place
+    // Returns false on lock contention (another request already refreshing) — still valid
+    await refreshSessionActivity(session).catch(() => undefined);
 
-    const updatedSession = await prisma.session.findUnique({
-      where: { id: session.id },
-      include: { user: true },
-    });
-
-    if (!updatedSession) {
-      return NextResponse.json({ error: "Session expired" }, { status: 401 });
-    }
-
-    const expiresAt = new Date(updatedSession.expiresAt);
+    const now = Date.now();
     return NextResponse.json({
       success: true,
-      lastActivity: updatedSession.lastActivity.toISOString(),
-      expiresAt: expiresAt.toISOString(),
-      remainingMs: Math.max(0, expiresAt.getTime() - Date.now()),
+      expireAt: session.expiresAt.toISOString(),
+      remainingMs: Math.max(0, session.expiresAt.getTime() - now),
       sessionTimeoutMs: SESSION_TIMEOUT_MS,
-    }, { status: 200 });
+    });
   } catch (error) {
     console.error("Session activity error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

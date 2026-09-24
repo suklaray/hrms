@@ -3,32 +3,14 @@ import cookie from "cookie";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { DecodedToken } from "@/types";
-import {
-  SESSION_CONFIG as SHARED_SESSION_CONFIG,
-  SESSION_TIMEOUT_MS,
-} from "@/lib/sessionConfig";
+import { SESSION_TIMEOUT_MS } from "@/lib/sessionConfig";
 
 const JWT_SECRET = process.env.JWT_SECRET || "default_jwt_secret";
 const SESSION_TIMEOUT = SESSION_TIMEOUT_MS;
-const JWT_EXPIRY_SECONDS = 12 * 60 * 60; // 12 hours
-const SESSION_ACTIVITY_RETRY_MS = 250;
-const sessionRefreshLocks = new Map<string, boolean>();
 const IGNORE_ACTIVITY_ENDPOINTS = ["/api/auth/me", "/api/auth/employee/me"];
-
-interface SessionData {
-  userId: number | string;
-  userType: string;
-  lastActivity: number;
-  createdAt: number;
-}
-
-let sessions = new Map<string, SessionData>();
-if (typeof global !== "undefined") {
-  if (!(global as any).__hrms_sessions) {
-    (global as any).__hrms_sessions = new Map<string, SessionData>();
-  }
-  sessions = (global as any).__hrms_sessions;
-}
+// Only update session if last activity was more than this threshold ago.
+// Prevents concurrent requests from hammering the same DB row simultaneously.
+const SESSION_REFRESH_DEBOUNCE_MS = 30 * 1000;
 
 function getDecodedToken(token: string): DecodedToken | null {
   try {
@@ -50,55 +32,33 @@ export function isActiveUserStatus(status: string) {
 export async function refreshSessionActivity(session: any) {
   if (!session) return false;
 
-  if (sessionRefreshLocks.has(session.id)) {
-    return true;
-  }
+  const now = Date.now();
+  const lastActivity = session.lastActivity instanceof Date
+    ? session.lastActivity.getTime()
+    : new Date(session.lastActivity).getTime();
 
-  sessionRefreshLocks.set(session.id, true);
+  // Skip update if session was already refreshed recently — debounces concurrent requests
+  if (now - lastActivity < SESSION_REFRESH_DEBOUNCE_MS) return true;
 
   try {
-    const now = Date.now();
-    const newExpiresAt = new Date(now + SESSION_TIMEOUT);
-
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const updatedSession = await prisma.session.update({
-          where: { id: session.id },
-          data: {
-            lastActivity: new Date(now),
-            expiresAt: newExpiresAt,
-          },
-        });
-
-        session.lastActivity = updatedSession.lastActivity;
-        session.expiresAt = updatedSession.expiresAt;
-        return true;
-      } catch (err: any) {
-        const isTransientDbError =
-          err?.code === "ECONNRESET" ||
-          err?.code === "ETIMEDOUT" ||
-          /ECONNRESET|ETIMEDOUT|Connection reset|Connection terminated/i.test(
-            err?.message || ""
-          );
-
-        if (!isTransientDbError || attempt === 3) {
-          console.warn("Session activity touch failed; auth still valid:", {
-            sessionId: session.id,
-            userId: session.userId,
-            code: err?.code,
-            message: err?.message,
-            attempt,
-          });
-          return false;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, SESSION_ACTIVITY_RETRY_MS * attempt));
-      }
-    }
-
+    const updatedSession = await prisma.session.update({
+      where: { id: session.id },
+      data: {
+        lastActivity: new Date(now),
+        expiresAt: new Date(now + SESSION_TIMEOUT),
+      },
+    });
+    session.lastActivity = updatedSession.lastActivity;
+    session.expiresAt = updatedSession.expiresAt;
+    return true;
+  } catch (err: any) {
+    // Transient DB error (ECONNRESET etc.) — session is still valid, just skip this refresh
+    console.warn("Session activity touch failed; auth still valid:", {
+      sessionId: session.id,
+      code: err?.code,
+      message: err?.message,
+    });
     return false;
-  } finally {
-    sessionRefreshLocks.delete(session.id);
   }
 }
 
@@ -353,54 +313,10 @@ export function withSessionTimeout(handler: any) {
   };
 }
 
-export const SESSION_CONFIG = SHARED_SESSION_CONFIG;
-
-export function createSession(userId: number | string, userType: string = "admin") {
-  const sessionKey = `session_${userType}_${userId}`;
-
-  const sessionData: SessionData = {
-    userId,
-    userType,
-    lastActivity: Date.now(),
-    createdAt: Date.now(),
-  };
-
-  sessions.set(sessionKey, sessionData);
-
-  if (typeof global !== "undefined") {
-    (global as any).__hrms_sessions = sessions;
-  }
-}
-
-export async function destroySession(sessionTokenOrUserId: string | number, userType?: string) {
-  if (typeof sessionTokenOrUserId === "string" && userType === undefined) {
-    if (!sessionTokenOrUserId) return 0;
-    if (prisma?.session?.deleteMany) {
-      const result = await prisma.session.deleteMany({ where: { sessionToken: sessionTokenOrUserId } });
-      return result.count;
-    }
-    return 0;
-  }
-
-  const sessionKey = `session_${userType || "admin"}_${sessionTokenOrUserId}`;
-  sessions.delete(sessionKey);
-  return 1;
-}
-
-export async function debugSessions() {
-  const dbSessions = await prisma.session.findMany({ include: { user: true } });
-  console.log("Active database sessions:", dbSessions);
-  return dbSessions;
-}
-
 export default {
   verifyToken,
   getAuthenticatedUser,
   withSessionTimeout,
-  createSession,
-  destroySession,
-  debugSessions,
-  SESSION_CONFIG,
   clearAuthCookies,
   refreshSessionActivity,
   refreshSessionCookie,

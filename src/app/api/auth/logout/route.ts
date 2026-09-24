@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
-import { destroySession } from "@/lib/authMiddleware";
 
 async function performLogout(req: NextRequest) {
   try {
@@ -12,7 +11,6 @@ async function performLogout(req: NextRequest) {
     const sessionToken = cookies.sessionToken || req.cookies.get("sessionToken")?.value;
 
     if (sessionToken) {
-      await destroySession(sessionToken);
       await prisma.session.deleteMany({ where: { sessionToken } }).catch(() => undefined);
     }
 

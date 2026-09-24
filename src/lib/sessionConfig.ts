@@ -1,14 +1,7 @@
-export const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
-export const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
-export const PROMPT_BEFORE_MS = 60 * 1000;
-export const ACTIVITY_THROTTLE_MS = 30 * 1000;
-export const JWT_EXPIRY_MS = 12 * 60 * 60 * 1000;
-
-export const SESSION_CONFIG = {
-  TIMEOUT: SESSION_TIMEOUT_MS,
-  JWT_EXPIRY: JWT_EXPIRY_MS,
-  WARNING_OFFSET: PROMPT_BEFORE_MS,
-  IDLE_TIMEOUT: IDLE_TIMEOUT_MS,
-  ACTIVITY_THROTTLE: ACTIVITY_THROTTLE_MS,
-  SESSION_TIMEOUT_MS,
-};
+// Backend session expiry is the single source of truth for auto-logout.
+// Frontend idle timer is a UX hint; actual termination happens when the server session expires.
+export const SESSION_TIMEOUT_MS = 5 * 60 * 1000;       // 5 min — server session window
+export const IDLE_TIMEOUT_MS = 5 * 60 * 1000;          // 5 min — frontend idle detection
+export const PROMPT_BEFORE_MS = 60 * 1000;             // 1 min — show warning before idle
+export const ACTIVITY_SYNC_INTERVAL_MS = 60 * 1000;    // 1 min — throttle activity pings
+export const JWT_EXPIRY_MS = 12 * 60 * 60 * 1000;      // 12 hr — JWT lifetime

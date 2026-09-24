@@ -5,8 +5,7 @@ import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import crypto from "crypto";
 import { rateLimiter } from "@/lib/rateLimiter";
-import { createSession } from "@/lib/authMiddleware";
-import { SESSION_CONFIG, SESSION_TIMEOUT_MS } from "@/lib/sessionConfig";
+import { SESSION_TIMEOUT_MS, JWT_EXPIRY_MS } from "@/lib/sessionConfig";
 
 export async function POST(req: NextRequest) {
   const allow = rateLimiter()(req);
@@ -72,23 +71,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    createSession(user.id, user.role === "employee" ? "employee" : "admin");
-
     const response = NextResponse.json({ message: "Login successful", token, user: payload }, { status: 200 });
 
     response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: Math.floor(SESSION_CONFIG.JWT_EXPIRY / 1000),
+      maxAge: Math.floor(JWT_EXPIRY_MS / 1000),
       path: "/",
     });
 
+    // sessionToken cookie lives as long as the JWT (12h).
+    // DB expiresAt is the sole truth for idle expiry — not the cookie maxAge.
     response.cookies.set("sessionToken", sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: Math.floor(SESSION_TIMEOUT_MS / 1000),
+      maxAge: Math.floor(JWT_EXPIRY_MS / 1000),
       path: "/",
     });
 
