@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Find roles with compliance/verification permissions dynamically
-    const compliancePerms = await prisma.role_permissions.findMany({
+    const compliancePerms = await prisma.rolePermission.findMany({
       where: {
         permission: {
           key: { in: ['compliance.view', 'compliance.view_documents', 'compliance.request_resubmission', 'employee.verify'] }

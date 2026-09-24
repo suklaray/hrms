@@ -107,7 +107,7 @@ function GeneratePayrollPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const StatCard = ({ title, value, icon: Icon, color, bgColor, onClick, isActive }) => (
+  const StatCard = ({ title, value, icon: Icon, color, bgColor, filter, onClick, isActive }) => (
     <div 
       className={`${bgColor} rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 cursor-pointer transition-all duration-200 ${isActive ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
       onClick={onClick}

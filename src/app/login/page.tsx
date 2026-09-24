@@ -114,7 +114,7 @@ function Login() {
                                         style={{
                                             WebkitTextSecurity: 'none',
                                             MsRevealButton: 'none'
-                                        }}
+                                        }as React.CSSProperties}
                                         placeholder="Enter your password"
                                         required
                                         autoComplete="off"

@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { DecodedToken } from "@/types";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   
