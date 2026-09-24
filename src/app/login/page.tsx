@@ -146,9 +146,9 @@ function Login() {
 }
 
 export default function PageWrapper(props: any) {
-  return (
-    <Suspense fallback={null}>
-      <Login {...props} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={null}>
+            <Login {...props} />
+        </Suspense>
+    );
 }

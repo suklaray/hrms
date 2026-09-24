@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
 
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET as string);
     const user = decoded;
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_REGULARIZATION_CREATE);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_REGULARIZE);
     if (!hasAccess) {
       return NextResponse.json({ message: 'Unauthorized: insufficient permissions' }, { status: 403 });
     }

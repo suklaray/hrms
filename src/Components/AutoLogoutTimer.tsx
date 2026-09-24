@@ -1,267 +1,199 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useIdleTimer } from "react-idle-timer";
+import { ACTIVITY_SYNC_INTERVAL_MS, IDLE_TIMEOUT_MS, PROMPT_BEFORE_MS } from "@/lib/sessionConfig";
+
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/AboutUs",
+  "/Contact",
+  "/Recruitment/form",
+  "/Recruitment/docs_submitted",
+  "/form-already-submitted",
+  "/unauthorized-form-access",
+  "/form-link-expired",
+  "/form-locked-device",
+];
 
 const AutoLogoutTimer = () => {
   const router = useRouter();
-  const pathname = usePathname() || '/';
-  const [showWarning, setShowWarning] = useState(false);
-  const [showActivityReminder, setShowActivityReminder] = useState(false);
-  const [countdown, setCountdown] = useState(60);
-  const warningTimerRef = useRef<any>(null);
-  const logoutTimerRef = useRef<any>(null);
-  const countdownIntervalRef = useRef<any>(null);
-  const reminderTimerRef = useRef<any>(null);
+  const pathname = usePathname() || "/";
+  const logoutRequestedRef = useRef(false);
+  const lastSyncRef = useRef(0);
+  const syncInFlightRef = useRef(false);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [warningSecondsLeft, setWarningSecondsLeft] = useState<number | null>(null);
 
-  const publicPaths = [
-    '/', '/login', '/AboutUs', '/Contact',
-    '/Recruitment/form', '/Recruitment/docs_submitted',
-    '/form-already-submitted', '/unauthorized-form-access',
-    '/form-link-expired', '/form-locked-device'
-  ];
-
-  const checkIsPublicPath = (currentPath: string) => {
-    return publicPaths.some(path => 
-      (path === '/' && currentPath === '/') ||
-      (path !== '/' && currentPath === path) ||
-      (path === '/Recruitment/form' && currentPath.startsWith('/Recruitment/form'))
+  const isPublic =
+    pathname === "/" ||
+    PUBLIC_PATHS.some(
+      (p) =>
+        p !== "/" &&
+        (pathname === p ||
+          (p === "/Recruitment/form" && pathname.startsWith("/Recruitment/form")))
     );
-  };
 
-  const handleLogout = async () => {
-    clearAllTimers();
-    setShowWarning(false);
+  const stopCountdown = useCallback(() => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    setWarningSecondsLeft(null);
+  }, []);
+
+  // Single source of truth check — asks server if session is still alive
+  const checkServerSession = useCallback(async (): Promise<number> => {
+    try {
+      const res = await fetch("/api/session/status", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return -1;
+      const data = await res.json();
+      if (!data.valid) return -1;
+      return typeof data.remainingMs === "number" ? data.remainingMs : -1;
+    } catch {
+      return -1;
+    }
+  }, []);
+
+  const doLogout = useCallback(async () => {
+    if (logoutRequestedRef.current) return;
+    logoutRequestedRef.current = true;
+    stopCountdown();
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    } catch {}
+    router.replace("/login");
+  }, [router, stopCountdown]);
+
+  // Fallback ping — only fires when user is active but no backend requests are happening
+  // (e.g. writing a long report). Throttled to once per ACTIVITY_SYNC_INTERVAL_MS.
+  const pingActivity = useCallback(async () => {
+    if (syncInFlightRef.current) return;
+    const now = Date.now();
+    if (now - lastSyncRef.current < ACTIVITY_SYNC_INTERVAL_MS) return;
+
+    syncInFlightRef.current = true;
+    lastSyncRef.current = now;
 
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: 'inactivity_timeout',
-        }),
-        credentials: 'include',
+      const res = await fetch("/api/session/activity", {
+        method: "POST",
+        credentials: "include",
+        cache: "no-store",
       });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-
-    router.replace('/login');
-  };
-
-  const displayActivityReminder = () => {
-    setShowActivityReminder(true);
-    
-    setTimeout(() => {
-      setShowActivityReminder(false);
-    }, 5000);
-  };
-
-  const showWarningModal = () => {
-    setShowWarning(true);
-    setCountdown(60);
-
-    let remainingSeconds = 60;
-    
-    countdownIntervalRef.current = setInterval(() => {
-      remainingSeconds -= 1;
-      setCountdown(remainingSeconds);
-
-      if (remainingSeconds <= 0) {
-        clearInterval(countdownIntervalRef.current);
-        handleLogout();
+      // On 401, verify with status before acting — could be a transient race
+      if (res.status === 401) {
+        const remaining = await checkServerSession();
+        if (remaining === -1) await doLogout();
       }
-    }, 1000);
-  };
-
-  const keepWorking = async () => {
-    clearAllTimers();
-    setShowWarning(false);
-
-    try {
-      const response = await fetch('/api/session/activity', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (!response.ok) {
-        handleLogout();
-        return;
-      }
-
-      startTimers();
-    } catch (error) {
-      console.error('Session refresh failed:', error);
-      handleLogout();
+    } catch {
+      // Network error — don't logout, just skip this ping
+    } finally {
+      syncInFlightRef.current = false;
     }
-  };
+  }, [checkServerSession, doLogout]);
 
-  const startTimers = () => {
-    clearAllTimers();
+  // Show warning with countdown driven by actual server remainingMs
+  const startWarningCountdown = useCallback(async () => {
+    stopCountdown();
+    const remainingMs = await checkServerSession();
 
-    reminderTimerRef.current = setTimeout(() => {
-      displayActivityReminder();
-    }, 2 * 60 * 1000);
-
-    warningTimerRef.current = setTimeout(() => {
-      showWarningModal();
-    }, 4 * 60 * 1000);
-
-    logoutTimerRef.current = setTimeout(() => {
-      handleLogout();
-    }, 5 * 60 * 1000);
-  };
-
-  const clearAllTimers = () => {
-    if (reminderTimerRef.current) {
-      clearTimeout(reminderTimerRef.current);
-      reminderTimerRef.current = null;
-    }
-    if (warningTimerRef.current) {
-      clearTimeout(warningTimerRef.current);
-      warningTimerRef.current = null;
-    }
-    if (logoutTimerRef.current) {
-      clearTimeout(logoutTimerRef.current);
-      logoutTimerRef.current = null;
-    }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = null;
-    }
-  };
-
-  const resetTimers = () => {
-    startTimers();
-  };
-
-  useEffect(() => {
-    const handleUserActivity = () => {
-      if (showActivityReminder) {
-        setShowActivityReminder(false);
-      }
-      
-      if (!showWarning) {
-        resetTimers();
-      }
-    };
-
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-    
-    events.forEach(event => {
-      document.addEventListener(event, handleUserActivity, true);
-    });
-
-    return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, handleUserActivity, true);
-      });
-    };
-  }, [showWarning, showActivityReminder]);
-
-  useEffect(() => {
-    const isPublic = checkIsPublicPath(pathname);
-
-    if (isPublic) {
-      clearAllTimers();
-      setShowWarning(false);
-      setShowActivityReminder(false);
+    // Server already expired — logout immediately
+    if (remainingMs === -1) {
+      await doLogout();
       return;
     }
 
-    startTimers();
+    const seconds = Math.max(1, Math.floor(remainingMs / 1000));
+    setWarningSecondsLeft(seconds);
 
-    return () => {
-      clearAllTimers();
-    };
-  }, [pathname]);
+    countdownRef.current = setInterval(() => {
+      setWarningSecondsLeft((prev) => {
+        if (prev === null || prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+  }, [checkServerSession, doLogout, stopCountdown]);
 
-  const renderActivityReminder = () => {
-    if (!showActivityReminder) return null;
+  // Countdown hit 0 — verify server before logging out
+  useEffect(() => {
+    if (warningSecondsLeft !== 0) return;
+    checkServerSession().then((remaining) => {
+      if (remaining === -1) doLogout();
+      else stopCountdown(); // Another tab kept session alive
+    });
+  }, [warningSecondsLeft, checkServerSession, doLogout, stopCountdown]);
 
-    return (
-      <div style={reminderStyles.container as any}>
-        <div style={reminderStyles.content as any}>
-          <span style={reminderStyles.icon}>⏰</span>
-          <span style={reminderStyles.text}>
-            Move your mouse or you&apos;ll be logged out due to inactivity!
-          </span>
-        </div>
-      </div>
-    );
-  };
+  const { reset } = useIdleTimer({
+    timeout: IDLE_TIMEOUT_MS,
+    promptBeforeIdle: Math.max(1000, Math.min(PROMPT_BEFORE_MS, IDLE_TIMEOUT_MS - 1000)),
+    debounce: 500,
+    // Real intentional interactions only — not mousemove/scroll which fire constantly
+    events: ["mousedown", "click", "keydown", "keyup", "input", "change", "touchstart"],
+    crossTab: true,
+    startOnMount: true,
+    disabled: isPublic,
 
-  const renderWarningModal = () => {
-    if (!showWarning) return null;
+    onAction: async () => {
+      // User is active — ping backend as fallback (throttled)
+      await pingActivity();
+      // If warning was showing, dismiss it and reset idle timer
+      if (warningSecondsLeft !== null) {
+        stopCountdown();
+        reset();
+      }
+    },
 
-    return (
-      <div style={modalStyles.overlay as any}>
-        <div style={modalStyles.container as any}>
-          <h3 style={modalStyles.title}>Session Expiring Soon</h3>
-          <p style={modalStyles.text}>
-            Your session will expire due to inactivity in:
-          </p>
-          <div style={modalStyles.countdown}>
-            {countdown} second{countdown !== 1 ? 's' : ''}
-          </div>
-          <button onClick={keepWorking} style={modalStyles.button as any}>
-            Keep Working
-          </button>
-        </div>
-      </div>
-    );
-  };
+    onPrompt: () => {
+      // User has been idle for (IDLE_TIMEOUT_MS - PROMPT_BEFORE_MS) — show warning
+      startWarningCountdown();
+    },
+
+    onIdle: async () => {
+      // Frontend says fully idle — but only logout if server confirms session expired
+      const remaining = await checkServerSession();
+      if (remaining === -1) {
+        await doLogout();
+      } else {
+        // Server still alive (e.g. another tab was active) — reset and continue
+        stopCountdown();
+        reset();
+      }
+    },
+  });
+
+  if (isPublic || warningSecondsLeft === null) return null;
 
   return (
-    <>
-      {renderActivityReminder()}
-      {renderWarningModal()}
-    </>
+    <div
+      style={{
+        position: "fixed",
+        right: "20px",
+        bottom: "20px",
+        zIndex: 9999,
+        backgroundColor: "#fff7ed",
+        border: "1px solid #fdba74",
+        color: "#9a5b00",
+        borderRadius: "10px",
+        padding: "12px 16px",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+        maxWidth: "320px",
+        fontFamily: "sans-serif",
+      }}
+    >
+      <div style={{ fontWeight: 600, marginBottom: "4px" }}>
+        Session expiring in {warningSecondsLeft}s
+      </div>
+      <div style={{ fontSize: "14px", lineHeight: 1.4 }}>
+        Click or press a key to stay logged in.
+      </div>
+    </div>
   );
-};
-
-const modalStyles = {
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.65)', display: 'flex', alignItems: 'center', zIndex: 999999, fontFamily: 'sans-serif', justifyContent: 'center' },
-  container: { backgroundColor: '#fff', padding: '30px', borderRadius: '8px', maxWidth: '420px', width: '90%', textAlign: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' },
-  title: { margin: '0 0 12px 0', color: '#d32f2f', fontSize: '20px', fontWeight: '600' },
-  text: { color: '#4a4a4a', fontSize: '14px', lineHeight: '1.5', margin: '0 0 20px 0' },
-  countdown: { fontSize: '24px', fontWeight: '700', color: '#333', marginBottom: '24px', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '4px' },
-  button: { backgroundColor: '#0070f3', color: '#fff', border: 'none', padding: '12px 24px', fontSize: '14px', fontWeight: '600', borderRadius: '4px', cursor: 'pointer' }
-};
-
-const reminderStyles = {
-  container: {
-    position: 'fixed',
-    top: '20px',
-    right: '20px',
-    zIndex: 999998,
-    fontFamily: 'sans-serif',
-    transform: 'translateX(0)',
-    transition: 'transform 0.3s ease-out, opacity 0.3s ease-out'
-  },
-  content: {
-    backgroundColor: '#ff9800',
-    color: '#fff',
-    padding: '12px 20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(255, 152, 0, 0.3)',
-    display: 'flex',
-    alignItems: 'center',
-    maxWidth: '350px',
-    border: '2px solid #f57c00'
-  },
-  icon: {
-    fontSize: '18px',
-    marginRight: '10px'
-  },
-  text: {
-    fontSize: '14px',
-    fontWeight: '500',
-    lineHeight: '1.4'
-  }
 };
 
 export default AutoLogoutTimer;

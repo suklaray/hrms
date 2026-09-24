@@ -209,11 +209,14 @@ function AttendanceAnalytics({ user }) {
                     verticalAlign="bottom" 
                     height={50}
                     wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-                    formatter={(value, entry) => (
-                      <span style={{ color: entry.color }}>
-                        {value}: {entry.payload.value}%
-                      </span>
-                    )}
+                      formatter={(value, entry) => {
+                        const payload = entry.payload as { value: number };
+                        return (
+                          <span style={{ color: entry.color }}>
+                            {value}: {payload.value}%
+                          </span>
+                        );
+                      }}
                   />
                 </PieChart>
               </ResponsiveContainer>

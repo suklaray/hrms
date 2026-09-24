@@ -101,7 +101,7 @@ function EmployeeCalendar() {
       // Holiday data
       let yPos = 70;
       holidays
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .forEach((holiday) => {
           if (yPos > 270) {
             doc.addPage();

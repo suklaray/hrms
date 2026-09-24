@@ -189,7 +189,9 @@ export default function Sidebar({ user: propUser, handleLogout: propHandleLogout
     (permission) => {
       if (!permission) return true;
       if (isSuperAdminUser) return true;
-      return permissions.has(permission);
+
+      const requiredPermissions = Array.isArray(permission) ? permission : [permission];
+      return requiredPermissions.some((perm) => permissions.has(perm));
     },
     [isSuperAdminUser, permissions]
   );

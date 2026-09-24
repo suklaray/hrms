@@ -40,13 +40,23 @@ function EmployeeDocumentForm() {
     ifsc_code: "",
     bank_details: null,
   });
-  const [errors, setErrors] = useState({});
-  const [touchedFields, setTouchedFields] = useState({});
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [showAllErrors, setShowAllErrors] = useState(false);
   const [extracting, setExtracting] = useState({ aadhar: false, pan: false });
-  const [existingData, setExistingData] = useState(null);
+  const [existingData, setExistingData] = useState<{
+    contact_no?: string; dob?: string; gender?: string;
+    address_line_1?: string; address_line_2?: string; city?: string;
+    state?: string; pincode?: string; country?: string;
+    highest_qualification?: string; aadhar_number?: string; pan_number?: string;
+    account_holder_name?: string; bank_name?: string; branch_name?: string;
+    account_number?: string; ifsc_code?: string;
+    aadhar_card?: string; pan_card?: string; education_certificates?: string;
+    resume?: string; experience_certificate?: string; profile_photo?: string;
+    bank_details?: string;
+  } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isFormSubmitted, setIsFormSubmitted] = useState(false);
   const [specificDocument, setSpecificDocument] = useState(null);
@@ -240,7 +250,7 @@ function EmployeeDocumentForm() {
     const newErrors = { ...errors };
     
     if (!value || value.trim() === '') {
-      if (document.querySelector(`[name="${name}"]`)?.required) {
+      if ((document.querySelector(`[name="${name}"]`) as HTMLInputElement | null)?.required) {
         newErrors[name] = '❌ This field is required';
       } else {
         delete newErrors[name];
@@ -1016,7 +1026,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.aadhar_card || isDocumentPendingResubmission('aadhar_card')}
-                      disabled={!isDocumentPendingResubmission('aadhar_card') && existingData?.aadhar_card}
+                      disabled={isDocumentPendingResubmission('aadhar_card') || !existingData?.aadhar_card}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.aadhar_card ? 'border-red-500' : 
                         isDocumentPendingResubmission('aadhar_card') ? 'border-orange-500 bg-orange-50' :
@@ -1108,7 +1118,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.pan_card || isDocumentPendingResubmission('pan_card')}
-                      disabled={!isDocumentPendingResubmission('pan_card') && existingData?.pan_card}
+                      disabled={!isDocumentPendingResubmission('pan_card') && !existingData?.pan_card}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.pan_card ? 'border-red-500' : 
                         isDocumentPendingResubmission('pan_card') ? 'border-orange-500 bg-orange-50' :
@@ -1230,7 +1240,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.education_certificates || isDocumentPendingResubmission('education_certificates')}
-                      disabled={!isDocumentPendingResubmission('education_certificates') && existingData?.education_certificates}
+                      disabled={!isDocumentPendingResubmission('education_certificates') && !existingData?.education_certificates}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.education_certificates ? 'border-red-500' : 
                         isDocumentPendingResubmission('education_certificates') ? 'border-orange-500 bg-orange-50' :
@@ -1291,7 +1301,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.resume || isDocumentPendingResubmission('resume')}
-                      disabled={!isDocumentPendingResubmission('resume') && existingData?.resume}
+                      disabled={!isDocumentPendingResubmission('resume') && !existingData?.resume}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.resume ? 'border-red-500' : 
                         isDocumentPendingResubmission('resume') ? 'border-orange-500 bg-orange-50' :
@@ -1353,7 +1363,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.profile_photo || isDocumentPendingResubmission('profile_photo')}
-                      disabled={!isDocumentPendingResubmission('profile_photo') && existingData?.profile_photo}
+                      disabled={!isDocumentPendingResubmission('profile_photo') && !existingData?.profile_photo}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.profile_photo ? 'border-red-500' : 
                         isDocumentPendingResubmission('profile_photo') ? 'border-orange-500 bg-orange-50' :
@@ -1420,7 +1430,7 @@ function EmployeeDocumentForm() {
                         // Locks the field if it exists, UNLESS HR asked for a new one
                         disabled={
                           !isDocumentPendingResubmission('experience_certificate') &&
-                          existingData?.experience_certificate
+                          !existingData?.experience_certificate
                         }
                         className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.experience_certificate
                             ? 'border-red-500'
@@ -1623,7 +1633,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.bank_details || isDocumentPendingResubmission('checkbook_document')}
-                      disabled={!isDocumentPendingResubmission('checkbook_document') && existingData?.bank_details}
+                      disabled={!isDocumentPendingResubmission('checkbook_document') && !existingData?.bank_details}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.bank_details ? 'border-red-500' : 
                         isDocumentPendingResubmission('checkbook_document') ? 'border-orange-500 bg-orange-50' :

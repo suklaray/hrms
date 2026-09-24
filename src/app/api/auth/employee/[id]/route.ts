@@ -1,10 +1,9 @@
 import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-import jwt from "jsonwebtoken";
-
 async function checkAuth(req: NextRequest) {
   const token = req.cookies.get('token')?.value;
   if (!token) return { error: NextResponse.json({ message: 'Unauthorized' }, { status: 401 }) };
@@ -19,12 +18,10 @@ async function checkAuth(req: NextRequest) {
   if (!hasAccess) return { error: NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 }) };
   return { decoded };
 }
-
 export async function DELETE(req: NextRequest, context?: { params?: Promise<any> }) {
   const auth = await checkAuth(req);
   if (auth.error) return auth.error;
   const query = await getQueryParams(req, context?.params);
-
   const { id } = query;
 
   try {

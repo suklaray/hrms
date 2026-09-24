@@ -33,6 +33,8 @@ async function getServerSideProps(context) {
     };
   }
 
+  const canDeleteEmployee = await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_DELETE);
+
   let userData = null;
   try {
     // Include the role relation to get role name from Role table
@@ -71,6 +73,7 @@ async function getServerSideProps(context) {
         position: userData?.position || null,
         roleId: userData?.roleId || null, // Include roleId for reference
       },
+      canDeleteEmployee,
     },
   };
 }
