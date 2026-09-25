@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Head from "@/lib/compatHead";
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import SideBar from "@/Components/SideBar";
 import { swalConfirm } from '@/utils/confirmDialog';
 import { formatDate, formatTime } from "@/utils/dateTime";
 function CustomerConnect() {
@@ -73,7 +72,6 @@ function CustomerConnect() {
         <title>Customer Connect - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
 
         <div className="flex-1 overflow-auto">
           {/* Header */}

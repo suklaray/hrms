@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import { useAppDispatch } from '@/store/hooks';
-import { logoutSuccess } from '@/store/authSlice';
+import { logoutUser } from '@/store/authSlice';
 
 const AutoLogoutTimer = () => {
   const router = useRouter();
@@ -39,23 +39,7 @@ const AutoLogoutTimer = () => {
     clearAllTimers();
     setShowWarning(false);
 
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: 'inactivity_timeout',
-        }),
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error('Logout failed:', error);
-    } finally {
-      dispatch(logoutSuccess());
-    }
-
+    await dispatch(logoutUser()).unwrap();
     router.replace('/login');
   };
 

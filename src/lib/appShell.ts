@@ -1,3 +1,4 @@
+//keep sidebar in client component as it uses react hooks and nextjs router
 declare global {
   interface Window {
     __HRMS_APP_SHELL__?: boolean;

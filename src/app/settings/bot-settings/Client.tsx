@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useState, useEffect } from 'react';
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import axios from 'axios';
 
 function BotSettings() {
@@ -149,7 +148,6 @@ function BotSettings() {
           <title>Access Denied - HRMS</title>
         </Head>
         <div className="flex min-h-screen">
-          <SideBar />
           <div className="flex-1 bg-gradient-to-b from-white to-gray-100 p-10">
             <div className="max-w-4xl mx-auto text-center">
               <div className="bg-red-50 border border-red-200 rounded-lg p-8">
@@ -175,7 +173,6 @@ function BotSettings() {
         <title>HR Assistant Data - HRMS</title>
       </Head>
       <div className="flex min-h-screen">
-        <SideBar />
         <div className="flex-1 bg-gradient-to-b from-white to-gray-100 p-10">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">HR Assistant Data Management</h1>

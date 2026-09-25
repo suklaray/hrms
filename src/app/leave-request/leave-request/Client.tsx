@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { Calendar, Clock, FileText, Plus, Eye, AlertCircle, CheckCircle, XCircle, X } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { toast } from "react-toastify";
@@ -21,7 +20,13 @@ function LeaveRequest({ user }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [dayCount, setDayCount] = useState(0);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    from_date: string;
+    to_date: string;
+    reason: string;
+    leave_type: string;
+    attachment: string | File;
+  }>({
     from_date: "",
     to_date: "",
     reason: "",
@@ -29,7 +34,7 @@ function LeaveRequest({ user }) {
     attachment: ""
   });
   const [selectedReason, setSelectedReason] = useState(null);
-  const [errors, seterrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [cancellingLeave, setCancellingLeave] = useState(null);
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -101,7 +106,7 @@ const fileInputRef = useRef(null);
     }
     
     // File validation
-    if (formData.attachment && typeof formData.attachment === 'object') {
+    if (formData.attachment instanceof File) {
       const file = formData.attachment;
       const maxSize = 5 * 1024 * 1024; // 5MB
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'];
@@ -135,11 +140,12 @@ const fileInputRef = useRef(null);
     let attachmentData = "";
     
     // Convert file to base64 if attachment exists
-    if (formData.attachment && typeof formData.attachment === 'object') {
+    if (formData.attachment instanceof File) {
+      const attachment = formData.attachment as File;
       const reader = new FileReader();
-      attachmentData = await new Promise((resolve) => {
-        reader.onload = (e) => resolve(e.target.result);
-        reader.readAsDataURL(formData.attachment);
+      attachmentData = await new Promise<string>((resolve) => {
+        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+        reader.readAsDataURL(attachment);
       });
     } else {
       attachmentData = formData.attachment || "";
@@ -203,7 +209,7 @@ const fetchLeaveTypes = async () => {
       const toDate = new Date(formData.to_date);
       
       if (toDate >= fromDate) {
-        const days = Math.ceil((toDate - fromDate) / (1000 * 60 * 60 * 24)) + 1;
+        const days = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
         setDayCount(days);
       } else {
         setDayCount(0);
@@ -298,7 +304,6 @@ const submitCancellation = async () => {
         <title>Leave Request - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -505,7 +510,7 @@ const submitCancellation = async () => {
                             {errors.attachment}
                           </p>
                         )}
-                        {formData.attachment && (
+                        {formData.attachment instanceof File && (
                           <div className="mt-2 p-2 bg-gray-50 rounded-lg">
                             <p className="text-sm text-gray-600">Selected: {formData.attachment.name}</p>
                           </div>

@@ -17,9 +17,9 @@ import {
 } from "lucide-react";
 import { formatDayMonthDate } from "@/utils/dateTime";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logoutSuccess } from "@/store/authSlice";
+import { logoutUser } from "@/store/authSlice";
 
-const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) => {
+const Header = ({ user: propUser }: any = {}) => {
   const reduxUser = useAppSelector((state) => state.auth.user);
   const authInitialized = useAppSelector((state) => state.auth.initialized);
   const [user, setUser] = useState(propUser ?? reduxUser ?? null);
@@ -240,26 +240,10 @@ const Header = ({ user: propUser, handleLogout: propHandleLogout }: any = {}) =>
   }, [effectiveUser]);
 
   const handleLogout = async () => {
-    if (propHandleLogout) {
-      return propHandleLogout();
-    }
-
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (err) {
-      console.error("Logout error", err);
-    } finally {
-      dispatch(logoutSuccess());
-      document.cookie = "token=; Max-Age=0; path=/";
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      setUser(null);
-      router.push("/");
-      router.refresh();
-    }
+    await dispatch(logoutUser());
+    setUser(null);
+    router.push("/");
+    router.refresh();
   };
 
   // notification function called on check-in - DISABLED FOR SSE

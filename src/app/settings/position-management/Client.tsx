@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import EmployeeReassignmentModal from "@/Components/EmployeeReassignmentModal";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -224,7 +223,6 @@ function PositionManagement() {
         <title>Position Management - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

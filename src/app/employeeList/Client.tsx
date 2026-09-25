@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { useRouter } from "@/lib/compatRouter";
 import { FaEye, FaTrash, FaSearch, FaUsers, FaUserTie, FaUserShield, FaCrown, FaChevronLeft, FaChevronRight, FaDownload } from "react-icons/fa";
 import { getUserFromToken } from "@/lib/getUserFromToken";
@@ -190,7 +189,6 @@ function EmployeeListPage({ user }) {
         <title>Employee List - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} />
         <div className="flex-1 p-6 overflow-auto">
           {/* Header */}
           <div className="mb-8">

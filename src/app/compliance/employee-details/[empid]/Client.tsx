@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useState, useEffect, useCallback } from 'react';
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { useRouter } from "@/lib/compatRouter";
 import { 
   FileText, ArrowLeft, Eye, Calendar, Users
@@ -61,7 +60,6 @@ function EmployeeDetails({ user }) {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} />
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
@@ -72,7 +70,6 @@ function EmployeeDetails({ user }) {
   if (!employee) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Employee Not Found</h2>
@@ -94,7 +91,6 @@ function EmployeeDetails({ user }) {
         <title>Employee Details - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <SideBar handleLogout={handleLogout} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">

@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { ArrowLeft, Calendar, Clock, User, Trash2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { swalConfirm } from '@/utils/confirmDialog';
@@ -150,7 +149,6 @@ function EmployeeTasks({ canDelete, canEdit }) {
         <title>Employee Tasks - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-4">

@@ -10,13 +10,7 @@ import { Suspense } from "react";
     
 
     function Home({ isAuthenticated, user }) {
-        const handleGetStarted = () => {
-        if (isAuthenticated && user) {
-            window.location.href="/dashboard";
-        } else {
-            window.location.href = '/login';
-        }
-    };
+        const getStartedHref = isAuthenticated && user ? "/dashboard" : "/login";
 
 
         return (
@@ -42,13 +36,13 @@ import { Suspense } from "react";
                                 </div>
                                 
                                 <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center lg:justify-start">
-                                    <button 
-                                        onClick={handleGetStarted}
+                                    <Link
+                                        href={getStartedHref}
                                         className="group px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer"
                                     >
                                         <span>{isAuthenticated ? 'Go to Dashboard' : 'Get Started'}</span>
                                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                    </button>
+                                    </Link>
                                     <Link href="/AboutUs">
                                         <button className="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-all duration-300 cursor-pointer">
                                             Learn More ...

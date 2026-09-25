@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { Eye, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, X, Filter, Users, Shield } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
@@ -161,7 +160,6 @@ function ComplianceDashboard() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
@@ -178,7 +176,6 @@ function ComplianceDashboard() {
         <title>Employee Compliance - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <SideBar />
 
       <div className="flex-1 overflow-auto">
         {/* Header */}

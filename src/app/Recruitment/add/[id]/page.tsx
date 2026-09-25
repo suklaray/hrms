@@ -5,7 +5,6 @@ import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import {
   FaUser,
   FaEnvelope,
@@ -343,7 +342,6 @@ const AddEmployee = () => {
   if (loading) {
     return (
       <div className="flex">
-        <SideBar />
         <div className="flex-1 p-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
           <div className="flex justify-center items-center h-96">
             <div className="text-center">
@@ -364,7 +362,6 @@ const AddEmployee = () => {
         <title>Add as Employee - HRMS</title>
       </Head>
       <div className="flex">
-        <SideBar />
 
         <div className="flex-1 p-8 bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
           <button

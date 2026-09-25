@@ -6,7 +6,6 @@ import Head from "@/lib/compatHead";
 import { useRouter } from "@/lib/compatRouter";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-import SideBar from '@/Components/SideBar';
 import OnlyPaymentDayPicker from "@/Components/DateOnlyCalenderSelector";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { ChevronDown, Search, Check, RotateCcw, Send } from "lucide-react";
@@ -225,7 +224,6 @@ const PayrollCreateConfig = () => {
                 <title>Payroll Configuration - HRMS</title>
             </Head>
             <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-                <SideBar />
                 <div className="flex-1 overflow-auto p-4 lg:p-6">
                     <Pageheader
                         title="Payroll Configuration"

@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from 'react';
-import SideBar from "@/Components/SideBar";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
@@ -166,7 +165,7 @@ function PayrollForm() {
   }, [empid, formData.month, formData.year]);
 
   const calculateAmount = (percent) => {
-    return Math.round(((formData.basic_salary || 0) * percent) / 100 * 100) / 100;
+    return Math.round(((Number(formData.basic_salary) || 0) * percent) / 100 * 100) / 100;
   };
   
   const handleChange = (e) => {
@@ -277,7 +276,7 @@ function PayrollForm() {
     const totalAllowances = hra + da + customAllowances;
     const totalDeductions = customDeductions + pf + ptax + esic;
 
-    return Math.round((parseFloat(formData.basic_salary || 0) + totalAllowances + parseFloat(formData.bonus || 0) - totalDeductions) * 100) / 100;
+    return Math.round(((Number(formData.basic_salary) || 0) + totalAllowances + (Number(formData.bonus) || 0) - totalDeductions) * 100) / 100;
   };
   const handleAmountChange = (type, key, value, index = null) => {
   const basicSalary = parseFloat(formData.basic_salary) || 0;
@@ -393,7 +392,6 @@ function PayrollForm() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="relative">
@@ -411,7 +409,6 @@ function PayrollForm() {
   if (!employee) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -454,7 +451,6 @@ function PayrollForm() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <SideBar />
 
       <div className="flex-1 overflow-auto">
         {/* Header */}

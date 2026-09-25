@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from 'react';
 import { toast } from "react-toastify";
@@ -81,7 +80,6 @@ const PayrollGetConfigs = () => {
                 <title>Payroll Configuration - HRMS</title>
             </Head>
             <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-                <SideBar />
                 <div className="flex-1 overflow-auto p-4 lg:p-6">
                     <Pageheader
                         title="Manage Configurations"

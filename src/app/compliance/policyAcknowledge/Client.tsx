@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import { useState } from 'react';
-import SideBar from "@/Components/SideBar";
 import { toast } from "react-toastify";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
@@ -95,7 +94,6 @@ function HRPolicyManagement() {
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
-      <SideBar />
       <div className="flex-1 p-6">
         <h1 className="text-2xl font-bold mb-6 text-center text-indigo-700">HR Policy Management</h1>
 

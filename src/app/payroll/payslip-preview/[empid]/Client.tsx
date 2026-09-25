@@ -4,7 +4,6 @@ import { Suspense } from "react";
 // pages/payroll/payslip-preview/[empid].js
 import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from "react";
-import SideBar from "@/Components/SideBar";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
@@ -46,7 +45,6 @@ function PayslipPreview() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#F3F4F6" }}>
-      <SideBar />
 
       <div style={{ flex: 1, padding: "2rem" }}>
         {/* Breadcrumb Navigation */}

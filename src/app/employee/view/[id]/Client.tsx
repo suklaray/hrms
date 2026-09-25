@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import axios from "axios";
 import {
   Copy,
@@ -179,7 +178,6 @@ function ViewEmployee() {
           <title>Employee Details - HRMS</title>
         </Head>
         <div className="flex min-h-screen bg-gray-50">
-          <SideBar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <div className="relative">
@@ -203,7 +201,6 @@ function ViewEmployee() {
           <title>Employee Details - HRMS</title>
         </Head>
         <div className="flex min-h-screen bg-gray-50">
-          <SideBar />
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <p className="text-red-600 text-lg font-medium mb-4">
@@ -554,7 +551,6 @@ function ViewEmployee() {
         <title>Employee Details - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto">
           {/* Breadcrumb Navigation */}
           <div className="bg-white border-b border-gray-200 px-6 py-3">

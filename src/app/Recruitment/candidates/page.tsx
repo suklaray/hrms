@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense } from "react";
-import SideBar from "@/Components/SideBar";
 import { useRouter } from "@/lib/compatRouter";
 import { Users, Plus, Calendar } from "lucide-react";
 
@@ -14,7 +13,6 @@ function RecruitmentDashboard() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
-      <SideBar handleLogout={handleLogout} />
       <div className="flex-1 p-6">
         {/* Header */}
         <div className="bg-white shadow-xl rounded-2xl p-6 mb-6">

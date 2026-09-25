@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useState, useEffect, useCallback } from "react";
 import Head from "@/lib/compatHead";
-import Sidebar from "@/Components/SideBar";
 import {
   FaCalendarAlt,
   FaChevronLeft,
@@ -101,7 +100,7 @@ function EmployeeCalendar() {
       // Holiday data
       let yPos = 70;
       holidays
-        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .forEach((holiday) => {
           if (yPos > 270) {
             doc.addPage();
@@ -364,7 +363,6 @@ function EmployeeCalendar() {
         <title>Calendar - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <Sidebar handleLogout={handleLogout} isEmployee />
 
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-6 py-4">

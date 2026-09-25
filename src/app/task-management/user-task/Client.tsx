@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { getUserFromToken } from '@/lib/getUserFromToken';
 import { checkPermission } from '@/lib/rbac';
 import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
@@ -190,7 +189,6 @@ function UserTasks({ permissions }) {
     <>
       <Head><title>My Tasks - HRMS</title></Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar user={user} />
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex justify-between items-center">

@@ -4,11 +4,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthUser } from '@/types';
+import { useAppDispatch } from '@/store/hooks';
+import { logoutUser } from '@/store/authSlice';
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
+  const dispatch = useAppDispatch();
 
   const fetchUser = useCallback(async () => {
     try {
@@ -51,17 +54,9 @@ export function useAuth() {
   }, [fetchUser]);
 
   const logout = async () => {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (err) {
-      console.error('Logout error:', err);
-    } finally {
-      localStorage.removeItem('employee_user');
-      router.replace('/login');
-    }
+    await dispatch(logoutUser());
+    setUser(null);
+    router.replace('/login');
   };
 
   return { user, loading, logout, setUser };

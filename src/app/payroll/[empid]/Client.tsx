@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from 'react';
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { FaEye, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
@@ -40,7 +39,6 @@ function EmployeePayroll() {
         <title>Employee Payroll - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <SideBar />
 
         <main className="flex-1 p-8 overflow-auto">
           {/* Modern Header */}

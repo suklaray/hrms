@@ -7,6 +7,7 @@ export type AuthState = {
   isAuthenticated: boolean;
   loading: boolean;
   initialized: boolean;
+  loggingOut: boolean;
 };
 
 type LoginSuccessPayload = {
@@ -20,6 +21,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   loading: true,
   initialized: false,
+  loggingOut: false,
 };
 
 export const fetchCurrentUser = createAsyncThunk(
@@ -48,6 +50,30 @@ export const fetchCurrentUser = createAsyncThunk(
   }
 );
 
+export const logoutUser = createAsyncThunk<void, void>(
+  "auth/logoutUser",
+  async (_, { dispatch }) => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      dispatch(logoutSuccess());
+
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("employee_user");
+        document.cookie = "token=; Max-Age=0; path=/";
+      }
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -58,12 +84,14 @@ const authSlice = createSlice({
       state.isAuthenticated = true;
       state.loading = false;
       state.initialized = true;
+      state.loggingOut = false;
     },
     setAuthUser: (state, action: PayloadAction<AuthUser | null>) => {
       state.user = action.payload;
       state.isAuthenticated = !!action.payload;
       state.loading = false;
       state.initialized = true;
+      state.loggingOut = false;
     },
     setPermissions: (state, action: PayloadAction<string[]>) => {
       state.permissions = action.payload;
@@ -74,6 +102,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.loading = false;
       state.initialized = true;
+      state.loggingOut = false;
     },
     setAuthLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
@@ -90,11 +119,13 @@ const authSlice = createSlice({
         state.isAuthenticated = !!action.payload.user;
         state.loading = false;
         state.initialized = true;
+        state.loggingOut = false;
       })
       .addCase(fetchCurrentUser.rejected, (state) => {
         if (state.isAuthenticated) {
           state.loading = false;
           state.initialized = true;
+          state.loggingOut = false;
           return;
         }
         state.user = null;
@@ -102,6 +133,13 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.loading = false;
         state.initialized = true;
+        state.loggingOut = false;
+      })
+      .addCase(logoutUser.pending, (state) => {
+        state.loggingOut = true;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.loggingOut = false;
       });
   },
 });

@@ -1,5 +1,5 @@
 "use client";
-
+//keep sidebar in client component as it uses react hooks and nextjs router
 import { createContext, useContext } from "react";
 
 type AppShellContextValue = {

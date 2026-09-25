@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { ArrowLeft, ChevronDown, ChevronUp, Search, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -113,7 +112,6 @@ function EditEmployeeType() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
         </div>
@@ -125,7 +123,6 @@ function EditEmployeeType() {
     <>
       <Head><title>Edit {form.name} - Employee Type</title></Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto p-6">
           <div className="mx-auto">
 

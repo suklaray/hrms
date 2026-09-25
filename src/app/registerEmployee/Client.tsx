@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 //import { toast } from "react-toastify";
 
 import {
@@ -32,8 +31,11 @@ import {
 //import toast from "react-hot-toast";
 import { toast } from 'react-toastify';
 import axios from "axios";
+import { useAppDispatch } from "@/store/hooks";
+import { logoutUser } from "@/store/authSlice";
 
 function RegisterEmployee() {
+    const dispatch = useAppDispatch();
     const router = useRouter();
 
     const [formData, setFormData] = useState({
@@ -507,12 +509,8 @@ function RegisterEmployee() {
     };
 
     const handleLogout = async () => {
-        try {
-            await fetch("/api/auth/logout");
-            router.push("/login");
-        } catch (error) {
-            console.error("Logout failed:", error);
-        }
+        await dispatch(logoutUser());
+        router.push("/login");
     };
 
     const InputField = ({ icon: Icon, label, type = "text", field, placeholder, error }) => (
@@ -560,7 +558,6 @@ function RegisterEmployee() {
                 <title>Register Employee - HRMS</title>
             </Head>
             <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-                <SideBar handleLogout={handleLogout} />
 
                 <div className="flex-1 overflow-auto p-4 lg:p-6">
                     {/* Header */}

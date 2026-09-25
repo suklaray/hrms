@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import { useState, useEffect, useCallback } from "react";
-import SideBar from "@/Components/SideBar";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import {BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, AreaChart, Area} from "recharts";
@@ -48,7 +47,6 @@ function AttendanceAnalytics({ user }) {
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
         </Head>
         <div className="min-h-screen bg-gray-50 flex">
-          <SideBar handleLogout={handleLogout} />
           <div className="flex-1 overflow-auto">
             <div className="bg-white border-b border-gray-200 px-6 py-4">
               <div className="flex items-center justify-between">
@@ -87,7 +85,6 @@ function AttendanceAnalytics({ user }) {
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
       </Head>
       <div className="min-h-screen bg-gray-50 flex">
-        <SideBar handleLogout={handleLogout} />
         <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">
