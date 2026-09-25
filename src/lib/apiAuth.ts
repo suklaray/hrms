@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parse } from "cookie";
-import { checkPermission } from "@/lib/rbac";
+import { checkAnyPermission } from "@/lib/rbac";
 import getUserFromToken from "@/lib/getUserFromToken";
 import type { DecodedToken } from "@/types";
 
@@ -25,9 +25,7 @@ export async function checkAuth(
   }
 
   if (requiredPermissions.length > 0) {
-    const hasAccess = await Promise.any(
-      requiredPermissions.map((permission) => checkPermission(user, permission))
-    ).catch(() => false);
+    const hasAccess = await checkAnyPermission(user, requiredPermissions);
 
     if (!hasAccess) {
       return {
