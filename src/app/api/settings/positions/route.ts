@@ -1,32 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { parse } from "cookie";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-async function checkAuth(req: NextRequest) {
-  const cookieHeader = req.headers.get("cookie") || "";
-  const cookies = parse(cookieHeader);
-  const token = cookies.token || req.cookies.get("token")?.value;
-  const user = token ? getUserFromToken(token) : null;
-
-  if (!user) {
-    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  }
-
-  const hasViewAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_VIEW);
-  const hasManageAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_MANAGE);
-
-  if (!hasViewAccess && !hasManageAccess) {
-    return { error: NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 }) };
-  }
-
-  return { user, hasManageAccess };
-}
+import { checkAuth } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req);
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
+  ]);
   if (auth.error) return auth.error;
 
   try {
@@ -56,9 +38,16 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await checkAuth(req);
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
+  ]);
   if (auth.error) return auth.error;
-  if (!auth.hasManageAccess) {
+  const hasManageAccess = await checkPermission(
+    auth.user,
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE
+  );
+  if (!hasManageAccess) {
     return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
   }
   const user = auth.user;
@@ -87,9 +76,16 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const auth = await checkAuth(req);
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
+  ]);
   if (auth.error) return auth.error;
-  if (!auth.hasManageAccess) {
+  const hasManageAccess = await checkPermission(
+    auth.user,
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE
+  );
+  if (!hasManageAccess) {
     return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
   }
 
@@ -118,9 +114,16 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await checkAuth(req);
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
+  ]);
   if (auth.error) return auth.error;
-  if (!auth.hasManageAccess) {
+  const hasManageAccess = await checkPermission(
+    auth.user,
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE
+  );
+  if (!hasManageAccess) {
     return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
   }
 

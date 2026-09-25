@@ -32,7 +32,7 @@ import {
 import { toast } from 'react-toastify';
 import axios from "axios";
 import { useAppDispatch } from "@/store/hooks";
-import { logoutUser } from "@/store/authSlice";
+import { logoutUser } from "@/store/slices/authSlice";
 
 function RegisterEmployee() {
     const dispatch = useAppDispatch();

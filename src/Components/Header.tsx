@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { formatDayMonthDate } from "@/utils/dateTime";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logoutUser } from "@/store/authSlice";
+import { logoutUser } from "@/store/slices/authSlice";
 
 const Header = ({ user: propUser }: any = {}) => {
   const reduxUser = useAppSelector((state) => state.auth.user);

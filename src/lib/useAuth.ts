@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthUser } from '@/types';
 import { useAppDispatch } from '@/store/hooks';
-import { logoutUser } from '@/store/authSlice';
+import { logoutUser } from '@/store/slices/authSlice';
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);

@@ -29,7 +29,7 @@ export const fetchCurrentUser = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const res = await fetch("/api/auth/me", {
-        credentials: "include", 
+        credentials: "include",
       });
 
       if (!res.ok) {

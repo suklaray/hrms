@@ -1,35 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
-import { parse } from 'cookie';
-import { checkPermission } from '@/lib/rbac';
 import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
-
-async function checkAuth(req: NextRequest) {
-  const cookieHeader = req.headers.get('cookie') || '';
-  const cookies = parse(cookieHeader);
-  const token = cookies.token || req.cookies.get('token')?.value;
-  
-  if (!token) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  }
-
-  try {
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.REPORT_SUBMIT);
-    if (!hasAccess) {
-      return { error: NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 }) };
-    }
-    return { decoded };
-  } catch {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  }
-}
+import { checkAuth } from '@/lib/apiAuth';
 
 export async function POST(req: NextRequest) {
-  const auth = await checkAuth(req);
-  if (auth.error) return auth.error;
-  const decoded = auth.decoded;
+  const auth = await checkAuth(req, [PERMISSION_KEYS.REPORT_SUBMIT]);
+  if ("error" in auth) return auth.error;
+  const decoded = auth.user;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -82,9 +59,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req);
-  if (auth.error) return auth.error;
-  const decoded = auth.decoded;
+  const auth = await checkAuth(req, [PERMISSION_KEYS.REPORT_SUBMIT]);
+  if ("error" in auth) return auth.error;
+  const decoded = auth.user;
 
   try {
     const [reports, leaves] = await Promise.all([

@@ -5,7 +5,7 @@ import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import { ShieldX, ArrowLeft, Home, LogOut } from "lucide-react";
 import { useAppDispatch } from "@/store/hooks";
-import { logoutUser } from "@/store/authSlice";
+import { logoutUser } from "@/store/slices/authSlice";
 
 function ForbiddenPage() {
   const router = useRouter();

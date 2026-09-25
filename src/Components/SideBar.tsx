@@ -6,7 +6,7 @@ import { useRouter } from "@/lib/compatRouter";
 import { useAppShell } from "@/contexts/AppShellContext";
 import { isSidebarShellActive } from "@/lib/appShell";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logoutUser } from "@/store/authSlice";
+import { logoutUser } from "@/store/slices/authSlice";
 import { SIDEBAR_STRUCTURE, type SidebarItem } from "@/lib/sidebarStructure";
 import {
   ChevronDown,

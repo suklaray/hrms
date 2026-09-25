@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { Provider } from "react-redux";
 import { store } from "@/store/store";
-import { fetchCurrentUser } from "@/store/authSlice";
+import { fetchCurrentUser } from "@/store/slices/authSlice";
 import { useAppDispatch } from "@/store/hooks";
 
 function AuthBootstrap() {

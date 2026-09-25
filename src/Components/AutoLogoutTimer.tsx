@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAppSelector } from '@/store/hooks';
 import { useAppDispatch } from '@/store/hooks';
-import { logoutUser } from '@/store/authSlice';
+import { logoutUser } from '@/store/slices/authSlice';
 
 const AutoLogoutTimer = () => {
   const router = useRouter();

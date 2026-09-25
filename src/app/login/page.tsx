@@ -9,7 +9,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa";
 import Image from 'next/image';
 import Link from "next/link";
 import { useAppDispatch } from "@/store/hooks";
-import { loginSuccess } from "@/store/authSlice";
+import { loginSuccess } from "@/store/slices/authSlice";
 
 function Login() {
     const [email, setEmail] = useState("");
