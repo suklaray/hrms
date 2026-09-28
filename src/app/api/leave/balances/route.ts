@@ -53,6 +53,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       const remaining = leaveType.max_days - usedDays;
 
       return {
+        id: leaveType.id,
         type_name: leaveType.type_name,
         max_days: leaveType.max_days,
         used: usedDays,
