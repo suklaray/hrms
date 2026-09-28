@@ -20,18 +20,15 @@
 # production
 /build
 
-# uploaded/generated files
-public/uploads/
-uploads/
-**/uploads/
-
 # misc
 .DS_Store
 *.pem
 
 # uploads
 /public/uploads/*
-!public/uploads/.gitkeep
+!/public/uploads/.gitkeep
+/uploads/*
+!/uploads/.gitkeep
 
 # debug
 npm-debug.log*
