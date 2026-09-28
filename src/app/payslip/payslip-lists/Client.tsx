@@ -181,7 +181,7 @@ const handleDownloadPayslip = async (month, year) => {
                                 }`}>
                                   {payslip.payslip_status === 'generated' ? 'Generated' : 'Pending'}
                                 </span> */}
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex flex-col">
                                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 mb-1">
                                       Generated
@@ -190,7 +190,7 @@ const handleDownloadPayslip = async (month, year) => {
                                       On : {new Date(payslip.generated_on).toLocaleDateString()}
                                     </span>
                                   </div>
-                                </td>
+                                </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex space-x-2">
