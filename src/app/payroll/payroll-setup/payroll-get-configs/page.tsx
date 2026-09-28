@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import Pageheader from "@/Components/PageHeader";
 import { TableSkeleton } from "@/Components/Skeletons";
 import { getOrdinal } from "@/lib/getNumberordinal";

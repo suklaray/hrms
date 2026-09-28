@@ -84,10 +84,6 @@ function AttendanceList() {
     setCurrentPage(page);
   };
 
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
   const handleViewClick = (empid) => {
     router.push(`/attendance/${empid}`);
   };

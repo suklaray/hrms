@@ -25,6 +25,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 interface EmployeeRecord {
   aadhar_card?: string | null;
@@ -101,9 +102,9 @@ function ViewEmployee() {
 
   const [data, setData] = useState<EmployeeData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState("");
-  const [userPermissions, setUserPermissions] = useState<string[]>([]);
-  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  // const [role, setRole] = useState("");
+  // const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  // const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -125,28 +126,20 @@ function ViewEmployee() {
 
   const hasPerm = (permissionKey: string) => isSuperAdminUser || userPermissions.includes(permissionKey);
 
+ 
+  const {
+    user: currentUser,
+    permissions: userPermissions,
+    loading: authLoading,
+    initialized,
+  } = useAppSelector((state) => state.auth);
+
+  const role = currentUser?.role || "";
+  const isSuperAdminUser = !!currentUser?.isSuperAdmin;
+
   useEffect(() => {
     const fetchEverything = async () => {
       try {
-        // Fetch currently logged-in user
-        const roleRes = await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        if (roleRes.ok) {
-          const authData = await roleRes.json();
-          const userObj = authData?.user || authData;
-          setRole(userObj.role);
-          setUserPermissions(authData?.permissions || userObj.permissions || []);
-          setIsSuperAdminUser(!!(authData?.isSuperAdmin || userObj.isSuperAdmin));
-        } else {
-          console.error("User not authenticated");
-        }
-
         // Fetch roles from roles table
         try {
           const rolesRes = await axios.get("/api/settings/employee-types", { withCredentials: true });

@@ -18,9 +18,9 @@ const nextConfig = {
     ];
   },
   // Enable WebSocket support
-  experimental: {
+  
     serverComponentsExternalPackages: ['socket.io', 'pdfjs-dist', 'tesseract.js', '@napi-rs/canvas', 'pdf-parse']
-  }
+  
 };
 
 module.exports = nextConfig;
