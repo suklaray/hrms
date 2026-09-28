@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import { useState } from 'react';
-import SideBar from '@/Components/SideBar';
 import { useRouter } from "@/lib/compatRouter";
 import { Search, Filter, Download, Eye, Calendar } from 'lucide-react';
 import { getUserFromToken } from "@/lib/getUserFromToken";
@@ -50,7 +49,6 @@ function AuditLogs() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
-      <SideBar handleLogout={handleLogout} />
       <div className="flex-1 p-6">
         {/* Search and Filter Bar */}
         <div className="bg-white shadow-xl rounded-2xl p-6 mb-6">

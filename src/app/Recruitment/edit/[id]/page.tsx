@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import axios from "axios";
-import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
 import { FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaSave, FaTimes, FaFileAlt, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -177,7 +176,6 @@ function EditCandidate() {
           <title>Edit Candidate Profile - HRMS</title>
         </Head>
         <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <SideBar />
         <div className="flex-1 p-4 lg:p-8">
           <div className="flex justify-center items-center py-20">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent"></div>
@@ -194,7 +192,6 @@ function EditCandidate() {
         <title>Edit Candidate Profile - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <SideBar />
       <div className="flex-1 p-4 lg:p-8">
         <Breadcrumb items={[
           { label: 'Recruitment', href: '/Recruitment/recruitment' },

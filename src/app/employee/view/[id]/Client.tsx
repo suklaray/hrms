@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import Pageheader from "@/Components/PageHeader";
 import { PayrollDetailsSkeleton } from "@/Components/Skeletons";
 import axios from "axios";
@@ -26,6 +25,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 interface EmployeeRecord {
   aadhar_card?: string | null;
@@ -102,9 +102,9 @@ function ViewEmployee() {
 
   const [data, setData] = useState<EmployeeData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState("");
-  const [userPermissions, setUserPermissions] = useState<string[]>([]);
-  const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
+  // const [role, setRole] = useState("");
+  // const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  // const [isSuperAdminUser, setIsSuperAdminUser] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -126,28 +126,20 @@ function ViewEmployee() {
 
   const hasPerm = (permissionKey: string) => isSuperAdminUser || userPermissions.includes(permissionKey);
 
+ 
+  const {
+    user: currentUser,
+    permissions: userPermissions,
+    loading: authLoading,
+    initialized,
+  } = useAppSelector((state) => state.auth);
+
+  const role = currentUser?.role || "";
+  const isSuperAdminUser = !!currentUser?.isSuperAdmin;
+
   useEffect(() => {
     const fetchEverything = async () => {
       try {
-        // Fetch currently logged-in user
-        const roleRes = await fetch("/api/auth/me", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        if (roleRes.ok) {
-          const authData = await roleRes.json();
-          const userObj = authData?.user || authData;
-          setRole(userObj.role);
-          setUserPermissions(authData?.permissions || userObj.permissions || []);
-          setIsSuperAdminUser(!!(authData?.isSuperAdmin || userObj.isSuperAdmin));
-        } else {
-          console.error("User not authenticated");
-        }
-
         // Fetch roles from roles table
         try {
           const rolesRes = await axios.get("/api/settings/employee-types", { withCredentials: true });
@@ -182,6 +174,54 @@ function ViewEmployee() {
 
     fetchEverything();
   }, [id]);
+
+  if (loading) {
+    return (
+      <>
+        <Head>
+          <title>Employee Details - HRMS</title>
+        </Head>
+        <div className="flex min-h-screen bg-gray-50">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full border-4 border-gray-200 mx-auto"></div>
+                <div className="w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin absolute top-0 left-1/2 transform -translate-x-1/2"></div>
+              </div>
+              <p className="text-gray-600 mt-4 font-medium text-lg">
+                Loading employee details...
+              </p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (!data) {
+    return (
+      <>
+        <Head>
+          <title>Employee Details - HRMS</title>
+        </Head>
+        <div className="flex min-h-screen bg-gray-50">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-red-600 text-lg font-medium mb-4">
+                Employee not found
+              </p>
+              <button
+                onClick={() => router.push("/employeeList")}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+              >
+                Back to Employee List
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const { user, employee: employees, addresses, bankDetails } = data || {};
   const name = user?.name as string | undefined;
@@ -508,7 +548,6 @@ function ViewEmployee() {
         <title>{name ? `${name} - Employee Details` : "Employee Details - HRMS"}</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto p-6">
           <Pageheader
             title="View Employee Profile"

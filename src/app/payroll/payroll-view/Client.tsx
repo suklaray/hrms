@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
@@ -147,7 +146,6 @@ function PayrollView() {
         <title>Payroll Management - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
 
         <div className="flex-1 overflow-auto">
           {/* Header */}

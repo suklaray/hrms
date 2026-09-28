@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from 'react';
-import SideBar from "@/Components/SideBar";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
@@ -396,7 +395,6 @@ function PayrollForm() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="relative">
@@ -414,7 +412,6 @@ function PayrollForm() {
   if (!employee) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -457,7 +454,6 @@ function PayrollForm() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <SideBar />
 
       <div className="flex-1 overflow-auto">
         {/* Header */}

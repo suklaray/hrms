@@ -3,41 +3,31 @@
 import { Suspense } from "react";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import { useRouter } from "@/lib/compatRouter";
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useAppSelector } from "@/store/hooks";
+import Link from "next/link";
 
 function FormAlreadySubmitted() {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [isAdminUser, setIsAdminUser] = useState(false);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await axios.get("/api/auth/me");
-        setUser(response.data.user);
-        const isSuper = response.data?.isSuperAdmin || response.data?.user?.isSuperAdmin;
-        const perms: string[] = response.data?.permissions || response.data?.user?.permissions || [];
-        setIsAdminUser(Boolean(isSuper || perms.includes("recruitment.view")));
-      } catch (error) {
-        console.log("Not authenticated");
-      }
-    };
-    checkAuth();
-  }, []);
+  const {
+    user: currentUser,
+    permissions,
+  } = useAppSelector((state) => state.auth);
 
-  const handleBackToRecruitment = () => {
-    router.push("/Recruitment/recruitment");
-  };
+  const isAdminUser =
+    !!currentUser?.isSuperAdmin ||
+    permissions.includes("recruitment.view");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
         <div className="mb-6">
           <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
+
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
             Form Already Submitted
           </h1>
+
           <p className="text-gray-600">
             {isAdminUser
               ? "The candidate has already submitted their onboarding form."
@@ -54,12 +44,12 @@ function FormAlreadySubmitted() {
         </div>
 
         {isAdminUser && (
-          <button
-            onClick={handleBackToRecruitment}
-            className="w-full mb-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+          <Link
+            href="/Recruitment/recruitment"
+            className="w-full mb-4 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors block"
           >
             Back to Recruitment Page
-          </button>
+          </Link>
         )}
 
         <div className="space-y-3">
@@ -68,6 +58,7 @@ function FormAlreadySubmitted() {
               ? "For any queries regarding candidate applications:"
               : "If you have any questions, please contact our HR department:"}
           </p>
+
           <div className="text-sm text-gray-700">
             {isAdminUser ? (
               ""
@@ -88,9 +79,6 @@ function FormAlreadySubmitted() {
 FormAlreadySubmitted.getLayout = function getLayout(page) {
   return page;
 };
-
-
-
 
 export default function PageWrapper(props: any) {
   return (

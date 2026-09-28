@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useEffect, useState } from 'react';
 import { useRouter } from "@/lib/compatRouter";
-import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
 import { ArrowLeft, Calendar, User, CheckCircle, XCircle, AlertCircle, Clock, FileText, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import moment from 'moment';
@@ -228,7 +227,6 @@ function EmployeeLeaveDetails() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-gray-700 text-xl font-semibold">Loading employee details...</div>
         </div>
@@ -239,7 +237,6 @@ function EmployeeLeaveDetails() {
   if (!employeeData) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-gray-700 text-xl">Employee not found</div>
         </div>
@@ -250,7 +247,6 @@ function EmployeeLeaveDetails() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <SideBar handleLogout={handleLogout} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">

@@ -1,20 +1,51 @@
 // src/lib/rbac.ts
 import prisma from "@/lib/prisma";
-import { AuthUser, DecodedToken } from "@/types";
 
-const SUPER_ADMIN_ROLE = "Super Admin";
+const SUPER_ADMIN_ROLE_NAMES = new Set(["super admin", "superadmin"]);
+
+function isSuperAdminRoleName(roleName?: string | null): boolean {
+  return Boolean(roleName && SUPER_ADMIN_ROLE_NAMES.has(roleName.toLowerCase()));
+}
+
+async function getAllPermissionKeys(): Promise<Set<string>> {
+  try {
+    const permissions = await prisma.permission.findMany({ select: { key: true } });
+    return new Set(permissions.map((permission) => permission.key));
+  } catch (error) {
+    console.error("Error fetching all permissions:", error);
+    return new Set();
+  }
+}
+
+async function getPermissionsForRole(roleId: number): Promise<Set<string>> {
+  try {
+    const role = await prisma.role.findUnique({
+      where: { id: roleId },
+      select: { name: true },
+    });
+
+    if (role && isSuperAdminRoleName(role.name)) {
+      return getAllPermissionKeys();
+    }
+
+    const rolePermissions = await prisma.rolePermission.findMany({
+      where: { roleId },
+      select: { permission: { select: { key: true } } },
+    });
+
+    return new Set(rolePermissions.map((item) => item.permission.key));
+  } catch (error) {
+    console.error("Error loading permissions for roleId", roleId, error);
+    return new Set();
+  }
+}
 
 /**
  * Checks if a user is Super Admin.
  */
 export function isSuperAdmin(user?: any): boolean {
   if (!user) return false;
-  return (
-    user?.rbacRole?.name === SUPER_ADMIN_ROLE ||
-    user?.rbacRole?.name?.toLowerCase() === "superadmin" ||
-    user?.role === "superadmin" ||
-    user?.role?.toLowerCase() === "superadmin"
-  );
+  return isSuperAdminRoleName(user?.rbacRole?.name) || isSuperAdminRoleName(user?.role);
 }
 
 /**
@@ -70,19 +101,8 @@ export async function getUserPermissions(
     }
   }
 
-  // Check Super Admin status
-  if (
-    userRbacRoleName === SUPER_ADMIN_ROLE ||
-    userRbacRoleName?.toLowerCase() === "superadmin" ||
-    role?.toLowerCase() === "superadmin"
-  ) {
-    try {
-      const allDbPerms = await prisma.permission.findMany({ select: { key: true } });
-      return new Set(allDbPerms.map((p) => p.key));
-    } catch (error) {
-      console.error("Error fetching all permissions for superadmin:", error);
-      return new Set();
-    }
+  if (isSuperAdminRoleName(userRbacRoleName) || isSuperAdminRoleName(role)) {
+    return getAllPermissionKeys();
   }
 
   // If roleId not determined yet, try matching role name against DB roles
@@ -101,29 +121,8 @@ export async function getUserPermissions(
     }
   }
 
-  // Check DB permissions for assigned roleId
   if (roleId) {
-    try {
-      const roleRecord = await prisma.role.findUnique({
-        where: { id: roleId },
-        select: { name: true },
-      });
-      if (
-        roleRecord &&
-        (roleRecord.name === SUPER_ADMIN_ROLE || roleRecord.name.toLowerCase() === "superadmin")
-      ) {
-        const allDbPerms = await prisma.permission.findMany({ select: { key: true } });
-        return new Set(allDbPerms.map((p) => p.key));
-      }
-
-      const rolePerms = await prisma.rolePermission.findMany({
-        where: { roleId },
-        select: { permission: { select: { key: true } } },
-      });
-      return new Set(rolePerms.map((rp) => rp.permission.key));
-    } catch (error) {
-      console.error("Error loading role permissions for roleId", roleId, error);
-    }
+    return getPermissionsForRole(roleId);
   }
 
   return new Set();
@@ -137,35 +136,23 @@ import { NextResponse } from "next/server";
 export function withPermission(requiredPermission: string, handler: any) {
   return async (req: any, resOrContext?: any) => {
     const isAppRouter = req instanceof Request || (req && req.nextUrl) || (!resOrContext || typeof resOrContext.status !== 'function');
+    const user = req.user;
 
-    if (isAppRouter) {
-      const user = req.user;
-      if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-      if (isSuperAdmin(user)) return handler(req, resOrContext);
-
-      const permissions = await getUserPermissions(user);
-      if (!permissions.has(requiredPermission)) {
-        return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
-      }
-
-      req.permissions = permissions;
-      return handler(req, resOrContext);
+    if (!user) {
+      return isAppRouter
+        ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        : resOrContext.status(401).json({ error: "Unauthorized" });
     }
 
-    const res = resOrContext;
-    const user = req.user;
-    if (!user) return res.status(401).json({ error: "Unauthorized" });
-
-    if (isSuperAdmin(user)) return handler(req, res);
-
     const permissions = await getUserPermissions(user);
-    if (!permissions.has(requiredPermission)) {
-      return res.status(403).json({ error: "Forbidden: insufficient permissions" });
+    if (!isSuperAdmin(user) && !permissions.has(requiredPermission)) {
+      return isAppRouter
+        ? NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 })
+        : resOrContext.status(403).json({ error: "Forbidden: insufficient permissions" });
     }
 
     req.permissions = permissions;
-    return handler(req, res);
+    return handler(req, resOrContext);
   };
 }
 
@@ -181,16 +168,27 @@ export async function checkPermission(
   permissionKey: string,
   preloadedPermissions?: Set<string> | string[]
 ): Promise<boolean> {
-  if (!user) return false;
+  return checkAnyPermission(user, [permissionKey], preloadedPermissions);
+}
+
+/**
+ * Checks whether a user has at least one permission from the provided list.
+ */
+export async function checkAnyPermission(
+  user: any,
+  permissionKeys: string[],
+  preloadedPermissions?: Set<string> | string[]
+): Promise<boolean> {
+  if (!user || permissionKeys.length === 0) return false;
   if (isSuperAdmin(user)) return true;
 
-  if (preloadedPermissions) {
-    const permSet = preloadedPermissions instanceof Set ? preloadedPermissions : new Set(preloadedPermissions);
-    return permSet.has(permissionKey);
-  }
+  const permissions = preloadedPermissions
+    ? preloadedPermissions instanceof Set
+      ? preloadedPermissions
+      : new Set(preloadedPermissions)
+    : await getUserPermissions(user);
 
-  const permissions = await getUserPermissions(user);
-  return permissions.has(permissionKey);
+  return permissionKeys.some((permissionKey) => permissions.has(permissionKey));
 }
 
 // Unified alias: hasPermission and checkPermission are the same single function

@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useState, useEffect } from 'react';
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { useRouter } from "@/lib/compatRouter";
 import { FileText, XCircle, Eye, Calendar, Users, Search } from 'lucide-react';
 function getRoleBadge(roleName?: string | null) {
@@ -90,7 +89,6 @@ function DocumentCenter({ user }) {
         <title>Document Center - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-      <SideBar handleLogout={handleLogout} />
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-4">

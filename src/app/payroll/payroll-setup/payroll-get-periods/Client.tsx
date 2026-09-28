@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import Pageheader from "@/Components/PageHeader";
 import { TableSkeleton } from "@/Components/Skeletons";
 import { toast } from "react-toastify";
@@ -175,7 +174,6 @@ function PayrollGetPeriods() {
             </Head>
 
             <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
-                <SideBar />
 
                 <div className="flex-1 overflow-auto p-4 lg:p-6">
                     <Pageheader

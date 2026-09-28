@@ -5,6 +5,8 @@ import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import crypto from "crypto";
 import { rateLimiter } from "@/lib/rateLimiter";
+//import { createSession, SESSION_CONFIG } from "@/lib/authMiddleware";
+import { getUserPermissions, isSuperAdmin } from "@/lib/rbac";
 import { SESSION_TIMEOUT_MS, JWT_EXPIRY_MS } from "@/lib/sessionConfig";
 
 export async function POST(req: NextRequest) {
@@ -47,6 +49,9 @@ export async function POST(req: NextRequest) {
       hasFormSubmitted = true;
     }
 
+    const permissions = await getUserPermissions(user);
+    const isSuper = isSuperAdmin(user);
+
     const payload = {
       id: user.id,
       empid: user.empid,
@@ -56,6 +61,8 @@ export async function POST(req: NextRequest) {
       email: user.email,
       verified: user.verified,
       form_submitted: hasFormSubmitted,
+      isSuperAdmin: isSuper,
+      permissions: Array.from(permissions),
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: "12h" });
@@ -71,7 +78,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const response = NextResponse.json({ message: "Login successful", token, user: payload }, { status: 200 });
+    const response = NextResponse.json({
+      message: "Login successful",
+      token,
+      user: payload,
+      permissions: Array.from(permissions),
+      isSuperAdmin: isSuper,
+    }, { status: 200 });
 
     response.cookies.set("token", token, {
       httpOnly: true,

@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback } from 'react';
 import Head from "@/lib/compatHead";
 import { Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
-import SideBar from '@/Components/SideBar';
 import { formatTime } from '@/utils/dateTime';
 import LiveTimer from '@/utils/liveTimer';
 import RegularizationModal from '@/Components/RegularizationModal';
@@ -217,7 +216,6 @@ function MyAttendance() {
                 <title>My Attendance - HRMS</title>
             </Head>
             <div className="flex min-h-screen bg-gray-50">
-                <SideBar />
                 <div className="flex-1 min-w-0 p-6">
                     {/* Header with user info */}
                     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">

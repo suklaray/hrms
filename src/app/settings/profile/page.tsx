@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import Image from "next/image";
 import { FileText, CheckCircle } from "lucide-react";
 import {toast} from 'react-toastify';  
@@ -213,7 +212,6 @@ function Profile() {
         <title>Profile Settings - HRMS</title>
       </Head>
       <div className="flex min-h-screen">
-      <SideBar />
       <div className="flex-1 bg-gradient-to-b from-white to-gray-100 p-10">
         <div className="max-w-xl mx-auto bg-white rounded-xl shadow-md p-8 relative">
           <h2 className="text-2xl font-bold text-indigo-700 mb-6 text-center">Profile Settings</h2>

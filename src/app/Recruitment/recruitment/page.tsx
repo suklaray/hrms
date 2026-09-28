@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import Link from "next/link";
 import {
   Eye,
@@ -373,7 +372,6 @@ function Candidates(user) {
         <title>Recruitment Management - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-4">

@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { CheckCircle, Clock, AlertCircle, Calendar, AlertTriangle } from 'lucide-react';
 import { formatDateTime } from '@/utils/dateTime';
 function TaskManagement() {
@@ -128,7 +127,6 @@ function TaskManagement() {
         <title>Task Management - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} user={user} />
 
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-6 py-4">

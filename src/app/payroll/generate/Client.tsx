@@ -3,12 +3,11 @@
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { useRouter } from "@/lib/compatRouter";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye, ChevronLeft, ChevronRight, Search,  } from "lucide-react";
 import {toast} from 'react-toastify';
 import { formatDateTime, formatMonthName, formatMonthYear, formatShortMonthYear } from "@/utils/dateTime";
 
@@ -107,7 +106,7 @@ function GeneratePayrollPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const StatCard = ({ title, value, icon: Icon, color, bgColor, filter, onClick, isActive }) => (
+  const StatCard = ({ title, value, icon: Icon, color, bgColor, onClick, isActive }) => (
     <div 
       className={`${bgColor} rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 cursor-pointer transition-all duration-200 ${isActive ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
       onClick={onClick}
@@ -130,7 +129,6 @@ function GeneratePayrollPage() {
         <title>Generate Payroll - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={() => {}} />
         <div className="flex-1 overflow-auto">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
@@ -166,7 +164,6 @@ function GeneratePayrollPage() {
                 icon={Users}
                 color="bg-blue-500"
                 bgColor="bg-white"
-                filter="all"
                 isActive={statusFilter === 'all'}
                 onClick={() => handleFilterChange('all')}
               />
@@ -176,7 +173,6 @@ function GeneratePayrollPage() {
                 icon={CheckCircle}
                 color="bg-green-500"
                 bgColor="bg-white"
-                filter="generated"
                 isActive={statusFilter === 'generated'}
                 onClick={() => handleFilterChange('generated')}
               />
@@ -186,7 +182,6 @@ function GeneratePayrollPage() {
                 icon={Clock}
                 color="bg-orange-500"
                 bgColor="bg-white"
-                filter="pending"
                 isActive={statusFilter === 'pending'}
                 onClick={() => handleFilterChange('pending')}
               />

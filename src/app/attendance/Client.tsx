@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import { Clock, Users, Search, Calendar, TrendingUp, Eye, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { useRouter } from "@/lib/compatRouter";
 import { formatDateTime } from "@/utils/dateTime";
@@ -85,10 +84,6 @@ function AttendanceList() {
     setCurrentPage(page);
   };
 
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
   const handleViewClick = (empid) => {
     router.push(`/attendance/${empid}`);
   };
@@ -109,7 +104,6 @@ function AttendanceList() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
@@ -126,7 +120,6 @@ function AttendanceList() {
         <title>HR Attendance - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} />
 
         <div className="flex-1 overflow-auto">
           {/* Header */}

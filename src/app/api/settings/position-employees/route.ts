@@ -1,30 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { parse } from "cookie";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-async function checkAuth(req: NextRequest) {
-  const cookieHeader = req.headers.get("cookie") || "";
-  const cookies = parse(cookieHeader);
-  const token = cookies.token || req.cookies.get("token")?.value;
-  const user = token ? getUserFromToken(token) : null;
-
-  if (!user) {
-    return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
-  }
-
-  const hasAccess = (await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_MANAGE)) || (await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_VIEW));
-  if (!hasAccess) {
-    return { error: NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 }) };
-  }
-
-  return { user };
-}
+import { checkAuth } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req);
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
+    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+  ]);
   if (auth.error) return auth.error;
 
   try {
@@ -74,7 +58,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const auth = await checkAuth(req);
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
+    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+  ]);
   if (auth.error) return auth.error;
   const user = auth.user;
 

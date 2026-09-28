@@ -7,8 +7,9 @@ import Head from "@/lib/compatHead";
 import { FiMail, FiLock } from "react-icons/fi";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import Image from 'next/image';
-import jwt from "jsonwebtoken";
 import Link from "next/link";
+import { useAppDispatch } from "@/store/hooks";
+import { loginSuccess } from "@/store/slices/authSlice";
 
 function Login() {
     const [email, setEmail] = useState("");
@@ -17,34 +18,43 @@ function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const dispatch = useAppDispatch();
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError("");
 
-        const res = await fetch("/api/auth/login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
-        });
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ email, password }),
+            });
 
-        const data = await res.json();
+            const data = await res.json();
 
-        if (res.ok) {
-            const token = data.token;
-            if (token) {
-                localStorage.setItem("token", token);
-                const decoded = jwt.decode(token);
-                if (decoded) localStorage.setItem("user", JSON.stringify(decoded));
-            } else if (data.user) {
-                localStorage.setItem("user", JSON.stringify(data.user));
+            if (!res.ok) {
+                setError(data.message || "Login failed");
+                setLoading(false);
+                return;
+            }
+
+            if (data.user) {
+                dispatch(loginSuccess({
+                    user: data.user,
+                    permissions: Array.isArray(data.permissions) ? data.permissions : data.user?.permissions ?? [],
+                }));
+                if (data.token) {
+                    localStorage.setItem("token", data.token);
+                }
             }
 
             router.push("/dashboard");
-            setLoading(false);
-        } else {
-            setError(data.message || "Login failed");
+        } catch (err) {
+            setError("Something went wrong while logging in.");
+        } finally {
             setLoading(false);
         }
     };

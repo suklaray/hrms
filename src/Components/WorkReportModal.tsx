@@ -1,44 +1,42 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchWorkReports, submitWorkReport } from '@/store/slices/workReportSlice';
 
-export default function WorkReportModal({ isOpen, onClose, onSubmit }: any) {
+export default function WorkReportModal({ isOpen, onClose }: any) {
+  const dispatch = useAppDispatch();
+  const reports = useAppSelector((state) => state.workReport.reports);
+  const loading = useAppSelector((state) => state.workReport.submitting);
   const [formData, setFormData] = useState<any>({
     tasks_completed: '',
     tasks_tomorrow: '',
     issues: ''
   });
-  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (isOpen) {
-      fetchTodayReport();
+      dispatch(fetchWorkReports());
     }
-  }, [isOpen]);
+  }, [dispatch, isOpen]);
 
-  const fetchTodayReport = async () => {
-    try {
-      const response = await fetch('/api/employee/work-report');
-      if (response.ok) {
-        const { reports } = await response.json();
-        const today = new Date().toDateString();
-        const todayReport = reports.find(report => 
-          new Date(report.report_date).toDateString() === today
-        );
-        
-        if (todayReport) {
-          setFormData({
-            tasks_completed: todayReport.tasks_completed,
-            tasks_tomorrow: todayReport.tasks_tomorrow,
-            issues: todayReport.issues || ''
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching today report:', error);
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const today = new Date().toDateString();
+    const todayReport = reports.find(
+      (report) => new Date(report.report_date).toDateString() === today
+    );
+
+    if (todayReport) {
+      setFormData({
+        tasks_completed: todayReport.tasks_completed,
+        tasks_tomorrow: todayReport.tasks_tomorrow,
+        issues: todayReport.issues || ''
+      });
     }
-  };
+  }, [isOpen, reports]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,30 +55,12 @@ export default function WorkReportModal({ isOpen, onClose, onSubmit }: any) {
       return;
     }
 
-    setLoading(true);
     try {
-      const response = await fetch('/api/employee/work-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        onSubmit(result);
-        onClose();
-        setFormData({ tasks_completed: '', tasks_tomorrow: '', issues: '' });
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to submit work report');
-      }
+      await dispatch(submitWorkReport(formData)).unwrap();
+      onClose();
+      setFormData({ tasks_completed: '', tasks_tomorrow: '', issues: '' });
     } catch (error) {
-      console.error('Error submitting work report:', error);
-      alert('Failed to submit work report');
-    } finally {
-      setLoading(false);
+      alert(String(error));
     }
   };
 

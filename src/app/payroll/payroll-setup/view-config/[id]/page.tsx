@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import Pageheader from '@/Components/PageHeader';
 import { useState, useEffect } from 'react';
 import { PayrollDetailsSkeleton } from '@/Components/Skeletons';
@@ -42,7 +41,6 @@ function ViewConfiguration() {
         <>
             <Head><title>{id} - Payroll configuration</title></Head>
             <div className="flex min-h-screen bg-gray-50">
-                <SideBar />
                 <div className="flex-1 overflow-auto p-6">
                     <Pageheader
                         title="View Payroll Configuration"

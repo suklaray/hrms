@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { useState, useEffect } from 'react';
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { ArrowLeft, Edit, CheckCircle, XCircle, Users } from 'lucide-react';
 
 
@@ -32,7 +31,6 @@ function ViewEmployeeType() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
         </div>
@@ -54,7 +52,6 @@ function ViewEmployeeType() {
     <>
       <Head><title>{role.name} - Employee Type</title></Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         <div className="flex-1 overflow-auto p-6">
           <div className="mx-auto">
 
