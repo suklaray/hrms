@@ -22,7 +22,7 @@ function EmployeeDetails({ user }) {
       const response = await fetch(`/api/hr/employee-details/${empid}`);
       if (response.ok) {
         const data = await response.json();
-        console.log("employee data:", data);
+        // console.log("employee data:", data);
         setEmployee(data.employee);
         setDocuments(data.employee.documents || {});
       }
