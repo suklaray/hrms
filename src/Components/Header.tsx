@@ -240,10 +240,8 @@ const Header = ({ user: propUser }: any = {}) => {
   }, [effectiveUser]);
 
   const handleLogout = async () => {
-    await dispatch(logoutUser());
+    await dispatch(logoutUser()).unwrap();
     setUser(null);
-    router.push("/");
-    router.refresh();
   };
 
   // notification function called on check-in - DISABLED FOR SSE

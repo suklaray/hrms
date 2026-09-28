@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Head from "@/lib/compatHead";
 import Pageheader from "@/Components/PageHeader";
-import SideBar from "@/Components/SideBar";
 import { TableSkeleton } from "@/Components/Skeletons";
 import StatusSelector from "@/Components/StatusSelector";
 import getMonthName from "@/lib/monthPicker";
@@ -168,7 +167,6 @@ const GetFinancialYears = () => {
             </Head>
 
             <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
-                <SideBar />
 
                 <div className="flex-1 overflow-auto p-4 lg:p-6">
                     {/* Header with Title and Create Action */}
