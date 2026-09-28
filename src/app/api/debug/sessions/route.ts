@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { debugSessions } from "@/lib/authMiddleware";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   
 
   try {
-    // Call debug function (will log to console)
-    debugSessions();
-    
     return NextResponse.json({ 
       message: "Session debug info logged to console",
       timestamp: new Date().toISOString()

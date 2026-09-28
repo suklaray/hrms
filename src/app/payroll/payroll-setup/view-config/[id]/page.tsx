@@ -8,7 +8,6 @@ import { useState, useEffect } from 'react';
 import { PayrollDetailsSkeleton } from '@/Components/Skeletons';
 import { getOrdinal } from '@/lib/getNumberordinal';
 import getMonthName from '@/lib/monthPicker';
-import getFinancialYear from '@/lib/financialYearCalculation';
 import formatDate from '@/lib/formatDate';
 import Link from 'next/link';
 import { PenIcon } from 'lucide-react';
@@ -447,7 +446,7 @@ function ViewConfiguration() {
                                                 </div>
 
                                                 <div className="px-3 py-2.5 text-[12px] text-[#222]">
-                                                    {getMonthName(data.financial_year_start_month)}
+                                                    {data?.financial_year?.start_date ? getMonthName(data?.financial_year?.start_date) : '-'}
                                                 </div>
                                             </div>
 
@@ -457,7 +456,7 @@ function ViewConfiguration() {
                                                 </div>
 
                                                 <div className="px-3 py-2.5 text-[12px] text-[#222]">
-                                                    {getMonthName(data.financial_year_end_month)}
+                                                    {data?.financial_year?.end_date ? getMonthName(data?.financial_year?.end_date) : '-'}
                                                 </div>
                                             </div>
 
@@ -467,7 +466,7 @@ function ViewConfiguration() {
                                                 </div>
 
                                                 <div className="px-3 py-2.5 text-[12px] text-[#222]">
-                                                    {data.financial_year_start_month && data.financial_year_end_month ? getFinancialYear(data.financial_year_start_month, data.financial_year_end_month) : '-'}
+                                                    {data?.financial_year?.name}
                                                 </div>
                                             </div>
 
@@ -577,9 +576,9 @@ function ViewConfiguration() {
 }
 
 export default function PageWrapper(props: any) {
-  return (
-    <Suspense fallback={null}>
-      <ViewConfiguration {...props} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={null}>
+            <ViewConfiguration {...props} />
+        </Suspense>
+    );
 }

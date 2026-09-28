@@ -164,8 +164,9 @@ function PayrollForm() {
     }
   }, [empid, formData.month, formData.year]);
 
-  const calculateAmount = (percent) => {
-    return Math.round(((Number(formData.basic_salary) || 0) * percent) / 100 * 100) / 100;
+  const calculateAmount = (percent: number) => {
+    const basicSalary = Number(formData.basic_salary) || 0;
+    return Math.round((basicSalary * percent) / 100 * 100) / 100;
   };
   
   const handleChange = (e) => {
@@ -275,8 +276,10 @@ function PayrollForm() {
 
     const totalAllowances = hra + da + customAllowances;
     const totalDeductions = customDeductions + pf + ptax + esic;
+    const basicSalary = Number(formData.basic_salary) || 0;
+    const bonus = Number(formData.bonus) || 0;
 
-    return Math.round(((Number(formData.basic_salary) || 0) + totalAllowances + (Number(formData.bonus) || 0) - totalDeductions) * 100) / 100;
+    return Math.round((basicSalary + totalAllowances + bonus - totalDeductions) * 100) / 100;
   };
   const handleAmountChange = (type, key, value, index = null) => {
   const basicSalary = parseFloat(formData.basic_salary) || 0;

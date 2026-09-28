@@ -35,14 +35,27 @@ export async function GET(
         education_certificates: true,
         experience_certificate: true,
         profile_photo: true,
+        bank_details: {
+          select: {
+            checkbook_document: true,
+          },
+          take: 1,
+        },
       },
     });
 
-    if (!employee || !employee[type]) {
+    let docPath: string | null = null;
+
+    if (type === 'checkbook_document') {
+      docPath = employee?.bank_details?.[0]?.checkbook_document || null;
+    } else {
+      docPath = employee?.[type] || null;
+    }
+
+    if (!employee || !docPath) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
-    const docPath = employee[type];
     const documentPath = docPath.startsWith('/') ? docPath.substring(1) : docPath;
     const filePath = path.join(process.cwd(), 'public', documentPath);
     

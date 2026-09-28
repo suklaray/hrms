@@ -178,7 +178,7 @@ function ContactPage() {
                   <div className="group">
                     <textarea
                       name="message"
-                      rows="5"
+                      rows={5}
                       placeholder="Your Message *"
                       value={formData.message}
                       onChange={handleChange}

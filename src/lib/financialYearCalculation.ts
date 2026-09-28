@@ -1,4 +1,4 @@
-export default function getFinancialYear(startMonth, endMonth) {
+export default function getFinancialYear(startMonth: string, endMonth: string) {
     // Validate format: YYYY-MM
     const monthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
 

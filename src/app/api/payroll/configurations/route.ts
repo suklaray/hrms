@@ -17,10 +17,14 @@ export async function GET(req: NextRequest) {
   if (!hasAccess) return NextResponse.json({ success: false, message: 'Forbidden: insufficient permissions' }, { status: 403 });
 
   try {
-    const configurations = await prisma.payrollConfiguration.findMany({
+    const configurations = await prisma.payroll_configuration.findMany({
       include: {
         company: true,
+        financial_year: true
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     });
     return NextResponse.json({ success: true, data: configurations }, { status: 200 });
   } catch (error: any) {

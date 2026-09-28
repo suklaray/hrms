@@ -3,9 +3,11 @@ import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
+import crypto from "crypto";
 import { rateLimiter } from "@/lib/rateLimiter";
-import { createSession, SESSION_CONFIG } from "@/lib/authMiddleware";
+//import { createSession, SESSION_CONFIG } from "@/lib/authMiddleware";
 import { getUserPermissions, isSuperAdmin } from "@/lib/rbac";
+import { SESSION_TIMEOUT_MS, JWT_EXPIRY_MS } from "@/lib/sessionConfig";
 
 export async function POST(req: NextRequest) {
   const allow = rateLimiter()(req);
@@ -33,24 +35,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Invalid password" }, { status: 401 });
     }
 
-    // Check if user has submitted employee form
-    let hasFormSubmitted = false;
-    
-    // Check employees table for document submission using email
-    const employee = await prisma.employees.findUnique({
-      where: { email: user.email }
-    });
-    hasFormSubmitted = !!employee;
-    
-    // If not found in employees table and user came from candidate, check candidates table
+    const employee = await prisma.employees.findUnique({ where: { email: user.email } });
+    let hasFormSubmitted = !!employee;
+
     if (!hasFormSubmitted && user.candidate_id) {
       const candidate = await prisma.candidates.findUnique({
-        where: { candidate_id: user.candidate_id }
+        where: { candidate_id: user.candidate_id },
       });
       hasFormSubmitted = candidate?.form_submitted === true;
     }
-    
-    // Default hasFormSubmitted for staff users
+
     if (!hasFormSubmitted) {
       hasFormSubmitted = true;
     }
@@ -71,12 +65,18 @@ export async function POST(req: NextRequest) {
       permissions: Array.from(permissions),
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET!, { 
-      expiresIn: "12h"
-    });
+    const token = jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: "12h" });
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + SESSION_TIMEOUT_MS);
 
-    // Create server-side session with user type
-    createSession(user.id, user.role === 'employee' ? 'employee' : 'admin');
+    await prisma.session.create({
+      data: {
+        sessionToken,
+        userId: user.id,
+        expiresAt,
+        lastActivity: new Date(),
+      },
+    });
 
     const response = NextResponse.json({
       message: "Login successful",
@@ -86,13 +86,23 @@ export async function POST(req: NextRequest) {
       isSuperAdmin: isSuper,
     }, { status: 200 });
 
-    response.headers.set("Set-Cookie", cookie.serialize("token", token, {
+    response.cookies.set("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: SESSION_CONFIG.JWT_EXPIRY / 1000,
+      maxAge: Math.floor(JWT_EXPIRY_MS / 1000),
       path: "/",
-    }));
+    });
+
+    // sessionToken cookie lives as long as the JWT (12h).
+    // DB expiresAt is the sole truth for idle expiry — not the cookie maxAge.
+    response.cookies.set("sessionToken", sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: Math.floor(JWT_EXPIRY_MS / 1000),
+      path: "/",
+    });
 
     return response;
   } catch (error: any) {

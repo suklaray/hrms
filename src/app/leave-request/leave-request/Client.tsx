@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
+import SideBar from "@/Components/SideBar";
 import { Calendar, Clock, FileText, Plus, Eye, AlertCircle, CheckCircle, XCircle, X } from "lucide-react";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { toast } from "react-toastify";
@@ -106,8 +107,8 @@ const fileInputRef = useRef(null);
     }
     
     // File validation
-    if (formData.attachment instanceof File) {
-      const file = formData.attachment;
+    if (formData.attachment && typeof formData.attachment === 'object' && !(formData.attachment instanceof String)) {
+      const file = formData.attachment as File;
       const maxSize = 5 * 1024 * 1024; // 5MB
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'];
       
@@ -140,15 +141,18 @@ const fileInputRef = useRef(null);
     let attachmentData = "";
     
     // Convert file to base64 if attachment exists
-    if (formData.attachment instanceof File) {
-      const attachment = formData.attachment as File;
+    if (formData.attachment && typeof formData.attachment === 'object' && !(formData.attachment instanceof String)) {
+      const file = formData.attachment as File;
       const reader = new FileReader();
       attachmentData = await new Promise<string>((resolve) => {
-        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-        reader.readAsDataURL(attachment);
+        reader.onload = (event) => {
+          const result = event.target?.result;
+          resolve(typeof result === 'string' ? result : '');
+        };
+        reader.readAsDataURL(file);
       });
     } else {
-      attachmentData = formData.attachment || "";
+      attachmentData = typeof formData.attachment === 'string' ? formData.attachment : "";
     }
 
     const response = await fetch("/api/leave-records/leave-request", {
@@ -209,7 +213,9 @@ const fetchLeaveTypes = async () => {
       const toDate = new Date(formData.to_date);
       
       if (toDate >= fromDate) {
-        const days = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        const fromTime = fromDate.getTime();
+        const toTime = toDate.getTime();
+        const days = Math.ceil((toTime - fromTime) / (1000 * 60 * 60 * 24)) + 1;
         setDayCount(days);
       } else {
         setDayCount(0);
@@ -266,7 +272,7 @@ const submitCancellation = async () => {
   setCancellingLeave(pendingLeaveId);
 
   try {
-    const response = await fetch('/api/hr/cancel-leave', {
+    const response = await fetch('/api/leave/cancel', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -278,7 +284,10 @@ const submitCancellation = async () => {
       })
     });
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type') || '';
+    const data = contentType.includes('application/json')
+      ? await response.json()
+      : { message: await response.text() || 'Failed to cancel leave request' };
 
     if (response.ok) {
       toast.success('Leave request cancelled successfully!');
@@ -304,6 +313,7 @@ const submitCancellation = async () => {
         <title>Leave Request - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
+        <SideBar />
         <div className="flex-1 overflow-auto">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -490,9 +500,9 @@ const submitCancellation = async () => {
   name="attachment"
   ref={fileInputRef}
   onChange={(e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
-      setFormData({ ...formData, attachment: file });
+      setFormData((prev) => ({ ...prev, attachment: file }));
       if (errors.attachment) {
         setErrors({ ...errors, attachment: "" });
       }
@@ -510,7 +520,7 @@ const submitCancellation = async () => {
                             {errors.attachment}
                           </p>
                         )}
-                        {formData.attachment instanceof File && (
+                        {formData.attachment && typeof formData.attachment !== 'string' && (
                           <div className="mt-2 p-2 bg-gray-50 rounded-lg">
                             <p className="text-sm text-gray-600">Selected: {formData.attachment.name}</p>
                           </div>
@@ -576,7 +586,7 @@ const submitCancellation = async () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                      className="w-full md:w-auto px-8 py-3 bg-linear-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                     >
                       {loading ? "Submitting..." : "Submit Leave Request"}
                     </button>

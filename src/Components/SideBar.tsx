@@ -15,6 +15,10 @@ import {
   X,
   Settings,
   LogOut,
+  ListChecks,
+  UserCog,
+  Banknote,
+  Calendar
 } from "lucide-react";
 
 // ─── Component ────────────────────────────────────────────────────────────────

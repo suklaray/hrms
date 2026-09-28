@@ -29,6 +29,10 @@ uploads/
 .DS_Store
 *.pem
 
+# uploads
+/public/uploads/*
+!public/uploads/.gitkeep
+
 # debug
 npm-debug.log*
 yarn-debug.log*

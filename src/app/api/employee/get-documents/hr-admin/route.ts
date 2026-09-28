@@ -1,9 +1,9 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
+import { DecodedToken } from "@/types";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
-  
 
   try {
     const token = req.cookies.get('token')?.value;
@@ -17,8 +17,8 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     }
 
     const employee = await prisma.employees.findFirst({
-      where: { 
-        email: decoded.email as string 
+      where: {
+        email: decoded.email as string
       },
       select: {
         contact_no: true,
@@ -91,17 +91,17 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     };
 
     // Check if any document fields exist
-    const hasDocuments = flattenedData.contact_no || flattenedData.dob || flattenedData.aadhar_card || 
-                        flattenedData.pan_card || flattenedData.education_certificates || 
-                        flattenedData.resume || flattenedData.profile_photo || flattenedData.bank_details;
+    const hasDocuments = flattenedData.contact_no || flattenedData.dob || flattenedData.aadhar_card ||
+      flattenedData.pan_card || flattenedData.education_certificates ||
+      flattenedData.resume || flattenedData.profile_photo || flattenedData.bank_details;
 
     if (!hasDocuments) {
       return NextResponse.json({ exists: false }, { status: 200 });
     }
 
-    return NextResponse.json({ 
-      exists: true, 
-      data: flattenedData 
+    return NextResponse.json({
+      exists: true,
+      data: flattenedData
     }, { status: 200 });
 
   } catch (error) {

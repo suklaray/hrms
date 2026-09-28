@@ -44,8 +44,12 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     let totalEmployees = await prisma.users.count({
       where: {
         status: { not: 'Inactive' },
-        ...(accessibleRoles && accessibleRoles.length > 0 ? { role: { in: accessibleRoles } } : {})
-      }
+        ...(accessibleRoles && accessibleRoles.length > 0 ? {
+          rbacRole: {
+            name: { in: accessibleRoles },
+          },
+        } : {}),
+      },
     });
     if (totalEmployees === 0) {
       totalEmployees = await prisma.users.count({
