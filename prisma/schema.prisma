@@ -28,6 +28,10 @@ model company {
 
   payroll_configurations payroll_configuration[]
   financial_years        financial_year[]
+  salary_structures      salary_structure[]
+  employees              users[]
+  salary_components      salary_component[]
+  payroll                payroll[]
 
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -402,41 +406,45 @@ model attendance_regularization {
 }
 
 model users {
-  id                        Int                              @id @default(autoincrement())
-  empid                     String                           @unique
-  name                      String
-  email                     String                           @unique
-  contact_number            String?
-  password                  String
-  position                  String?
-  date_of_joining           DateTime?
-  status                    String?                          @default("Active")
-  experience                Int?
-  profile_photo             String?
-  created_at                DateTime?                        @default(now())
-  roleId                    Int?
-  role                      users_role                       @default(employee)
-  verified                  users_verified?                  @default(not_verified)
-  form_submitted            Boolean                          @default(false)
-  resetToken                String?
-  resetTokenExpiry          DateTime?                        @db.Timestamp(6)
-  employee_type             employees_employee_type?         @default(Full_time)
-  candidate_id              String?
-  duration_months           Int?
-  rbacRole                  Role?                            @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  leave_balances            leave_balances[]
-  leave_requests            leave_requests[]
-  payroll                   payroll[]
-  createdTasks              tasks[]                          @relation("TaskCreator")
-  assignedTasks             tasks[]                          @relation("TaskAssignee")
-  positions                 positions[]
-  daily_work_reports        daily_work_reports[]
-  resubmissionRequests      document_resubmission_requests[] @relation("ResubmissionEmployee")
-  requestedResubmissions    document_resubmission_requests[] @relation("ResubmissionRequestor")
-  attendance_regularization attendance_regularization[]
-  sessions session[]
+  id                         Int                              @id @default(autoincrement())
+  empid                      String                           @unique
+  name                       String
+  email                      String                           @unique
+  contact_number             String?
+  password                   String
+  position                   String?
+  date_of_joining            DateTime?
+  status                     String?                          @default("Active")
+  experience                 Int?
+  profile_photo              String?
+  created_at                 DateTime?                        @default(now())
+  roleId                     Int?
+  role                       users_role                       @default(employee)
+  verified                   users_verified?                  @default(not_verified)
+  form_submitted             Boolean                          @default(false)
+  resetToken                 String?
+  resetTokenExpiry           DateTime?                        @db.Timestamp(6)
+  employee_type              employees_employee_type?         @default(Full_time)
+  candidate_id               String?
+  duration_months            Int?
+  company_id                 String?
+  company                    company?                         @relation(fields: [company_id], references: [uid], onDelete: SetNull)
+  rbacRole                   Role?                            @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  leave_balances             leave_balances[]
+  leave_requests             leave_requests[]
+  payroll                    payroll[]
+  employee_salary_structures employee_salary_structure[]
+  createdTasks               tasks[]                          @relation("TaskCreator")
+  assignedTasks              tasks[]                          @relation("TaskAssignee")
+  positions                  positions[]
+  daily_work_reports         daily_work_reports[]
+  resubmissionRequests       document_resubmission_requests[] @relation("ResubmissionEmployee")
+  requestedResubmissions     document_resubmission_requests[] @relation("ResubmissionRequestor")
+  attendance_regularization  attendance_regularization[]
+  sessions                   session[]
 
   @@index([roleId])
+  @@index([company_id])
 }
 
 model session {
@@ -472,9 +480,12 @@ model payroll {
   esic              Decimal?        @default(0.00)
   allowance_details String?
   deduction_details String?
+  company_id        String?
+  company           company?        @relation(fields: [company_id], references: [uid], onDelete: SetNull)
   users             users?          @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([empid])
+  @@index([company_id])
 }
 
 enum payslip_status {
@@ -703,4 +714,151 @@ enum employees_employee_type {
   Full_time  @map("Full-time")
   Intern
   Contractor
+}
+
+enum SalaryComponentType {
+  EARNING
+  DEDUCTION
+}
+
+enum SalaryCalculationType {
+  FIXED
+  PERCENTAGE
+  FORMULA
+}
+
+model salary_component {
+  id  Int    @id @default(autoincrement())
+  uid String @unique @default(cuid())
+
+  company_id String
+  company    company @relation(fields: [company_id], references: [uid], onDelete: Cascade)
+
+  name             String
+  code             String
+  type             SalaryComponentType
+  calculation_type SalaryCalculationType
+
+  is_taxable   Boolean @default(false)
+  is_statutory Boolean @default(false)
+  is_active    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  structureComponents     employee_salary_structure_component[] @relation("StructureComponent")
+  baseStructureComponents employee_salary_structure_component[] @relation("BaseComponent")
+  employeeComponents      employee_salary_component[]
+
+  @@unique([company_id, code])
+  @@index([company_id])
+}
+
+enum SalaryStructureStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model salary_structure {
+  id  Int    @id @default(autoincrement())
+  uid String @unique @default(cuid())
+
+  company_id String
+  company    company @relation(fields: [company_id], references: [uid], onDelete: Cascade)
+
+  name        String
+  code        String
+  description String?
+
+  status SalaryStructureStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  components               employee_salary_structure_component[]
+  employeeSalaryStructures employee_salary_structure[]
+
+  @@unique([company_id, code])
+  @@index([company_id])
+}
+
+model employee_salary_structure_component {
+  id  Int    @id @default(autoincrement())
+  uid String @unique @default(cuid())
+
+  salary_structure_id Int
+  salaryStructure     salary_structure @relation(fields: [salary_structure_id], references: [id], onDelete: Cascade)
+
+  salary_component_id Int
+  salaryComponent     salary_component @relation("StructureComponent", fields: [salary_component_id], references: [id], onDelete: Restrict)
+
+  calculation_type SalaryCalculationType
+  value            Decimal               @db.Decimal(12, 2)
+
+  base_component_id Int?
+  baseComponent     salary_component? @relation("BaseComponent", fields: [base_component_id], references: [id], onDelete: Restrict)
+
+  sequence Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([salary_structure_id, salary_component_id])
+  @@index([salary_structure_id])
+  @@index([salary_component_id])
+  @@index([base_component_id])
+}
+
+enum EmployeeSalaryStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+model employee_salary_structure {
+  id  Int    @id @default(autoincrement())
+  uid String @unique @default(cuid())
+
+  employee_id String
+  employee    users  @relation(fields: [employee_id], references: [empid], onDelete: Cascade)
+
+  salary_structure_id Int?
+  salaryStructure     salary_structure? @relation(fields: [salary_structure_id], references: [id], onDelete: Restrict)
+
+  effective_from DateTime  @db.Date
+  effective_to   DateTime? @db.Date
+
+  status EmployeeSalaryStatus @default(ACTIVE)
+
+  remarks String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  components employee_salary_component[]
+
+  @@index([employee_id])
+  @@index([salary_structure_id])
+  @@index([effective_from])
+  @@index([effective_to])
+}
+
+model employee_salary_component {
+  id  Int    @id @default(autoincrement())
+  uid String @unique @default(cuid())
+
+  employee_salary_structure_id Int
+  employeeSalaryStructure      employee_salary_structure @relation(fields: [employee_salary_structure_id], references: [id], onDelete: Cascade)
+
+  salary_component_id Int
+  salaryComponent     salary_component @relation(fields: [salary_component_id], references: [id], onDelete: Restrict)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employee_salary_structure_id, salary_component_id])
+  @@index([employee_salary_structure_id])
+  @@index([salary_component_id])
 }
