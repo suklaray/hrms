@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
+import { StoreProvider } from "@/store/Provider";
 
 export const metadata: Metadata = {
   title: "HRMS Portal",
@@ -16,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        <Suspense fallback={null}>
-          <ClientLayout>{children}</ClientLayout>
-        </Suspense>
+        <StoreProvider>
+          <Suspense fallback={null}>
+            <ClientLayout>{children}</ClientLayout>
+          </Suspense>
+        </StoreProvider>
       </body>
     </html>
   );

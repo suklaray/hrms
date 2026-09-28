@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense } from "react";
-import SideBar from "@/Components/SideBar";
 import ProfileSection from "@/Components/ProfileSection";
 import CalendarSection from "@/Components/CalendarSection";
 import RegularizationCard from "@/Components/RegularizationCard";
@@ -202,7 +201,6 @@ function Dashboard({ user, permissions = [] }) {
     <>
       <Head><title>Dashboard - HRMS</title></Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar user={user} />
         <div className="flex-1 overflow-auto">
           {hasManagementPermissions ? (
             <HRDashboardView user={user} permissions={permissions} />

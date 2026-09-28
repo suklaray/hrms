@@ -3,7 +3,6 @@
 import { Suspense } from "react";
 import { useState, useEffect } from 'react';
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import Link from 'next/link';
 import { FaCalendarPlus, FaArrowLeft } from 'react-icons/fa';
 import { getUserFromToken } from "@/lib/getUserFromToken";
@@ -291,7 +290,6 @@ function AddEvent() {
         <title>Add Event - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar />
         
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">

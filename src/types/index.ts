@@ -11,6 +11,8 @@ export interface AuthUser {
   form_submitted?: boolean;
   profile_photo?: string | null;
   position?: string | null;
+  isSuperAdmin?: boolean;
+  permissions?: string[];
   rbacRole?: {
     id: number;
     name: string;

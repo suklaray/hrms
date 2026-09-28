@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import Breadcrumb from "@/Components/Breadcrumb";
 import { format } from 'date-fns';
 import { 
@@ -59,7 +58,6 @@ function CandidateDetails() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <SideBar />
         <div className="flex-1 p-6 lg:p-10">
           <Breadcrumb items={[
             { label: 'Recruitment', href: '/Recruitment/recruitment' },
@@ -114,7 +112,6 @@ function CandidateDetails() {
         <title>Candidate Profile - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-        <SideBar />
       <div className="flex-1 p-6 lg:p-10">
         <Breadcrumb items={[
           { label: 'Recruitment', href: '/Recruitment/recruitment' },

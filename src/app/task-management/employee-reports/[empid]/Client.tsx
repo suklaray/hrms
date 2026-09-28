@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { useState, useEffect } from 'react';
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { ArrowLeft, Calendar, Search, FileText } from 'lucide-react';
 import { formatDate, formatTimeWithSeconds } from '@/utils/dateTime';
 import { getUserFromToken } from '@/lib/getUserFromToken';
@@ -136,7 +135,6 @@ function EmployeeReports() {
       </Head>
 
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} user={user} />
 
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b px-6 py-4">

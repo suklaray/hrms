@@ -4,7 +4,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIdleTimer } from "react-idle-timer";
 import { ACTIVITY_SYNC_INTERVAL_MS, IDLE_TIMEOUT_MS, PROMPT_BEFORE_MS } from "@/lib/sessionConfig";
-
+import { useAppDispatch } from '@/store/hooks';
+import { logoutUser } from '@/store/slices/authSlice';
 const PUBLIC_PATHS = [
   "/",
   "/login",
@@ -59,14 +60,12 @@ const AutoLogoutTimer = () => {
       return -1;
     }
   }, []);
-
+  const dispatch = useAppDispatch();
   const doLogout = useCallback(async () => {
     if (logoutRequestedRef.current) return;
     logoutRequestedRef.current = true;
     stopCountdown();
-    try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } catch {}
+    await dispatch(logoutUser()).unwrap();
     router.replace("/login");
   }, [router, stopCountdown]);
 

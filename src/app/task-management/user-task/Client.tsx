@@ -5,10 +5,11 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from '@/Components/SideBar';
 import { getUserFromToken } from '@/lib/getUserFromToken';
 import { checkPermission } from '@/lib/rbac';
 import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchWorkReports } from '@/store/slices/workReportSlice';
 
 
 import WorkReportModal from '@/Components/WorkReportModal';
@@ -17,6 +18,9 @@ import { formatDateTime } from '@/utils/dateTime';
 
 function UserTasks({ permissions }) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const workReports = useAppSelector((state) => state.workReport.reports);
+  const leaves = useAppSelector((state) => state.workReport.leaves);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -26,8 +30,6 @@ function UserTasks({ permissions }) {
   const [dateFilter, setDateFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(() => permissions.tasks ? 'tasks' : 'reports');
-  const [workReports, setWorkReports] = useState([]);
-  const [leaves, setLeaves] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filteredReports, setFilteredReports] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0, overdue: 0 });
@@ -46,6 +48,11 @@ function UserTasks({ permissions }) {
   }, [tasks]);
 
   useEffect(() => { fetchUserAndTasks(); }, []);
+  useEffect(() => {
+    if (permissions.report) {
+      dispatch(fetchWorkReports());
+    }
+  }, [dispatch, permissions.report]);
   useEffect(() => { calculateStats(); }, [tasks, calculateStats]);
   useEffect(() => {
     if (workReports.length > 0) {
@@ -62,7 +69,6 @@ function UserTasks({ permissions }) {
     try {
       const fetches = [fetch('/api/auth/me')];
       if (permissions.tasks) fetches.push(fetch('/api/task-management/user-task'));
-      if (permissions.report) fetches.push(fetch('/api/employee/work-report'));
 
       const results = await Promise.all(fetches);
       let idx = 0;
@@ -71,14 +77,6 @@ function UserTasks({ permissions }) {
       if (permissions.tasks) {
         const data = await results[idx++].json();
         setTasks(data.tasks || []);
-      }
-      if (permissions.report) {
-        const reportsRes = results[idx++];
-        if (reportsRes.ok) {
-          const reportsData = await reportsRes.json();
-          setWorkReports(reportsData.reports || []);
-          setLeaves(reportsData.leaves || []);
-        }
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -190,7 +188,6 @@ function UserTasks({ permissions }) {
     <>
       <Head><title>My Tasks - HRMS</title></Head>
       <div className="flex min-h-screen bg-gray-50">
-        <SideBar user={user} />
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-6 py-4">
             <div className="flex justify-between items-center">
@@ -422,7 +419,7 @@ function UserTasks({ permissions }) {
         </div>
       </div>
 
-      <WorkReportModal isOpen={showWorkReportModal} onClose={() => setShowWorkReportModal(false)} onSubmit={() => fetchUserAndTasks()} />
+      <WorkReportModal isOpen={showWorkReportModal} onClose={() => setShowWorkReportModal(false)} />
 
       {showDescriptionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

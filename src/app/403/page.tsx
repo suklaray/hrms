@@ -4,9 +4,12 @@ import { Suspense } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import { ShieldX, ArrowLeft, Home, LogOut } from "lucide-react";
+import { useAppDispatch } from "@/store/hooks";
+import { logoutUser } from "@/store/slices/authSlice";
 
 function ForbiddenPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
 
   const handleGoBack = () => {
     if (window.history.length > 1) {
@@ -17,16 +20,8 @@ function ForbiddenPage() {
   };
 
   const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      router.push("/login");
-    }
+    void dispatch(logoutUser());
+    router.push("/login");
   };
 
   return (

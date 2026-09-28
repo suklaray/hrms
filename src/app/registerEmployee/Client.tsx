@@ -3,7 +3,6 @@
 import { Suspense, useState, useEffect } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import SideBar from "@/Components/SideBar";
 import Pageheader from "@/Components/PageHeader";
 import {
   Search,
@@ -20,8 +19,11 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { useAppDispatch } from "@/store/hooks";
+import { logoutUser } from "@/store/slices/authSlice";
 
 function RegisterEmployee() {
+    const dispatch = useAppDispatch();
   const router = useRouter();
 
   const [formData, setFormData] = useState({
@@ -520,22 +522,56 @@ function RegisterEmployee() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/auth/logout");
-      router.push("/login");
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+    const handleLogout = async () => {
+        await dispatch(logoutUser());
+        router.push("/login");
+    };
 
-  return (
-    <>
-      <Head>
-        <title>Register Employee - HRMS</title>
-      </Head>
-      <div className="flex min-h-screen bg-gray-50">
-        <SideBar handleLogout={handleLogout} />
+    const InputField = ({ icon: Icon, label, type = "text", field, placeholder, error }) => (
+        <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Icon className="w-4 h-4 text-blue-600" />
+                {label}
+            </label>
+            <input
+                type={type}
+                value={formData[field]}
+                onChange={(e) => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
+                placeholder={placeholder}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+    );
+
+    const SelectField = ({ icon: Icon, label, field, options, error, placeholder }) => (
+        <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                <Icon className="w-4 h-4 text-blue-600" />
+                {label}
+            </label>
+            <select
+                value={formData[field]}
+                onChange={(e) => setFormData(prev => ({ ...prev, [field]: e.target.value }))}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white ${error ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
+            >
+                <option value="">{placeholder}</option>
+                {options.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+            </select>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+    );
+
+    return (
+        <>
+            <Head>
+                <title>Register Employee - HRMS</title>
+            </Head>
+            <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
 
         <div className="flex-1 overflow-auto p-4 lg:p-6">
           <Pageheader
