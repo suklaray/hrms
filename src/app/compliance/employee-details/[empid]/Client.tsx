@@ -6,12 +6,8 @@ import Head from "@/lib/compatHead";
 import SideBar from '@/Components/SideBar';
 import { useRouter } from "@/lib/compatRouter";
 import { 
-  FileText, ArrowLeft, Eye, Calendar, Users
+  FileText, ArrowLeft, Eye, Calendar, Users ,PiggyBank
 } from 'lucide-react';
-import { getUserFromToken } from '@/lib/getUserFromToken';
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
 
 
 function EmployeeDetails({ user }) {
@@ -26,6 +22,7 @@ function EmployeeDetails({ user }) {
       const response = await fetch(`/api/hr/employee-details/${empid}`);
       if (response.ok) {
         const data = await response.json();
+        console.log("employee data:", data);
         setEmployee(data.employee);
         setDocuments(data.employee.documents || {});
       }
@@ -55,7 +52,8 @@ function EmployeeDetails({ user }) {
     { key: 'aadhar_card', label: 'Aadhaar Card', icon: FileText },
     { key: 'pan_card', label: 'PAN Card', icon: FileText },
     { key: 'education_certificates', label: 'Education Certificates', icon: FileText },
-    { key: 'experience_certificate', label: 'Experience Certificate', icon: FileText }
+    { key: 'experience_certificate', label: 'Experience Certificate', icon: FileText },
+    { key: 'bank_details', label: 'Bank Passbook', icon: PiggyBank }
   ];
 
   if (loading) {
@@ -136,7 +134,7 @@ function EmployeeDetails({ user }) {
                     {employee.status || 'Active'}
                   </span>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium border border-blue-200">
-                    {employee.role?.toUpperCase()}
+                    {employee.rbacRole?.name.toUpperCase()}
                   </span>
                 </div>
               </div>

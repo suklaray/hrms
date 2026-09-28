@@ -6,50 +6,63 @@ import Head from "@/lib/compatHead";
 import SideBar from '@/Components/SideBar';
 import { useRouter } from "@/lib/compatRouter";
 import { FileText, XCircle, Eye, Calendar, Users, Search } from 'lucide-react';
-import { getUserFromToken } from '@/lib/getUserFromToken';
-
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-
-
+function getRoleBadge(roleName?: string | null) {
+  const role = (roleName || "").toLowerCase();
+  if (role.includes("super")) return "bg-amber-50 text-amber-700 border-amber-200";
+  if (role.includes("admin")) return "bg-purple-50 text-purple-700 border-purple-200";
+  if (role.includes("hr")) return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (role.includes("recruit")) return "bg-orange-50 text-orange-700 border-orange-200";
+  return "bg-blue-50 text-blue-700 border-blue-200";
+}
 function DocumentCenter({ user }) {
   const router = useRouter();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [availableRoles, setAvailableRoles] = useState<{ id: number; name: string }[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
   useEffect(() => {
-    fetchEmployees();
+    let cancelled = false;
+
+    const fetchAll = async () => {
+      try {
+        const [empRes, rolesRes] = await Promise.all([
+          fetch('/api/hr/document-center-users', { credentials: 'include' }),
+          fetch('/api/settings/employee-types', { credentials: 'include' }),
+        ]);
+
+        if (empRes.ok) {
+          const data = await empRes.json();
+          if (!cancelled) setEmployees(data.users || []);
+        } else {
+          const empResponse = await fetch('/api/hr/employees', { credentials: 'include' });
+          if (empResponse.ok) {
+            const empData = await empResponse.json();
+            if (!cancelled) setEmployees(empData.employees || []);
+          }
+        }
+
+        if (rolesRes.ok) {
+          const { assignableRoles } = await rolesRes.json();
+          if (!cancelled) setAvailableRoles(assignableRoles ?? []);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchAll();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     setCurrentPage(1);
-    }, [searchTerm, roleFilter]);
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch('/api/hr/document-center-users');
-      if (response.ok) {
-        const data = await response.json();
-        setEmployees(data.users || []);
-      } else {
-        // Fallback to employees API
-        const empResponse = await fetch('/api/hr/employees');
-        if (empResponse.ok) {
-          const empData = await empResponse.json();
-          setEmployees(empData.employees || []);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [searchTerm, roleFilter]);
 
   const handleLogout = () => {
     router.push("/login");
@@ -63,14 +76,14 @@ function DocumentCenter({ user }) {
     const matchesSearch = emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          emp.empid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          emp.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || emp.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || emp.rbacRoleName?.toLowerCase() === roleFilter.toLowerCase();
     return matchesSearch && matchesRole;
   });
   const totalItems = filteredEmployees.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
-
+  
   return (
     <>
       <Head>
@@ -124,9 +137,9 @@ function DocumentCenter({ user }) {
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="all">All Roles</option>
-                    <option value="hr">HR</option>
-                    <option value="admin">Admin</option>
-                    <option value="employee">Employee</option>
+                    {availableRoles.map((r) => (
+                      <option key={r.id} value={r.name}>{r.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -179,12 +192,10 @@ function DocumentCenter({ user }) {
                             {emp.position || 'Not specified'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                              emp.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                              emp.role === 'hr' ? 'bg-blue-100 text-blue-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {emp.role?.toUpperCase()}
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadge(
+                              emp.rbacRole?.name
+                            )}`}>
+                              {emp.rbacRoleName?.toUpperCase()}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
