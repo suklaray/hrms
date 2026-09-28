@@ -258,7 +258,7 @@ function TaskManagement({ permissions }) {
                               >
                                 <div className="font-medium text-gray-900">{emp.name}</div>
                                 <div className="text-sm text-gray-500">
-                                  {emp.email} • {emp.empid} • {emp.role}
+                                  {emp.email} • {emp.empid} • {emp.rbacRole?.name}
                                 </div>
                               </div>
                             ))}
@@ -409,7 +409,7 @@ function TaskManagement({ permissions }) {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 capitalize">
-                                    {employee.role}
+                                    {employee.rbacRole?.name}
                                   </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
