@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import prisma from "@/lib/prisma";
-import { checkPermission } from "@/lib/rbac";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { getAssignableRolesForUser } from "@/lib/rbac";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   
@@ -20,14 +21,19 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       return NextResponse.json({ message: 'Unauthorized: insufficient permissions' }, { status: 403 });
     }
 
+    // Build role filter: superadmin sees all, others filter by accessible roleIds
+    let roleFilter: any = { status: { not: "Inactive" } };
+    if (!isSuperAdmin(decoded)) {
+      const assignableRoles = await getAssignableRolesForUser(decoded);
+      const accessibleRoleIds = assignableRoles.map((r: any) => r.id);
+      roleFilter = { status: { not: "Inactive" }, roleId: { in: accessibleRoleIds } };
+    }
+
     const users = await prisma.users.findMany({
-      where: {
-        status: { not: "Inactive" }
-      }
+      where: roleFilter,
+      include: { rbacRole: { select: { name: true } } },
     });
 
-    console.log('Users found:', users.length);
-    console.log('User roles found:', users.map(u => ({ empid: u.empid, role: u.role })));
 
     const employees = await prisma.employees.findMany({
       include: {
@@ -83,6 +89,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         email: u.email,
         position: u.position || "—",
         role: u.role,
+        rbacRoleName: u.rbacRole?.name ?? null,
         employee_type: u.employee_type,
         duration_months: u.duration_months,
         status,
@@ -129,7 +136,6 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     });
 
     console.log('Final result count:', result.length);
-    console.log('Final result roles:', result.map(r => ({ empid: r.empid, role: r.role })));
 
     return NextResponse.json(result, { status: 200 });
   } catch (err) {

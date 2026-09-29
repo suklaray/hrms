@@ -265,7 +265,7 @@ function EmployeeTasks({ canDelete, canEdit }) {
                             );
                           })()} 
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{task.creator_name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{task.creator?.name}</td>
                       </tr>
                     ))
                   )}

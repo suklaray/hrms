@@ -36,17 +36,16 @@ export async function GET(
         experience_certificate: true,
         profile_photo: true,
         bank_details: {
-          select: {
-            checkbook_document: true,
-          },
+          select: { checkbook_document: true },
+          orderBy: { id: 'desc' },
           take: 1,
         },
       },
     });
-
+    console.log("Employee:",employee);
     let docPath: string | null = null;
 
-    if (type === 'checkbook_document') {
+    if (type === 'bank_details' || type==="checkbook_document") {
       docPath = employee?.bank_details?.[0]?.checkbook_document || null;
     } else {
       docPath = employee?.[type] || null;
@@ -58,7 +57,11 @@ export async function GET(
 
     const documentPath = docPath.startsWith('/') ? docPath.substring(1) : docPath;
     const filePath = path.join(process.cwd(), 'public', documentPath);
-    
+    console.log("process.cwd():", process.cwd());
+console.log("docPath:", docPath);
+console.log("documentPath:", documentPath);
+console.log("filePath:", filePath);
+console.log("File exists:", fs.existsSync(filePath));
     if (!fs.existsSync(filePath)) {
       return NextResponse.json({ error: 'File not found on server' }, { status: 404 });
     }

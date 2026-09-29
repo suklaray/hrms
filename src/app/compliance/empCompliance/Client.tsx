@@ -5,12 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import { Eye, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, X, Filter, Users, Shield } from "lucide-react";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-
-
 function ComplianceDashboard() {
   const router = useRouter();
   const [employees, setEmployees] = useState([]);
@@ -21,56 +15,44 @@ function ComplianceDashboard() {
   const [interns, setInterns] = useState([]);
   const [contractual, setContractual] = useState([]);
   const [activeTab, setActiveTab] = useState('employees');
+  const [availableRoles, setAvailableRoles] = useState<{ id: number; name: string }[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [internCurrentPage, setInternCurrentPage] = useState(1);
   const [contractualCurrentPage, setContractualCurrentPage] = useState(1);
 
   useEffect(() => {
-    const fetchCompliance = async () => {
+    let cancelled = false;
+
+    const fetchAll = async () => {
       try {
-        const res = await fetch("/api/compliance/compliance", {
-          method: "GET",
-          credentials: "include",
-        });
+        const [compRes, rolesRes] = await Promise.all([
+          fetch("/api/compliance/compliance", { credentials: "include" }),
+          fetch("/api/settings/employee-types", { credentials: "include" }),
+        ]);
 
-        if (!res.ok) throw new Error("Unauthorized or fetch failed");
+        if (!compRes.ok) throw new Error("Unauthorized or fetch failed");
+        const data = await compRes.json();
+        if (rolesRes.ok) {
+          const { assignableRoles } = await rolesRes.json();
+          if (!cancelled) setAvailableRoles(assignableRoles ?? []);
+        }
 
-        const data = await res.json();
-        setEmployees(data);
-        setFiltered(data);
+        if (!cancelled) {
+          setEmployees(data);
+          setFiltered(data);
+          setInterns(data.filter((emp) => emp.employee_type === "Intern"));
+          setContractual(data.filter((emp) => emp.employee_type === "Contractor"));
+        }
       } catch (error) {
         console.error("Error fetching compliance data:", error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    const fetchContractual = async () => {
-      try {
-        const res = await fetch("/api/compliance/compliance");
-        const data = await res.json();
-        const contractualData = data.filter(emp => emp.employee_type === 'Contractor');
-        setContractual(contractualData);
-      } catch (error) {
-        console.error("Error fetching contractual employees:", error);
-      }
-    };
-
-    const fetchInterns = async () => {
-      try {
-        const res = await fetch("/api/compliance/compliance");
-        const data = await res.json();
-        const internData = data.filter(emp => emp.employee_type === 'Intern');
-        setInterns(internData);
-      } catch (error) {
-        console.error("Error fetching interns:", error);
-      }
-    };
-
-    fetchCompliance();
-    fetchInterns();
-    fetchContractual();
+    fetchAll();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -81,7 +63,7 @@ function ComplianceDashboard() {
     }
 
     if (roleFilter !== "All") {
-      data = data.filter((emp) => emp.role.toLowerCase() === roleFilter.toLowerCase());
+      data = data.filter((emp) => emp.rbacRoleName?.toLowerCase() === roleFilter.toLowerCase());
     }
 
     setFiltered(data.sort((a, b) => a.name.localeCompare(b.name)));
@@ -313,9 +295,9 @@ function ComplianceDashboard() {
                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="All">All Roles</option>
-                <option value="admin">Admin</option>
-                <option value="hr">HR</option>
-                <option value="employee">Employee</option>
+                {availableRoles.map((r) => (
+                  <option key={r.id} value={r.name}>{r.name}</option>
+                ))}
               </select>
 
               <div className="ml-auto text-sm text-gray-600">
@@ -352,7 +334,7 @@ function ComplianceDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{emp.position}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 capitalize">
-                          {emp.role}
+                          {emp.rbacRoleName?.toLowerCase()}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

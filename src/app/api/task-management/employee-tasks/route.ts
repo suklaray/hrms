@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from 'jsonwebtoken';
 import cookie from 'cookie';
 import prisma from '@/lib/prisma';
-import { checkPermission } from '@/lib/rbac';
+import { checkPermission, isSuperAdmin } from '@/lib/rbac';
 import { PERMISSION_KEYS } from '@/lib/rbacPermissions';
 import { getQueryParams } from '@/lib/routeHelper';
+import { getAccessibleRoles } from '@/lib/roleBasedAccess'; 
+async function getAllowedRoleNames(user: any): Promise<string[] | null> {
+  if (isSuperAdmin(user)) return null;
+  const roles = await getAccessibleRoles(user);
+  return roles && roles.length > 0 ? roles : null;
+}
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   try {
@@ -12,10 +18,16 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-
     const user = await prisma.users.findUnique({
       where: { empid: decoded.empid || decoded.id },
-      select: { empid: true, role: true }
+      select: {
+        empid: true,
+        role: true,
+        name: true,
+        rbacRole: {
+          select: { id: true, name: true, status: true },
+        },
+      },
     });
 
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -25,10 +37,34 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     // Must have task.view OR be viewing own tasks
     const canViewAll = await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW);
-    if (!canViewAll && user.empid !== employeeId) {
+    const isSelf = user.empid === employeeId;
+
+    if (!canViewAll && !isSelf) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
+    if (!isSelf) {
+      const allowedRoleNames = await getAllowedRoleNames(user);
+
+      // If not super admin, verify target employee is within hierarchy
+      if (allowedRoleNames) {
+        const targetEmployee = await prisma.users.findFirst({
+          where: {
+            empid: employeeId,
+            rbacRole: { name: { in: allowedRoleNames }, status: 'active' },
+          },
+          select: { empid: true },
+        });
+
+        if (!targetEmployee) {
+          return NextResponse.json(
+            { error: 'Employee not found or outside your hierarchy' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+    
     // Now get tasks for this employee
     const tasks = await prisma.tasks.findMany({
       where: { assigned_to: employeeId },
@@ -42,26 +78,14 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         priority: true,
         status: true,
         created_at: true,
-        updated_at: true
+        updated_at: true,
+        creator: {
+          select: { empid: true, name: true },
+        },
       },
       orderBy: { created_at: 'desc' }
     });
-
-    // Get creator names separately
-    const tasksWithCreator = await Promise.all(
-      tasks.map(async (task) => {
-        const creator = await prisma.users.findUnique({
-          where: { empid: task.assigned_by },
-          select: { name: true }
-        });
-        return {
-          ...task,
-          creator_name: creator?.name || 'Unknown'
-        };
-      })
-    );
-
-    return NextResponse.json({ tasks: tasksWithCreator }, { status: 200 });
+    return NextResponse.json({ tasks: tasks }, { status: 200 });
   } catch (error) {
     console.error('Employee tasks API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

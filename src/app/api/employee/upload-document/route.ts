@@ -49,10 +49,18 @@ export async function POST(req: NextRequest) {
         data: updateData
       });
     } else if (tableToUpdate.table === 'bank_details') {
-      await prisma.bank_details.updateMany({
-        where: { employee_id: userEmpid },
-        data: { [tableToUpdate.field]: filePath }
+      // bank_details.employee_id is the employees.empid (Int), not users.empid (String)
+      // Look up the employee record first to get the correct Int id
+      const emp = await prisma.employees.findFirst({
+        where: { main_employee_id: userEmpid },
+        select: { empid: true }
       });
+      if (emp) {
+        await prisma.bank_details.updateMany({
+          where: { employee_id: emp.empid },
+          data: { [tableToUpdate.field]: filePath }
+        });
+      }
     } else if (tableToUpdate.table === 'users') {
       await prisma.users.updateMany({
         where: { empid: userEmpid },
