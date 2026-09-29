@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     const currentUser = await prisma.users.findUnique({
       where: { empid: decoded.empid || decoded.id },
-      select: { empid: true, role: true }
+      select: { empid: true, role: true , rbacRole: { select: { id: true, name: true, status: true } } },
     });
 
     if (!currentUser) {
@@ -60,7 +60,8 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         name: true,
         email: true,
         role: true,
-        status: true
+        status: true,
+        rbacRole:{select: { id: true, name: true, status: true }}
       }
     });
 
@@ -128,12 +129,12 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
           }
         }
       });
-
       return {
         empid: user.empid,
         name: user.name,
         email: user.email,
         role: user.role,
+        rbacRole: user.rbacRole,
         last_login: firstCheckIn,
         today_checkout: lastCheckOut,
         current_session_checkin: currentSessionCheckIn, // NEW: Current open session
@@ -199,6 +200,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         name: user.name,
         email: user.email,
         role: user.role,
+        rbacRole: user.rbacRole, 
         last_login: user.last_login ? user.last_login.toISOString() : null,
         last_logout: user.today_checkout ? user.today_checkout.toISOString() : null,
         current_checkin: user.current_session_checkin ? user.current_session_checkin.toISOString() : null,
