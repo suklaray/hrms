@@ -10,7 +10,7 @@ export interface AuthUser {
   verified?: string;
   form_submitted?: boolean;
   profile_photo?: string | null;
-  position?: string | null;
+  position?: string | null; 
   isSuperAdmin?: boolean;
   permissions?: string[];
   rbacRole?: {

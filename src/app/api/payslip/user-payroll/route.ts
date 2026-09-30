@@ -10,9 +10,15 @@ export async function GET(req: NextRequest) {
   const cookies = cookie.parse(cookieHeader);
   const token = cookies.token || req.cookies.get("token")?.value;
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+  const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+  if (!decoded) {
+    return NextResponse.json({ message: "Invalid token" }, { status: 403 });
+  }
   // Check if the user has permission to view payslip details
-  const hasAccess = await checkPermission(token, PERMISSION_KEYS.PAYSLIP_VIEW);
+  const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYSLIP_VIEW);
+
+  // console.log("PAYSLIP_VIEW permission:", PERMISSION_KEYS.PAYSLIP_VIEW);
+  // console.log("Has payslip access:", hasAccess);
   if (!hasAccess) return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
 
   try {

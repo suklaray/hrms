@@ -79,13 +79,17 @@ function DailyReports() {
       setLoading(false);
     }
   };
-  const getRoleOptions = () => [
-    { value: "employee", label: "Employee" },
-    { value: "hr", label: "HR" },
-    { value: "admin", label: "Admin" },
-    { value: "superadmin", label: "Superadmin" },
-    { value: "ceo", label: "CEO" },
-  ];
+  const getRoleOptions = () => {
+    const names = Array.from(
+      new Set(
+        employees
+          .map((e) => e.rbacRole?.name)
+          .filter((n): n is string => Boolean(n))
+      )
+    ).sort((a, b) => a.localeCompare(b));
+
+    return names.map((name) => ({ value: name, label: name }));
+  };
   /* ================= FILTER LOGIC ================= */
 
   const filteredReports = (() => {
@@ -105,7 +109,7 @@ function DailyReports() {
 
   employees.forEach((emp) => {
     if (employeeFilter && !emp.name?.toLowerCase().includes(employeeFilter.toLowerCase())) return;
-    if (selectedRole && emp.role !== selectedRole) return;
+    if (selectedRole && emp.rbacRole?.name !== selectedRole) return;
     if (selectedPosition && emp.position !== selectedPosition) return;
 
     // Build leave date map for this employee
@@ -119,7 +123,6 @@ function DailyReports() {
         const reportDate = new Date(rep.report_date).toLocaleDateString("en-CA");
         return rep.user?.empid === emp.empid && reportDate === dateStr;
       });
-
       // Check if this date falls within any leave request
       const leaveOnDate = empLeaves.find(l => {
         const from = new Date(l.from_date); from.setHours(0,0,0,0);
@@ -331,7 +334,7 @@ function DailyReports() {
                         <tr key={report.id} className={rowBg}>
                           <td className="px-4 py-3 font-medium">{report.user?.name}</td>
                           <td className="px-4 py-3">{employee?.position || "N/A"}</td>
-                          <td className="px-4 py-3">{report.user?.role}</td>
+                          <td className="px-4 py-3">{employee.rbacRole?.name}</td>
                           <td className="px-4 py-3">
                             {new Date(report.report_date).toLocaleDateString()}
                           </td>

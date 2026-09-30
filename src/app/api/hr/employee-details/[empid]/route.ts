@@ -30,6 +30,12 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         experience: true,
         profile_photo: true,
         employee_type: true,
+        rbacRole: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -51,6 +57,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         resume: true,
         aadhar_card: true,
         pan_card: true,
+        bank_details: true,
         education_certificates: true,
         experience_certificate: true,
         profile_photo: true,
@@ -81,7 +88,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       date_of_joining: user?.date_of_joining,
       status: user?.status || "Active",
       employee_type: user?.employee_type,
-      
+      rbacRole: user?.rbacRole,
       // Additional info from employees table
       gender: employee?.gender,
       dob: employee?.dob,
@@ -101,6 +108,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         pan_card: employee?.pan_card,
         education_certificates: employee?.education_certificates,
         experience_certificate: employee?.experience_certificate,
+        bank_details: employee?.bank_details,
       },
     };
 

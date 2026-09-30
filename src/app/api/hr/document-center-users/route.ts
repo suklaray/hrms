@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import prisma from "@/lib/prisma";
-import { checkPermission } from "@/lib/rbac";
+import { checkPermission, isSuperAdmin, getAssignableRolesForUser } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
@@ -21,10 +21,15 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
     }
 
+    let roleFilter: any = { status: { not: 'Inactive' } };
+    if (!isSuperAdmin(decoded)) {
+      const assignableRoles = await getAssignableRolesForUser(decoded);
+      const accessibleRoleIds = assignableRoles.map((r: any) => r.id);
+      roleFilter = { status: { not: 'Inactive' }, roleId: { in: accessibleRoleIds } };
+    }
+
     const users = await prisma.users.findMany({
-      where: {
-        status: { not: 'Inactive' }
-      },
+      where: roleFilter,
       select: {
         empid: true,
         name: true,
@@ -34,6 +39,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         position: true,
         date_of_joining: true,
         status: true,
+        rbacRole: { select: { name: true } },
       },
     });
 
@@ -43,6 +49,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       email: user.email,
       phone: user.contact_number,
       role: user.role,
+      rbacRoleName: user.rbacRole?.name ?? null,
       position: user.position || null,
       date_of_joining: user.date_of_joining || null,
       status: user.status || "Active",

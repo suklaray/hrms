@@ -183,6 +183,7 @@ model addresses {
 
 model attendance {
   id                Int                           @id @default(autoincrement())
+  uid               String?                       @unique @default(cuid())
   empid             String
   check_in          DateTime?
   check_out         DateTime?
@@ -190,6 +191,8 @@ model attendance {
   date              DateTime?                     @default(now())
   created_at        DateTime?                     @default(now())
   attendance_status attendance_attendance_status? @default(Absent)
+  users_uid         String?
+  users             users?                         @relation(fields: [users_uid], references: [uid], onDelete: Cascade)
 }
 
 model audit_logs {
@@ -347,10 +350,12 @@ model candidates_bank_details {
 
 model leave_types {
   id             Int              @id @default(autoincrement())
+  uid            String?           @unique @default(cuid())
   max_days       Int
   paid           Boolean?         @default(true)
   type_name      String
   leave_balances leave_balances[]
+  leave_requests leave_requests[]
 }
 
 model leave_balances {
@@ -369,6 +374,7 @@ model leave_balances {
 
 model leave_requests {
   id               Int                    @id @default(autoincrement())
+  uid              String?                 @unique @default(cuid())
   empid            String
   from_date        DateTime
   to_date          DateTime
@@ -376,13 +382,16 @@ model leave_requests {
   applied_at       DateTime?              @default(now())
   attachment       String?
   leave_type       String
+  leave_type_id    Int?
   name             String
   status           leave_requests_status? @default(Pending)
   resoan_to_reject String?                @db.VarChar(255)
   reason_to_cancel String?                @db.VarChar(255)
   users            users                  @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
-
+  leave_types      leave_types?            @relation(fields: [leave_type_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  
   @@index([empid])
+  @@index([leave_type_id])
 }
 
 model attendance_regularization {
@@ -407,6 +416,7 @@ model attendance_regularization {
 
 model users {
   id                         Int                              @id @default(autoincrement())
+  uid                        String?                          @unique @default(cuid())
   empid                      String                           @unique
   name                       String
   email                      String                           @unique
@@ -442,6 +452,7 @@ model users {
   requestedResubmissions     document_resubmission_requests[] @relation("ResubmissionRequestor")
   attendance_regularization  attendance_regularization[]
   sessions                   session[]
+  attendance                 attendance[]
 
   @@index([roleId])
   @@index([company_id])

@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import { getAccessibleRoles } from "@/lib/roleBasedAccess";
 
-import { checkPermission } from "@/lib/rbac";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
@@ -26,9 +26,26 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       return NextResponse.json({ message: "Access denied: insufficient permissions" }, { status: 403 });
     }
 
+    const currentUser = await prisma.users.findUnique({
+      where: { empid: (decoded as any).empid || (decoded as any).id },
+      select: {
+        empid: true,
+        role: true,
+        name: true,
+        rbacRole: { select: { id: true, name: true, status: true } },
+      },
+    });
+
+    const allowedRoleNames = currentUser && !isSuperAdmin(currentUser)
+      ? await getAccessibleRoles(currentUser)
+      : null;
+
     const employees = await prisma.users.findMany({
       where: {
-        status: { not: "Inactive" } // Exclude inactive employees
+        status: { not: "Inactive" }, // Exclude inactive employees
+        ...(allowedRoleNames && allowedRoleNames.length > 0
+          ? { rbacRole: { name: { in: allowedRoleNames }, status: "active" } }
+          : {}),
       },
       select: {
         empid: true,
@@ -38,7 +55,8 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         role: true,
         position: true,
         status: true,
-        created_at: true
+        created_at: true,
+        rbacRole: { select: { id: true, name: true } }, 
       }
     });
 
@@ -90,5 +108,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
-
-
