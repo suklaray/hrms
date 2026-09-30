@@ -7,11 +7,22 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const cookieHeader = request.headers.get("cookie") || "";
-  const { token } = cookie.parse(cookieHeader);
+  let cookieToken: string | undefined;
+  try {
+    cookieToken = cookie.parse(cookieHeader).token;
+  } catch {}
+  const nextCookieToken = request.cookies.get("token")?.value;
+  const searchToken = request.nextUrl.searchParams.get("token") || undefined;
+  const authHeader = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+
+  const token = searchToken || nextCookieToken || cookieToken || authHeader;
   if (!token) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+      },
     });
   }
 
@@ -22,21 +33,41 @@ export async function GET(request: NextRequest) {
   } catch {
     return new Response(JSON.stringify({ error: "Invalid token" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+      },
+    });
+  }
+
+  if (!userId) {
+    return new Response(JSON.stringify({ error: "Invalid token payload" }), {
+      status: 401,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+      },
     });
   }
 
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
   const encoder = new TextEncoder();
+  let isClosed = false;
 
   const mockRes = {
     write: (data: string) => {
-      writer.write(encoder.encode(data)).catch(() => {});
+      if (isClosed) return;
+      writer.write(encoder.encode(data)).catch(() => {
+        isClosed = true;
+      });
     },
     on: (event: string, cb: any) => {
       if (event === "close") {
-        request.signal.addEventListener("abort", cb);
+        request.signal.addEventListener("abort", () => {
+          isClosed = true;
+          cb();
+        });
       }
     },
   };
@@ -54,6 +85,11 @@ export async function GET(request: NextRequest) {
   })}\n\n`);
 
   const heartbeatInterval = setInterval(() => {
+    if (isClosed) {
+      clearInterval(heartbeatInterval);
+      removeSSEClient(userId, mockRes);
+      return;
+    }
     try {
       mockRes.write(`data: ${JSON.stringify({
         id: "heartbeat",
@@ -62,21 +98,23 @@ export async function GET(request: NextRequest) {
       })}\n\n`);
     } catch {
       clearInterval(heartbeatInterval);
-      removeSSEClient(userId);
+      removeSSEClient(userId, mockRes);
     }
-  }, 30000);
+  }, 25000);
 
   request.signal.addEventListener("abort", () => {
+    isClosed = true;
     clearInterval(heartbeatInterval);
-    removeSSEClient(userId);
+    removeSSEClient(userId, mockRes);
     writer.close().catch(() => {});
   });
 
   return new Response(stream.readable, {
     headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform, no-store, must-revalidate",
       "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
       "Access-Control-Allow-Origin": "*",
     },
   });

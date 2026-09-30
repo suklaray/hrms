@@ -1,0 +1,48 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import ClientPage from "./Client";
+import getUserFromToken from "@/lib/getUserFromToken";
+import { checkAnyPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+
+export const dynamic = "force-dynamic";
+
+async function getServerSideProps() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value || "";
+  const user = getUserFromToken(token);
+
+  if (!user) {
+    return { redirect: { destination: "/login", permanent: false } };
+  }
+
+  const hasAccess = await checkAnyPermission(user, [
+    PERMISSION_KEYS.PAYROLL_GENERATE,
+    PERMISSION_KEYS.PAYROLL_EDIT,
+  ]);
+
+  if (!hasAccess) {
+    return { redirect: { destination: "/403", permanent: false } };
+  }
+
+  return { props: { user } };
+}
+
+export default async function Page(props: {
+  params: Promise<{ uid: string }>;
+}) {
+  const gsspResult = await getServerSideProps();
+
+  if (gsspResult?.redirect?.destination) {
+    redirect(gsspResult.redirect.destination);
+  }
+
+  const { uid } = await props.params;
+
+  return (
+    <Suspense fallback={null}>
+      <ClientPage uid={uid} {...(gsspResult?.props || {})} />
+    </Suspense>
+  );
+}

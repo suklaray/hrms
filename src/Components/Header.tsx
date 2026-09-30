@@ -22,32 +22,32 @@ import { logoutUser } from "@/store/slices/authSlice";
 const Header = ({ user: propUser }: any = {}) => {
   const reduxUser = useAppSelector((state) => state.auth.user);
   const authInitialized = useAppSelector((state) => state.auth.initialized);
-  const [user, setUser] = useState(propUser ?? reduxUser ?? null);
+  const effectiveUser = propUser ?? reduxUser ?? null;
+  const [user, setUser] = useState(effectiveUser);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [sseConnected, setSseConnected] = useState(false);
   const [hasHydrated, setHasHydrated] = useState(false);
   const dispatch = useAppDispatch();
-  const effectiveUser = propUser ?? reduxUser ?? null;
   const authReady = hasHydrated || authInitialized || Boolean(propUser) || Boolean(reduxUser);
   const showLoggedInView = hasHydrated && Boolean(effectiveUser);
 
-  // Debug: Log notification changes
-  // useEffect(() => {
-  //   console.log('Notifications state changed:', notifications.length, notifications.map(n => ({ id: n.id, title: n.title, type: n.type })));
-  // }, [notifications]);
+  // Sync user state when Redux user or propUser updates
+  useEffect(() => {
+    setUser(effectiveUser);
+  }, [effectiveUser]);
 
   // Load existing notifications from localStorage on mount
   useEffect(() => {
+    setHasHydrated(true);
     const storedNotifications = localStorage.getItem("currentNotifications");
     if (storedNotifications) {
       try {
         const parsed = JSON.parse(storedNotifications);
-        // console.log('Loading stored notifications:', parsed.length);
         setNotifications(parsed);
       } catch (error) {
-        console.error('Error parsing stored notifications:', error);
+        console.error("Error parsing stored notifications:", error);
         localStorage.removeItem("currentNotifications");
       }
     }
@@ -56,172 +56,178 @@ const Header = ({ user: propUser }: any = {}) => {
   // Function to check for recent notifications that might have been missed
   const checkRecentNotifications = async () => {
     try {
-      // console.log('SSE: Checking for recent notifications...');
-      const response = await fetch('/api/notifications/recent', {
-        credentials: 'include'
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const url = token
+        ? `/api/notifications/recent?token=${encodeURIComponent(token)}`
+        : `/api/notifications/recent`;
+
+      const response = await fetch(url, {
+        credentials: "include",
+        headers,
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        // console.log(`SSE: Found ${data.count} recent notifications`);
-        
         if (data.notifications && data.notifications.length > 0) {
-          data.notifications.forEach(notification => {
+          data.notifications.forEach((notification: any) => {
             mergeNotification(notification);
           });
-          
-          // Show modal if there are new notifications
-          // setTimeout(() => setShowModal(true), 500);
         }
       }
     } catch (error) {
-      console.error('SSE: Error checking recent notifications:', error);
+      // Background check failure is non-fatal
     }
   };
 
   // Function to merge new notification with existing ones (deduplication)
-  const mergeNotification = (newNotification) => {
-    // console.log('SSE: mergeNotification called with:', newNotification.title, 'Type:', newNotification.type);
-    setNotifications(prevNotifications => {
-      // console.log('SSE: Current notifications count:', prevNotifications.length);
-      
-      // Check for duplicates by id
-      const exists = prevNotifications.some(n => n.id === newNotification.id);
+  const mergeNotification = (newNotification: any) => {
+    setNotifications((prevNotifications: any[]) => {
+      const exists = prevNotifications.some((n: any) => n.id === newNotification.id);
       if (exists) {
-        // console.log('SSE: Duplicate notification ignored:', newNotification.id);
         return prevNotifications;
       }
-      
-      // Add new notification
-      // console.log('SSE: Adding new notification:', newNotification.title);
       const updatedNotifications = [...prevNotifications, newNotification];
-      // console.log('SSE: Updated notifications count:', updatedNotifications.length);
-      
-      // Update localStorage
       localStorage.setItem("currentNotifications", JSON.stringify(updatedNotifications));
-      
-      return updatedNotifications;
+      return updatedNotifications as any;
     });
   };
+
   // SSE Real-time Notifications
   useEffect(() => {
     if (!user) return;
 
-    // console.log('SSE: Setting up EventSource for user:', user.empid);
-    let eventSource;
-    let reconnectTimeout;
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: any = null;
     let isConnecting = false;
-    
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    let isCleanedUp = false;
+
     const connectSSE = () => {
-      // Prevent multiple simultaneous connections
-      if (isConnecting) {
-        // console.log('SSE: Connection already in progress, skipping...');
+      if (isCleanedUp || isConnecting) {
         return;
       }
-      
+
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const hasCookieToken = typeof document !== "undefined" && document.cookie.includes("token=");
+      if (!token && !hasCookieToken) {
+        return;
+      }
+
       isConnecting = true;
-      
+
       try {
-        // Close existing connection if any
         if (eventSource) {
-          // console.log('SSE: Closing existing connection');
           eventSource.close();
+          eventSource = null;
         }
-        
-        // console.log('SSE: Creating new EventSource connection');
-        eventSource = new EventSource('/api/notifications/stream');
-        
+
+        const sseUrl = token
+          ? `/api/notifications/stream?token=${encodeURIComponent(token)}`
+          : `/api/notifications/stream`;
+
+        eventSource = new EventSource(sseUrl, { withCredentials: true });
+
         eventSource.onopen = () => {
-          // console.log('SSE: Connection opened for user:', user.empid);
+          if (isCleanedUp) {
+            eventSource?.close();
+            return;
+          }
           setSseConnected(true);
           isConnecting = false;
-          
-          // Clear any reconnection timeout
+          reconnectAttempts = 0;
+
           if (reconnectTimeout) {
             clearTimeout(reconnectTimeout);
             reconnectTimeout = null;
           }
-          
-          // Check for recent notifications that might have been missed
+
           setTimeout(() => {
-            checkRecentNotifications();
+            if (!isCleanedUp) checkRecentNotifications();
           }, 1000);
         };
-        
+
         eventSource.onmessage = (event) => {
           try {
             const notification = JSON.parse(event.data);
-            // console.log('SSE: Received notification:', notification.type, notification.title);
-            
+
             // Skip heartbeat messages
-            if (notification.type === 'heartbeat') {
+            if (notification.type === "heartbeat") {
               return;
             }
-            
+
             // Skip system connection messages
-            if (notification.type === 'system' && notification.id === 'sse-connected') {
-              // console.log('SSE: Connection confirmed:', notification.message);
+            if (notification.type === "system" && notification.id === "sse-connected") {
               return;
             }
-            
+
             // Process all other notifications
-            // console.log('SSE: Processing notification:', notification.type, notification.title);
             mergeNotification(notification);
-            
-            // Force modal to show for new notifications
-            // if (notification.type !== 'system' && notification.type !== 'heartbeat') {
-              // console.log('SSE: Auto-showing modal for new notification');
-            //   setTimeout(() => setShowModal(true), 100);
-            // }
-            
           } catch (error) {
-            console.error('SSE: Error parsing notification:', error, 'Raw data:', event.data);
+            console.error("SSE: Error parsing notification:", error);
           }
         };
-        
-        eventSource.onerror = (error) => {
-          console.error('SSE: Connection error:', error);
+
+        eventSource.onerror = () => {
           setSseConnected(false);
           isConnecting = false;
-          
-          // Only reconnect if we don't have a pending reconnection
-          if (!reconnectTimeout) {
-            // console.log('SSE: Scheduling reconnection in 3 seconds...');
-            reconnectTimeout = setTimeout(() => {
-              // console.log('SSE: Attempting reconnection...');
-              connectSSE();
-            }, 3000);
+
+          if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+            eventSource.close();
+            eventSource = null;
+          }
+
+          if (isCleanedUp) return;
+
+          reconnectAttempts++;
+          if (reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
+            const delay = Math.min(3000 * Math.pow(1.5, reconnectAttempts - 1), 20000);
+            if (!reconnectTimeout) {
+              reconnectTimeout = setTimeout(() => {
+                reconnectTimeout = null;
+                connectSSE();
+              }, delay);
+            }
+          } else {
+            console.warn("SSE: Real-time notification reconnection limit reached. Will retry upon next interaction.");
           }
         };
-        
-      } catch (error) {
-        // console.error('SSE: Failed to create EventSource:', error);
+
+      } catch {
         setSseConnected(false);
         isConnecting = false;
-        
-        // Retry connection after 5 seconds
-        if (!reconnectTimeout) {
-          reconnectTimeout = setTimeout(() => {
-            // console.log('SSE: Retrying connection after error...');
-            connectSSE();
-          }, 5000);
+
+        if (!isCleanedUp && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttempts++;
+          if (!reconnectTimeout) {
+            reconnectTimeout = setTimeout(() => {
+              reconnectTimeout = null;
+              connectSSE();
+            }, 5000);
+          }
         }
       }
     };
-    
+
     // Initial connection
     connectSSE();
-    
+
     // Cleanup on unmount or user change
     return () => {
-      // console.log('SSE: Cleaning up connection for user:', user.empid);
+      isCleanedUp = true;
       isConnecting = false;
-      
+
       if (eventSource) {
         eventSource.close();
+        eventSource = null;
       }
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
       setSseConnected(false);
     };
@@ -240,10 +246,8 @@ const Header = ({ user: propUser }: any = {}) => {
   }, [effectiveUser]);
 
   const handleLogout = async () => {
-    await dispatch(logoutUser());
+    await dispatch(logoutUser()).unwrap();
     setUser(null);
-    router.push("/");
-    router.refresh();
   };
 
   // notification function called on check-in - DISABLED FOR SSE

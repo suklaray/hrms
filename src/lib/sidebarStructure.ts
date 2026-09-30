@@ -8,7 +8,8 @@ import {
   Settings,
   ListChecks,
   UserCog,
-  Banknote,Calendar
+  Banknote, Calendar,
+  FileSpreadsheet
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -93,9 +94,42 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
               { title: 'Create Calendar', route: '/payroll/payroll-setup/payroll-create-periods', permission: 'payroll.generate' },
               { title: 'Manage Calendars', route: '/payroll/payroll-setup/payroll-get-periods', permission: 'payroll.view' },
             ]
+          },
+          {
+            name: "Salary Structures",
+            icon: FileSpreadsheet,
+            permission: 'payroll.view',
+            children: [
+              { title: 'Create Salary Structure', route: '/payroll/payroll-setup/salary-structures/create', permission: 'payroll.generate' },
+              { title: 'Manage Salary Structures', route: '/payroll/payroll-setup/salary-structures', permission: 'payroll.view' },
+            ]
           }
         ]
       },
+      {
+        name: "Salary",
+        icon: Banknote,
+        permission: 'payroll.view',
+        children: [
+          {
+            name: "Salary Component",
+            icon: Banknote,
+            permission: 'payroll.view',
+            children: [
+              { title: 'Create Component', route: '/payroll/salary/salary-components/salary-create-component', permission: 'payroll.generate' },
+              { title: 'Manage Components', route: '/payroll/salary/salary-components/salary-get-components', permission: 'payroll.view' },
+            ]
+          },
+          {
+            name: "Employee Salary",
+            icon: Banknote,
+            permission: 'payroll.view',
+            children: [
+              { title: 'Manage Employee Salary', route: '/payroll/employee-salary', permission: 'payroll.view' },
+            ]
+          }
+        ]
+      }
     ],
   },
   {

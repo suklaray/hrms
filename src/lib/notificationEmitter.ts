@@ -1,7 +1,7 @@
 // Global notification event emitter for SSE
 class NotificationEmitter {
-  clients: Map<any, any> = new Map();
-  pendingNotifications: Map<any, any> = new Map();
+  clients: Map<string, Set<any>> = new Map();
+  pendingNotifications: Map<string, any[]> = new Map();
 
   constructor() {
     this.clients = new Map();
@@ -9,82 +9,107 @@ class NotificationEmitter {
   }
 
   // Add a client connection
-  addClient(userId, res) {
-    // console.log(`SSE: Adding client ${userId}`);
-    this.clients.set(userId, res);
-    
+  addClient(userId: string | number, res: any) {
+    const key = String(userId);
+    if (!this.clients.has(key)) {
+      this.clients.set(key, new Set());
+    }
+    this.clients.get(key)!.add(res);
+
     // Send any pending notifications for this user
-    this.sendPendingNotifications(userId);
-    
+    this.sendPendingNotifications(key);
+
     // Clean up on client disconnect
-    res.on('close', () => {
-      // console.log(`SSE: Client ${userId} disconnected`);
-      this.clients.delete(userId);
+    res.on("close", () => {
+      const userClients = this.clients.get(key);
+      if (userClients) {
+        userClients.delete(res);
+        if (userClients.size === 0) {
+          this.clients.delete(key);
+        }
+      }
     });
   }
 
   // Send pending notifications to a newly connected user
-  sendPendingNotifications(userId) {
-    const pending = this.pendingNotifications.get(userId);
+  sendPendingNotifications(userId: string | number) {
+    const key = String(userId);
+    const pending = this.pendingNotifications.get(key);
     if (pending && pending.length > 0) {
-      // console.log(`SSE: Sending ${pending.length} pending notifications to ${userId}`);
-      const client = this.clients.get(userId);
-      if (client) {
-        pending.forEach(notification => {
-          try {
-            client.write(`data: ${JSON.stringify(notification)}\n\n`);
-          } catch (error) {
-            console.error(`SSE: Error sending pending notification to ${userId}:`, error);
+      const userClients = this.clients.get(key);
+      if (userClients && userClients.size > 0) {
+        pending.forEach((notification) => {
+          for (const client of Array.from(userClients)) {
+            try {
+              client.write(`data: ${JSON.stringify(notification)}\n\n`);
+            } catch {
+              userClients.delete(client);
+            }
           }
         });
         // Clear pending notifications after sending
-        this.pendingNotifications.delete(userId);
+        this.pendingNotifications.delete(key);
       }
     }
   }
 
   // Remove a client connection
-  removeClient(userId) {
-    // console.log(`SSE: Removing client ${userId}`);
-    this.clients.delete(userId);
+  removeClient(userId: string | number, res?: any) {
+    const key = String(userId);
+    if (res) {
+      const userClients = this.clients.get(key);
+      if (userClients) {
+        userClients.delete(res);
+        if (userClients.size === 0) {
+          this.clients.delete(key);
+        }
+      }
+    } else {
+      this.clients.delete(key);
+    }
   }
 
   // Send notification to specific user
-  sendToUser(userId, notification) {
-    const client = this.clients.get(userId);
-    if (client) {
-      try {
-        // console.log(`SSE: Sending notification to user ${userId}:`, notification.title);
-        client.write(`data: ${JSON.stringify(notification)}\n\n`);
-        return true;
-      } catch (error) {
-        // console.error(`SSE: Error sending to user ${userId}:`, error);
-        this.clients.delete(userId);
-        // Store as pending notification
-        this.addPendingNotification(userId, notification);
-        return false;
+  sendToUser(userId: string | number, notification: any) {
+    const key = String(userId);
+    const userClients = this.clients.get(key);
+    if (userClients && userClients.size > 0) {
+      let delivered = false;
+      for (const client of Array.from(userClients)) {
+        try {
+          client.write(`data: ${JSON.stringify(notification)}\n\n`);
+          delivered = true;
+        } catch {
+          userClients.delete(client);
+        }
       }
+      if (userClients.size === 0) {
+        this.clients.delete(key);
+      }
+      if (!delivered) {
+        this.addPendingNotification(key, notification);
+      }
+      return delivered;
     } else {
       // User not connected, store as pending notification
-      // console.log(`SSE: User ${userId} not connected, storing as pending notification`);
-      this.addPendingNotification(userId, notification);
+      this.addPendingNotification(key, notification);
       return false;
     }
   }
 
   // Add notification to pending queue
-  addPendingNotification(userId, notification) {
-    if (!this.pendingNotifications.has(userId)) {
-      this.pendingNotifications.set(userId, []);
+  addPendingNotification(userId: string | number, notification: any) {
+    const key = String(userId);
+    if (!this.pendingNotifications.has(key)) {
+      this.pendingNotifications.set(key, []);
     }
-    const pending = this.pendingNotifications.get(userId);
-    
+    const pending = this.pendingNotifications.get(key)!;
+
     // Avoid duplicates
-    const exists = pending.some(n => n.id === notification.id);
+    const exists = pending.some((n: any) => n.id === notification.id);
     if (!exists) {
       pending.push(notification);
-      // console.log(`SSE: Added pending notification for ${userId}:`, notification.title);
-      
+
       // Limit pending notifications to prevent memory issues (keep last 10)
       if (pending.length > 10) {
         pending.shift();
@@ -93,26 +118,33 @@ class NotificationEmitter {
   }
 
   // Send notification to all connected clients
-  sendToAll(notification) {
-    // console.log(`SSE: Broadcasting notification to ${this.clients.size} clients:`, notification.title);
+  sendToAll(notification: any) {
     let successCount = 0;
-    
-    for (const [userId, client] of this.clients.entries()) {
-      try {
-        client.write(`data: ${JSON.stringify(notification)}\n\n`);
-        successCount++;
-      } catch (error) {
-        console.error(`SSE: Error broadcasting to user ${userId}:`, error);
+
+    for (const [userId, userClients] of this.clients.entries()) {
+      for (const client of Array.from(userClients)) {
+        try {
+          client.write(`data: ${JSON.stringify(notification)}\n\n`);
+          successCount++;
+        } catch {
+          userClients.delete(client);
+        }
+      }
+      if (userClients.size === 0) {
         this.clients.delete(userId);
       }
     }
-    
+
     return successCount;
   }
 
   // Get connected client count
   getClientCount() {
-    return this.clients.size;
+    let total = 0;
+    for (const userClients of this.clients.values()) {
+      total += userClients.size;
+    }
+    return total;
   }
 
   // Get connected user IDs
@@ -121,8 +153,9 @@ class NotificationEmitter {
   }
 
   // Get pending notifications count for a user
-  getPendingCount(userId) {
-    const pending = this.pendingNotifications.get(userId);
+  getPendingCount(userId: string | number) {
+    const key = String(userId);
+    const pending = this.pendingNotifications.get(key);
     return pending ? pending.length : 0;
   }
 }
@@ -131,30 +164,30 @@ class NotificationEmitter {
 const notificationEmitter = new NotificationEmitter();
 
 // Export functions for use in other APIs
-export const sendNotificationToUser = (userId, notification) => {
+export const sendNotificationToUser = (userId: any, notification: any) => {
   return notificationEmitter.sendToUser(userId, notification);
 };
 
-export const sendNotificationToAll = (notification) => {
+export const sendNotificationToAll = (notification: any) => {
   return notificationEmitter.sendToAll(notification);
 };
 
-export const addSSEClient = (userId, res) => {
+export const addSSEClient = (userId: any, res: any) => {
   return notificationEmitter.addClient(userId, res);
 };
 
-export const removeSSEClient = (userId) => {
-  return notificationEmitter.removeClient(userId);
+export const removeSSEClient = (userId: any, res?: any) => {
+  return notificationEmitter.removeClient(userId, res);
 };
 
 export const getSSEStats = () => {
   return {
     clientCount: notificationEmitter.getClientCount(),
-    connectedUsers: notificationEmitter.getConnectedUsers()
+    connectedUsers: notificationEmitter.getConnectedUsers(),
   };
 };
 
-export const getPendingCount = (userId) => {
+export const getPendingCount = (userId: any) => {
   return notificationEmitter.getPendingCount(userId);
 };
 

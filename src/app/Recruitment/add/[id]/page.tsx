@@ -5,6 +5,7 @@ import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Head from "@/lib/compatHead";
+import { useAppSelector } from "@/store/hooks";
 import {
   FaUser,
   FaEnvelope,
@@ -25,6 +26,8 @@ import { toast } from 'react-toastify';
 const AddEmployee = () => {
   const router = useRouter();
   const { id } = router.query;
+
+  const user = useAppSelector((state) => state.auth.user);
 
   const [form, setForm] = useState({
     name: "",
@@ -53,7 +56,6 @@ const AddEmployee = () => {
   const [candidate, setCandidate] = useState(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState('');
 
   useEffect(() => {
     // Fetch positions and get current user role
@@ -63,28 +65,6 @@ const AddEmployee = () => {
       })
       .catch((err) => {
         console.error('Error fetching positions:', err);
-      });
-
-    // Get current user role and set available roles
-    axios.get('/api/auth/me')
-      .then((res) => {
-        // console.log('User data:', res.data);
-        const userRole = res.data.user.role?.toLowerCase();
-        // console.log("role",userRole);
-
-        setCurrentUserRole(userRole);
-
-        // Set available roles dynamically from backend DB hierarchy
-        if (res.data.assignableRoles && res.data.assignableRoles.length > 0) {
-          setAvailableRoles(res.data.assignableRoles);
-        } else {
-          setAvailableRoles(['employee']);
-        }
-      })
-      .catch((err) => {
-        console.error('Error fetching user role:', err);
-        // Fallback to employee role if API fails
-        setAvailableRoles(['employee']);
       });
 
     if (id) {
