@@ -516,7 +516,6 @@ enum payslip_status {
   pending
   generated
 }
-
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model employees_backup {
   empid                  Int       @id
