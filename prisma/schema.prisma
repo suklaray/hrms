@@ -190,6 +190,27 @@ model attendance {
   date              DateTime?                     @default(now())
   created_at        DateTime?                     @default(now())
   attendance_status attendance_attendance_status? @default(Absent)
+  user users @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  regularizations attendance_regularization[]
+}
+
+model MonthlySummary {
+  id          Int      @id @default(autoincrement())
+  uid         String   @unique
+  empid       String
+  month       String   
+  workingDay  Decimal  @default(0.0)
+  overtime    Decimal  @default(0.0)
+  weekend     Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user users @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([empid, month]) 
+  @@index([month])
+  @@index([empid])
+  @@map("monthly_summary")
 }
 
 model audit_logs {
@@ -399,6 +420,7 @@ model attendance_regularization {
   rejection_reason   String?                          @db.VarChar(500)
   created_at         DateTime                         @default(now())
   users              users                            @relation(fields: [empid], references: [empid], onDelete: Cascade)
+  attendance         attendance? @relation(fields: [attendance_id], references: [id], onDelete: SetNull)
 
   @@index([empid])
   @@index([attendance_id])
@@ -442,6 +464,8 @@ model users {
   requestedResubmissions     document_resubmission_requests[] @relation("ResubmissionRequestor")
   attendance_regularization  attendance_regularization[]
   sessions                   session[]
+  attendance       attendance[]
+  monthlySummaries MonthlySummary[]
 
   @@index([roleId])
   @@index([company_id])
