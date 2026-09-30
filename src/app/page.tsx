@@ -10,36 +10,36 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 export const dynamic = "force-dynamic";
 
 async function getServerSideProps(context) {
-    const { req } = context;
-    const token = req?.cookies?.token || req?.cookies?.employeeToken || "";
-    const user = getUserFromToken(token);
-    console.log('User from token:', user);
-    // If user is authenticated, redirect to appropriate dashboard
-    //   if (user) {
-    //     if (user.role === 'employee') {
-    //       return {
-    //         redirect: {
-    //           destination: '/employee/dashboard',
-    //           permanent: false,
-    //         },
-    //       };
-    //     } else if (['hr', 'admin', 'superadmin'].includes(user.role)) {
-    //       return {
-    //         redirect: {
-    //           destination: '/dashboard',
-    //           permanent: false,
-    //         },
-    //       };
-    //     }
-    //   }
+  const { req } = context;
+  const token = req?.cookies?.token || req?.cookies?.employeeToken || "";
+  const user = getUserFromToken(token);
+  // console.log('User from token:', user);
+  // If user is authenticated, redirect to appropriate dashboard
+  //   if (user) {
+  //     if (user.role === 'employee') {
+  //       return {
+  //         redirect: {
+  //           destination: '/employee/dashboard',
+  //           permanent: false,
+  //         },
+  //       };
+  //     } else if (['hr', 'admin', 'superadmin'].includes(user.role)) {
+  //       return {
+  //         redirect: {
+  //           destination: '/dashboard',
+  //           permanent: false,
+  //         },
+  //       };
+  //     }
+  //   }
 
-    return {
-        props: {
-        isAuthenticated: !!user,
-        user: user || null,
-        },
-    };
-    }
+  return {
+    props: {
+      isAuthenticated: !!user,
+      user: user || null,
+    },
+  };
+}
 
 export default async function Page(props: {
   params?: Promise<Record<string, string | string[]>>;

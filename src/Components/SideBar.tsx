@@ -1,4 +1,5 @@
 "use client";
+
 //keep sidebar in client component as it uses react hooks and nextjs router
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
@@ -15,10 +16,6 @@ import {
   X,
   Settings,
   LogOut,
-  ListChecks,
-  UserCog,
-  Banknote,
-  Calendar
 } from "lucide-react";
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -37,6 +34,7 @@ export default function Sidebar({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [openModules, setOpenModules] = useState({});
+  const [mounted, setMounted] = useState(false);
 
   const isSuperAdminUser = Boolean(authUser?.isSuperAdmin);
 
@@ -98,8 +96,9 @@ export default function Sidebar({
     setOpenModules((prev) => ({ ...prev, ...next }));
   }, [router.pathname]);
 
-  // ── Screen size ───────────────────────────────────────────────────────────
+  // ── Screen size & hydration ───────────────────────────────────────────────
   useEffect(() => {
+    setMounted(true);
     const check = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
@@ -111,6 +110,7 @@ export default function Sidebar({
   }, []);
 
   if (
+    !mounted ||
     (showAppShell && !isSharedShell) ||
     (!isSharedShell && isSidebarShellActive()) ||
     !initialized ||

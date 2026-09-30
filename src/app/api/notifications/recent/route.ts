@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
 import prisma from "@/lib/prisma";
@@ -21,12 +21,21 @@ function getDocumentDisplayName(documentType: string) {
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   try {
     // Authenticate user
-    const { token } = cookie.parse(req.headers.get("cookie") || "");
+    const cookieHeader = req.headers.get("cookie") || "";
+    let cookieToken: string | undefined;
+    try {
+      cookieToken = cookie.parse(cookieHeader).token;
+    } catch {}
+    const nextCookieToken = req.cookies.get("token")?.value;
+    const searchToken = req.nextUrl.searchParams.get("token") || undefined;
+    const authHeader = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+
+    const token = searchToken || nextCookieToken || cookieToken || authHeader;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_jwt_secret") as DecodedToken;
     const userId = (decoded.empid || decoded.id) as string;
 
     if (!userId) {

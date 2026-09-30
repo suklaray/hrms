@@ -738,13 +738,14 @@ model salary_component {
   code             String
   type             SalaryComponentType
   calculation_type SalaryCalculationType
-
-  is_taxable   Boolean @default(false)
-  is_statutory Boolean @default(false)
-  is_active    Boolean @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  
+  taxable          Boolean               @default(false)
+  statutory        Boolean               @default(false)
+  active           Boolean               @default(true)
+  formula          String?               @db.VarChar(255)
+  
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   structureComponents     employee_salary_structure_component[] @relation("StructureComponent")
   baseStructureComponents employee_salary_structure_component[] @relation("BaseComponent")
