@@ -192,7 +192,7 @@ model attendance {
   created_at        DateTime?                     @default(now())
   attendance_status attendance_attendance_status? @default(Absent)
   users_uid         String?
-  users             users?                         @relation(fields: [users_uid], references: [uid], onDelete: Cascade)
+  users             users?                        @relation(fields: [users_uid], references: [uid], onDelete: Cascade)
 }
 
 model audit_logs {
@@ -244,6 +244,10 @@ model candidates {
   ip_address            String?
   token_expiry          DateTime?
   token_first_used_at   DateTime?
+
+  parsed_resume_id  Int?               @unique
+  parsed_resume     parsed_resumes?    @relation(fields: [parsed_resume_id], references: [id])
+  candidate_details candidate_details?
 }
 
 model compliance_documents {
@@ -318,6 +322,8 @@ model candidate_details {
   addresses              candidates_addresses[]
   bank_details           candidates_bank_details[]
   created_at             DateTime?                 @default(now())
+  candidates_table_id    Int?                      @unique
+  candidate              candidates?               @relation(fields: [candidates_table_id], references: [id])
 }
 
 model candidates_addresses {
@@ -350,7 +356,7 @@ model candidates_bank_details {
 
 model leave_types {
   id             Int              @id @default(autoincrement())
-  uid            String?           @unique @default(cuid())
+  uid            String?          @unique @default(cuid())
   max_days       Int
   paid           Boolean?         @default(true)
   type_name      String
@@ -374,7 +380,7 @@ model leave_balances {
 
 model leave_requests {
   id               Int                    @id @default(autoincrement())
-  uid              String?                 @unique @default(cuid())
+  uid              String?                @unique @default(cuid())
   empid            String
   from_date        DateTime
   to_date          DateTime
@@ -388,8 +394,8 @@ model leave_requests {
   resoan_to_reject String?                @db.VarChar(255)
   reason_to_cancel String?                @db.VarChar(255)
   users            users                  @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
-  leave_types      leave_types?            @relation(fields: [leave_type_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  
+  leave_types      leave_types?           @relation(fields: [leave_type_id], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
   @@index([empid])
   @@index([leave_type_id])
 }
@@ -749,14 +755,14 @@ model salary_component {
   code             String
   type             SalaryComponentType
   calculation_type SalaryCalculationType
-  
-  taxable          Boolean               @default(false)
-  statutory        Boolean               @default(false)
-  active           Boolean               @default(true)
-  formula          String?               @db.VarChar(255)
-  
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
+
+  taxable   Boolean @default(false)
+  statutory Boolean @default(false)
+  active    Boolean @default(true)
+  formula   String? @db.VarChar(255)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   structureComponents     employee_salary_structure_component[] @relation("StructureComponent")
   baseStructureComponents employee_salary_structure_component[] @relation("BaseComponent")
@@ -873,4 +879,184 @@ model employee_salary_component {
   @@unique([employee_salary_structure_id, salary_component_id])
   @@index([employee_salary_structure_id])
   @@index([salary_component_id])
+}
+
+model parsed_resumes {
+  id               Int     @id @default(autoincrement())
+  uid              String  @unique @default(uuid())
+  // Personal
+  full_name        String?
+  email            String?
+  mobile_number    String?
+  alternate_phone  String?
+  current_address  String?
+  city             String?
+  state            String?
+  country          String?
+  linkedin_profile String?
+  portfolio_url    String?
+  github_url       String?
+
+  // Professional
+  career_objective     String? @db.Text
+  professional_summary String? @db.Text
+
+  // Structured JSON fields
+  work_experience         Json?
+  education               Json?
+  technical_skills        Json?
+  soft_skills             Json?
+  certifications          Json?
+  languages_known         Json?
+  projects                Json?
+  awards_and_achievements Json?
+  publications            Json?
+  training                Json?
+
+  // Additional info
+  notice_period      String?
+  current_salary     String?
+  expected_salary    String?
+  preferred_location String?
+  resume_file_path   String?
+  original_file_name String?
+  resume_mime_type   String?
+  resume_file_size   Int?
+
+  // Parser processing metadata
+  parsing_status     String?  @default("PROCESSING")
+  parser_version     String?
+  ai_model           String?
+  application_status String   @default("Waiting")
+  parsing_error      String?  @db.Text
+  parsed_at          DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  //
+  job_description_id Int?
+  matching_score     Int?
+
+  job_description job_descriptions? @relation(fields: [job_description_id], references: [id], onDelete: SetNull)
+
+  candidate candidates?
+
+  @@index([job_description_id])
+}
+
+model job_descriptions {
+  id                Int                       @id @default(autoincrement())
+  uid               String                    @unique @default(uuid())
+  title             String
+  department        String
+  employment_type   String
+  work_mode         String
+  location          String
+  openings          Int
+  experience        String
+  education         String
+  required_skills   String                    @db.Text
+  preferred_skills  String?                   @db.Text
+  responsibilities  String                    @db.Text
+  summary           String                    @db.Text
+  salary_min        String?
+  salary_max        String?
+  benefits          String?                   @db.Text
+  deadline          DateTime
+  hiring_manager    String
+  interview_process String?                   @db.Text
+  keywords          String?
+  status            String                    @default("Draft")
+  created_by        String?
+  created_at        DateTime                  @default(now())
+  updated_at        DateTime                  @updatedAt
+  analysis          job_description_analysis?
+  parsed_resumes    parsed_resumes[]
+}
+
+model job_description_analysis {
+  id                 Int    @id @default(autoincrement())
+  uid                String @unique @default(uuid())
+  job_description_id Int    @unique
+
+  // Job Information
+  job_title           String?
+  department          String?
+  employment_type     String?
+  work_mode           String?
+  location            String?
+  experience_required String?
+  education           String?
+  salary_min          String?
+  salary_max          String?
+  openings            Int?
+
+  // Skills
+  mandatory_skills Json?
+  preferred_skills Json?
+  soft_skills      Json?
+
+  // Keywords
+  technical_keywords  Json?
+  functional_keywords Json?
+  industry_keywords   Json?
+  role_keywords       Json?
+
+  // Experience
+  minimum_experience  String?
+  maximum_experience  String?
+  industry_experience Json?
+  domain_expertise    Json?
+
+  // Education
+  degree                   Json?
+  stream                   Json?
+  certifications           Json?
+  mandatory_certifications Json?
+  preferred_certifications Json?
+
+  // Responsibilities
+  primary_responsibilities    Json?
+  secondary_responsibilities  Json?
+  leadership_responsibilities Json?
+
+  // Quality
+  quality_score Int?
+
+  completeness_score Int?
+  readability_score  Int?
+  ats_score          Int?
+  bias_free_score    Int?
+  keyword_score      Int?
+
+  // Missing information
+  missing_information Json?
+
+  // Bias
+  bias_detected         Boolean @default(false)
+  bias_details          Json?
+  inclusive_suggestions Json?
+
+  // ATS
+  ats_suggestions Json?
+
+  // Matching
+  required_skills_weight Int?
+  experience_weight      Int?
+  education_weight       Int?
+  certification_weight   Int?
+
+  matching_criteria Json?
+
+  // AI metadata
+  analysis_status  String   @default("PENDING")
+  confidence_score Decimal? @db.Decimal(5, 2)
+  ai_model         String?
+  analysis_error   String?  @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  job_description job_descriptions @relation(fields: [job_description_id], references: [id], onDelete: Cascade)
+
+  @@index([analysis_status])
 }
