@@ -72,6 +72,8 @@ export async function GET(req: NextRequest) {
         title: job.title,
         department: job.department,
         status: job.status,
+        openings: job.openings,
+        work_mode: job.work_mode,
       })),
     });
   } catch (error) {
