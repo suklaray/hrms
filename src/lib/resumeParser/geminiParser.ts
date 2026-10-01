@@ -2,6 +2,13 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+const TRANSIENT_GEMINI_STATUSES = new Set([429, 500, 502, 503, 504]);
+const MAX_GEMINI_RETRIES = 2;
+
+interface GeminiError extends Error {
+  status?: number;
+}
+
 interface PersonalInformation {
   fullName: string | null;
   emailAddress: string | null;
@@ -231,7 +238,38 @@ export async function parseResumeWithGemini(
 
   const prompt = PROMPT_TEMPLATE(resumeText);
 
-  const result = await model.generateContent(prompt);
+  let result:
+    | Awaited<ReturnType<typeof model.generateContent>>
+    | undefined;
+
+  for (
+    let attempt = 0;
+    attempt <= MAX_GEMINI_RETRIES;
+    attempt += 1
+  ) {
+    try {
+      result = await model.generateContent(prompt);
+      break;
+    } catch (error: unknown) {
+      const geminiError = error as GeminiError;
+      const status = Number(geminiError?.status);
+
+      if (
+        !TRANSIENT_GEMINI_STATUSES.has(status) ||
+        attempt === MAX_GEMINI_RETRIES
+      ) {
+        throw error;
+      }
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, 1000 * (attempt + 1))
+      );
+    }
+  }
+
+  if (!result) {
+    throw new Error("Gemini did not return a result");
+  }
 
   const raw = result.response.text().trim();
 
