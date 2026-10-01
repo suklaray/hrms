@@ -36,8 +36,10 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
     icon: UserPlus,
     permission: 'recruitment.view',
     children: [
-      { title: 'Recruitment Management', route: '/Recruitment/recruitment', permission: 'recruitment.view' },
-      { title: 'Job Description', route: '/Recruitment/job-description', permission: 'recruitment.view' },
+      { title: 'Candidate Management', route: '/Recruitment/recruitment', permission: 'recruitment.view' },
+      { title: 'Job Descriptions', route: '/Recruitment/job-description', permission: 'recruitment.view' },
+      { title: 'Job Applications', route: '/Recruitment/job-applications', permission: 'recruitment.applications_view' },
+      { title: 'Analytics', route: '/Recruitment/analytics', permission: 'recruitment.analytics' },
     ],
   },
   {
