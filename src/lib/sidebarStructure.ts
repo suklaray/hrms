@@ -23,7 +23,7 @@ export type SidebarItem = {
   permission?: SidebarPermission;
   children?: SidebarItem[];
 };
-
+   
 export const SIDEBAR_STRUCTURE: SidebarItem[] = [
   {
     name: 'Dashboard',
@@ -36,7 +36,8 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
     icon: UserPlus,
     permission: 'recruitment.view',
     children: [
-      { title: 'Recruitment', route: '/Recruitment/recruitment', permission: 'recruitment.view' },
+      { title: 'Recruitment Management', route: '/Recruitment/recruitment', permission: 'recruitment.view' },
+      { title: 'Job Description', route: '/Recruitment/job-description', permission: 'recruitment.view' },
     ],
   },
   {
@@ -157,6 +158,8 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
     children: [
       { title: 'Designation Management', route: '/settings/position-management', permission: 'settings.position_manage' },
       { title: 'Role Management', route: '/settings/employee-types', permission: 'settings.employee_types_manage' },
+      { title: 'Department Management', route: '/settings/departments', permission: 'settings.manage' },
+
     ],
   },
   {

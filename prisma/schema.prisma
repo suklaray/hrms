@@ -459,7 +459,7 @@ model users {
   attendance_regularization  attendance_regularization[]
   sessions                   session[]
   attendance                 attendance[]
-
+  departments                departments[]
   @@index([roleId])
   @@index([company_id])
 }
@@ -587,7 +587,8 @@ model positions {
   created_by    String
   created_at    DateTime @default(now())
   users         users    @relation(fields: [created_by], references: [empid])
-
+  department_id Int?
+  department    departments? @relation(fields: [department_id], references: [id], onDelete: SetNull)
   @@index([created_by])
 }
 
@@ -947,7 +948,7 @@ model job_descriptions {
   id                Int                       @id @default(autoincrement())
   uid               String                    @unique @default(uuid())
   title             String
-  department        String
+  department        String 
   employment_type   String
   work_mode         String
   location          String
@@ -1059,4 +1060,16 @@ model job_description_analysis {
   job_description job_descriptions @relation(fields: [job_description_id], references: [id], onDelete: Cascade)
 
   @@index([analysis_status])
+}
+
+model departments {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  description String?
+  created_by  String
+  created_at  DateTime    @default(now())
+  users       users       @relation(fields: [created_by], references: [empid])
+  positions   positions[]
+
+  @@index([created_by])
 }
