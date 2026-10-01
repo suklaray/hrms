@@ -28,7 +28,7 @@ export async function DELETE(req: NextRequest, context?: { params?: Promise<any>
     // Set user status to Inactive instead of deleting
     await prisma.users.update({
       where: { id: parseInt(id) },
-      data: { status: "Inactive" },
+      data: { is_active: "INACTIVE" },
     });
 
     return NextResponse.json({ message: "User made inactive successfully" }, { status: 200 });

@@ -200,8 +200,8 @@ model MonthlySummary {
   uid         String   @unique
   empid       String
   month       String   
-  workingDay  Decimal  @default(0.0)
-  overtime    Decimal  @default(0.0)
+  workingDay  Decimal  @default(0.0)  @db.Decimal(5, 2)
+  overtime    Decimal  @default(0.0)  @db.Decimal(5, 2)
   weekend     Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -288,6 +288,8 @@ model employees {
   empid                                         Int                    @id @default(autoincrement())
   candidate_id                                  String?
   main_employee_id                              String? // Same as users.empid
+  user_empid                                    String?                @unique
+  user                                          users?                 @relation(fields: [user_empid], references: [empid], onDelete: SetNull, onUpdate: Cascade)
   name                                          String?
   email                                         String?                @unique(map: "employees_email_unique")
   contact_no                                    String?
@@ -445,6 +447,7 @@ model users {
   position                   String?
   date_of_joining            DateTime?
   status                     String?                          @default("Active")
+  is_active                  UserActiveStatus                 @default(ACTIVE)
   experience                 Int?
   profile_photo              String?
   created_at                 DateTime?                        @default(now())
@@ -474,6 +477,7 @@ model users {
   sessions                   session[]
   attendance       attendance[]
   monthlySummaries MonthlySummary[]
+  employeeProfile  employees?
 
   @@index([roleId])
   @@index([company_id])
@@ -756,6 +760,11 @@ enum SalaryCalculationType {
   FIXED
   PERCENTAGE
   FORMULA
+}
+
+enum UserActiveStatus {
+  ACTIVE
+  INACTIVE
 }
 
 model salary_component {

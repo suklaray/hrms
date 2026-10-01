@@ -30,6 +30,11 @@ function toUTCDateOnly(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
+/** Round to 2 decimals to keep DECIMAL(5,2) clean */
+function round2(n: number): number {
+  return Number(n.toFixed(2));
+}
+
 function classifyByHours(hours: number): {
   workingDay: number;
   overtime: number;
@@ -40,7 +45,10 @@ function classifyByHours(hours: number): {
   if (hours < FULL_DAY_HOURS) {
     return { workingDay: 0.5, overtime: 0 };
   }
-  return { workingDay: 1, overtime: hours - FULL_DAY_HOURS };
+  return {
+    workingDay: 1,
+    overtime: round2(hours - FULL_DAY_HOURS),
+  };
 }
 
 // ---------- Route ----------
@@ -123,9 +131,9 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Active employees only
+    // ===== Active employees only (employment status, not login status) =====
     const employees = await prisma.users.findMany({
-      where: { status: "Active" },
+      where: { is_active: "ACTIVE" },
       select: { empid: true, email: true },
     });
 
@@ -178,12 +186,13 @@ export async function POST(req: NextRequest) {
         const regularizationByDate = new Map<string, number>();
         for (const r of regularizations) {
           const key = toUTCDateOnly(r.attendance_date).toISOString().slice(0, 10);
-          if (regularizationByDate.has(key)) continue; // keep latest reviewed_at
+          if (regularizationByDate.has(key)) continue;
           const hours =
             (r.requested_checkout.getTime() - r.check_in_time.getTime()) /
             (1000 * 60 * 60);
-          if (hours > 0) {
-            regularizationByDate.set(key, Number(hours.toFixed(2)));
+          const rounded = round2(hours);
+          if (rounded > 0) {
+            regularizationByDate.set(key, rounded);
           }
         }
 
@@ -212,6 +221,38 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // ===== Approved paid leaves for this employee in this month =====
+        const approvedLeaves = await prisma.leave_requests.findMany({
+          where: {
+            empid: emp.empid,
+            status: "Approved",
+            from_date: { lt: monthEnd },
+            to_date: { gte: monthStart },
+          },
+          select: {
+            from_date: true,
+            to_date: true,
+            leave_types: { select: { paid: true } },
+          },
+        });
+
+        // Set of paid-leave dates for this employee (unpaid leaves ignored)
+        const paidLeaveDates = new Set<string>();
+        for (const lv of approvedLeaves) {
+          if (!lv.leave_types?.paid) continue;
+          const start = toUTCDateOnly(lv.from_date);
+          const end = toUTCDateOnly(lv.to_date);
+          for (
+            let d = new Date(start);
+            d.getTime() <= end.getTime();
+            d.setUTCDate(d.getUTCDate() + 1)
+          ) {
+            if (d < monthStart || d >= monthEnd) continue;
+            paidLeaveDates.add(d.toISOString().slice(0, 10));
+          }
+        }
+        // ===== END LEAVE BLOCK =====
+
         // ---- Day loop ----
         for (const day of days) {
           const dayKey = day.toISOString().slice(0, 10);
@@ -225,24 +266,39 @@ export async function POST(req: NextRequest) {
           const worked = hours > 0;
           const weekendDay = isWeekend(day);
           const holiday = holidayDatesForEmp.has(dayKey);
+          const onPaidLeave = paidLeaveDates.has(dayKey);
 
+          // 1. Weekend
           if (weekendDay) {
             if (worked) {
-              overtime = overtime.add(new Prisma.Decimal(hours));
+              overtime = overtime.add(
+                new Prisma.Decimal(round2(hours))
+              );
             } else {
               weekend += 1;
             }
             continue;
           }
 
+          // 2. Holiday
           if (holiday) {
             workingDay = workingDay.add(new Prisma.Decimal(1));
             if (worked) {
-              overtime = overtime.add(new Prisma.Decimal(hours));
+              overtime = overtime.add(
+                new Prisma.Decimal(round2(hours))
+              );
             }
             continue;
           }
 
+          // 3. Paid leave — always counts as 1.0 working day.
+          //    Even if the employee also worked, they don't lose the leave credit.
+          if (onPaidLeave) {
+            workingDay = workingDay.add(new Prisma.Decimal(1));
+          }
+
+          // 4. Attendance contribution — runs even when on paid leave,
+          //    because work is work. If no hours were worked, this adds 0.
           const { workingDay: wd, overtime: ot } = classifyByHours(hours);
           workingDay = workingDay.add(new Prisma.Decimal(wd));
           overtime = overtime.add(new Prisma.Decimal(ot));

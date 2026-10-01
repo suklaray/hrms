@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     }
 
     // Check if user is inactive
-    if (user.status === "Inactive") {
+    if (user.is_active === "INACTIVE") {
       return NextResponse.json({ message: "Access denied. Employee is inactive." }, { status: 403 });
     }
 

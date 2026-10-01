@@ -35,6 +35,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Invalid password" }, { status: 401 });
     }
 
+    if (user.is_active === "INACTIVE") {
+      return NextResponse.json({ message: "Account is deactivated. Please contact your administrator." }, { status: 403 });
+    }
+
     const employee = await prisma.employees.findUnique({ where: { email: user.email } });
     let hasFormSubmitted = !!employee;
 

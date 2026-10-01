@@ -22,15 +22,15 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     // Determine accessible users dynamically from DB
     const canViewAll = isSuperAdmin(decoded) || (await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW));
-    let userWhereClause: any = { status: { not: "Inactive" } };
+    let userWhereClause: any = { is_active: "ACTIVE" };
 
     if (!canViewAll) {
       const assignableRoles = await getAssignableRolesForUser(decoded);
       const assignableIds = assignableRoles.map((r: any) => r.id);
       userWhereClause = {
         OR: [
-          { roleId: { in: assignableIds }, status: { not: "Inactive" } },
-          { empid: (decoded.empid || decoded.id) as string, status: { not: "Inactive" } },
+          { roleId: { in: assignableIds }, is_active: "ACTIVE" },
+          { empid: (decoded.empid || decoded.id) as string, is_active: "ACTIVE" },
         ],
       };
     }

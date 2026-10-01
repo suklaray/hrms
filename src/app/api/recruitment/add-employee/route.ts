@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
         position,
         date_of_joining: new Date(date_of_joining),
         status: "Active",
+        is_active: "ACTIVE",
         experience: experience || null,
         profile_photo: candidateDetails.profile_photo || profile_photo || null,
         role,
@@ -158,6 +159,7 @@ export async function POST(req: NextRequest) {
       data: {
         candidate_id: candidate.candidate_id,
         main_employee_id: empid,
+        user_empid: empid,
         name: candidateDetails.name,
         email: candidateDetails.email,
         contact_no: candidateDetails.contact_no,

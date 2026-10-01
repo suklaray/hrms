@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     const employees = await prisma.users.findMany({
       where: {
-        status: { not: "Inactive" }, // Exclude inactive employees
+        is_active: "ACTIVE",
         ...(allowedRoleNames && allowedRoleNames.length > 0
           ? { rbacRole: { name: { in: allowedRoleNames }, status: "active" } }
           : {}),

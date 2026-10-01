@@ -139,6 +139,7 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
         position: position || null,
         date_of_joining: date_of_joining ? new Date(date_of_joining) : null,
         status: status || "Active",
+        is_active: "ACTIVE",
         experience: experience ? parseInt(experience) : null,
         role: assignedLegacyRole,
         employee_type,
