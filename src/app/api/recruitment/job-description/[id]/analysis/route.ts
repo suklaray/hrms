@@ -172,6 +172,33 @@ function mapAnalysisToDatabase(analysis: AnalysisData) {
   };
 }
 
+export async function GET(
+  request: NextRequest,
+  { params }: RouteContext
+) {
+  try {
+    const { id } = await params;
+    const jobDescriptionId = Number(id);
+
+    if (!id || Number.isNaN(jobDescriptionId)) {
+      return NextResponse.json({ success: false, error: "Invalid job description ID" }, { status: 400 });
+    }
+
+    const analysis = await prisma.job_description_analysis.findUnique({
+      where: { job_description_id: jobDescriptionId },
+    });
+
+    if (!analysis) {
+      return NextResponse.json({ success: false, error: "No analysis found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, data: analysis }, { status: 200 });
+  } catch (error: unknown) {
+    console.error("Get JD Analysis Error:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch analysis" }, { status: 500 });
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: RouteContext
