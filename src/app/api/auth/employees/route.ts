@@ -114,9 +114,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     );
     const { role } = query;
     const filters: Record<string, any> = {
-      status: {
-        not: "Inactive",
-      },
+      is_active: "ACTIVE",
       roleId: {
         in: uniqueVisibleRoleIds,
       },

@@ -21,11 +21,11 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
     }
 
-    let roleFilter: any = { status: { not: 'Inactive' } };
+    let roleFilter: any = { is_active: 'ACTIVE' };
     if (!isSuperAdmin(decoded)) {
       const assignableRoles = await getAssignableRolesForUser(decoded);
       const accessibleRoleIds = assignableRoles.map((r: any) => r.id);
-      roleFilter = { status: { not: 'Inactive' }, roleId: { in: accessibleRoleIds } };
+      roleFilter = { is_active: 'ACTIVE', roleId: { in: accessibleRoleIds } };
     }
 
     const users = await prisma.users.findMany({

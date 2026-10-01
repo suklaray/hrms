@@ -62,6 +62,7 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
         roleId: superAdminRole.id,
         verified: 'verified',
         form_submitted: true,
+        is_active: "ACTIVE",
         empid: 'SUPER_ADMIN_001'
       },
       select: {
