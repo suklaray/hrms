@@ -181,6 +181,13 @@ model addresses {
   @@index([employee_id])
 }
 
+enum Status {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
 model attendance {
   id                Int                           @id @default(autoincrement())
   uid               String?                       @unique @default(cuid())
@@ -191,24 +198,27 @@ model attendance {
   date              DateTime?                     @default(now())
   created_at        DateTime?                     @default(now())
   attendance_status attendance_attendance_status? @default(Absent)
-  user users @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
-  regularizations attendance_regularization[]
+  status            Status                        @default(PENDING)
+  user              users                         @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  regularizations   attendance_regularization[]
 }
 
 model MonthlySummary {
-  id          Int      @id @default(autoincrement())
-  uid         String   @unique
-  empid       String
-  month       String   
-  workingDay  Decimal  @default(0.0)  @db.Decimal(5, 2)
-  overtime    Decimal  @default(0.0)  @db.Decimal(5, 2)
-  weekend     Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  uid                String   @unique @default(cuid())
+  empid              String
+  month              Int      @db.SmallInt
+  year               Int      @db.SmallInt
+  total_working_days Int      @default(0)
+  days_worked        Decimal  @default(0.0) @db.Decimal(5, 2)
+  overtime_hours     Decimal  @default(0.0) @db.Decimal(5, 2)
+  weekend            Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  user users @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  user    users   @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
 
-  @@unique([empid, month]) 
+  @@unique([empid, month])
   @@index([month])
   @@index([empid])
   @@map("monthly_summary")
