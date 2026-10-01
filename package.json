@@ -11,6 +11,7 @@
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1136.0",
     "@fortawesome/fontawesome-free": "^7.3.1",
+    "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
     "@octokit/rest": "^22.0.1",
     "@prisma/client": "6.10.1",
@@ -30,6 +31,7 @@
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.47.0",
+    "mammoth": "^1.13.0",
     "moment": "^2.31.0",
     "mysql2": "^3.24.4",
     "nanoid": "^6.0.1",
