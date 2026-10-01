@@ -64,6 +64,8 @@ export const PERMISSION_KEYS = {
   RECRUITMENT_UPDATE_STATUS: "recruitment.update_status",
   RECRUITMENT_SEND_MAIL: "recruitment.send_mail",
   RECRUITMENT_CONVERT_EMPLOYEE: "recruitment.convert_employee",
+  RECRUITMENT_APPLICATIONS_VIEW: "recruitment.applications_view",
+  RECRUITMENT_ANALYTICS: "recruitment.analytics",
   COMPLIANCE_VIEW: "compliance.view",
   COMPLIANCE_VIEW_DOCUMENTS: "compliance.view_documents",
   COMPLIANCE_REQUEST_RESUBMISSION: "compliance.request_resubmission",
