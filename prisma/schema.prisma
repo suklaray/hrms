@@ -36,6 +36,7 @@ model company {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   payroll_periods payroll_period[]
+  roles           Role[]
 }
 
 enum PayrollCurrency {
@@ -676,7 +677,10 @@ model Role {
   id          Int              @id @default(autoincrement())
   name        String           @unique
   description String?
-  status      String           @default("active")
+  type        RoleType         @default(CUSTOM)
+  status      RoleStatus       @default(ACTIVE)
+  companyId   String?          @map("company_id")
+  company     company?         @relation(fields: [companyId], references: [uid], onDelete: SetNull)
   parentId    Int?
   parent      Role?            @relation("RoleHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children    Role[]           @relation("RoleHierarchy")
@@ -686,16 +690,34 @@ model Role {
   updatedAt   DateTime         @updatedAt
 
   @@index([parentId])
+  @@index([companyId])
   @@map("roles")
+}
+
+enum RoleType {
+  SUPER_ADMIN
+  CUSTOM
+}
+
+enum RoleStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
 }
 
 model Permission {
   id          Int              @id @default(autoincrement())
   key         String           @unique
+  name        String?
   description String?
   category    String           @default("General")
+  module      String?
+  action      String?
+  isSystem    Boolean          @default(false)
+  isActive    Boolean          @default(true)
   roles       RolePermission[]
   createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
 
   @@map("permissions")
 }

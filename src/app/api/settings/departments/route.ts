@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getUserFromToken } from "@/lib/getUserFromToken";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 const ALLOWED_ROLES = ["admin", "hr", "superadmin"];
 
@@ -9,30 +10,23 @@ interface DepartmentBody {
   description?: string | null;
 }
 
-interface AuthUser {
-  role: string;
-  empid: string;
-}
-
-function getAuthenticatedUser(request: NextRequest): AuthUser | null {
-  const token = request.cookies.get("token")?.value;
-
-  if (!token) {
-    return null;
+async function verifyDepartmentAccess(request: NextRequest) {
+  const auth = await checkAuth(request, [PERMISSIONS.SETTINGS.MANAGE]);
+  if (auth.user) {
+    if (auth.error) {
+      if (ALLOWED_ROLES.includes(auth.user.role)) {
+        return { user: auth.user, error: null };
+      }
+      return { user: null, error: auth.error };
+    }
+    return { user: auth.user, error: null };
   }
-
-  return getUserFromToken(token) as AuthUser | null;
+  return { user: null, error: auth.error || NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
 }
 
 export async function GET(request: NextRequest) {
-  const user = getAuthenticatedUser(request);
-
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { user, error } = await verifyDepartmentAccess(request);
+  if (error) return error;
 
   try {
     const departments = await prisma.departments.findMany({
@@ -56,14 +50,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const user = getAuthenticatedUser(request);
-
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { user, error } = await verifyDepartmentAccess(request);
+  if (error || !user) return error || NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body: DepartmentBody = await request.json();
@@ -80,7 +68,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: name.trim(),
         description: description || null,
-        created_by: user.empid,
+        created_by: user.empid || String(user.id),
       },
     });
 
@@ -105,14 +93,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const user = getAuthenticatedUser(request);
-
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { user, error } = await verifyDepartmentAccess(request);
+  if (error || !user) return error || NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -171,14 +153,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const user = getAuthenticatedUser(request);
-
-  if (!user || !ALLOWED_ROLES.includes(user.role)) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { user, error } = await verifyDepartmentAccess(request);
+  if (error || !user) return error || NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const { searchParams } = new URL(request.url);

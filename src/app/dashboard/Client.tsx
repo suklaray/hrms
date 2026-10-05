@@ -9,8 +9,6 @@ import Head from "@/lib/compatHead";
 import { useRouter } from "@/lib/compatRouter";
 import { useEffect, useState } from "react";
 import { Users, UserCheck, Clock, FileText, User } from "lucide-react";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import prisma from "@/lib/prisma";
 import { toast } from "react-toastify";
 import { EmployeeDashboard } from "@/app/employee/dashboard/page";
 import { checkPermission, getUserPermissions, isSuperAdmin } from "@/lib/rbac";
@@ -32,7 +30,7 @@ function HRDashboardView({ user, permissions }) {
     fetch("/api/dashboard/stats").then(r => r.ok ? r.json() : null).then(d => setStats(d)).catch(() => { toast.error("Failed to fetch dashboard stats"); });
     if (can(PERMISSION_KEYS.ATTENDANCE_REGULARIZE)) {
       fetch("/api/attendance/check-missed-checkout", { credentials: "include" })
-        .then(r => r.ok ? r.json() : null).then(d => { if (d?.hasMissedCheckout) setMissedCheckout(d.attendance); }).catch(() => {});
+        .then(r => r.ok ? r.json() : null).then(d => { if (d?.hasMissedCheckout) setMissedCheckout(d.attendance); }).catch(() => { });
     }
   }, []);
   const dashboardCards = [

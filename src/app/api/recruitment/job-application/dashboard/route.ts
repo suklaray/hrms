@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function GET(req: NextRequest) {
+  const { error } = await checkAuth(req, [
+    PERMISSIONS.RECRUITMENT.ANALYTICS,
+    PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
+    PERMISSIONS.RECRUITMENT.VIEW,
+  ]);
+  if (error) return error;
   try {
     const [resumes, jobs] = await Promise.all([
       prisma.parsed_resumes.findMany({

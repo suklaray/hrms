@@ -1,17 +1,18 @@
 // src/lib/rbacPermissions.ts
 import prisma from "@/lib/prisma";
-
-export interface PermissionDefinition {
-  id?: number;
-  category: string;
-  key: string;
-  description: string | null;
-}
+import { PERMISSIONS, PERMISSION_DEFINITIONS } from "@/rbac/permissions";
+export { PERMISSIONS, PERMISSION_DEFINITIONS } from "@/rbac/permissions";
+export type { PermissionDefinition } from "@/rbac/permissions";
 
 /**
  * Loads all permissions dynamically from the database.
  */
-export async function getAllPermissionsFromDb(): Promise<PermissionDefinition[]> {
+export async function getAllPermissionsFromDb(): Promise<{
+  id?: number;
+  category: string;
+  key: string;
+  description: string | null;
+}[]> {
   try {
     const permissions = await prisma.permission.findMany({
       orderBy: [{ category: "asc" }, { key: "asc" }],
@@ -29,68 +30,103 @@ export async function getAllPermissionsFromDb(): Promise<PermissionDefinition[]>
 }
 
 /**
- * Strongly typed dictionary of permission keys used across the application.
+ * Backwards-compatible dictionary of permission keys mapping to canonical definitions.
  * Corresponds to keys stored in the permissions database table.
  */
 export const PERMISSION_KEYS = {
-  DASHBOARD_VIEW: "dashboard.view",
-  EMPLOYEE_VIEW: "employee.view",
-  EMPLOYEE_CREATE: "employee.create",
-  EMPLOYEE_EDIT: "employee.edit",
-  EMPLOYEE_DELETE: "employee.delete",
-  EMPLOYEE_VERIFY: "employee.verify",
-  EMPLOYEE_SEND_CREDENTIALS: "employee.send_credentials",
-  EMPLOYEE_RESET_PASSWORD: "employee.reset_password",
-  ATTENDANCE_VIEW: "attendance.view",
-  ATTENDANCE_EDIT: "attendance.edit",
-  ATTENDANCE_ANALYTICS: "attendance.analytics",
-  ATTENDANCE_MY: "attendance.my",
-  ATTENDANCE_REGULARIZE: "attendance.regularize",
-  ATTENDANCE_REGULARIZE_APPROVE: "attendance.regularize_approve",
-  LEAVE_VIEW: "leave.view",
-  LEAVE_APPROVE: "leave.approve",
-  LEAVE_CANCEL: "leave.cancel",
-  LEAVE_REQUEST: "leave.request",
-  LEAVE_VIEW_OWN: "leave.view_own",
-  LEAVE_MANAGE_TYPES: "leave.manage_types",
-  PAYROLL_VIEW: "payroll.view",
-  PAYROLL_GENERATE: "payroll.generate",
-  PAYROLL_EDIT: "payroll.edit",
-  PAYSLIP_VIEW: "payslip.view",
-  RECRUITMENT_VIEW: "recruitment.view",
-  RECRUITMENT_CREATE: "recruitment.create",
-  RECRUITMENT_EDIT: "recruitment.edit",
-  RECRUITMENT_DELETE: "recruitment.delete",
-  RECRUITMENT_UPDATE_STATUS: "recruitment.update_status",
-  RECRUITMENT_SEND_MAIL: "recruitment.send_mail",
-  RECRUITMENT_CONVERT_EMPLOYEE: "recruitment.convert_employee",
-  RECRUITMENT_APPLICATIONS_VIEW: "recruitment.applications_view",
-  RECRUITMENT_ANALYTICS: "recruitment.analytics",
-  COMPLIANCE_VIEW: "compliance.view",
-  COMPLIANCE_VIEW_DOCUMENTS: "compliance.view_documents",
-  COMPLIANCE_REQUEST_RESUBMISSION: "compliance.request_resubmission",
-  TASK_VIEW: "task.view",
-  TASK_CREATE: "task.create",
-  TASK_EDIT: "task.edit",
-  TASK_DELETE: "task.delete",
-  TASK_MY: "task.my",
-  TASK_UPDATE_STATUS: "task.update_status",
-  REPORT_VIEW: "report.view",
-  REPORT_SUBMIT: "report.submit",
-  CALENDAR_VIEW: "calendar.view",
-  CALENDAR_MANAGE: "calendar.manage",
-  CUSTOMER_VIEW: "customer.view",
-  CUSTOMER_DELETE: "customer.delete",
-  NOTIFICATION_VIEW: "notification.view",
-  SETTINGS_PROFILE: "settings.profile",
-  SETTINGS_CHANGE_PASSWORD: "settings.change_password",
-  SETTINGS_POSITION_VIEW: "settings.position_view",
-  SETTINGS_POSITION_MANAGE: "settings.position_manage",
-  SETTINGS_EMPLOYEE_TYPES_MANAGE: "settings.employee_types_manage",
-  SETTINGS_BOT: "settings.bot",
-  BOT_SETTINGS: "settings.bot",
-  POSITION_VIEW: "settings.position_view",
-  POSITION_MANAGE: "settings.position_manage",
-  DOCUMENT_SUBMIT: "document.submit",
-  DOCUMENT_VIEW_OWN: "document.view_own",
+  // Dashboard
+  DASHBOARD_VIEW: PERMISSIONS.DASHBOARD.VIEW,
+
+  // Employee
+  EMPLOYEE_VIEW: PERMISSIONS.EMPLOYEE.VIEW,
+  EMPLOYEE_CREATE: PERMISSIONS.EMPLOYEE.CREATE,
+  EMPLOYEE_EDIT: PERMISSIONS.EMPLOYEE.EDIT,
+  EMPLOYEE_DELETE: PERMISSIONS.EMPLOYEE.DELETE,
+  EMPLOYEE_VERIFY: PERMISSIONS.EMPLOYEE.VERIFY,
+  EMPLOYEE_SEND_CREDENTIALS: PERMISSIONS.EMPLOYEE.SEND_CREDENTIALS,
+  EMPLOYEE_RESET_PASSWORD: PERMISSIONS.EMPLOYEE.RESET_PASSWORD,
+
+  // Attendance
+  ATTENDANCE_VIEW: PERMISSIONS.ATTENDANCE.VIEW,
+  ATTENDANCE_EDIT: PERMISSIONS.ATTENDANCE.EDIT,
+  ATTENDANCE_ANALYTICS: PERMISSIONS.ATTENDANCE.ANALYTICS,
+  ATTENDANCE_MY: PERMISSIONS.ATTENDANCE.MY,
+  ATTENDANCE_REGULARIZE: PERMISSIONS.ATTENDANCE.REGULARIZE,
+  ATTENDANCE_REGULARIZE_APPROVE: PERMISSIONS.ATTENDANCE.REGULARIZE_APPROVE,
+
+  // Leave
+  LEAVE_VIEW: PERMISSIONS.LEAVE.VIEW,
+  LEAVE_APPROVE: PERMISSIONS.LEAVE.APPROVE,
+  LEAVE_CANCEL: PERMISSIONS.LEAVE.CANCEL,
+  LEAVE_REQUEST: PERMISSIONS.LEAVE.REQUEST,
+  LEAVE_VIEW_OWN: PERMISSIONS.LEAVE.VIEW_OWN,
+  LEAVE_MANAGE_TYPES: PERMISSIONS.LEAVE.MANAGE_TYPES,
+
+  // Payroll
+  PAYROLL_VIEW: PERMISSIONS.PAYROLL.VIEW,
+  PAYROLL_GENERATE: PERMISSIONS.PAYROLL.GENERATE,
+  PAYROLL_EDIT: PERMISSIONS.PAYROLL.EDIT,
+  PAYSLIP_VIEW: PERMISSIONS.PAYSLIP.VIEW,
+
+  // Recruitment
+  RECRUITMENT_VIEW: PERMISSIONS.RECRUITMENT.VIEW,
+  RECRUITMENT_CREATE: PERMISSIONS.RECRUITMENT.CREATE,
+  RECRUITMENT_EDIT: PERMISSIONS.RECRUITMENT.EDIT,
+  RECRUITMENT_DELETE: PERMISSIONS.RECRUITMENT.DELETE,
+  RECRUITMENT_UPDATE_STATUS: PERMISSIONS.RECRUITMENT.UPDATE_STATUS,
+  RECRUITMENT_SEND_MAIL: PERMISSIONS.RECRUITMENT.SEND_MAIL,
+  RECRUITMENT_CONVERT_EMPLOYEE: PERMISSIONS.RECRUITMENT.CONVERT_EMPLOYEE,
+  RECRUITMENT_APPLICATIONS_VIEW: PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
+  RECRUITMENT_ANALYTICS: PERMISSIONS.RECRUITMENT.ANALYTICS,
+
+  // Compliance
+  COMPLIANCE_VIEW: PERMISSIONS.COMPLIANCE.VIEW,
+  COMPLIANCE_VIEW_DOCUMENTS: PERMISSIONS.COMPLIANCE.VIEW_DOCUMENTS,
+  COMPLIANCE_REQUEST_RESUBMISSION: PERMISSIONS.COMPLIANCE.REQUEST_RESUBMISSION,
+
+  // Task
+  TASK_VIEW: PERMISSIONS.TASK.VIEW,
+  TASK_CREATE: PERMISSIONS.TASK.CREATE,
+  TASK_EDIT: PERMISSIONS.TASK.EDIT,
+  TASK_DELETE: PERMISSIONS.TASK.DELETE,
+  TASK_MY: PERMISSIONS.TASK.MY,
+  TASK_UPDATE_STATUS: PERMISSIONS.TASK.UPDATE_STATUS,
+
+  // Reports
+  REPORT_VIEW: PERMISSIONS.REPORT.VIEW,
+  REPORT_SUBMIT: PERMISSIONS.REPORT.SUBMIT,
+
+  // Calendar
+  CALENDAR_VIEW: PERMISSIONS.CALENDAR.VIEW,
+  CALENDAR_MANAGE: PERMISSIONS.CALENDAR.MANAGE,
+
+  // Customer Connect
+  CUSTOMER_VIEW: PERMISSIONS.CUSTOMER.VIEW,
+  CUSTOMER_DELETE: PERMISSIONS.CUSTOMER.DELETE,
+
+  // Notifications
+  NOTIFICATION_VIEW: PERMISSIONS.NOTIFICATION.VIEW,
+
+  // Documents
+  DOCUMENT_SUBMIT: PERMISSIONS.DOCUMENT.SUBMIT,
+  DOCUMENT_VIEW_OWN: PERMISSIONS.DOCUMENT.VIEW_OWN,
+
+  // Settings
+  SETTINGS_PROFILE: PERMISSIONS.SETTINGS.PROFILE,
+  SETTINGS_CHANGE_PASSWORD: PERMISSIONS.SETTINGS.CHANGE_PASSWORD,
+  SETTINGS_POSITION_VIEW: PERMISSIONS.SETTINGS.POSITION_VIEW,
+  SETTINGS_POSITION_MANAGE: PERMISSIONS.SETTINGS.POSITION_MANAGE,
+  SETTINGS_EMPLOYEE_TYPES_MANAGE: PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE,
+  SETTINGS_BOT: PERMISSIONS.SETTINGS.BOT,
+  SETTINGS_MANAGE: PERMISSIONS.SETTINGS.MANAGE,
+
+  // Canonical backwards-compatible aliases
+  BOT_SETTINGS: PERMISSIONS.SETTINGS.BOT,
+  POSITION_VIEW: PERMISSIONS.SETTINGS.POSITION_VIEW,
+  POSITION_MANAGE: PERMISSIONS.SETTINGS.POSITION_MANAGE,
+
+  // RBAC System Management
+  RBAC_PERMISSION_VIEW: PERMISSIONS.RBAC.PERMISSION_VIEW,
+  RBAC_ROLE_MANAGE: PERMISSIONS.RBAC.ROLE_MANAGE,
+  RBAC_ROLE_ASSIGN: PERMISSIONS.RBAC.ROLE_ASSIGN,
 } as const;

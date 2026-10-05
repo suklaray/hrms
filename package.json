@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "rbac:sync": "node scripts/rbac-sync.js",
+    "rbac:test": "node scripts/test-rbac.js"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1136.0",

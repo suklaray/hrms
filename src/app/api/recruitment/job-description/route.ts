@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-
-interface JwtPayload {
-  role?: string;
-}
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 interface JobDescriptionBody {
   title?: string;
@@ -29,34 +26,13 @@ interface JobDescriptionBody {
   status?: string;
 }
 
-function isRecruitmentUser(request: NextRequest): boolean {
-  try {
-    const token = request.cookies.get("token")?.value;
-
-    if (!token || !process.env.JWT_SECRET) {
-      return false;
-    }
-
-    const user = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    ) as JwtPayload;
-
-    return ["hr", "admin", "recruiter", "superadmin"].includes(
-      user.role?.toLowerCase() || ""
-    );
-  } catch {
-    return false;
-  }
-}
-
 export async function GET(request: NextRequest) {
-  if (!isRecruitmentUser(request)) {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { error } = await checkAuth(request, [
+    PERMISSIONS.RECRUITMENT.VIEW,
+    PERMISSIONS.RECRUITMENT.ANALYTICS,
+    PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
+  ]);
+  if (error) return error;
 
   try {
     const jobs = await prisma.job_descriptions.findMany({
@@ -89,12 +65,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isRecruitmentUser(request)) {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { error } = await checkAuth(request, [
+    PERMISSIONS.RECRUITMENT.CREATE,
+    PERMISSIONS.RECRUITMENT.EDIT,
+  ]);
+  if (error) return error;
 
   const body = (await request.json()) as JobDescriptionBody;
 

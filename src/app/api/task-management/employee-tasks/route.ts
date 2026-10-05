@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         const targetEmployee = await prisma.users.findFirst({
           where: {
             empid: employeeId,
-            rbacRole: { name: { in: allowedRoleNames }, status: 'active' },
+            rbacRole: { name: { in: allowedRoleNames }, status: 'ACTIVE' },
           },
           select: { empid: true },
         });

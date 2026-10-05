@@ -1,12 +1,14 @@
 import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.VIEW]);
+  if (error) return error;
+
   const query = await getQueryParams(req, context?.params);
-
-  
-
   const { id } = query;
 
   if (!id) {
@@ -26,7 +28,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     const responseData = {
       ...candidate,
-      resume: candidate.resume
+      resume: candidate.resume,
     };
 
     return NextResponse.json(responseData, { status: 200 });
@@ -35,5 +37,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
-

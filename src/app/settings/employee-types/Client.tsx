@@ -257,8 +257,8 @@ function EmployeeTypes() {
                                       setParentSearchTerm('');
                                     }}
                                     className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${String(form.parentId) === String(r.id)
-                                        ? "bg-indigo-50 font-semibold text-indigo-600"
-                                        : "text-gray-700"
+                                      ? "bg-indigo-50 font-semibold text-indigo-600"
+                                      : "text-gray-700"
                                       }`}
                                   >
                                     <div>
@@ -323,8 +323,11 @@ function EmployeeTypes() {
                                       onChange={() => togglePermission(perm.id)}
                                       className="w-4 h-4 text-indigo-600 rounded cursor-pointer"
                                     />
-                                    <span className="text-sm text-gray-700 group-hover:text-indigo-600">
-                                      {perm.description || perm.key}
+                                    <span className="ml-2 text-sm text-gray-700 group-hover:text-indigo-600">
+                                      <div>
+                                        {perm.description}<br />
+                                        <span className="text-xs text-gray-400 font-semibold">{perm.key}</span>
+                                      </div>
                                     </span>
                                   </label>
                                 ))}
@@ -382,26 +385,41 @@ function EmployeeTypes() {
                     ) : (
                       roles.map((role) => (
                         <tr key={role.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{role.name}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                            <div className="flex items-center gap-2">
+                              <span>{role.name}</span>
+                              {role.type === "SUPER_ADMIN" && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-purple-100 text-purple-700 rounded uppercase">
+                                  Super Admin
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 text-sm text-gray-500">{role.description || '—'}</td>
                           <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${role.status === 'active'
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${String(role.status).toUpperCase() === 'ACTIVE'
                               ? 'bg-green-100 text-green-700'
                               : 'bg-gray-100 text-gray-600'
                               }`}>
-                              {role.status === 'active'
+                              {String(role.status).toUpperCase() === 'ACTIVE'
                                 ? <CheckCircle size={12} />
                                 : <XCircle size={12} />}
-                              {role.status === 'active' ? 'Active' : 'Inactive'}
+                              {String(role.status).toUpperCase() === 'ACTIVE' ? 'Active' : 'Inactive'}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-700">
                             <div className="flex items-center gap-1">
                               <Users size={14} className="text-gray-400" />
-                              {role._count.users}
+                              {role._count?.users ?? 0}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">{role.permissions.length}</td>
+                          <td className="px-6 py-4 text-sm text-gray-700">
+                            {role.type === 'SUPER_ADMIN' ? (
+                              <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">All (Implicit)</span>
+                            ) : (
+                              role.permissions?.length ?? 0
+                            )}
+                          </td>
                           <td className="px-6 py-4 text-sm text-gray-500">
                             {new Date(role.createdAt).toLocaleDateString()}
                           </td>
@@ -414,20 +432,24 @@ function EmployeeTypes() {
                               >
                                 <Eye size={16} />
                               </button>
-                              <button
-                                onClick={() => router.push(`/settings/employee-types/${role.id}/edit`)}
-                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition cursor-pointer"
-                                title="Edit"
-                              >
-                                <Edit size={16} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(role.id, role.name)}
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
-                                title="Delete"
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              {role.type !== 'SUPER_ADMIN' && (
+                                <button
+                                  onClick={() => router.push(`/settings/employee-types/${role.id}/edit`)}
+                                  className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition cursor-pointer"
+                                  title="Edit"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                              )}
+                              {role.type !== 'SUPER_ADMIN' && (
+                                <button
+                                  onClick={() => handleDelete(role.id, role.name)}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

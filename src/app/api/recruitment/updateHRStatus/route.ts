@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getRequestBody } from "@/lib/routeHelper";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function PUT(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.UPDATE_STATUS]);
+  if (error) return error;
+
   const { candidateId, hrStatus } = (await getRequestBody(req)) || {};
 
   try {
