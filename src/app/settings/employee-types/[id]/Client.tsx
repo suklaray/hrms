@@ -81,10 +81,11 @@ function ViewEmployeeType() {
                 </div>
                 <div>
                   <p className="text-gray-500 mb-1">Status</p>
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${role.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
-                    }`}>
-                    {role.status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
-                    {role.status === 'active' ? 'Active' : 'Inactive'}
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                    String(role.status).toUpperCase() === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {String(role.status).toUpperCase() === 'ACTIVE' ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                    {String(role.status).toUpperCase() === 'ACTIVE' ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 <div>

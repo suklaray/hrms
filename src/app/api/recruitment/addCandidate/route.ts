@@ -3,8 +3,13 @@ import fs from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
 import crypto from "crypto";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function POST(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.CREATE]);
+  if (error) return error;
+
   try {
     const formData = await req.formData();
     const getValue = (field: string) => (formData.get(field) as string) || '';

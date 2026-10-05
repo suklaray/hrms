@@ -44,7 +44,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       where: {
         is_active: "ACTIVE",
         ...(allowedRoleNames && allowedRoleNames.length > 0
-          ? { rbacRole: { name: { in: allowedRoleNames }, status: "active" } }
+          ? { rbacRole: { name: { in: allowedRoleNames }, status: "ACTIVE" } }
           : {}),
       },
       select: {

@@ -1,8 +1,13 @@
 import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function DELETE(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.DELETE]);
+  if (error) return error;
+
   const query = await getQueryParams(req, context?.params);
 
   

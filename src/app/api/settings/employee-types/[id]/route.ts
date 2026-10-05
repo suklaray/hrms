@@ -75,6 +75,16 @@ export async function PUT(
     return NextResponse.json({ error: "An employee type with this name already exists" }, { status: 400 });
   }
 
+  const currentRole = await prisma.role.findUnique({ where: { id } });
+  if (!currentRole) return NextResponse.json({ error: "Employee type not found" }, { status: 404 });
+
+  if (currentRole.type === "SUPER_ADMIN" && !checkPermission(user, "superadmin")) {
+    const isUserSuperAdmin = user.role === "superadmin" || user.roleId === 23;
+    if (!isUserSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden: Super Admin system role cannot be modified by ordinary administrators" }, { status: 403 });
+    }
+  }
+
   // Prevent circular hierarchy
   if (parentId && parseInt(parentId, 10) === id) {
     return NextResponse.json({ error: "A role cannot be its own parent" }, { status: 400 });
@@ -82,8 +92,7 @@ export async function PUT(
 
   let resolvedParentId = parentId ? parseInt(parentId, 10) : null;
   if (!resolvedParentId) {
-    const currentRole = await prisma.role.findUnique({ where: { id } });
-    if (currentRole && currentRole.name !== "Super Admin") {
+    if (currentRole.name !== "Super Admin" && currentRole.type !== "SUPER_ADMIN") {
       const superAdminRole = await ensureSuperAdminRole(prisma);
       if (superAdminRole && superAdminRole.id !== id) {
         resolvedParentId = superAdminRole.id;
@@ -91,12 +100,19 @@ export async function PUT(
     }
   }
 
+  const normalizedStatus =
+    String(status).toUpperCase() === "INACTIVE"
+      ? "INACTIVE"
+      : String(status).toUpperCase() === "ARCHIVED"
+      ? "ARCHIVED"
+      : "ACTIVE";
+
   const role = await prisma.role.update({
     where: { id },
     data: {
       name: name.trim(),
       description: description?.trim() || null,
-      status,
+      status: normalizedStatus as any,
       parentId: resolvedParentId,
       permissions: {
         deleteMany: {},
@@ -129,6 +145,16 @@ export async function DELETE(
   const idStr = params?.id;
   const id = idStr ? parseInt(idStr, 10) : NaN;
   if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const targetRole = await prisma.role.findUnique({ where: { id } });
+  if (!targetRole) return NextResponse.json({ error: "Role not found" }, { status: 404 });
+
+  if (targetRole.type === "SUPER_ADMIN") {
+    return NextResponse.json(
+      { error: "Cannot delete protected system role (Super Admin)" },
+      { status: 403 }
+    );
+  }
 
   // Unlink users before deleting
   await prisma.users.updateMany({ where: { roleId: id }, data: { roleId: null } });

@@ -14,14 +14,28 @@ import {
   FaVoicemail,
   FaMailBulk
 } from 'react-icons/fa';
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { isSuperAdmin } from "@/lib/rbac";
 
-
-
-function CandidateDetails() {
-  const [candidate, setCandidate] = useState(null);
-  const [employee, setEmployee] = useState(null);
+function CandidateDetails({
+  user,
+  permissions = [],
+}: {
+  user?: any;
+  permissions?: string[];
+}) {
+  const [candidate, setCandidate] = useState<any>(null);
+  const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<any>(null);
+
+  const userPerms = new Set(Array.isArray(permissions) ? permissions : []);
+  const can = (permKey: string) => {
+    if (!user) return false;
+    if (isSuperAdmin(user)) return true;
+    return userPerms.has(permKey);
+  };
+  const canEdit = can(PERMISSION_KEYS.RECRUITMENT_EDIT);
 
   const router = useRouter();
   const { candidate_id } = router.query;
@@ -143,30 +157,32 @@ function CandidateDetails() {
                 <div className={`px-4 py-2 rounded-full border-2 font-semibold mr-3 ${getStatusColor(candidate.status)}`}>
                   {candidate.status || 'Pending'}
                 </div>
-                <div className="group relative inline-block">
-                  {employee ? (
-                    <>
+                {canEdit && (
+                  <div className="group relative inline-block">
+                    {employee ? (
+                      <>
+                        <button 
+                          disabled
+                          className="flex items-center px-4 py-2 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed opacity-50"
+                        >
+                          <FaEdit className="mr-2" />
+                          Edit Profile
+                        </button>
+                        <div className="absolute top-full mb-1 right-0 px-2 py-1 bg-white text-purple-600 text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
+                          Protected - Employee record cannot be edited
+                        </div>
+                      </>
+                    ) : (
                       <button 
-                        disabled
-                        className="flex items-center px-4 py-2 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed opacity-50"
+                        onClick={() => router.push(`/Recruitment/edit/${candidate.candidate_id}`)}
+                        className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors cursor-pointer"
                       >
                         <FaEdit className="mr-2" />
                         Edit Profile
                       </button>
-                      <div className="absolute top-full mb-1 right-0 px-2 py-1 bg-white text-purple-600 text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50 pointer-events-none">
-                        Protected - Employee record cannot be edited
-                      </div>
-                    </>
-                  ) : (
-                    <button 
-                      onClick={() => router.push(`/Recruitment/edit/${candidate.candidate_id}`)}
-                      className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors cursor-pointer"
-                    >
-                      <FaEdit className="mr-2" />
-                      Edit Profile
-                    </button>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

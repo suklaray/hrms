@@ -1,8 +1,7 @@
-//src/app/api/recruitment/job-description/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 interface RouteContext {
   params: Promise<{
@@ -37,7 +36,11 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_VIEW, PERMISSION_KEYS.RECRUITMENT_VIEW]);
+  const { error } = await checkAuth(request, [
+    PERMISSIONS.RECRUITMENT.VIEW,
+    PERMISSIONS.RECRUITMENT.ANALYTICS,
+    PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
+  ]);
   if (error) return error;
 
   const { id } = await params;
@@ -81,7 +84,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_EDIT, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  const { error } = await checkAuth(request, [PERMISSIONS.RECRUITMENT.EDIT]);
   if (error) return error;
 
   const { id } = await params;
@@ -206,7 +209,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_CLOSE, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  const { error } = await checkAuth(request, [PERMISSIONS.RECRUITMENT.EDIT]);
   if (error) return error;
 
   const { id } = await params;

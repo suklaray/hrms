@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 interface JobDescriptionBody {
   title?: string;
@@ -27,7 +27,11 @@ interface JobDescriptionBody {
 }
 
 export async function GET(request: NextRequest) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_VIEW, PERMISSION_KEYS.RECRUITMENT_VIEW]);
+  const { error } = await checkAuth(request, [
+    PERMISSIONS.RECRUITMENT.VIEW,
+    PERMISSIONS.RECRUITMENT.ANALYTICS,
+    PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
+  ]);
   if (error) return error;
 
   try {
@@ -61,7 +65,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_CREATE, PERMISSION_KEYS.RECRUITMENT_CREATE]);
+  const { error } = await checkAuth(request, [
+    PERMISSIONS.RECRUITMENT.CREATE,
+    PERMISSIONS.RECRUITMENT.EDIT,
+  ]);
   if (error) return error;
 
   const body = (await request.json()) as JobDescriptionBody;

@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       where: {
         status: { not: 'Inactive' },
         ...(allowedRoleNames
-          ? { rbacRole: { name: { in: allowedRoleNames }, status: 'active' } }
+          ? { rbacRole: { name: { in: allowedRoleNames }, status: 'ACTIVE' } }
           : {}),
       },
       select: {
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
       where: {
         empid: assigned_to,
         ...(allowedRoleNames
-          ? { rbacRole: { name: { in: allowedRoleNames }, status: 'active' } }
+          ? { rbacRole: { name: { in: allowedRoleNames }, status: 'ACTIVE' } }
           : {}),
       },
       select: { empid: true }

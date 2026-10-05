@@ -2,8 +2,13 @@ import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function PUT(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.SEND_MAIL]);
+  if (error) return error;
+
   const body = (await getRequestBody(req)) || {};
   const { candidateId, status } = body;
 

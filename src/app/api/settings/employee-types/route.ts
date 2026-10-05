@@ -55,11 +55,19 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     }
   }
 
+  const normalizedStatus =
+    String(status).toUpperCase() === "INACTIVE"
+      ? "INACTIVE"
+      : String(status).toUpperCase() === "ARCHIVED"
+      ? "ARCHIVED"
+      : "ACTIVE";
+
   const role = await prisma.role.create({
     data: {
       name: name.trim(),
       description: description?.trim() || null,
-      status,
+      status: normalizedStatus as any,
+      type: "CUSTOM",
       parentId: resolvedParentId,
       permissions: {
         create: permissionIds.map((id: number) => ({ permissionId: id })),
