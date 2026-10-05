@@ -1,17 +1,13 @@
-//C:\OfficeWork\hrms\pages\api\recruitment\job-description\[id].js
 //src/app/api/recruitment/job-description/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface RouteContext {
   params: Promise<{
     id: string;
   }>;
-}
-
-interface JwtPayload {
-  role?: string;
 }
 
 interface JobDescriptionBody {
@@ -37,37 +33,12 @@ interface JobDescriptionBody {
   status?: string;
 }
 
-function isRecruitmentUser(request: NextRequest): boolean {
-  try {
-    const token = request.cookies.get("token")?.value;
-
-    if (!token || !process.env.JWT_SECRET) {
-      return false;
-    }
-
-    const user = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    ) as JwtPayload;
-
-    return ["hr", "admin", "recruiter", "superadmin"].includes(
-      user.role?.toLowerCase() || ""
-    );
-  } catch {
-    return false;
-  }
-}
-
 export async function GET(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  if (!isRecruitmentUser(request)) {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_VIEW, PERMISSION_KEYS.RECRUITMENT_VIEW]);
+  if (error) return error;
 
   const { id } = await params;
   const jdId = parseInt(id, 10);
@@ -110,12 +81,8 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  if (!isRecruitmentUser(request)) {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_EDIT, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  if (error) return error;
 
   const { id } = await params;
   const jdId = parseInt(id, 10);
@@ -239,12 +206,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  if (!isRecruitmentUser(request)) {
-    return NextResponse.json(
-      { message: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_CLOSE, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  if (error) return error;
 
   const { id } = await params;
   const jdId = parseInt(id, 10);

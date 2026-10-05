@@ -7,6 +7,8 @@ import { validateResumeFile, extractResumeText } from "@/lib/resumeParser/extrac
 import { parseResumeWithGemini } from "@/lib/resumeParser/geminiParser";
 import { scoreCandidateWithGemini } from "@/lib/resumeParser/candidateMatcher";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const runtime = "nodejs";
 
@@ -22,6 +24,9 @@ const asList = (value: unknown): string[] => {
 };
 
 export async function POST(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.RESUME_PARSE, PERMISSION_KEYS.JOB_APPLICATION_PARSE]);
+  if (error) return error;
+
   const form = formidable({ multiples: false, maxFileSize: 5 * 1024 * 1024 });
 
   let fields: Record<string, unknown>;

@@ -1,7 +1,8 @@
-//C:\OfficeWork\hrms\pages\api\recruitment\job-description\[id]\matches.js
-//src/app/api/recruitment/job-description/[id]/candidates/route.ts
+//src/app/api/recruitment/job-description/[id]/matches/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface RouteContext {
   params: Promise<{
@@ -21,6 +22,9 @@ export async function POST(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const jobId = Number(id);
@@ -118,6 +122,9 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.CANDIDATE_RANK_VIEW, PERMISSION_KEYS.JD_VIEW]);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const jobId = Number(id);

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 type ResumeResponse = {
   id: number;
@@ -17,6 +19,9 @@ type ErrorResponse = {
 export async function GET(
   req: NextRequest
 ): Promise<NextResponse<ResumeResponse | ErrorResponse>> {
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_VIEW, PERMISSION_KEYS.RECRUITMENT_VIEW]);
+  if (error) return error as NextResponse<ResumeResponse | ErrorResponse>;
+
   const { searchParams } = new URL(req.url);
   const resumeId = Number(searchParams.get("resumeId"));
 
@@ -44,6 +49,9 @@ export async function GET(
 export async function PATCH(
   req: NextRequest
 ): Promise<NextResponse<ResumeResponse | ErrorResponse>> {
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST, PERMISSION_KEYS.JOB_APPLICATION_REJECT, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  if (error) return error as NextResponse<ResumeResponse | ErrorResponse>;
+
   try {
     const { resumeId, status } = await req.json();
 

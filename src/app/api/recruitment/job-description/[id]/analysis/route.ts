@@ -1,8 +1,9 @@
-//C:\OfficeWork\hrms\pages\api\recruitment\job-description\[id]\analysis.js
 //src/app/api/recruitment/job-description/[id]/analysis/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface AnalysisData {
   jobInformation?: {
@@ -176,6 +177,9 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_VIEW, PERMISSION_KEYS.RECRUITMENT_VIEW]);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const jobDescriptionId = Number(id);
@@ -203,6 +207,9 @@ export async function POST(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_ANALYZE, PERMISSION_KEYS.RECRUITMENT_CREATE]);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const jobDescriptionId = Number(id);

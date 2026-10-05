@@ -1,8 +1,9 @@
-//C:\OfficeWork\hrms\pages\api\recruitment\job-description\[id]\analyze.js
-//src/app/api/recruitment/job-description/[id]/analysis/save/route.ts
+//src/app/api/recruitment/job-description/[id]/analyze/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import analyzeJD from "@/lib/jd-analysis/analyzeJD";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface ApiError {
   status?: number;
@@ -19,6 +20,9 @@ export async function POST(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_ANALYZE, PERMISSION_KEYS.RECRUITMENT_CREATE]);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const jobDescriptionId = Number(id);
