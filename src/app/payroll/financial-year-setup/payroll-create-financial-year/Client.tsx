@@ -364,6 +364,7 @@ const FinancialYearSetup = () => {
                                             <div className="flex-1 w-full">
                                                 <label className="block text-xs font-semibold text-gray-900 mb-2">
                                                     Start Date
+                                                    <span className="text-red-500 ml-0.5">*</span>
                                                 </label>
                                                 <div className="relative">
                                                     <input
@@ -385,6 +386,7 @@ const FinancialYearSetup = () => {
                                             <div className="flex-1 w-full">
                                                 <label className="block text-xs font-semibold text-gray-900 mb-2">
                                                     End Date
+                                                    <span className="text-red-500 ml-0.5">*</span>
                                                 </label>
                                                 <div className="relative">
                                                     <input

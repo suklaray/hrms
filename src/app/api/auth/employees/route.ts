@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     const allRoles = await prisma.role.findMany({
       where: {
-        status: "active",
+        status: "ACTIVE",
       },
       select: {
         id: true,

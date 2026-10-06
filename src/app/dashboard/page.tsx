@@ -17,10 +17,7 @@ async function getServerSideProps(context) {
   if (!user) {
     return { redirect: { destination: "/login", permanent: false } };
   }
-  const hasDashboardAccess = await checkPermission(
-    user,
-    PERMISSION_KEYS.DASHBOARD_VIEW
-  );
+  const hasDashboardAccess = await checkPermission(user, PERMISSION_KEYS.DASHBOARD_VIEW);
 
   if (!hasDashboardAccess) {
     return {
@@ -35,7 +32,7 @@ async function getServerSideProps(context) {
   try {
     userData = await prisma.users.findUnique({
       where: { empid: user.empid },
-      select: { empid: true, name: true, email: true, profile_photo: true, position: true, role: true ,roleId: true, rbacRole:{select:{id:true,name:true}}},
+      select: { empid: true, name: true, email: true, profile_photo: true, position: true, role: true, roleId: true, rbacRole: { select: { id: true, name: true } } },
     });
   } catch (e) {
     console.error("Dashboard getServerSideProps error:", e);

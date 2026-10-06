@@ -49,7 +49,7 @@ function EditEmployeeType() {
       setForm({
         name: role.name,
         description: role.description || '',
-        status: role.status || 'active',
+        status: String(role.status).toUpperCase() === 'INACTIVE' ? 'inactive' : 'active',
         parentId: role.parentId ?? '',
         permissionIds: role.permissions.map((rp) => rp.permissionId),
       });
@@ -108,6 +108,8 @@ function EditEmployeeType() {
       setSubmitting(false);
     }
   };
+
+  console.log("Gropped permissions:", groupedPermissions)
 
   if (loading) {
     return (
@@ -249,8 +251,8 @@ function EditEmployeeType() {
                                     setParentSearchTerm('');
                                   }}
                                   className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-between cursor-pointer ${String(form.parentId) === String(r.id)
-                                      ? "bg-indigo-50 font-semibold text-indigo-600"
-                                      : "text-gray-700"
+                                    ? "bg-indigo-50 font-semibold text-indigo-600"
+                                    : "text-gray-700"
                                     }`}
                                 >
                                   <div>
@@ -321,8 +323,11 @@ function EditEmployeeType() {
                                   onChange={() => togglePermission(perm.id)}
                                   className="w-4 h-4 text-indigo-600 rounded cursor-pointer"
                                 />
-                                <span className="text-sm text-gray-700 group-hover:text-indigo-600">
-                                  {perm.description || perm.key}
+                                <span className="ml-2 text-sm text-gray-700 group-hover:text-indigo-600">
+                                  <div>
+                                    {perm.description}<br />
+                                    <span className="text-xs text-gray-400 font-semibold">{perm.key}</span>
+                                  </div>
                                 </span>
                               </label>
                             ))}

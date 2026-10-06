@@ -10,7 +10,45 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 export const dynamic = "force-dynamic";
 
 async function getServerSideProps(context?: any) {
-  return { props: {} };
+  const { req } = context || {};
+  const token = req?.cookies?.token || "";
+  const user = getUserFromToken(token);
+
+  if (!user) {
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
+  }
+
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.RECRUITMENT_VIEW);
+  if (!hasAccess) {
+    return {
+      redirect: {
+        destination: "/403",
+        permanent: false,
+      },
+    };
+  }
+
+  const permissions = await getUserPermissions(user);
+
+  return {
+    props: {
+      user: {
+        id: user.id,
+        empid: user.empid,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+        roleId: user.roleId || null,
+        rbacRole: (user as any).rbacRole || null,
+      },
+      permissions: Array.from(permissions),
+    },
+  };
 }
 
 export default async function Page(props: {

@@ -36,6 +36,7 @@ model company {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   payroll_periods payroll_period[]
+  roles           Role[]
 }
 
 enum PayrollCurrency {
@@ -181,6 +182,13 @@ model addresses {
   @@index([employee_id])
 }
 
+enum Status {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
 model attendance {
   id                Int                           @id @default(autoincrement())
   uid               String?                       @unique @default(cuid())
@@ -191,24 +199,27 @@ model attendance {
   date              DateTime?                     @default(now())
   created_at        DateTime?                     @default(now())
   attendance_status attendance_attendance_status? @default(Absent)
-  user users @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
-  regularizations attendance_regularization[]
+  status            Status                        @default(PENDING)
+  user              users                         @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  regularizations   attendance_regularization[]
 }
 
 model MonthlySummary {
-  id          Int      @id @default(autoincrement())
-  uid         String   @unique
-  empid       String
-  month       String   
-  workingDay  Decimal  @default(0.0)  @db.Decimal(5, 2)
-  overtime    Decimal  @default(0.0)  @db.Decimal(5, 2)
-  weekend     Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  uid                String   @unique @default(cuid())
+  empid              String
+  month              Int      @db.SmallInt
+  year               Int      @db.SmallInt
+  total_working_days Int      @default(0)
+  days_worked        Decimal  @default(0.0) @db.Decimal(5, 2)
+  overtime_hours     Decimal  @default(0.0) @db.Decimal(5, 2)
+  weekend            Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  user users @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
+  user    users   @relation(fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
 
-  @@unique([empid, month]) 
+  @@unique([empid, month])
   @@index([month])
   @@index([empid])
   @@map("monthly_summary")
@@ -666,7 +677,10 @@ model Role {
   id          Int              @id @default(autoincrement())
   name        String           @unique
   description String?
-  status      String           @default("active")
+  type        RoleType         @default(CUSTOM)
+  status      RoleStatus       @default(ACTIVE)
+  companyId   String?          @map("company_id")
+  company     company?         @relation(fields: [companyId], references: [uid], onDelete: SetNull)
   parentId    Int?
   parent      Role?            @relation("RoleHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children    Role[]           @relation("RoleHierarchy")
@@ -676,16 +690,34 @@ model Role {
   updatedAt   DateTime         @updatedAt
 
   @@index([parentId])
+  @@index([companyId])
   @@map("roles")
+}
+
+enum RoleType {
+  SUPER_ADMIN
+  CUSTOM
+}
+
+enum RoleStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
 }
 
 model Permission {
   id          Int              @id @default(autoincrement())
   key         String           @unique
+  name        String?
   description String?
   category    String           @default("General")
+  module      String?
+  action      String?
+  isSystem    Boolean          @default(false)
+  isActive    Boolean          @default(true)
   roles       RolePermission[]
   createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
 
   @@map("permissions")
 }

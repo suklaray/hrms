@@ -1,17 +1,33 @@
-﻿"use client";
+"use client";
 
 import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import axios from "axios";
 import Head from "@/lib/compatHead";
-import { 
+import {
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, FaFileUpload,
   FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaChevronDown, FaChevronUp
 } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { useAppSelector } from "@/store/hooks";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import Pageheader from "@/Components/PageHeader";
+
 function AddCandidate() {
   const router = useRouter();
+  const user = useAppSelector((state) => state.auth.user);
+  const reduxPermissions = useAppSelector((state) => state.auth.permissions) || [];
+  const isSuperAdminUser = user?.role === 'superadmin' || user?.roleId === 23;
+  const canCreate = isSuperAdminUser || reduxPermissions.includes(PERMISSION_KEYS.RECRUITMENT_CREATE);
+
+  useEffect(() => {
+    if (user && !canCreate) {
+      toast.error("Permission denied: You do not have permission to add candidates");
+      router.replace("/Recruitment/recruitment");
+    }
+  }, [user, canCreate, router]);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -41,53 +57,53 @@ function AddCandidate() {
     ];
   }).flat();
 
-  
-    const getFilteredFromTimes = () => {
-      if (!formData.interviewDate) return times;
 
-      const selectedDate = new Date(formData.interviewDate);
-      const today = new Date();
-      const isToday = selectedDate.toDateString() === today.toDateString();
+  const getFilteredFromTimes = () => {
+    if (!formData.interviewDate) return times;
 
-      return times.filter((t) => {
-        if (!isToday) return true; // All times for future dates
-        const [hours, minutes] = t.value.split(":").map(Number);
-        const timeObj = new Date();
-        timeObj.setHours(hours, minutes, 0, 0);
-        return timeObj > today; // only future times for today
-      });
-    };
+    const selectedDate = new Date(formData.interviewDate);
+    const today = new Date();
+    const isToday = selectedDate.toDateString() === today.toDateString();
 
-    const getFilteredToTimes = () => {
-      if (!formData.interviewDate) return times;
+    return times.filter((t) => {
+      if (!isToday) return true; // All times for future dates
+      const [hours, minutes] = t.value.split(":").map(Number);
+      const timeObj = new Date();
+      timeObj.setHours(hours, minutes, 0, 0);
+      return timeObj > today; // only future times for today
+    });
+  };
 
-      const selectedDate = new Date(formData.interviewDate);
-      const today = new Date();
-      const isToday = selectedDate.toDateString() === today.toDateString();
+  const getFilteredToTimes = () => {
+    if (!formData.interviewDate) return times;
 
-      return times.filter((t) => {
-        const [hours, minutes] = t.value.split(":").map(Number);
-        const timeObj = new Date();
-        timeObj.setHours(hours, minutes, 0, 0);
+    const selectedDate = new Date(formData.interviewDate);
+    const today = new Date();
+    const isToday = selectedDate.toDateString() === today.toDateString();
 
-        // Must be after From
-        const [fromHours, fromMinutes] = formData.interviewTimeFrom
-          ? formData.interviewTimeFrom.split(":").map(Number)
-          : [0, 0];
-        const fromTimeObj = new Date();
-        fromTimeObj.setHours(fromHours, fromMinutes, 0, 0);
+    return times.filter((t) => {
+      const [hours, minutes] = t.value.split(":").map(Number);
+      const timeObj = new Date();
+      timeObj.setHours(hours, minutes, 0, 0);
 
-        if (timeObj <= fromTimeObj) return false;
-        if (isToday && timeObj <= today) return false;
+      // Must be after From
+      const [fromHours, fromMinutes] = formData.interviewTimeFrom
+        ? formData.interviewTimeFrom.split(":").map(Number)
+        : [0, 0];
+      const fromTimeObj = new Date();
+      fromTimeObj.setHours(fromHours, fromMinutes, 0, 0);
 
-        return true;
-      });
-    };
+      if (timeObj <= fromTimeObj) return false;
+      if (isToday && timeObj <= today) return false;
+
+      return true;
+    });
+  };
 
 
   const validateField = (name, value) => {
     const newErrors = { ...errors };
-    
+
     switch (name) {
       case 'name':
         if (!value.trim()) {
@@ -100,7 +116,7 @@ function AddCandidate() {
           delete newErrors[name];
         }
         break;
-        
+
       case 'email':
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!value) {
@@ -111,7 +127,7 @@ function AddCandidate() {
           delete newErrors[name];
         }
         break;
-        
+
       case 'contact_number':
         if (!value) {
           newErrors[name] = 'Contact number is required';
@@ -121,7 +137,7 @@ function AddCandidate() {
           delete newErrors[name];
         }
         break;
-        
+
       case 'interviewDate':
         if (!value) {
           newErrors[name] = 'Interview date is required';
@@ -145,84 +161,84 @@ function AddCandidate() {
           }
         }
         break;
-case "interviewTimeFrom":
-  if (!value) {
-    newErrors[name] = "Interview start time is required";
-  } else {
-    // Check past time only if date is today
-    if (formData.interviewDate) {
-      const selectedDate = new Date(formData.interviewDate);
-      const today = new Date();
-      const isToday = selectedDate.toDateString() === today.toDateString();
-
-      if (isToday) {
-        const [hours, minutes] = value.split(":");
-        const selectedTime = new Date();
-        selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        const currentTime = new Date();
-        currentTime.setMinutes(currentTime.getMinutes() + 1);
-
-        if (selectedTime < currentTime) {
-          newErrors[name] = "Interview time cannot be in the past";
+      case "interviewTimeFrom":
+        if (!value) {
+          newErrors[name] = "Interview start time is required";
         } else {
-          delete newErrors[name];
-        }
-      } else {
-        delete newErrors[name];
-      }
-    } else {
-      delete newErrors[name];
-    }
-  }
-  break;
+          // Check past time only if date is today
+          if (formData.interviewDate) {
+            const selectedDate = new Date(formData.interviewDate);
+            const today = new Date();
+            const isToday = selectedDate.toDateString() === today.toDateString();
 
-case "interviewTimeTo":
-  if (!value) {
-    newErrors[name] = "Interview end time is required";
-  } else {
-    const timeToMinutes = (t) => {
-      const [h, m] = t.split(":").map(Number);
-      return h * 60 + m;
-    };
+            if (isToday) {
+              const [hours, minutes] = value.split(":");
+              const selectedTime = new Date();
+              selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+              const currentTime = new Date();
+              currentTime.setMinutes(currentTime.getMinutes() + 1);
 
-    const fromTimeMinutes = formData.interviewTimeFrom 
-      ? timeToMinutes(formData.interviewTimeFrom) 
-      : 0;
-
-    const toTimeMinutes = timeToMinutes(value);
-
-    // End must be after start
-    if (formData.interviewTimeFrom && toTimeMinutes <= fromTimeMinutes) {
-      newErrors[name] = "End time must be after start time";
-    } else {
-      // Check past time only for today
-      if (formData.interviewDate) {
-        const selectedDate = new Date(formData.interviewDate);
-        const today = new Date();
-        const isToday = selectedDate.toDateString() === today.toDateString();
-
-        if (isToday) {
-          const [hours, minutes] = value.split(":");
-          const selectedTime = new Date();
-          selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-          
-          const currentTime = new Date();
-          currentTime.setMinutes(currentTime.getMinutes() + 1);
-
-          if (selectedTime < currentTime) {
-            newErrors[name] = "Interview time cannot be in the past";
+              if (selectedTime < currentTime) {
+                newErrors[name] = "Interview time cannot be in the past";
+              } else {
+                delete newErrors[name];
+              }
+            } else {
+              delete newErrors[name];
+            }
           } else {
-            delete newErrors[name];  // <-- FIXED
+            delete newErrors[name];
           }
-        } else {
-          delete newErrors[name];    // <-- FIXED
         }
-      } else {
-        delete newErrors[name];      // <-- FIXED
-      }
-    }
-  }
-  break;
+        break;
+
+      case "interviewTimeTo":
+        if (!value) {
+          newErrors[name] = "Interview end time is required";
+        } else {
+          const timeToMinutes = (t) => {
+            const [h, m] = t.split(":").map(Number);
+            return h * 60 + m;
+          };
+
+          const fromTimeMinutes = formData.interviewTimeFrom
+            ? timeToMinutes(formData.interviewTimeFrom)
+            : 0;
+
+          const toTimeMinutes = timeToMinutes(value);
+
+          // End must be after start
+          if (formData.interviewTimeFrom && toTimeMinutes <= fromTimeMinutes) {
+            newErrors[name] = "End time must be after start time";
+          } else {
+            // Check past time only for today
+            if (formData.interviewDate) {
+              const selectedDate = new Date(formData.interviewDate);
+              const today = new Date();
+              const isToday = selectedDate.toDateString() === today.toDateString();
+
+              if (isToday) {
+                const [hours, minutes] = value.split(":");
+                const selectedTime = new Date();
+                selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+                const currentTime = new Date();
+                currentTime.setMinutes(currentTime.getMinutes() + 1);
+
+                if (selectedTime < currentTime) {
+                  newErrors[name] = "Interview time cannot be in the past";
+                } else {
+                  delete newErrors[name];  // <-- FIXED
+                }
+              } else {
+                delete newErrors[name];    // <-- FIXED
+              }
+            } else {
+              delete newErrors[name];      // <-- FIXED
+            }
+          }
+        }
+        break;
 
 
 
@@ -241,7 +257,7 @@ case "interviewTimeTo":
         }
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -249,7 +265,7 @@ case "interviewTimeTo":
 
   const checkEmailExists = async (email) => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
-    
+
     setEmailChecking(true);
     try {
       const response = await axios.post('/api/recruitment/check-email', { email });
@@ -264,97 +280,53 @@ case "interviewTimeTo":
   };
 
   const handleChange = (e) => {
-  const { name, value, files } = e.target;
-  let newValue = value;
-  
-  if (name === "cv") {
-    newValue = files[0];
-    setFormData({ ...formData, cv: newValue });
-    validateField(name, newValue);
-  } else {
-    let updatedFormData = { ...formData, [name]: newValue };
-    
-    // Clear "To" time when "From" time changes
-    if (name === 'interviewTimeFrom') {
-      updatedFormData.interviewTimeTo = "";
-      const newErrors = { ...errors };
-      delete newErrors.interviewTimeTo;
-      setErrors(newErrors);
-    }
-    
-    setFormData(updatedFormData);
-    validateField(name, newValue);
-    
-    // Re-validate time fields when date changes using updated form data
-    if (name === 'interviewDate') {
-      setTimeout(() => {
-        if (updatedFormData.interviewTimeFrom) {
-          validateTimeField('interviewTimeFrom', updatedFormData.interviewTimeFrom, updatedFormData);
-        }
-        if (updatedFormData.interviewTimeTo) {
-          validateTimeField('interviewTimeTo', updatedFormData.interviewTimeTo, updatedFormData);
-        }
-      }, 0);
-    }
-    
-    // Check email exists after validation passes
-    if (name === 'email' && newValue && !errors.email) {
-      setTimeout(() => checkEmailExists(newValue), 500);
-    }
-  }
-};
+    const { name, value, files } = e.target;
+    let newValue = value;
 
-const validateTimeField = (fieldName, value, currentFormData) => {
-  setErrors(prevErrors => {
-    const newErrors = { ...prevErrors };
-    
-    if (fieldName === 'interviewTimeFrom') {
-      if (!value) {
-        newErrors[fieldName] = "Interview start time is required";
-      } else {
-        // Check past time only if date is today
-        if (currentFormData.interviewDate) {
-          const selectedDate = new Date(currentFormData.interviewDate);
-          const today = new Date();
-          const isToday = selectedDate.toDateString() === today.toDateString();
+    if (name === "cv") {
+      newValue = files[0];
+      setFormData({ ...formData, cv: newValue });
+      validateField(name, newValue);
+    } else {
+      let updatedFormData = { ...formData, [name]: newValue };
 
-          if (isToday) {
-            const [hours, minutes] = value.split(":");
-            const selectedTime = new Date();
-            selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-            const currentTime = new Date();
-            // Add 1 minute buffer to avoid edge cases
-            currentTime.setMinutes(currentTime.getMinutes() + 1);
+      // Clear "To" time when "From" time changes
+      if (name === 'interviewTimeFrom') {
+        updatedFormData.interviewTimeTo = "";
+        const newErrors = { ...errors };
+        delete newErrors.interviewTimeTo;
+        setErrors(newErrors);
+      }
 
-            if (selectedTime < currentTime) {
-              newErrors[fieldName] = "Interview time cannot be in the past";
-            } else {
-              delete newErrors[fieldName];
-            }
-          } else {
-            delete newErrors[fieldName];
+      setFormData(updatedFormData);
+      validateField(name, newValue);
+
+      // Re-validate time fields when date changes using updated form data
+      if (name === 'interviewDate') {
+        setTimeout(() => {
+          if (updatedFormData.interviewTimeFrom) {
+            validateTimeField('interviewTimeFrom', updatedFormData.interviewTimeFrom, updatedFormData);
           }
-        } else {
-          delete newErrors[fieldName];
-        }
+          if (updatedFormData.interviewTimeTo) {
+            validateTimeField('interviewTimeTo', updatedFormData.interviewTimeTo, updatedFormData);
+          }
+        }, 0);
+      }
+
+      // Check email exists after validation passes
+      if (name === 'email' && newValue && !errors.email) {
+        setTimeout(() => checkEmailExists(newValue), 500);
       }
     }
-    
-    if (fieldName === 'interviewTimeTo') {
-      if (!value) {
-        newErrors[fieldName] = "Interview end time is required";
-      } else {
-        // Convert times to minutes for proper comparison
-        const timeToMinutes = (timeStr) => {
-          const [hours, minutes] = timeStr.split(':').map(Number);
-          return hours * 60 + minutes;
-        };
-        
-        const fromTimeMinutes = currentFormData.interviewTimeFrom ? timeToMinutes(currentFormData.interviewTimeFrom) : 0;
-        const toTimeMinutes = timeToMinutes(value);
-        
-        if (currentFormData.interviewTimeFrom && toTimeMinutes <= fromTimeMinutes) {
-          newErrors[fieldName] = "End time must be after start time";
+  };
+
+  const validateTimeField = (fieldName, value, currentFormData) => {
+    setErrors(prevErrors => {
+      const newErrors = { ...prevErrors };
+
+      if (fieldName === 'interviewTimeFrom') {
+        if (!value) {
+          newErrors[fieldName] = "Interview start time is required";
         } else {
           // Check past time only if date is today
           if (currentFormData.interviewDate) {
@@ -367,7 +339,7 @@ const validateTimeField = (fieldName, value, currentFormData) => {
               const selectedTime = new Date();
               selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
               const currentTime = new Date();
-              // Add 1 minute buffer
+              // Add 1 minute buffer to avoid edge cases
               currentTime.setMinutes(currentTime.getMinutes() + 1);
 
               if (selectedTime < currentTime) {
@@ -383,11 +355,55 @@ const validateTimeField = (fieldName, value, currentFormData) => {
           }
         }
       }
-    }
-    
-    return newErrors;
-  });
-};
+
+      if (fieldName === 'interviewTimeTo') {
+        if (!value) {
+          newErrors[fieldName] = "Interview end time is required";
+        } else {
+          // Convert times to minutes for proper comparison
+          const timeToMinutes = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+          };
+
+          const fromTimeMinutes = currentFormData.interviewTimeFrom ? timeToMinutes(currentFormData.interviewTimeFrom) : 0;
+          const toTimeMinutes = timeToMinutes(value);
+
+          if (currentFormData.interviewTimeFrom && toTimeMinutes <= fromTimeMinutes) {
+            newErrors[fieldName] = "End time must be after start time";
+          } else {
+            // Check past time only if date is today
+            if (currentFormData.interviewDate) {
+              const selectedDate = new Date(currentFormData.interviewDate);
+              const today = new Date();
+              const isToday = selectedDate.toDateString() === today.toDateString();
+
+              if (isToday) {
+                const [hours, minutes] = value.split(":");
+                const selectedTime = new Date();
+                selectedTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                const currentTime = new Date();
+                // Add 1 minute buffer
+                currentTime.setMinutes(currentTime.getMinutes() + 1);
+
+                if (selectedTime < currentTime) {
+                  newErrors[fieldName] = "Interview time cannot be in the past";
+                } else {
+                  delete newErrors[fieldName];
+                }
+              } else {
+                delete newErrors[fieldName];
+              }
+            } else {
+              delete newErrors[fieldName];
+            }
+          }
+        }
+      }
+
+      return newErrors;
+    });
+  };
 
 
   // Check if form is valid
@@ -397,7 +413,7 @@ const validateTimeField = (fieldName, value, currentFormData) => {
       if (field === 'cv') return formData[field] !== null;
       return formData[field].trim() !== '';
     });
-    
+
     const hasNoErrors = Object.keys(errors).length === 0;
     setIsFormValid(hasAllFields && hasNoErrors && !emailChecking);
   }, [formData, errors, emailChecking]);
@@ -462,23 +478,11 @@ const validateTimeField = (fieldName, value, currentFormData) => {
       </Head>
       <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <div className="flex-1 p-6 lg:p-10">
-          <div className="mb-6">
-            <button
-              onClick={() => router.push("/Recruitment/recruitment")}
-              className="flex items-center px-4 py-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
-            >
-              â† Back to Recruitment
-            </button>
-          </div>
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              Add New Candidate
-            </h1>
-            <p className="text-gray-600">
-              Fill in all required information to add a candidate
-            </p>
-          </div>
+          <Pageheader
+            title="Add New Candidate"
+            description="Fill in all required information to add a candidate"
+            href="/Recruitment/recruitment"
+          />
 
           {/* Main Form Card */}
           <div className="max-w-4xl mx-auto">
@@ -521,13 +525,12 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                         value={formData.name}
                         onChange={handleChange}
                         placeholder="Enter full name"
-                        className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                          errors.name
-                            ? "border-red-500 focus:border-red-500"
-                            : formData.name && !errors.name
+                        className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.name
+                          ? "border-red-500 focus:border-red-500"
+                          : formData.name && !errors.name
                             ? "border-green-500 focus:border-green-500"
                             : "border-gray-200 focus:border-indigo-500"
-                        }`}
+                          }`}
                       />
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                         {getFieldIcon(
@@ -558,13 +561,12 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                         value={formData.email}
                         onChange={handleChange}
                         placeholder="Enter email address"
-                        className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                          errors.email
-                            ? "border-red-500 focus:border-red-500"
-                            : formData.email && !errors.email
+                        className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.email
+                          ? "border-red-500 focus:border-red-500"
+                          : formData.email && !errors.email
                             ? "border-green-500 focus:border-green-500"
                             : "border-gray-200 focus:border-indigo-500"
-                        }`}
+                          }`}
                       />
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                         {emailChecking ? (
@@ -600,13 +602,12 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                         onChange={handleChange}
                         placeholder="Enter 10-digit number"
                         maxLength={10}
-                        className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${
-                          errors.contact_number
-                            ? "border-red-500 focus:border-red-500"
-                            : formData.contact_number && !errors.contact_number
+                        className={`w-full border-2 p-3 pr-10 rounded-xl focus:outline-none transition-colors ${errors.contact_number
+                          ? "border-red-500 focus:border-red-500"
+                          : formData.contact_number && !errors.contact_number
                             ? "border-green-500 focus:border-green-500"
                             : "border-gray-200 focus:border-indigo-500"
-                        }`}
+                          }`}
                       />
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                         {getFieldIcon(
@@ -637,13 +638,12 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                         value={formData.interviewDate}
                         onChange={handleChange}
                         min={new Date().toISOString().split("T")[0]}
-                        className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${
-                          errors.interviewDate
-                            ? "border-red-500 focus:border-red-500"
-                            : formData.interviewDate && !errors.interviewDate
+                        className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors ${errors.interviewDate
+                          ? "border-red-500 focus:border-red-500"
+                          : formData.interviewDate && !errors.interviewDate
                             ? "border-green-500 focus:border-green-500"
                             : "border-gray-200 focus:border-indigo-500"
-                        }`}
+                          }`}
                       />
                     </div>
                     <div className="flex items-center mt-1">
@@ -673,14 +673,13 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                       <button
                         type="button"
                         onClick={() => setOpenTimeFrom(!openTimeFrom)}
-                        className={`w-full border-2 p-3 pr-12 rounded-xl text-left focus:outline-none transition-colors relative ${
-                          errors.interviewTimeFrom
-                            ? "border-red-500 focus:border-red-500"
-                            : formData.interviewTimeFrom &&
-                              !errors.interviewTimeFrom
+                        className={`w-full border-2 p-3 pr-12 rounded-xl text-left focus:outline-none transition-colors relative ${errors.interviewTimeFrom
+                          ? "border-red-500 focus:border-red-500"
+                          : formData.interviewTimeFrom &&
+                            !errors.interviewTimeFrom
                             ? "border-green-500 focus:border-green-500"
                             : "border-gray-200 focus:border-indigo-500"
-                        }`}
+                          }`}
                       >
                         <span
                           className={
@@ -691,8 +690,8 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                         >
                           {formData.interviewTimeFrom
                             ? times.find(
-                                (t) => t.value === formData.interviewTimeFrom
-                              )?.display
+                              (t) => t.value === formData.interviewTimeFrom
+                            )?.display
                             : "Select start time"}
                         </span>
 
@@ -708,35 +707,35 @@ const validateTimeField = (fieldName, value, currentFormData) => {
 
                       {openTimeFrom && (
                         <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
-                            {getFilteredFromTimes().map((time, i) => (
-                              <li
-                                key={i}
-                                onClick={() => {
-  const updatedFormData = {
-    ...formData,
-    interviewTimeFrom: time.value,
-    interviewTimeTo: "" // Clear To time
-  };
-  setFormData(updatedFormData);
-  setOpenTimeFrom(false);
-  
-  // This should use validateTimeField, not validateField
-  validateTimeField("interviewTimeFrom", time.value, updatedFormData);
-  
-  // Clear To time error
-  setErrors(prevErrors => {
-    const newErrors = { ...prevErrors };
-    delete newErrors.interviewTimeTo;
-    return newErrors;
-  });
-}}
+                          {getFilteredFromTimes().map((time, i) => (
+                            <li
+                              key={i}
+                              onClick={() => {
+                                const updatedFormData = {
+                                  ...formData,
+                                  interviewTimeFrom: time.value,
+                                  interviewTimeTo: "" // Clear To time
+                                };
+                                setFormData(updatedFormData);
+                                setOpenTimeFrom(false);
+
+                                // This should use validateTimeField, not validateField
+                                validateTimeField("interviewTimeFrom", time.value, updatedFormData);
+
+                                // Clear To time error
+                                setErrors(prevErrors => {
+                                  const newErrors = { ...prevErrors };
+                                  delete newErrors.interviewTimeTo;
+                                  return newErrors;
+                                });
+                              }}
 
 
-                                className="px-4 py-2 hover:bg-indigo-100 cursor-pointer text-sm"
-                              >
-                                {time.display}
-                              </li>
-                            ))}
+                              className="px-4 py-2 hover:bg-indigo-100 cursor-pointer text-sm"
+                            >
+                              {time.display}
+                            </li>
+                          ))}
                         </ul>
                       )}
                     </div>
@@ -760,14 +759,13 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                       <button
                         type="button"
                         onClick={() => setOpenTimeTo(!openTimeTo)}
-                        className={`w-full border-2 p-3 pr-12 rounded-xl text-left focus:outline-none transition-colors relative ${
-                          errors.interviewTimeTo
-                            ? "border-red-500 focus:border-red-500"
-                            : formData.interviewTimeTo &&
-                              !errors.interviewTimeTo
+                        className={`w-full border-2 p-3 pr-12 rounded-xl text-left focus:outline-none transition-colors relative ${errors.interviewTimeTo
+                          ? "border-red-500 focus:border-red-500"
+                          : formData.interviewTimeTo &&
+                            !errors.interviewTimeTo
                             ? "border-green-500 focus:border-green-500"
                             : "border-gray-200 focus:border-indigo-500"
-                        }`}
+                          }`}
                       >
                         <span
                           className={
@@ -778,8 +776,8 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                         >
                           {formData.interviewTimeTo
                             ? times.find(
-                                (t) => t.value === formData.interviewTimeTo
-                              )?.display
+                              (t) => t.value === formData.interviewTimeTo
+                            )?.display
                             : "Select end time"}
                         </span>
 
@@ -799,16 +797,16 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                             <li
                               key={i}
                               onClick={() => {
-  const updatedFormData = {
-    ...formData,
-    interviewTimeTo: time.value,
-  };
-  setFormData(updatedFormData);
-  setOpenTimeTo(false);
-  
-  // Use validateTimeField for proper validation
-  validateTimeField("interviewTimeTo", time.value, updatedFormData);
-}}
+                                const updatedFormData = {
+                                  ...formData,
+                                  interviewTimeTo: time.value,
+                                };
+                                setFormData(updatedFormData);
+                                setOpenTimeTo(false);
+
+                                // Use validateTimeField for proper validation
+                                validateTimeField("interviewTimeTo", time.value, updatedFormData);
+                              }}
 
                               className="px-4 py-2 hover:bg-indigo-100 cursor-pointer text-sm"
                             >
@@ -838,13 +836,12 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                         name="cv"
                         accept=".pdf,.doc,.docx"
                         onChange={handleChange}
-                        className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 ${
-                          errors.cv
-                            ? "border-red-500 focus:border-red-500"
-                            : formData.cv && !errors.cv
+                        className={`w-full border-2 p-3 rounded-xl focus:outline-none transition-colors file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 ${errors.cv
+                          ? "border-red-500 focus:border-red-500"
+                          : formData.cv && !errors.cv
                             ? "border-green-500 focus:border-green-500"
                             : "border-gray-200 focus:border-indigo-500"
-                        }`}
+                          }`}
                       />
                     </div>
                     {errors.cv && (
@@ -863,11 +860,10 @@ const validateTimeField = (fieldName, value, currentFormData) => {
                     <button
                       type="submit"
                       disabled={!isFormValid || loading}
-                      className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg  ${
-                        isFormValid && !loading
-                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] cursor-pointer"
-                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      }`}
+                      className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg  ${isFormValid && !loading
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] cursor-pointer"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        }`}
                     >
                       {loading ? (
                         <div className="flex items-center justify-center">

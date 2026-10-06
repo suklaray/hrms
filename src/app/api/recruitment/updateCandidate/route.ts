@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function PUT(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.EDIT]);
+  if (error) return error;
+
   try {
     const formData = await req.formData();
     

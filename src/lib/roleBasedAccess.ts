@@ -12,7 +12,7 @@ export async function getAccessibleRoles(user?: any): Promise<string[]> {
   try {
     if (!user) {
       const allRoles = await prisma.role.findMany({
-        where: { status: "active" },
+        where: { status: "ACTIVE" },
         select: { name: true },
       });
       return allRoles.map((r) => r.name);
@@ -20,7 +20,7 @@ export async function getAccessibleRoles(user?: any): Promise<string[]> {
 
     if (isSuperAdmin(user)) {
       const allRoles = await prisma.role.findMany({
-        where: { status: "active" },
+        where: { status: "ACTIVE" },
         select: { name: true },
       });
       return allRoles.map((r) => r.name);
@@ -32,7 +32,7 @@ export async function getAccessibleRoles(user?: any): Promise<string[]> {
     }
 
     const allRoles = await prisma.role.findMany({
-      where: { status: "active" },
+      where: { status: "ACTIVE" },
       select: { name: true },
     });
     return allRoles.map((r) => r.name);

@@ -26,6 +26,7 @@ export interface DecodedToken {
   role: string;
   roleId?: number | null;
   email?: string;
+  companyId?: string | null;
   verified?: string;
   form_submitted?: boolean;
   iat?: number;

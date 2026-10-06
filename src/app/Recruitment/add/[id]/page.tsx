@@ -22,12 +22,23 @@ import {
 import Image from "next/image";
 //import toast from "react-hot-toast";
 import { toast } from 'react-toastify';
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 const AddEmployee = () => {
   const router = useRouter();
   const { id } = router.query;
 
   const user = useAppSelector((state) => state.auth.user);
+  const reduxPermissions = useAppSelector((state) => state.auth.permissions) || [];
+  const isSuperAdminUser = user?.role === 'superadmin' || user?.roleId === 23;
+  const canConvert = isSuperAdminUser || reduxPermissions.includes(PERMISSION_KEYS.RECRUITMENT_CONVERT_EMPLOYEE);
+
+  useEffect(() => {
+    if (user && !canConvert) {
+      toast.error("Permission denied: You cannot convert candidates to employees");
+      router.replace("/Recruitment/recruitment");
+    }
+  }, [user, canConvert, router]);
 
   const [form, setForm] = useState({
     name: "",

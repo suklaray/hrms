@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 function generateEmpid(name: string) {
   return `${name?.split(" ")[0].toLowerCase()}${Math.floor(1000 + Math.random() * 9000)}`;
@@ -23,6 +25,12 @@ function generatePassword() {
 }
 
 export async function GET(req: NextRequest) {
+  const { error } = await checkAuth(req, [
+    PERMISSIONS.RECRUITMENT.VIEW,
+    PERMISSIONS.RECRUITMENT.CONVERT_EMPLOYEE,
+  ]);
+  if (error) return error;
+
   const email = req.nextUrl.searchParams.get('email');
   if (!email) {
     return NextResponse.json({ exists: false, employee: null }, { status: 200 });
@@ -54,6 +62,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.CONVERT_EMPLOYEE]);
+  if (error) return error;
+
   try {
     const body = await req.json().catch(() => ({}));
     const {
