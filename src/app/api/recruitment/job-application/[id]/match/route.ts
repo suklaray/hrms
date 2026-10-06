@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { runDetailedMatch } from "@/lib/candidateMatching/aiMatcher";
-import { parseResumeRouteId } from "@/lib/recruitment/resumeIdEncryption";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -85,18 +84,10 @@ function serializeMatch(match: {
 
 export async function GET(_request: Request, { params }: RouteContext) {
   try {
-    const { id } = await params;
-    const resumeId = parseResumeRouteId(id);
-
-    if (resumeId === null) {
-      return NextResponse.json(
-        { success: false, error: "Invalid parsed resume ID" },
-        { status: 400 }
-      );
-    }
+    const { id: uid } = await params;
 
     const resume = await prisma.parsed_resumes.findUnique({
-      where: { id: resumeId },
+      where: { uid },
       include: { job_description: { include: { analysis: true } } },
     });
 
@@ -174,18 +165,10 @@ export async function POST(_request: Request, { params }: RouteContext) {
   let comparisonId: number | null = null;
 
   try {
-    const { id } = await params;
-    const resumeId = parseResumeRouteId(id);
-
-    if (resumeId === null) {
-      return NextResponse.json(
-        { success: false, error: "Invalid parsed resume ID" },
-        { status: 400 }
-      );
-    }
+    const { id: uid } = await params;
 
     const resume = await prisma.parsed_resumes.findUnique({
-      where: { id: resumeId },
+      where: { uid },
       include: { job_description: { include: { analysis: true } } },
     });
 
@@ -302,15 +285,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
 
 export async function PATCH(request: Request, { params }: RouteContext) {
   try {
-    const { id } = await params;
-    const resumeId = parseResumeRouteId(id);
-
-    if (resumeId === null) {
-      return NextResponse.json(
-        { success: false, error: "Invalid parsed resume ID" },
-        { status: 400 }
-      );
-    }
+    const { id: uid } = await params;
 
     let body: unknown;
     try {
@@ -348,7 +323,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     }
 
     const resume = await prisma.parsed_resumes.findUnique({
-      where: { id: resumeId },
+      where: { uid },
       select: { id: true, job_description_id: true },
     });
 

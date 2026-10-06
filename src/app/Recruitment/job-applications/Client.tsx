@@ -33,9 +33,14 @@ interface Resume {
   matchingCriteria?: {
     skills: number | null;
     experience: number | null;
-    noticePeriod: number | null;
+    education: number | null;
+    keywords: number | null;
+    location: number | null;
     salary: number | null;
-  };
+    noticePeriod: number | null;
+    certifications: number | null;
+    projectsDomain: number | null;
+  } | null;
   applicationStatus?: string;
   interviewScheduled?: boolean;
   interviewDate?: string;
@@ -323,6 +328,11 @@ export default function JobApplicationsClient() {
     });
   };
 
+  const isImmediateJoiner = (noticePeriod: string | null | undefined) => {
+    if (!noticePeriod) return false;
+    return /immediate|0\s*day|no\s*notice|joining\s*immediately|available\s*immediately/i.test(noticePeriod);
+  };
+
   const filtered = data.resumes.filter((resume) => {
     const searchMatch = matchesSearch(resume, search);
     const jobMatch = jobId === "all" || String(resume.jobDescriptionId) === String(jobId);
@@ -331,14 +341,19 @@ export default function JobApplicationsClient() {
 
   const ranked = [...filtered].sort((a, b) => {
     const value = (resume: Resume): number | null => {
-      if (sortBy === "date") {
-        const timestamp = resume.parsedAt ? Date.parse(resume.parsedAt) : NaN;
-        return Number.isNaN(timestamp) ? null : timestamp;
-      }
-      if (sortBy === "experience") return resume.matchingCriteria?.experience ?? null;
-      if (sortBy === "skills") return resume.matchingCriteria?.skills ?? null;
-      if (sortBy === "notice") return resume.matchingCriteria?.noticePeriod ?? null;
-      if (sortBy === "salary") return resume.matchingCriteria?.salary ?? null;
+      if (sortBy === "score") return resume.matchingScore ?? null;
+      if (sortBy === "immediate") return isImmediateJoiner(resume.noticePeriod) ? 1 : 0;
+      const c = resume.matchingCriteria;
+      if (!c) return null;
+      if (sortBy === "skills") return c.skills;
+      if (sortBy === "experience") return c.experience;
+      if (sortBy === "education") return c.education;
+      if (sortBy === "keywords") return c.keywords;
+      if (sortBy === "location") return c.location;
+      if (sortBy === "salary") return c.salary;
+      if (sortBy === "notice") return c.noticePeriod;
+      if (sortBy === "certifications") return c.certifications;
+      if (sortBy === "projectsDomain") return c.projectsDomain;
       return resume.matchingScore ?? null;
     };
     const first = value(a);
@@ -412,12 +427,17 @@ export default function JobApplicationsClient() {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600"
               >
-                <option value="score">Sort: Match score</option>
-                <option value="experience">Sort: Experience match</option>
-                <option value="skills">Sort: Skills match</option>
-                <option value="notice">Sort: Notice period match</option>
-                <option value="salary">Sort: Salary match</option>
-                <option value="date">Sort: Application date</option>
+                <option value="score">Sort by Overall score</option>
+                <option value="skills">Sort by Skills</option>
+                <option value="experience">Sort by Experience</option>
+                <option value="education">Sort by Education</option>
+                <option value="keywords">Sort by Keywords</option>
+                <option value="location">Sort by Location</option>
+                <option value="salary">Sort by Salary</option>
+                <option value="notice">Sort by Notice period</option>
+                <option value="certifications">Sort by Certifications</option>
+                <option value="projectsDomain">Sort by Projects & domain</option>
+                <option value="immediate">Sort by Immediate joiners first</option>
               </select>
             </div>
 

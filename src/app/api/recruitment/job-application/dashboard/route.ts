@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { encryptResumeId } from "@/lib/recruitment/resumeIdEncryption";
 
 export async function GET() {
   try {
@@ -17,8 +16,13 @@ export async function GET() {
               final_score: true,
               skills_score: true,
               experience_score: true,
+              education_score: true,
+              keyword_score: true,
+              location_score: true,
               notice_period_score: true,
               salary_score: true,
+              certification_score: true,
+              project_score: true,
               processing_status: true,
               processing_error: true,
             },
@@ -75,29 +79,22 @@ export async function GET() {
         parserVersion: resume.parser_version,
         aiModel: resume.ai_model,
         jobDescriptionId: resume.job_description_id,
-        matchUrlId: encryptResumeId(resume.id),
+        matchUrlId: resume.uid,
         matchingScore: comparisonComplete
           ? Number(comparison.final_score ?? resume.matching_score ?? 0)
           : null,
         matchingStatus: comparison?.processing_status || "PENDING",
         matchingError: comparison?.processing_error || null,
-        matchingCriteria: {
-          skills: !comparisonComplete || comparison.skills_score === null
-            || comparison.skills_score === undefined
-            ? null
-            : Number(comparison.skills_score),
-          experience: !comparisonComplete || comparison.experience_score === null
-            || comparison.experience_score === undefined
-            ? null
-            : Number(comparison.experience_score),
-          noticePeriod: !comparisonComplete || comparison.notice_period_score === null
-            || comparison.notice_period_score === undefined
-            ? null
-            : Number(comparison.notice_period_score),
-          salary: !comparisonComplete || comparison.salary_score === null
-            || comparison.salary_score === undefined
-            ? null
-            : Number(comparison.salary_score),
+        matchingCriteria: !comparisonComplete ? null : {
+          skills: comparison.skills_score != null ? Number(comparison.skills_score) : null,
+          experience: comparison.experience_score != null ? Number(comparison.experience_score) : null,
+          education: comparison.education_score != null ? Number(comparison.education_score) : null,
+          keywords: comparison.keyword_score != null ? Number(comparison.keyword_score) : null,
+          location: comparison.location_score != null ? Number(comparison.location_score) : null,
+          salary: comparison.salary_score != null ? Number(comparison.salary_score) : null,
+          noticePeriod: comparison.notice_period_score != null ? Number(comparison.notice_period_score) : null,
+          certifications: comparison.certification_score != null ? Number(comparison.certification_score) : null,
+          projectsDomain: comparison.project_score != null ? Number(comparison.project_score) : null,
         },
         // APPLICATION STATUS
         applicationStatus: resume.application_status,

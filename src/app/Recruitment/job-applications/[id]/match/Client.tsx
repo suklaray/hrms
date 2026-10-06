@@ -95,6 +95,7 @@ interface MatchRow {
   requirements: ReactNode;
   candidateEvidence: ReactNode;
   result: ReactNode;
+  deductionReason: ReactNode;
 }
 
 interface Comparison {
@@ -310,6 +311,9 @@ export default function CandidateMatchClient() {
             <SkillGroup label="Additional" value={skills.additional} />
           </div>
         ),
+        deductionReason: skillItems(skills.missing).length
+          ? `Missing required skills: ${skillItems(skills.missing).join(", ")}.`
+          : "Partial skill match — candidate does not fully meet the required and preferred skill set.",
       },
       {
         criterion: "experience",
@@ -318,6 +322,7 @@ export default function CandidateMatchClient() {
         requirements: experience.required || job.experience || "Not specified",
         candidateEvidence: experience.candidate || formatValue(candidate.workExperience),
         result: experience.notes || "Experience score based on the parsed profile and job requirements.",
+        deductionReason: experience.notes || "Candidate experience does not fully meet the job requirement.",
       },
       {
         criterion: "education",
@@ -326,6 +331,7 @@ export default function CandidateMatchClient() {
         requirements: `${job.education}; Degree: ${formatValue(analysis.degree)}; Stream: ${formatValue(analysis.stream)}`,
         candidateEvidence: formatValue(candidate.education),
         result: education.notes || "Education score based on the parsed profile and job requirements.",
+        deductionReason: education.notes || "Candidate education does not fully satisfy the required degree, stream, or level.",
       },
       {
         criterion: "keywords",
@@ -334,6 +340,9 @@ export default function CandidateMatchClient() {
         requirements: formatValue(keywordRequirements),
         candidateEvidence: `Matched keywords: ${listValue(keywords.matched)}`,
         result: `Keyword coverage: ${keywords.percentage ?? match.keywordScore}%; Missing: ${listValue(keywords.missing)}`,
+        deductionReason: skillItems(keywords.missing).length
+          ? `Only ${keywords.percentage ?? match.keywordScore}% keyword coverage. Missing: ${skillItems(keywords.missing).join(", ")}.`
+          : `Keyword coverage is ${keywords.percentage ?? match.keywordScore}% — resume does not contain enough job-relevant terms.`,
       },
       {
         criterion: "location",
@@ -342,6 +351,7 @@ export default function CandidateMatchClient() {
         requirements: `${job.location} · ${job.work_mode}`,
         candidateEvidence: `${location.candidate_location || [candidate.city, candidate.state, candidate.country].filter(Boolean).join(", ") || "Not provided"}; Preferred: ${formatValue(candidate.preferredLocation)}`,
         result: location.notes || "Location score considers the job location, work mode and candidate preference.",
+        deductionReason: location.notes || "Candidate location or preferred location does not align with the job location or work mode.",
       },
       {
         criterion: "salary",
@@ -350,6 +360,7 @@ export default function CandidateMatchClient() {
         requirements: `Budget: ${salary.budget_range || `${formatValue(job.salary_min)} - ${formatValue(job.salary_max)}`}`,
         candidateEvidence: `Current: ${formatValue(candidate.currentSalary)}; Expected: ${salary.expected || formatValue(candidate.expectedSalary)}`,
         result: salary.notes || "Salary score compares expected compensation with the available budget.",
+        deductionReason: salary.notes || "Candidate's expected salary does not align with the available budget.",
       },
       {
         criterion: "noticePeriod",
@@ -358,6 +369,7 @@ export default function CandidateMatchClient() {
         requirements: "Joining timeline for this role",
         candidateEvidence: notice.candidate_notice || formatValue(candidate.noticePeriod),
         result: notice.notes || "Notice period score considers the candidate's availability.",
+        deductionReason: notice.notes || "Candidate's notice period may not meet the expected joining timeline.",
       },
       {
         criterion: "certifications",
@@ -366,6 +378,9 @@ export default function CandidateMatchClient() {
         requirements: formatValue(certificationRequirements),
         candidateEvidence: formatValue(candidate.certifications),
         result: `Matched: ${listValue(certifications.matched)}; Missing: ${listValue(certifications.missing)}`,
+        deductionReason: skillItems(certifications.missing).length
+          ? `Missing certifications: ${skillItems(certifications.missing).join(", ")}.`
+          : "Candidate does not hold all the required or preferred certifications.",
       },
       {
         criterion: "projectsDomain",
@@ -374,6 +389,7 @@ export default function CandidateMatchClient() {
         requirements: `${formatValue(analysis.domain_expertise)}; Responsibilities: ${job.responsibilities}`,
         candidateEvidence: formatValue(candidate.projects),
         result: projects.notes || "Project score considers relevant project evidence, domain and technology stack.",
+        deductionReason: projects.notes || "Candidate projects or domain experience do not sufficiently match the job's domain and responsibilities.",
       },
     ];
   }, [comparison]);
@@ -507,31 +523,38 @@ export default function CandidateMatchClient() {
                     <tbody>
                       <tr>
                         <th className="border border-gray-200 bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          {reviewIsDirty
-                            ? "Recruiter score preview"
-                            : comparison.match.recruiterReviewedAt
-                              ? "Final match score"
-                              : "AI match score"}
+                          {comparison.match.recruiterReviewedAt ? "Final match score" : "AI match score"}
                         </th>
                         <td className="min-w-28 border border-gray-200 px-4 py-3 text-right">
-                          <span className={`font-bold ${reviewIsDirty ? "text-emerald-700" : "text-indigo-600"}`}>
-                            {reviewIsDirty && recruiterScore !== null
-                              ? `${recruiterScore}%`
-                              : `${comparison.match.finalScore}%`}
+                          <span className="font-bold text-indigo-600">
+                            {comparison.match.finalScore}%
                           </span>
                         </td>
                       </tr>
                       <tr>
                         <td colSpan={2} className="border border-gray-200 px-4 py-2 text-right text-xs text-gray-500">
-                          {reviewIsDirty
-                            ? recruiterScore === null
-                              ? "Select criteria to preview a recruiter score"
-                              : "Preview only — save to update the final score"
-                            : comparison.match.recruiterReviewedAt
+                          {comparison.match.recruiterReviewedAt
                             ? `Saved ${new Date(comparison.match.recruiterReviewedAt).toLocaleString("en-IN")}`
                             : "Select criteria using checkbox to create the recruiter final score"}
                         </td>
                       </tr>
+                      {reviewIsDirty && recruiterScore !== null && (
+                        <tr>
+                          <th className="border border-gray-200 bg-emerald-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                            Recruiter score preview
+                          </th>
+                          <td className="border border-gray-200 bg-emerald-50 px-4 py-3 text-right">
+                            <span className="font-bold text-emerald-700">{recruiterScore}%</span>
+                          </td>
+                        </tr>
+                      )}
+                      {reviewIsDirty && recruiterScore !== null && (
+                        <tr>
+                          <td colSpan={2} className="border border-gray-200 px-4 py-2 text-right text-xs text-emerald-600">
+                            Preview only — save to update the final score
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -652,6 +675,44 @@ export default function CandidateMatchClient() {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="mt-6 overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm">
+                <div className="border-b border-red-100 bg-red-50 px-5 py-4">
+                  <h2 className="font-bold text-gray-900">Score deductions breakdown</h2>
+                  <p className="mt-1 text-sm text-gray-500">Criteria where marks were deducted — showing what was required, what the candidate provided, and why points were lost.</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                    <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                      <tr>
+                        <th className="border border-gray-200 px-4 py-3">Criteria</th>
+                        <th className="border border-gray-200 px-4 py-3">Job requirement</th>
+                        <th className="border border-gray-200 px-4 py-3">Candidate evidence</th>
+                        <th className="border border-gray-200 px-4 py-3">Reason for deduction</th>
+                        <th className="border border-gray-200 px-4 py-3 text-right">Score</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white">
+                      {rows
+                        .filter((r) => r.score < 100)
+                        .sort((a, b) => a.score - b.score)
+                        .map((r) => (
+                          <tr key={r.criterion} className="align-top hover:bg-red-50/40">
+                            <th className="border border-gray-200 px-4 py-4 text-left font-semibold text-gray-800">{r.category}</th>
+                            <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 leading-relaxed text-gray-600">{r.requirements}</td>
+                            <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 leading-relaxed text-gray-600">{r.candidateEvidence}</td>
+                            <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 leading-relaxed text-gray-600">{r.deductionReason}</td>
+                            <td className="border border-gray-200 px-4 py-4 text-right">
+                              <span className="inline-flex min-w-14 justify-center rounded-lg bg-red-50 px-2.5 py-1 font-bold text-red-600">
+                                -{(100 - r.score).toFixed(0)}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
                     </tbody>
                   </table>
                 </div>

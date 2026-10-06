@@ -964,7 +964,7 @@ model parsed_resumes {
 
   //
   job_description_id Int?
-  matching_score     Int?
+  matching_score     Decimal? @db.Decimal(5, 2)
 
   job_description job_descriptions? @relation(fields: [job_description_id], references: [id], onDelete: SetNull)
 
