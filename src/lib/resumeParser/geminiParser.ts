@@ -253,9 +253,13 @@ export async function parseResumeWithGemini(
     } catch (error: unknown) {
       const geminiError = error as GeminiError;
       const status = Number(geminiError?.status);
+      const message = error instanceof Error ? error.message : String(error);
+      const quotaExceeded =
+        /quota exceeded|quota.*limit|free.?tier.*requestsperday/i.test(message);
 
       if (
         !TRANSIENT_GEMINI_STATUSES.has(status) ||
+        quotaExceeded ||
         attempt === MAX_GEMINI_RETRIES
       ) {
         throw error;
@@ -303,4 +307,3 @@ export async function parseResumeWithGemini(
     parsed as Partial<ParsedResume>
   );
 }
-

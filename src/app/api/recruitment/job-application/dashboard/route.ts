@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { encryptResumeId } from "@/lib/recruitment/resumeIdEncryption";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const [resumes, jobs] = await Promise.all([
       prisma.parsed_resumes.findMany({
@@ -9,6 +10,19 @@ export async function GET(req: NextRequest) {
         orderBy: { parsed_at: "desc" },
         include: {
           candidate: true,
+          candidate_job_matches: {
+            orderBy: { evaluated_at: "desc" },
+            take: 1,
+            select: {
+              final_score: true,
+              skills_score: true,
+              experience_score: true,
+              notice_period_score: true,
+              salary_score: true,
+              processing_status: true,
+              processing_error: true,
+            },
+          },
         },
       }),
       prisma.job_descriptions.findMany({
@@ -19,7 +33,11 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      resumes: resumes.map((resume) => ({
+      resumes: resumes.map((resume) => {
+        const comparison = resume.candidate_job_matches[0];
+        const comparisonComplete = comparison?.processing_status === "COMPLETED";
+
+        return ({
         id: resume.id,
         name: resume.full_name || "Unnamed applicant",
         email: resume.email || "No email",
@@ -57,7 +75,30 @@ export async function GET(req: NextRequest) {
         parserVersion: resume.parser_version,
         aiModel: resume.ai_model,
         jobDescriptionId: resume.job_description_id,
-        matchingScore: resume.matching_score,
+        matchUrlId: encryptResumeId(resume.id),
+        matchingScore: comparisonComplete
+          ? Number(comparison.final_score ?? resume.matching_score ?? 0)
+          : null,
+        matchingStatus: comparison?.processing_status || "PENDING",
+        matchingError: comparison?.processing_error || null,
+        matchingCriteria: {
+          skills: !comparisonComplete || comparison.skills_score === null
+            || comparison.skills_score === undefined
+            ? null
+            : Number(comparison.skills_score),
+          experience: !comparisonComplete || comparison.experience_score === null
+            || comparison.experience_score === undefined
+            ? null
+            : Number(comparison.experience_score),
+          noticePeriod: !comparisonComplete || comparison.notice_period_score === null
+            || comparison.notice_period_score === undefined
+            ? null
+            : Number(comparison.notice_period_score),
+          salary: !comparisonComplete || comparison.salary_score === null
+            || comparison.salary_score === undefined
+            ? null
+            : Number(comparison.salary_score),
+        },
         // APPLICATION STATUS
         applicationStatus: resume.application_status,
 
@@ -66,7 +107,7 @@ export async function GET(req: NextRequest) {
         interviewDate: resume.candidate?.interview_date || null,
         interviewTimeFrom: resume.candidate?.interview_time_from || null,
         interviewTimeTo: resume.candidate?.interview_time_to || null,
-      })),
+      });}),
       jobs: jobs.map((job) => ({
         id: job.id,
         title: job.title,
