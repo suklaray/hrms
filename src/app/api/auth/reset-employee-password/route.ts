@@ -2,6 +2,8 @@ import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 function generatePassword() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -13,6 +15,9 @@ function generatePassword() {
 }
 
 export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.EMPLOYEE_RESET_PASSWORD]);
+  if (error) return error;
+
   const body = (await getRequestBody(req)) || {};
 
   
@@ -41,4 +46,3 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     return NextResponse.json({ error: "Failed to reset password" }, { status: 500 });
   }
 }
-

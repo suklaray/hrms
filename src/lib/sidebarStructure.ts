@@ -57,7 +57,10 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
   {
     name: "Employee Management",
     icon: Users,
-    permission: PERMISSIONS.EMPLOYEE.VIEW,
+    permission: [
+      PERMISSIONS.EMPLOYEE.VIEW,
+      PERMISSIONS.EMPLOYEE.CREATE,
+    ],
     children: [
       { title: "Employee List", route: "/employeeList", permission: PERMISSIONS.EMPLOYEE.VIEW },
       { title: "Register Employee", route: "/registerEmployee", permission: PERMISSIONS.EMPLOYEE.CREATE },

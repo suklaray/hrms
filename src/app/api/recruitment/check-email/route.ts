@@ -1,8 +1,17 @@
 import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { error } = await checkAuth(req, [
+    PERMISSION_KEYS.EMPLOYEE_CREATE,
+    PERMISSION_KEYS.RECRUITMENT_CREATE,
+    PERMISSION_KEYS.RECRUITMENT_CONVERT_EMPLOYEE,
+  ]);
+  if (error) return error;
+
   const body = (await getRequestBody(req)) || {};
 
   const { email } = body;
@@ -22,5 +31,3 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
-

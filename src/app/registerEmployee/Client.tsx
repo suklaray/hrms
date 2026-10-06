@@ -22,7 +22,11 @@ import axios from "axios";
 import { useAppDispatch } from "@/store/hooks";
 import { logoutUser } from "@/store/slices/authSlice";
 
-function RegisterEmployee() {
+function RegisterEmployee({
+  canSendCredentials = false,
+}: {
+  canSendCredentials?: boolean;
+}) {
     const dispatch = useAppDispatch();
   const router = useRouter();
 
@@ -951,14 +955,16 @@ function RegisterEmployee() {
                         Employee Registered Successfully!
                       </h3>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleSendCredentials}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
-                    >
-                      <Mail className="w-3.5 h-3.5" />
-                      <span>Send Credentials</span>
-                    </button>
+                    {canSendCredentials && (
+                      <button
+                        type="button"
+                        onClick={handleSendCredentials}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>Send Credentials</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

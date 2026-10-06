@@ -63,7 +63,17 @@ function EmployeeStatusBadge({ status }: { status: string }) {
     );
 }
 
-function EmployeeListPage({ user }: { user: any }) {
+function EmployeeListPage({
+    user,
+    canCreateEmployee = false,
+    canDeleteEmployee = false,
+    canExportEmployees = false,
+}: {
+    user: any;
+    canCreateEmployee?: boolean;
+    canDeleteEmployee?: boolean;
+    canExportEmployees?: boolean;
+}) {
     const [employees, setEmployees] = useState<any[]>([]);
     const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -244,22 +254,26 @@ function EmployeeListPage({ user }: { user: any }) {
                         </div>
 
                         <div className="flex items-center gap-2.5 self-start sm:self-auto">
-                            <button
-                                onClick={handleDownloadExcel}
-                                className="inline-flex items-center gap-2 h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0"
-                                title="Download employee list as Excel"
-                            >
-                                <Download size={14} />
-                                <span>Export Excel</span>
-                            </button>
+                            {canExportEmployees && (
+                                <button
+                                    onClick={handleDownloadExcel}
+                                    className="inline-flex items-center gap-2 h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0"
+                                    title="Download employee list as Excel"
+                                >
+                                    <Download size={14} />
+                                    <span>Export Excel</span>
+                                </button>
+                            )}
 
-                            <Link
-                                href="/registerEmployee"
-                                className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0"
-                            >
-                                <Plus size={14} />
-                                <span>Register Employee</span>
-                            </Link>
+                            {canCreateEmployee && (
+                                <Link
+                                    href="/registerEmployee"
+                                    className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0"
+                                >
+                                    <Plus size={14} />
+                                    <span>Register Employee</span>
+                                </Link>
+                            )}
                         </div>
                     </div>
 
@@ -447,7 +461,9 @@ function EmployeeListPage({ user }: { user: any }) {
                                 <p className="text-[12px] text-gray-500 mt-1.5 max-w-md mx-auto leading-relaxed">
                                     {searchTerm || filter !== "All" || statusFilter !== "ALL"
                                         ? "No employees match your search or filter criteria. Try resetting your filters."
-                                        : "There are currently no employees registered in the system. Click below to add your first employee."
+                                        : canCreateEmployee
+                                            ? "There are currently no employees registered in the system. Click below to add your first employee."
+                                            : "There are currently no employees registered in the system."
                                     }
                                 </p>
                                 <div className="mt-5">
@@ -465,13 +481,15 @@ function EmployeeListPage({ user }: { user: any }) {
                                             <span>Reset Filters</span>
                                         </button>
                                     ) : (
-                                        <Link
-                                            href="/registerEmployee"
-                                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
-                                        >
-                                            <Plus size={14} />
-                                            <span>Register Employee</span>
-                                        </Link>
+                                        canCreateEmployee && (
+                                            <Link
+                                                href="/registerEmployee"
+                                                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
+                                            >
+                                                <Plus size={14} />
+                                                <span>Register Employee</span>
+                                            </Link>
+                                        )
                                     )}
                                 </div>
                             </div>
@@ -590,13 +608,15 @@ function EmployeeListPage({ user }: { user: any }) {
                                                             >
                                                                 <Eye size={13} />
                                                             </Link>
-                                                            <button
-                                                                onClick={() => handleDelete(emp.id)}
-                                                                className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded border border-red-200 transition-colors cursor-pointer"
-                                                                title="Deactivate / Delete Employee"
-                                                            >
-                                                                <Trash2 size={13} />
-                                                            </button>
+                                                            {canDeleteEmployee && (
+                                                                <button
+                                                                    onClick={() => handleDelete(emp.id)}
+                                                                    className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded border border-red-200 transition-colors cursor-pointer"
+                                                                    title="Deactivate / Delete Employee"
+                                                                >
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>

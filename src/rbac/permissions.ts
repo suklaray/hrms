@@ -32,6 +32,7 @@ export const PERMISSIONS = {
     VERIFY: "employee.verify",
     SEND_CREDENTIALS: "employee.send_credentials",
     RESET_PASSWORD: "employee.reset_password",
+    EXPORT: "employee.export",
   },
 
   ATTENDANCE: {
@@ -222,6 +223,13 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     description: "Reset an employee account password",
     module: "employee",
     action: "reset_password",
+  },
+  {
+    key: PERMISSIONS.EMPLOYEE.EXPORT,
+    name: "Export Employee List to Excel",
+    description: "Download the employee list as an Excel spreadsheet",
+    module: "employee",
+    action: "export_excel",
   },
 
   // Attendance

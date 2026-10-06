@@ -8,9 +8,24 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
   const { user, errorResponse } = await getAuthenticatedUser(req);
   if (errorResponse) return errorResponse;
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
-  if (!hasAccess) {
+  const canManageEmployeeTypes = await checkPermission(
+    user,
+    PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE
+  );
+  const canManageEmployees =
+    (await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_CREATE)) ||
+    (await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_EDIT));
+
+  if (!canManageEmployeeTypes && !canManageEmployees) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+  }
+
+  if (!canManageEmployeeTypes) {
+    const assignableRoles = await getAssignableRolesForUser(user);
+    return NextResponse.json(
+      { roles: assignableRoles, assignableRoles },
+      { status: 200 }
+    );
   }
 
   const roles = await prisma.role.findMany({

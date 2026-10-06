@@ -8,6 +8,8 @@ export async function GET(req: NextRequest) {
   const auth = await checkAuth(req, [
     PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
     PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
+    PERMISSION_KEYS.EMPLOYEE_CREATE,
+    PERMISSION_KEYS.EMPLOYEE_EDIT,
   ]);
   if (auth.error) return auth.error;
 

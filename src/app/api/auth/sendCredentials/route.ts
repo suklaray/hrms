@@ -1,8 +1,17 @@
 import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const { error } = await checkAuth(req, [
+    PERMISSION_KEYS.EMPLOYEE_SEND_CREDENTIALS,
+    PERMISSION_KEYS.RECRUITMENT_SEND_MAIL,
+    PERMISSION_KEYS.RECRUITMENT_CONVERT_EMPLOYEE,
+  ]);
+  if (error) return error;
+
   const body = (await getRequestBody(req)) || {};
 
   
@@ -59,5 +68,3 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     return NextResponse.json({ error: "Failed to send credentials" }, { status: 500 });
   }
 }
-
-
