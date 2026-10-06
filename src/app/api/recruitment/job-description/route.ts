@@ -65,6 +65,12 @@ export async function POST(request: NextRequest) {
   if (error) return error;
 
   const body = (await request.json()) as JobDescriptionBody;
+  if (body.status?.toLowerCase() === "published") {
+    const { error: publishError } = await checkAuth(request, [
+      PERMISSION_KEYS.JD_PUBLISH,
+    ]);
+    if (publishError) return publishError;
+  }
 
   const {
     title,

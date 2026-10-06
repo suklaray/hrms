@@ -135,7 +135,11 @@ function SectionCard({
   );
 }
 
-export default function AddJobDescription() {
+export default function AddJobDescription({
+  canPublish,
+}: {
+  canPublish: boolean;
+}) {
   const router = useRouter();
 
   const [form, setForm] = useState<JobForm>({
@@ -664,16 +668,18 @@ export default function AddJobDescription() {
                   : "Save Draft"}
               </button>
 
-              <button
-                type="button"
-                onClick={() => submit("Published")}
-                disabled={loading}
-                className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50"
-              >
-                {loading
-                  ? "Publishing..."
-                  : "Publish Job"}
-              </button>
+              {canPublish && (
+                <button
+                  type="button"
+                  onClick={() => submit("Published")}
+                  disabled={loading}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50"
+                >
+                  {loading
+                    ? "Publishing..."
+                    : "Publish Job"}
+                </button>
+              )}
             </div>
           </form>
         </main>

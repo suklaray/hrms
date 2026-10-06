@@ -78,6 +78,7 @@ export const PERMISSIONS = {
   JD: {
     VIEW: "jd.view",
     CREATE: "jd.create",
+    PUBLISH: "jd.publish",
     EDIT: "jd.edit",
     CLOSE: "jd.close",
     ANALYZE: "jd.analyze",
@@ -428,6 +429,13 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     description: "Create new job descriptions with role details and requirements",
     module: "jd",
     action: "create",
+  },
+  {
+    key: PERMISSIONS.JD.PUBLISH,
+    name: "Publish Job Description",
+    description: "Publish new or existing job descriptions",
+    module: "jd",
+    action: "publish",
   },
   {
     key: PERMISSIONS.JD.EDIT,

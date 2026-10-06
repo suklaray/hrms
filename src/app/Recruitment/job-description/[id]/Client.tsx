@@ -120,7 +120,11 @@ function SectionCard({
   );
 }
 
-export default function EditJobDescriptionClient() {
+export default function EditJobDescriptionClient({
+  canPublish,
+}: {
+  canPublish: boolean;
+}) {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -648,7 +652,9 @@ export default function EditJobDescriptionClient() {
                     onChange={set("status")}
                   >
                     <option value="Draft">Draft</option>
-                    <option value="Published">Published</option>
+                    {(canPublish || form.status.toLowerCase() === "published") && (
+                      <option value="Published">Published</option>
+                    )}
                   </Select>
                 </div>
               </div>

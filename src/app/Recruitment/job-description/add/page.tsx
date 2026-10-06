@@ -18,5 +18,7 @@ export default async function AddJobDescriptionPage() {
   if (!user) redirect("/login");
   if (!(await checkPermission(user, PERMISSION_KEYS.JD_CREATE))) redirect("/403");
 
-  return <Client />;
+  const canPublish = await checkPermission(user, PERMISSION_KEYS.JD_PUBLISH);
+
+  return <Client canPublish={canPublish} />;
 }

@@ -159,6 +159,35 @@ export async function PUT(
     );
   }
 
+  if (status?.toLowerCase() === "published") {
+    try {
+      const currentJob = await prisma.job_descriptions.findUnique({
+        where: { id: jdId },
+        select: { status: true },
+      });
+
+      if (!currentJob) {
+        return NextResponse.json(
+          { message: "Not found" },
+          { status: 404 }
+        );
+      }
+
+      if (currentJob.status?.toLowerCase() !== "published") {
+        const { error: publishError } = await checkAuth(request, [
+          PERMISSION_KEYS.JD_PUBLISH,
+        ]);
+        if (publishError) return publishError;
+      }
+    } catch (error) {
+      console.error("Error checking job description publish status:", error);
+      return NextResponse.json(
+        { message: "Server error" },
+        { status: 500 }
+      );
+    }
+  }
+
   try {
     const job = await prisma.job_descriptions.update({
       where: {
