@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.RESUME_DOWNLOAD]);
+  if (error) return error;
+
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 

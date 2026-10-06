@@ -74,6 +74,32 @@ export const PERMISSIONS = {
     ANALYTICS: "recruitment.analytics",
   },
 
+  JD: {
+    VIEW: "jd.view",
+    CREATE: "jd.create",
+    EDIT: "jd.edit",
+    CLOSE: "jd.close",
+    ANALYZE: "jd.analyze",
+  },
+
+  JOB_APPLICATION: {
+    VIEW: "job_application.view",
+    PARSE: "job_application.parse",
+    SHORTLIST: "job_application.shortlist",
+    REJECT: "job_application.reject",
+    SCHEDULE: "job_application.schedule",
+  },
+
+  RESUME: {
+    PARSE: "resume.parse",
+    DOWNLOAD: "resume.download",
+  },
+
+  CANDIDATE: {
+    RANK_VIEW: "candidate.rank_view",
+    COMPATIBILITY_VIEW: "candidate.compatibility_view",
+  },
+
   COMPLIANCE: {
     VIEW: "compliance.view",
     VIEW_DOCUMENTS: "compliance.view_documents",
@@ -380,7 +406,111 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     module: "recruitment",
     action: "analytics",
   },
+  // Job Descriptions (JD)
+  {
+    key: PERMISSIONS.JD.VIEW,
+    name: "View Job Descriptions",
+    description: "View job description listings and individual JD details",
+    module: "jd",
+    action: "view",
+  },
+  {
+    key: PERMISSIONS.JD.CREATE,
+    name: "Create Job Description",
+    description: "Create new job descriptions with role details and requirements",
+    module: "jd",
+    action: "create",
+  },
+  {
+    key: PERMISSIONS.JD.EDIT,
+    name: "Edit Job Description",
+    description: "Edit existing job descriptions, requirements, and details",
+    module: "jd",
+    action: "edit",
+  },
+  {
+    key: PERMISSIONS.JD.CLOSE,
+    name: "Close Job Description",
+    description: "Close or archive a job description to stop accepting applications",
+    module: "jd",
+    action: "close",
+  },
+  {
+    key: PERMISSIONS.JD.ANALYZE,
+    name: "Analyze Job Description",
+    description: "Run AI analysis on a JD to extract skills, keywords, and match criteria",
+    module: "jd",
+    action: "analyze",
+  },
 
+  // Job Applications
+  {
+    key: PERMISSIONS.JOB_APPLICATION.VIEW,
+    name: "View Job Applications",
+    description: "View submitted job applications and candidate submissions",
+    module: "job_application",
+    action: "view",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.PARSE,
+    name: "Parse Job Application",
+    description: "Parse resumes attached to job applications to extract structured data",
+    module: "job_application",
+    action: "parse",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.SHORTLIST,
+    name: "Shortlist Job Application",
+    description: "Move applications to the shortlisted stage for further review",
+    module: "job_application",
+    action: "shortlist",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.REJECT,
+    name: "Reject Job Application",
+    description: "Reject job applications and mark candidates as not moving forward",
+    module: "job_application",
+    action: "reject",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.SCHEDULE,
+    name: "Schedule Interview",
+    description: "Schedule interviews and send calendar invites to applicants",
+    module: "job_application",
+    action: "schedule",
+  },
+
+  // Resume
+  {
+    key: PERMISSIONS.RESUME.PARSE,
+    name: "Parse Resume",
+    description: "Parse resumes to extract skills, experience, and education data",
+    module: "resume",
+    action: "parse",
+  },
+  {
+    key: PERMISSIONS.RESUME.DOWNLOAD,
+    name: "Download Resume",
+    description: "Download candidate resumes and attachments",
+    module: "resume",
+    action: "download",
+  },
+
+  // Candidate Intelligence
+  {
+    key: PERMISSIONS.CANDIDATE.RANK_VIEW,
+    name: "View Candidate Ranking",
+    description: "View ranked ordering of candidates based on parsed and analyzed data",
+    module: "candidate",
+    action: "rank_view",
+  },
+  {
+    key: PERMISSIONS.CANDIDATE.COMPATIBILITY_VIEW,
+    name: "View Candidate Compatibility",
+    description: "View candidate-to-JD match score and compatibility insights",
+    module: "candidate",
+    action: "compatibility_view",
+  },
   // Compliance
   {
     key: PERMISSIONS.COMPLIANCE.VIEW,

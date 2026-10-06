@@ -4,7 +4,7 @@ import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function POST(req: NextRequest) {
-  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST]);
   if (error) return error;
 
   try {

@@ -9,6 +9,7 @@ import { logoutUser } from '@/store/slices/authSlice';
 const PUBLIC_PATHS = [
   "/",
   "/login",
+  "/setup/super-admin",
   "/AboutUs",
   "/Contact",
   "/Recruitment/form",

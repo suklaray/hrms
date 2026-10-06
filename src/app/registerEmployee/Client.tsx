@@ -82,7 +82,7 @@ function RegisterEmployee() {
       .get("/api/settings/employee-types")
       .then((res) => {
         const available = res.data.assignableRoles || res.data.roles || [];
-        setRbacRoles(available.filter((r: any) => r.status === "active"));
+        setRbacRoles(available.filter((r: any) => r.status === "ACTIVE"));
       })
       .catch(() => {});
 

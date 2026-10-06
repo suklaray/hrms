@@ -177,7 +177,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_VIEW, PERMISSION_KEYS.RECRUITMENT_VIEW]);
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_VIEW]);
   if (error) return error;
 
   try {
@@ -207,7 +207,7 @@ export async function POST(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_ANALYZE, PERMISSION_KEYS.RECRUITMENT_CREATE]);
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_ANALYZE]);
   if (error) return error;
 
   try {

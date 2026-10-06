@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
-import { PERMISSIONS } from "@/rbac/permissions";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface RouteContext {
   params: Promise<{
@@ -37,9 +37,8 @@ export async function GET(
   { params }: RouteContext
 ) {
   const { error } = await checkAuth(request, [
-    PERMISSIONS.RECRUITMENT.VIEW,
-    PERMISSIONS.RECRUITMENT.ANALYTICS,
-    PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
+    PERMISSION_KEYS.JD_VIEW,
+    PERMISSION_KEYS.JD_EDIT,
   ]);
   if (error) return error;
 
@@ -84,7 +83,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSIONS.RECRUITMENT.EDIT]);
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_EDIT]);
   if (error) return error;
 
   const { id } = await params;
@@ -209,7 +208,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSIONS.RECRUITMENT.EDIT]);
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_CLOSE]);
   if (error) return error;
 
   const { id } = await params;
@@ -240,4 +239,3 @@ export async function PATCH(
     );
   }
 }
-

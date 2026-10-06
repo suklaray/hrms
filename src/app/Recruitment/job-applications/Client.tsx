@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import SideBar from "@/Components/SideBar";
 import { AlertCircle, Eye, Loader2, Search, Upload, X } from "lucide-react";
 import { toast } from "react-toastify";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 const TYPES = [
   "application/pdf",
@@ -86,7 +87,16 @@ interface Data {
   jobs: Job[];
 }
 
-export default function JobApplicationsClient() {
+export default function JobApplicationsClient({
+  permissions = [],
+}: {
+  permissions?: string[];
+}) {
+  const userPermissions = new Set(permissions);
+  const canParse = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_PARSE);
+  const canShortlist = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST);
+  const canReject = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_REJECT);
+  const canSchedule = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_SCHEDULE);
   const inputRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<Data>({ resumes: [], jobs: [] });
   const [loading, setLoading] = useState(true);
@@ -120,6 +130,15 @@ export default function JobApplicationsClient() {
   };
 
   const updateApplicationStatus = async (resumeId: number, status: string) => {
+    if (status === "Rejected" && !canReject) {
+      toast.error("Permission denied: You cannot reject applications");
+      return;
+    }
+    if (status === "Shortlisted" && !canShortlist) {
+      toast.error("Permission denied: You cannot shortlist applications");
+      return;
+    }
+
     try {
       const response = await fetch("/api/recruitment/job-application/application-status", {
         method: "PATCH",
@@ -138,6 +157,11 @@ export default function JobApplicationsClient() {
   };
 
   const shortlistCandidate = async (resume: Resume) => {
+    if (!canShortlist) {
+      toast.error("Permission denied: You cannot shortlist applications");
+      return;
+    }
+
     try {
       const response = await fetch("/api/recruitment/job-application/shortlist", {
         method: "POST",
@@ -157,6 +181,11 @@ export default function JobApplicationsClient() {
   };
 
   const handleScheduleInterview = (resume: Resume) => {
+    if (!canSchedule) {
+      toast.error("Permission denied: You cannot schedule interviews");
+      return;
+    }
+
     setScheduleResume(resume);
     setInterviewDate("");
     setInterviewTimeFrom("");
@@ -173,6 +202,11 @@ export default function JobApplicationsClient() {
   };
 
   const scheduleInterview = async () => {
+    if (!canSchedule) {
+      toast.error("Permission denied: You cannot schedule interviews");
+      return;
+    }
+
     if (!scheduleResume || !interviewDate || !interviewTimeFrom || !interviewTimeTo) {
       toast.error("Please fill all interview details");
       return;
@@ -234,6 +268,11 @@ export default function JobApplicationsClient() {
   };
 
   const parseResume = async () => {
+    if (!canParse) {
+      toast.error("Permission denied: You cannot parse job applications");
+      return;
+    }
+
     if (!file || !uploadJobId) return;
     setParsing(true);
     const body = new FormData();
@@ -290,13 +329,15 @@ export default function JobApplicationsClient() {
               <h1 className="text-3xl font-bold text-gray-900">Parsed Resumes</h1>
               <p className="text-gray-500 mt-1">Review resumes extracted and analyzed by the system.</p>
             </div>
-            <button
-              onClick={() => setUploadOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
-            >
-              <Upload className="w-4 h-4" />
-              Upload resume
-            </button>
+            {canParse && (
+              <button
+                onClick={() => setUploadOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+              >
+                <Upload className="w-4 h-4" />
+                Upload resume
+              </button>
+            )}
           </header>
 
           <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -386,18 +427,18 @@ export default function JobApplicationsClient() {
                                 <span className="px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 rounded-lg">Shortlisted</span>
                                 {resume.interviewScheduled ? (
                                   <span className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-lg">Interview Scheduled</span>
-                                ) : (
+                                ) : canSchedule ? (
                                   <button onClick={() => handleScheduleInterview(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">
                                     Schedule Interview
                                   </button>
-                                )}
+                                ) : null}
                               </>
                             ) : resume.applicationStatus === "Rejected" ? (
                               <span className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg">Rejected</span>
                             ) : (
                               <>
-                                <button onClick={() => shortlistCandidate(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg">Shortlist</button>
-                                <button onClick={() => updateApplicationStatus(resume.id, "Rejected")} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg">Reject</button>
+                                {canShortlist && <button onClick={() => shortlistCandidate(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg">Shortlist</button>}
+                                {canReject && <button onClick={() => updateApplicationStatus(resume.id, "Rejected")} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg">Reject</button>}
                               </>
                             )}
                           </div>

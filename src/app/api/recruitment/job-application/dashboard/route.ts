@@ -5,9 +5,7 @@ import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function GET(req: NextRequest) {
   const { error } = await checkAuth(req, [
-    PERMISSIONS.RECRUITMENT.ANALYTICS,
-    PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
-    PERMISSIONS.RECRUITMENT.VIEW,
+    PERMISSIONS.JOB_APPLICATION.VIEW,
   ]);
   if (error) return error;
   try {

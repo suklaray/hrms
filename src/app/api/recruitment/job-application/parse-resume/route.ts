@@ -24,7 +24,7 @@ const asList = (value: unknown): string[] => {
 };
 
 export async function POST(req: NextRequest) {
-  const { error } = await checkAuth(req, [PERMISSION_KEYS.RESUME_PARSE, PERMISSION_KEYS.JOB_APPLICATION_PARSE]);
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_PARSE]);
   if (error) return error;
 
   const form = formidable({ multiples: false, maxFileSize: 5 * 1024 * 1024 });

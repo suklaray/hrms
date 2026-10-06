@@ -22,7 +22,23 @@ export async function POST(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST, PERMISSION_KEYS.RECRUITMENT_EDIT]);
+  const body = (await request.json()) as CandidateActionBody;
+  const permission =
+    body.action === "SHORTLISTED"
+      ? PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST
+      : body.action === "REJECTED"
+        ? PERMISSION_KEYS.JOB_APPLICATION_REJECT
+        : body.action === "INTERVIEW"
+          ? PERMISSION_KEYS.JOB_APPLICATION_SCHEDULE
+          : null;
+  if (!permission) {
+    return NextResponse.json(
+      { success: false, error: "Candidate action is required" },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await checkAuth(request, [permission]);
   if (error) return error;
 
   try {
@@ -38,8 +54,6 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    const body = (await request.json()) as CandidateActionBody;
 
     const {
       candidateId,
@@ -122,7 +136,10 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSION_KEYS.CANDIDATE_RANK_VIEW, PERMISSION_KEYS.JD_VIEW]);
+  const { error } = await checkAuth(request, [
+    PERMISSION_KEYS.JOB_APPLICATION_VIEW,
+    PERMISSION_KEYS.CANDIDATE_RANK_VIEW,
+  ]);
   if (error) return error;
 
   try {

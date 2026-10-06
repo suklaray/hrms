@@ -19,7 +19,7 @@ type ErrorResponse = {
 export async function GET(
   req: NextRequest
 ): Promise<NextResponse<ResumeResponse | ErrorResponse>> {
-  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_VIEW, PERMISSION_KEYS.RECRUITMENT_VIEW]);
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_VIEW]);
   if (error) return error as NextResponse<ResumeResponse | ErrorResponse>;
 
   const { searchParams } = new URL(req.url);
@@ -49,15 +49,25 @@ export async function GET(
 export async function PATCH(
   req: NextRequest
 ): Promise<NextResponse<ResumeResponse | ErrorResponse>> {
-  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST, PERMISSION_KEYS.JOB_APPLICATION_REJECT, PERMISSION_KEYS.RECRUITMENT_EDIT]);
-  if (error) return error as NextResponse<ResumeResponse | ErrorResponse>;
-
   try {
     const { resumeId, status } = await req.json();
 
     if (!resumeId || !status) {
       return NextResponse.json({ error: "resumeId and status required" }, { status: 400 });
     }
+
+    const permission =
+      status === "Rejected"
+        ? PERMISSION_KEYS.JOB_APPLICATION_REJECT
+        : status === "Shortlisted"
+          ? PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST
+          : null;
+    if (!permission) {
+      return NextResponse.json({ error: "Unsupported application status" }, { status: 400 });
+    }
+
+    const { error } = await checkAuth(req, [permission]);
+    if (error) return error as NextResponse<ResumeResponse | ErrorResponse>;
 
     const updated = await prisma.parsed_resumes.update({
       where: { id: Number(resumeId) },

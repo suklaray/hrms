@@ -32,7 +32,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             router.replace("/403");
           }
         } else if (status === 401) {
-          const publicPaths = ["/login", "/signup", "/forgot-password", "/403", "/"];
+          const publicPaths = [
+            "/login",
+            "/signup",
+            "/forgot-password",
+            "/403",
+            "/",
+            "/setup/super-admin",
+          ];
           if (!publicPaths.includes(pathname)) {
             router.replace("/login");
           }
@@ -46,6 +53,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }, [router, pathname]);
 
   const noLayoutPaths = [
+    "/setup/super-admin",
     "/Recruitment/form",
     "/Recruitment/docs_submitted",
     "/form-already-submitted",
@@ -58,7 +66,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     (path) => pathname.startsWith(path) || pathname === path
   );
 
-  const publicPaths = ["/login", "/signup", "/forgot-password", "/403", "/", "/AboutUs", "/Contact", "/privacy-policy", "/terms-of-service", 
+  const publicPaths = ["/login", "/signup", "/forgot-password", "/403", "/", "/setup/super-admin", "/AboutUs", "/Contact", "/privacy-policy", "/terms-of-service",
             "/Recruitment/form", "/Recruitment/docs_submitted", "/form-already-submitted", "/unauthorized-form-access", 
             "/form-link-expired", "/form-locked-device"];
   const showAppShell = !hideLayout && !publicPaths.includes(pathname);
