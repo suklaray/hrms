@@ -314,3 +314,33 @@ export function findApplicableSalaryVersion<T extends { effective_from: Date | s
 
   return { version: matching[0] };
 }
+
+/**
+ * Finds the applicable salary structure for a given financial year:
+ * Returns the ACTIVE salary structure assigned to the employee for that financial year.
+ */
+export function findApplicableSalaryStructureForFinancialYear<T extends { financial_year_id: string; status?: string }>(
+  versions: T[],
+  financialYearId: string
+): { version: T | null; error?: string } {
+  if (!financialYearId) {
+    return { version: null, error: "Financial year ID is required." };
+  }
+
+  const matching = versions.filter(
+    (v) => v.financial_year_id === financialYearId && v.status === "ACTIVE"
+  );
+
+  if (matching.length === 0) {
+    return { version: null };
+  }
+
+  if (matching.length > 1) {
+    return {
+      version: matching[0],
+      error: `Notice: Multiple ACTIVE salary structures found for this financial year. Using latest assignment.`,
+    };
+  }
+
+  return { version: matching[0] };
+}

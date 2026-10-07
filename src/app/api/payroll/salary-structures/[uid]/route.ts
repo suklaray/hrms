@@ -309,7 +309,7 @@ export async function DELETE(
 
     // Section 15 check: A salary_structure assigned to an employee should not be physically deleted
     const assignmentCount = await prisma.employee_salary_structure.count({
-      where: { salary_structure_id: structure.id },
+      where: { salary_structure_id: structure.uid },
     });
 
     if (assignmentCount > 0) {

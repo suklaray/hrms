@@ -1,19 +1,13 @@
-﻿"use client";
+"use client";
 
 import { Suspense } from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import { Calendar, Clock, FileText, Plus, Eye, AlertCircle, CheckCircle, XCircle, X } from "lucide-react";
-import { getUserFromToken } from "@/lib/getUserFromToken";
 import { toast } from "react-toastify";
-import { swalConfirm } from '@/utils/confirmDialog';
-import prisma from "@/lib/prisma";
 import { formatLongDate } from "@/utils/dateTime";
 
-
-
-function LeaveRequest({ user }) {
+function LeaveRequest() {
   const [activeTab, setActiveTab] = useState("apply");
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
@@ -25,12 +19,14 @@ function LeaveRequest({ user }) {
     to_date: string;
     reason: string;
     leave_type: string;
+    leave_type_id: number | string;
     attachment: string | File;
   }>({
     from_date: "",
     to_date: "",
     reason: "",
-    leave_type: "Sick Leave",
+    leave_type: "",
+    leave_type_id: "",
     attachment: ""
   });
   const [selectedReason, setSelectedReason] = useState(null);
@@ -39,9 +35,7 @@ function LeaveRequest({ user }) {
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [pendingLeaveId, setPendingLeaveId] = useState(null);
-const fileInputRef = useRef(null);
-
-
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchLeaveTypes();
@@ -75,7 +69,7 @@ const fileInputRef = useRef(null);
     const newErrors: Record<string, string> = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // Date validations
     if (!formData.from_date) {
       newErrors.from_date = "From date is required";
@@ -85,7 +79,7 @@ const fileInputRef = useRef(null);
         newErrors.from_date = "From date cannot be in the past";
       }
     }
-    
+
     if (!formData.to_date) {
       newErrors.to_date = "To date is required";
     } else if (formData.from_date) {
@@ -95,7 +89,7 @@ const fileInputRef = useRef(null);
         newErrors.to_date = "To date must be after from date";
       }
     }
-    
+
     // Reason validation
     if (!formData.reason.trim()) {
       newErrors.reason = "Reason is required";
@@ -104,113 +98,114 @@ const fileInputRef = useRef(null);
     } else if (formData.reason.trim().length > 500) {
       newErrors.reason = "Reason cannot exceed 500 characters";
     }
-    
+
     // File validation
     if (formData.attachment && typeof formData.attachment === 'object' && !(formData.attachment instanceof String)) {
       const file = formData.attachment as File;
       const maxSize = 5 * 1024 * 1024; // 5MB
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'];
-      
+
       if (file.size > maxSize) {
         newErrors.attachment = "File size cannot exceed 5MB";
       }
-      
+
       if (!allowedTypes.includes(file.type)) {
         newErrors.attachment = "Only PDF, DOC, DOCX, JPG, JPEG, PNG files are allowed";
       }
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!validateForm()) {
-    setMessage("Please fix the errors below");
-    return;
-  }
-  
-  setLoading(true);
-  setMessage("");
-  setErrors({});
+    e.preventDefault();
 
-  try {
-    let attachmentData = "";
-    
-    // Convert file to base64 if attachment exists
-    if (formData.attachment && typeof formData.attachment === 'object' && !(formData.attachment instanceof String)) {
-      const file = formData.attachment as File;
-      const reader = new FileReader();
-      attachmentData = await new Promise<string>((resolve) => {
-        reader.onload = (event) => {
-          const result = event.target?.result;
-          resolve(typeof result === 'string' ? result : '');
-        };
-        reader.readAsDataURL(file);
-      });
-    } else {
-      attachmentData = typeof formData.attachment === 'string' ? formData.attachment : "";
+    if (!validateForm()) {
+      setMessage("Please fix the errors below");
+      return;
     }
 
-    const response = await fetch("/api/leave-records/leave-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from_date: formData.from_date,
-        to_date: formData.to_date,
-        reason: formData.reason,
-        leave_type: formData.leave_type,
-        attachment: attachmentData
-      }),
-      credentials: "include",
-    });
+    setLoading(true);
+    setMessage("");
+    setErrors({});
 
-    const data = await response.json();
+    try {
+      let attachmentData = "";
 
-    if (response.ok) {
-      setMessage("Leave request submitted successfully!");
-      setFormData({
-        from_date: "",
-        to_date: "",
-        reason: "",
-        leave_type: "Sick Leave",
-        attachment: ""
+      // Convert file to base64 if attachment exists
+      if (formData.attachment && typeof formData.attachment === 'object' && !(formData.attachment instanceof String)) {
+        const file = formData.attachment as File;
+        const reader = new FileReader();
+        attachmentData = await new Promise<string>((resolve) => {
+          reader.onload = (event) => {
+            const result = event.target?.result;
+            resolve(typeof result === 'string' ? result : '');
+          };
+          reader.readAsDataURL(file);
+        });
+      } else {
+        attachmentData = typeof formData.attachment === 'string' ? formData.attachment : "";
+      }
+
+      const response = await fetch("/api/leave-records/leave-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from_date: formData.from_date,
+          to_date: formData.to_date,
+          reason: formData.reason,
+          leave_type: formData.leave_type,
+          leave_type_id: formData.leave_type_id,
+          attachment: attachmentData
+        }),
+        credentials: "include",
       });
-      if (fileInputRef.current) {
-    fileInputRef.current.value = "";
-  }
-    } else {
-      setMessage(data.message || "Failed to submit leave request.");
-    }
-  } catch (error) {
-    setMessage("Error submitting leave request.");
-  } finally {
-    setLoading(false);
-  }
-};
 
-const fetchLeaveTypes = async () => {
-  try {
-    const response = await fetch("/api/leave/balances", {
-      credentials: "include",
-    });
-    if (response.ok) {
       const data = await response.json();
-      setLeaveTypes(data || []);
-    }
-  } catch (error) {
-    console.error("Failed to fetch leave balances:", error);
-  }
-};
 
+      if (response.ok) {
+        setMessage("Leave request submitted successfully!");
+        setFormData({
+          from_date: "",
+          to_date: "",
+          reason: "",
+          leave_type: "",
+          leave_type_id: "",
+          attachment: ""
+        });
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      } else {
+        setMessage(data.message || "Failed to submit leave request.");
+      }
+    } catch (error) {
+      setMessage("Error submitting leave request.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLeaveTypes = async () => {
+    try {
+      const response = await fetch("/api/leave/balances", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setLeaveTypes(data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch leave balances:", error);
+    }
+  };
 
   const calculateDays = useCallback(() => {
     if (formData.from_date && formData.to_date) {
       const fromDate = new Date(formData.from_date);
       const toDate = new Date(formData.to_date);
-      
+
       if (toDate >= fromDate) {
         const fromTime = fromDate.getTime();
         const toTime = toDate.getTime();
@@ -224,7 +219,7 @@ const fetchLeaveTypes = async () => {
     }
   }, [formData.from_date, formData.to_date]);
 
-  
+
   useEffect(() => {
     calculateDays();
   }, [calculateDays]);
@@ -233,7 +228,7 @@ const fetchLeaveTypes = async () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors({ ...errors, [name]: "" });
@@ -258,54 +253,55 @@ const fetchLeaveTypes = async () => {
   };
 
   const handleCancelLeave = async (leaveId) => {
-  setPendingLeaveId(leaveId);
-  setCancelReason('');
-  setShowReasonModal(true);
-};
-const submitCancellation = async () => {
-  if (!cancelReason.trim()) {
-    toast.error('Please enter a cancellation reason');
-    return;
-  }
+    setPendingLeaveId(leaveId);
+    setCancelReason('');
+    setShowReasonModal(true);
+  };
 
-  setCancellingLeave(pendingLeaveId);
-
-  try {
-    const response = await fetch('/api/leave/cancel', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        leaveId: pendingLeaveId,
-        reason_to_cancel: cancelReason
-      })
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    const data = contentType.includes('application/json')
-      ? await response.json()
-      : { message: await response.text() || 'Failed to cancel leave request' };
-
-    if (response.ok) {
-      toast.success('Leave request cancelled successfully!');
-
-      setShowReasonModal(false);
-      setCancelReason('');
-      setPendingLeaveId(null);
-
-      fetchLeaveRequests();
-    } else {
-      toast.error(data.message || 'Failed to cancel leave request');
+  const submitCancellation = async () => {
+    if (!cancelReason.trim()) {
+      toast.error('Please enter a cancellation reason');
+      return;
     }
-  } catch (error) {
-    console.error(error);
-    toast.error('Failed to cancel leave request');
-  } finally {
-    setCancellingLeave(null);
-  }
-};
+
+    setCancellingLeave(pendingLeaveId);
+
+    try {
+      const response = await fetch('/api/leave/cancel', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          leaveId: pendingLeaveId,
+          reason_to_cancel: cancelReason
+        })
+      });
+
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json()
+        : { message: await response.text() || 'Failed to cancel leave request' };
+
+      if (response.ok) {
+        toast.success('Leave request cancelled successfully!');
+
+        setShowReasonModal(false);
+        setCancelReason('');
+        setPendingLeaveId(null);
+
+        fetchLeaveRequests();
+      } else {
+        toast.error(data.message || 'Failed to cancel leave request');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to cancel leave request');
+    } finally {
+      setCancellingLeave(null);
+    }
+  };
   return (
     <>
       <Head>
@@ -334,40 +330,40 @@ const submitCancellation = async () => {
                 <h3 className="text-lg font-semibold text-gray-900">Leave Types</h3>
               </div>
               <div className="overflow-x-auto">
-  <table className="w-full">
-    <thead className="bg-gray-50">
-      <tr>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Used</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
-      </tr>
-    </thead>
-    <tbody className="divide-y divide-gray-200">
-      {leaveTypes.map((type, index) => (
-        <tr key={index} className="hover:bg-gray-50">
-          <td className="px-6 py-4 text-sm font-medium text-gray-900">
-            {type.type_name?.replace(/_/g, ' ')}
-          </td>
-          <td className="px-6 py-4 text-sm text-gray-900">
-            {type.max_days || 0}
-          </td>
-          <td className="px-6 py-4 text-sm text-gray-900">
-            {type.used || 0}
-          </td>
-          <td className="px-6 py-4 text-sm text-gray-900">
-            {type.remaining || 0}
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-  {leaveTypes.length === 0 && (
-    <div className="text-center py-8">
-      <p className="text-gray-500">No leave types found</p>
-    </div>
-  )}
-</div>
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Leave Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Days</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Used</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {leaveTypes.map((type, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                          {type.type_name?.replace(/_/g, ' ')}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {type.max_days || 0}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {type.used || 0}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {type.remaining || 0}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {leaveTypes.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No leave types found</p>
+                  </div>
+                )}
+              </div>
 
             </div>
 
@@ -377,22 +373,20 @@ const submitCancellation = async () => {
                 <nav className="flex space-x-8 px-6">
                   <button
                     onClick={() => setActiveTab("apply")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === "apply"
-                        ? "border-indigo-500 text-indigo-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "apply"
+                      ? "border-indigo-500 text-indigo-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     <Plus className="w-4 h-4 inline mr-2" />
                     Apply Leave
                   </button>
                   <button
                     onClick={() => setActiveTab("history")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === "history"
-                        ? "border-indigo-500 text-indigo-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "history"
+                      ? "border-indigo-500 text-indigo-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      }`}
                   >
                     <FileText className="w-4 h-4 inline mr-2" />
                     Leave History
@@ -404,13 +398,12 @@ const submitCancellation = async () => {
               {activeTab === "apply" && (
                 <div className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Submit Leave Request</h3>
-                  
+
                   {message && (
-                    <div className={`mb-4 p-4 rounded-lg flex items-center ${
-                      message.includes('successfully') 
-                        ? 'bg-green-50 border border-green-200' 
-                        : 'bg-red-50 border border-red-200'
-                    }`}>
+                    <div className={`mb-4 p-4 rounded-lg flex items-center ${message.includes('successfully')
+                      ? 'bg-green-50 border border-green-200'
+                      : 'bg-red-50 border border-red-200'
+                      }`}>
                       {message.includes('successfully') ? (
                         <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                       ) : (
@@ -429,14 +422,28 @@ const submitCancellation = async () => {
                           Leave Type *
                         </label>
                         <select
-                          name="leave_type"
-                          value={formData.leave_type}
-                          onChange={handleChange}
+                          name="leave_type_id"
+                          value={formData.leave_type_id}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const selectedId = value ? Number(value) : "";
+
+                            const selectedType = (leaveTypes as any[]).find(
+                              (type) => type.id === Number(value)
+                            );
+
+                            setFormData((prev) => ({
+                              ...prev,
+                              leave_type_id: selectedId,
+                              leave_type: selectedType?.type_name || "",
+                            }));
+                          }}
                           required
                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                         >
-                          {leaveTypes.map((type) => (
-                            <option key={type.id} value={type.type_name.replace(/_/g, ' ')}>
+                          <option value="">Select Leave Type</option>
+                          {leaveTypes.map((type: any) => (
+                            <option key={type.id} value={type.id}>
                               {type.type_name.replace(/_/g, ' ')}
                             </option>
                           ))}
@@ -454,9 +461,8 @@ const submitCancellation = async () => {
                           onChange={handleChange}
                           min={new Date().toISOString().split('T')[0]}
                           required
-                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
-                            errors.from_date ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                          }`}
+                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${errors.from_date ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                            }`}
                         />
                         {errors.from_date && (
                           <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -477,9 +483,8 @@ const submitCancellation = async () => {
                           onChange={handleChange}
                           required
                           min={formData.from_date || new Date().toISOString().split('T')[0]}
-                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${
-                            errors.to_date ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                          }`}
+                          className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all ${errors.to_date ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                            }`}
                         />
                         {errors.to_date && (
                           <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -494,23 +499,22 @@ const submitCancellation = async () => {
                           Attachment (Optional)
                         </label>
                         <input
-  type="file"
-  name="attachment"
-  ref={fileInputRef}
-  onChange={(e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData((prev) => ({ ...prev, attachment: file }));
-      if (errors.attachment) {
-        setErrors({ ...errors, attachment: "" });
-      }
-    }
-  }}
-  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-  className={`w-full px-4 py-3 border rounded-xl ${
-    errors.attachment ? 'border-red-300 bg-red-50' : 'border-gray-300'
-  }`}
-/>
+                          type="file"
+                          name="attachment"
+                          ref={fileInputRef}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setFormData((prev) => ({ ...prev, attachment: file }));
+                              if (errors.attachment) {
+                                setErrors({ ...errors, attachment: "" });
+                              }
+                            }
+                          }}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          className={`w-full px-4 py-3 border rounded-xl ${errors.attachment ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                            }`}
+                        />
                         <p className="mt-1 text-xs text-gray-500">Max file size: 5MB. Allowed: PDF, DOC, DOCX, JPG, PNG</p>
                         {errors.attachment && (
                           <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -560,9 +564,8 @@ const submitCancellation = async () => {
                         rows={4}
                         maxLength={500}
                         placeholder="Please provide a reason for your leave request (minimum 10 characters)..."
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${
-                          errors.reason ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all ${errors.reason ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                          }`}
                       />
                       <div className="flex justify-between mt-1">
                         <div>
@@ -573,9 +576,8 @@ const submitCancellation = async () => {
                             </p>
                           )}
                         </div>
-                        <p className={`text-xs ${
-                          formData.reason.length > 450 ? 'text-red-500' : 'text-gray-500'
-                        }`}>
+                        <p className={`text-xs ${formData.reason.length > 450 ? 'text-red-500' : 'text-gray-500'
+                          }`}>
                           {formData.reason.length}/500 characters
                         </p>
                       </div>
@@ -596,7 +598,7 @@ const submitCancellation = async () => {
               {activeTab === "history" && (
                 <div className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Leave History</h3>
-                  
+
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-600 border-t-transparent"></div>
@@ -726,8 +728,8 @@ const submitCancellation = async () => {
                                     </button>
                                   ) : (
                                     <span className="text-gray-400 text-xs">
-                                      {request.status === 'Pending' && new Date(request.from_date) <= new Date() 
-                                        ? 'Cannot cancel' 
+                                      {request.status === 'Pending' && new Date(request.from_date) <= new Date()
+                                        ? 'Cannot cancel'
                                         : 'No actions'}
                                     </span>
                                   )}
@@ -747,7 +749,7 @@ const submitCancellation = async () => {
         {selectedReason && (
           <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4 relative">
-              <button 
+              <button
                 onClick={() => setSelectedReason(null)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
               >

@@ -7,6 +7,7 @@ import { TableSkeleton } from "@/Components/Skeletons";
 import { toast } from "react-toastify";
 import Link from "next/link";
 import {
+    Banknote,
     Calendar,
     CalendarDays,
     CheckCircle2,
@@ -17,19 +18,8 @@ import {
     RefreshCw,
     Search,
 } from "lucide-react";
-
-// Format date helper (UTC safe)
-function formatDisplayDate(dateVal: string | Date | null | undefined): string {
-    if (!dateVal) return "-";
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return "-";
-    return d.toLocaleDateString("en-US", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-    });
-}
+import { formatLongDate } from "@/utils/dateTime";
+import formatDate from "@/lib/formatDate";
 
 // Static status badge styling definitions (read-only)
 const PERIOD_STATUSES = [
@@ -367,7 +357,7 @@ function PayrollGetPeriods() {
                                 </h3>
                                 <p className="text-[12px] text-gray-500 mt-1.5 max-w-md mx-auto leading-relaxed">
                                     There are currently no payroll periods generated for {selectedFy?.name || "this financial year"}
-                                    {selectedFy?.start_date && selectedFy?.end_date ? ` (${formatDisplayDate(selectedFy.start_date)} to ${formatDisplayDate(selectedFy.end_date)})` : ""}.
+                                    {selectedFy?.start_date && selectedFy?.end_date ? ` (${formatDate(selectedFy.start_date)} to ${formatDate(selectedFy.end_date)})` : ""}.
                                     Generate them automatically using your active payroll configuration.
                                 </p>
                                 <div className="mt-5">
@@ -405,7 +395,7 @@ function PayrollGetPeriods() {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50/70">
                                         <tr>
-                                            {["#", "Period Name", "Start Date", "End Date", "Salary Payment", "Cycle", "Status"].map((h) => (
+                                            {["#", "Period Name", "Start Date", "End Date", "Salary Payment", "Cycle", "Status", "Action"].map((h) => (
                                                 <th
                                                     key={h}
                                                     className="px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider"
@@ -437,17 +427,17 @@ function PayrollGetPeriods() {
                                                     </td>
 
                                                     <td className="px-6 py-3.5 whitespace-nowrap text-[12px] text-gray-700">
-                                                        {formatDisplayDate(period.period_start)}
+                                                        {formatDate(period.period_start)}
                                                     </td>
 
                                                     <td className="px-6 py-3.5 whitespace-nowrap text-[12px] text-gray-700">
-                                                        {formatDisplayDate(period.period_end)}
+                                                        {formatDate(period.period_end)}
                                                     </td>
 
                                                     <td className="px-6 py-3.5 whitespace-nowrap text-[12px]">
                                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
                                                             <Clock size={11} />
-                                                            {formatDisplayDate(period.salary_payment_date)}
+                                                            {formatLongDate(period.salary_payment_date)}
                                                         </span>
                                                     </td>
 
@@ -469,6 +459,16 @@ function PayrollGetPeriods() {
 
                                                     <td className="px-6 py-3.5 whitespace-nowrap text-[12px]">
                                                         <PeriodStatusBadge value={period.status} />
+                                                    </td>
+
+                                                    <td>
+                                                        <Link
+                                                            href={`/payroll/salary/initiate-salary/${period.uid}`}
+                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
+                                                        >
+                                                            <Banknote size={14} />
+                                                            <span>Initiate Salary</span>
+                                                        </Link>
                                                     </td>
                                                 </tr>
                                             );

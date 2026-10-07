@@ -126,6 +126,7 @@ model financial_year {
 
   payroll_configurations payroll_configuration[]
   payroll_periods        payroll_period[]
+  employee_salary_structures employee_salary_structure[]
 
   @@index([company_id])
   @@index([company_id, status])
@@ -902,11 +903,11 @@ model employee_salary_structure {
   employee_id String
   employee    users  @relation(fields: [employee_id], references: [empid], onDelete: Cascade)
 
-  salary_structure_id Int?
-  salaryStructure     salary_structure? @relation(fields: [salary_structure_id], references: [id], onDelete: Restrict)
+  salary_structure_id String
+  salaryStructure     salary_structure @relation(fields: [salary_structure_id], references: [uid], onDelete: Restrict)
 
-  effective_from DateTime  @db.Date
-  effective_to   DateTime? @db.Date
+  financial_year_id String
+  financialYear     financial_year  @relation(fields: [financial_year_id], references: [uid], onDelete: Cascade)
 
   status EmployeeSalaryStatus @default(ACTIVE)
 
@@ -919,8 +920,8 @@ model employee_salary_structure {
 
   @@index([employee_id])
   @@index([salary_structure_id])
-  @@index([effective_from])
-  @@index([effective_to])
+  @@index([financial_year_id])
+  @@index([status])
 }
 
 model employee_salary_component {

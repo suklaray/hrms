@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-import { checkSalaryVersionOverlap } from "@/lib/salaryCalculation";
 
 async function findEmployeeSalaryByUidOrId(identifier: string) {
   if (!identifier) return null;
@@ -24,6 +23,17 @@ async function findEmployeeSalaryByUidOrId(identifier: string) {
           contact_number: true,
           position: true,
           company: { select: { id: true, uid: true, name: true } },
+        },
+      },
+      financialYear: {
+        select: {
+          id: true,
+          uid: true,
+          name: true,
+          start_date: true,
+          end_date: true,
+          status: true,
+          lock: true,
         },
       },
       salaryStructure: {
@@ -78,8 +88,11 @@ export async function GET(
         employee_id: record.employee_id,
         NOT: { id: record.id },
       },
-      orderBy: { effective_from: "desc" },
+      orderBy: { createdAt: "desc" },
       include: {
+        financialYear: {
+          select: { id: true, uid: true, name: true, start_date: true, end_date: true, status: true },
+        },
         salaryStructure: {
           select: { id: true, uid: true, name: true, code: true },
         },
@@ -146,8 +159,9 @@ export async function GET(
           return {
             id: h.id,
             uid: h.uid,
-            effective_from: h.effective_from,
-            effective_to: h.effective_to,
+            financial_year_id: h.financial_year_id,
+            financialYear: h.financialYear,
+            financial_year: h.financialYear,
             status: h.status,
             remarks: h.remarks,
             salaryStructure: h.salaryStructure,
@@ -155,6 +169,7 @@ export async function GET(
             grossEarnings: Math.round(hGross * 100) / 100,
             totalDeductions: Math.round(hDed * 100) / 100,
             netSalary: Math.round((hGross - hDed) * 100) / 100,
+            createdAt: h.createdAt,
           };
         }),
       },
@@ -185,55 +200,72 @@ export async function PATCH(
     }
 
     const body = await req.json().catch(() => ({}));
-    const { salary_structure_id, effective_from, effective_to, status, remarks, components } = body;
+    const { salary_structure_id, financial_year_id, status, remarks, components } = body;
 
     const updateData: any = {};
 
     if (salary_structure_id !== undefined) {
-      if (salary_structure_id === null || salary_structure_id === "") {
-        updateData.salary_structure_id = null;
-      } else {
-        const isNumeric = !isNaN(Number(salary_structure_id));
-        const st = await prisma.salary_structure.findFirst({
+      if (!salary_structure_id) {
+        return NextResponse.json({ success: false, message: "Salary structure cannot be empty." }, { status: 400 });
+      }
+      const isNumeric = !isNaN(Number(salary_structure_id));
+      const st = await prisma.salary_structure.findFirst({
+        where: {
+          OR: [
+            { uid: String(salary_structure_id) },
+            isNumeric ? { id: Number(salary_structure_id) } : undefined,
+          ].filter(Boolean) as any,
+        },
+        select: { uid: true },
+      });
+      if (!st) {
+        return NextResponse.json({ success: false, message: "Salary structure not found." }, { status: 404 });
+      }
+      updateData.salary_structure_id = st.uid;
+    }
+
+    if (financial_year_id !== undefined) {
+      if (!financial_year_id) {
+        return NextResponse.json({ success: false, message: "Financial year cannot be empty." }, { status: 400 });
+      }
+      const isNumeric = !isNaN(Number(financial_year_id));
+      const fy = await prisma.financial_year.findFirst({
+        where: {
+          OR: [
+            { uid: String(financial_year_id) },
+            isNumeric ? { id: Number(financial_year_id) } : undefined,
+          ].filter(Boolean) as any,
+        },
+        select: { uid: true, status: true },
+      });
+      if (!fy) {
+        return NextResponse.json({ success: false, message: "Financial year not found." }, { status: 404 });
+      }
+      if (fy.status !== "ACTIVE") {
+        return NextResponse.json(
+          { success: false, message: "Please select an active financial year" },
+          { status: 400 }
+        );
+      }
+      if (fy.uid !== record.financial_year_id) {
+        const existingOther = await prisma.employee_salary_structure.findFirst({
           where: {
-            OR: [
-              { uid: String(salary_structure_id) },
-              isNumeric ? { id: Number(salary_structure_id) } : undefined,
-            ].filter(Boolean) as any,
+            employee_id: record.employee_id,
+            financial_year_id: fy.uid,
+            NOT: { id: record.id },
           },
-          select: { id: true },
         });
-        if (!st) {
-          return NextResponse.json({ success: false, message: "Salary structure not found." }, { status: 404 });
+        if (existingOther) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: "A salary structure has already been created against this financial year and this employee.",
+            },
+            { status: 400 }
+          );
         }
-        updateData.salary_structure_id = st.id;
       }
-    }
-
-    let fromDate = record.effective_from;
-    let toDate = record.effective_to;
-
-    if (effective_from !== undefined) {
-      fromDate = new Date(effective_from);
-      if (isNaN(fromDate.getTime())) {
-        return NextResponse.json({ success: false, message: "Invalid effective_from date." }, { status: 400 });
-      }
-      updateData.effective_from = fromDate;
-    }
-
-    if (effective_to !== undefined) {
-      toDate = effective_to ? new Date(effective_to) : null;
-      if (toDate && isNaN(toDate.getTime())) {
-        return NextResponse.json({ success: false, message: "Invalid effective_to date." }, { status: 400 });
-      }
-      updateData.effective_to = toDate;
-    }
-
-    if (fromDate && toDate && toDate < fromDate) {
-      return NextResponse.json(
-        { success: false, message: "effective_from must be before or equal to effective_to." },
-        { status: 400 }
-      );
+      updateData.financial_year_id = fy.uid;
     }
 
     if (status !== undefined) {
@@ -245,26 +277,6 @@ export async function PATCH(
 
     if (remarks !== undefined) {
       updateData.remarks = remarks ? String(remarks).trim() : null;
-    }
-
-    const targetStatus = updateData.status !== undefined ? updateData.status : record.status;
-
-    // Overlap check only applies if this version is or is being set to ACTIVE.
-    // Since activating this version will automatically inactivate any other currently ACTIVE version,
-    // we only check date overlap against finalized CLOSED versions.
-    if (targetStatus === "ACTIVE") {
-      const otherVersions = await prisma.employee_salary_structure.findMany({
-        where: {
-          employee_id: record.employee_id,
-          NOT: { id: record.id },
-          status: "CLOSED",
-        },
-      });
-
-      const overlap = checkSalaryVersionOverlap(otherVersions, fromDate, toDate, record.id);
-      if (overlap.overlap) {
-        return NextResponse.json({ success: false, message: overlap.message }, { status: 400 });
-      }
     }
 
     // Validate components if passed
@@ -299,13 +311,16 @@ export async function PATCH(
       }
     }
 
+    const targetFinancialYearId = updateData.financial_year_id || record.financial_year_id;
+
     // Atomic Prisma Transaction
     const updated = await prisma.$transaction(async (tx) => {
-      // If setting this version to ACTIVE, set any other currently active version to INACTIVE
+      // If setting this version to ACTIVE, set any other currently active version in the same financial year to INACTIVE
       if (updateData.status === "ACTIVE") {
         await tx.employee_salary_structure.updateMany({
           where: {
             employee_id: record.employee_id,
+            financial_year_id: targetFinancialYearId,
             NOT: { id: record.id },
             status: "ACTIVE",
           },
@@ -339,6 +354,9 @@ export async function PATCH(
         include: {
           employee: {
             select: { id: true, empid: true, name: true, email: true, position: true },
+          },
+          financialYear: {
+            select: { id: true, uid: true, name: true, start_date: true, end_date: true, status: true },
           },
           salaryStructure: {
             select: { id: true, uid: true, name: true, code: true },

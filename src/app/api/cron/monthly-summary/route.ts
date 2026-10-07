@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/authMiddleware";
-import { checkPermission } from "@/lib/rbac";
+import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { Prisma } from "@prisma/client";
 
@@ -174,12 +174,29 @@ async function handleMonthlySummary(req: NextRequest) {
         continue;
       }
 
-      // Fetch user profile info (e.g. email for holiday matching)
+      // Fetch user profile info (e.g. email for holiday matching, role/rbacRole for superadmin exclusion)
       const employees = await prisma.users.findMany({
         where: { empid: { in: empIds } },
-        select: { empid: true, email: true },
+        select: {
+          empid: true,
+          email: true,
+          role: true,
+          roleId: true,
+          rbacRole: {
+            select: { id: true, name: true, type: true },
+          },
+        },
       });
       const employeeMap = new Map(employees.map((e) => [e.empid, e]));
+
+      const eligibleEmpIds = empIds.filter((id) => {
+        const emp = employeeMap.get(id);
+        return emp;
+      });
+
+      if (eligibleEmpIds.length === 0) {
+        continue;
+      }
 
       let processed = 0;
       const monthErrors: { empid: string; error: string }[] = [];
@@ -193,7 +210,7 @@ async function handleMonthlySummary(req: NextRequest) {
         select: { event_date: true, visible_to: true },
       });
 
-      for (const empId of empIds) {
+      for (const empId of eligibleEmpIds) {
         let rowsToProcess: { id: number }[] = [];
         try {
           const emp = employeeMap.get(empId) ?? { empid: empId, email: "" };
@@ -437,7 +454,7 @@ async function handleMonthlySummary(req: NextRequest) {
         daysProcessed: daysToEvaluate.length,
         totalWorkingDays,
         totalWeekends,
-        employeesWithAttendance: empIds.length,
+        employeesWithAttendance: eligibleEmpIds.length,
         processed,
         failed: monthErrors.length,
         errors: monthErrors.length > 0 ? monthErrors : undefined,

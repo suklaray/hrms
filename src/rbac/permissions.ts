@@ -60,6 +60,7 @@ export const PERMISSIONS = {
 
   PAYSLIP: {
     VIEW: "payslip.view",
+    GENERATE: "payslip.generate",
   },
 
   RECRUITMENT: {
@@ -312,8 +313,15 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     key: PERMISSIONS.PAYSLIP.VIEW,
     name: "View Payslips",
     description: "View and download own payslips and compensation summaries",
-    module: "payroll",
-    action: "payslip_view",
+    module: "payslip",
+    action: "view",
+  },
+  {
+    key: PERMISSIONS.PAYSLIP.GENERATE,
+    name: "Generate Payslip",
+    description: "Generate payslips",
+    module: "payslip",
+    action: "generate",
   },
 
   // Recruitment

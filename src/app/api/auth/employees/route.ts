@@ -6,11 +6,10 @@ import cookie from "cookie";
 import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import type { DecodedToken } from "@/lib/jwtTypes";
+import { checkAuth } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   const query = await getQueryParams(req, context?.params);
-
-  
 
   try {
     // Get user from token
@@ -19,17 +18,14 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW);
-    if (!hasAccess) {
-      return NextResponse.json({
-        success: false,
-        message: "Forbidden: insufficient permissions",
-      }, { status: 403 });
-    }
+
+    const auth = await checkAuth(req, [PERMISSION_KEYS.EMPLOYEE_VIEW, PERMISSION_KEYS.PAYSLIP_GENERATE]);
+    if ("error" in auth) return auth.error;
+
 
     const loggedInUser = await prisma.users.findUnique({
       where: {
-      empid: (decoded.empid || decoded.id) as string,
+        empid: (decoded.empid || decoded.id) as string,
       },
       select: {
         id: true,
@@ -115,9 +111,6 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     const { role } = query;
     const filters: Record<string, any> = {
       is_active: "ACTIVE",
-      roleId: {
-        in: uniqueVisibleRoleIds,
-      },
     };
     if (
       role &&

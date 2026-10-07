@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { isSuperAdmin } from "@/lib/rbac";
 
 // ─── GET /api/payroll/employee-salary-structures/employees ──────────────────────
 export async function GET(req: NextRequest) {
@@ -12,9 +13,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const companyIdParam = searchParams.get("company_id");
     const search = searchParams.get("search");
+    const financialYearIdParam = searchParams.get("financial_year_id");
 
     const where: any = {
       status: { not: "Inactive" },
+      role: { not: "superadmin" },
     };
 
     if (companyIdParam) {
@@ -31,6 +34,11 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    const structureWhere: any = {};
+    if (financialYearIdParam) {
+      structureWhere.financial_year_id = financialYearIdParam;
+    }
+
     const employees = await prisma.users.findMany({
       where,
       select: {
@@ -42,13 +50,22 @@ export async function GET(req: NextRequest) {
         position: true,
         employee_type: true,
         status: true,
+        role: true,
+        roleId: true,
         company_id: true,
         company: {
           select: { id: true, uid: true, name: true },
         },
+        rbacRole: {
+          select: { id: true, name: true, type: true },
+        },
         employee_salary_structures: {
-          orderBy: { effective_from: "desc" },
+          where: Object.keys(structureWhere).length > 0 ? structureWhere : undefined,
+          orderBy: { createdAt: "desc" },
           include: {
+            financialYear: {
+              select: { id: true, uid: true, name: true, start_date: true, end_date: true, status: true },
+            },
             salaryStructure: {
               select: { id: true, uid: true, name: true, code: true },
             },
@@ -65,7 +82,11 @@ export async function GET(req: NextRequest) {
       orderBy: { name: "asc" },
     });
 
-    const formatted = employees.map((emp) => {
+    const nonSuperAdminEmployees = employees.filter(
+      (emp) => !isSuperAdmin(emp) && emp.role !== "superadmin"
+    );
+
+    const formatted = nonSuperAdminEmployees.map((emp) => {
       const activeStructure = emp.employee_salary_structures.find((s) => s.status === "ACTIVE") || null;
 
       let currentGross = 0;
@@ -99,8 +120,8 @@ export async function GET(req: NextRequest) {
               uid: activeStructure.uid,
               salary_structure_name: activeStructure.salaryStructure?.name || "Custom Salary",
               salary_structure_code: activeStructure.salaryStructure?.code || "CUSTOM",
-              effective_from: activeStructure.effective_from,
-              effective_to: activeStructure.effective_to,
+              financial_year_id: activeStructure.financial_year_id,
+              financial_year_name: activeStructure.financialYear?.name || "N/A",
               grossSalary: currentGross,
               netSalary: currentNet,
             }
