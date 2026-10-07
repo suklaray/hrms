@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import SideBar from "@/Components/SideBar";
-import { AlertCircle, Eye, Loader2, Search, Upload, X } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, Eye, Loader2, RefreshCw, Search, Upload, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
@@ -15,18 +16,6 @@ const TYPES = [
 const EXTS = [".pdf", ".doc", ".docx", ".txt"];
 const MAX_SIZE = 5 * 1024 * 1024;
 
-const readable = (value: unknown): string => {
-  if (Array.isArray(value))
-    return value
-      .map((item) =>
-        typeof item === "object" && item !== null
-          ? Object.values(item).filter(Boolean).join(" - ")
-          : String(item)
-      )
-      .join(", ");
-  return (value as string) || "Not available";
-};
-
 interface Job {
   id: number;
   title: string;
@@ -34,11 +23,25 @@ interface Job {
 
 interface Resume {
   id: number;
+  matchUrlId: string;
   name: string;
   email: string;
   fileName?: string;
   parsedAt?: string;
   matchingScore?: number | null;
+  matchingStatus?: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  matchingError?: string | null;
+  matchingCriteria?: {
+    skills: number | null;
+    experience: number | null;
+    education: number | null;
+    keywords: number | null;
+    location: number | null;
+    salary: number | null;
+    noticePeriod: number | null;
+    certifications: number | null;
+    projectsDomain: number | null;
+  } | null;
   applicationStatus?: string;
   interviewScheduled?: boolean;
   interviewDate?: string;
@@ -98,17 +101,19 @@ export default function JobApplicationsClient({
   const canReject = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_REJECT);
   const canSchedule = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_SCHEDULE);
   const inputRef = useRef<HTMLInputElement>(null);
+  const matchingRequests = useRef(new Set<number>());
   const [data, setData] = useState<Data>({ resumes: [], jobs: [] });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [jobId, setJobId] = useState("all");
+  const [sortBy, setSortBy] = useState("score");
   const [uploadJobId, setUploadJobId] = useState("");
   const [matches, setMatches] = useState<Map<number, unknown> | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState("");
   const [parsing, setParsing] = useState(false);
-  const [viewResume, setViewResume] = useState<Resume | null>(null);
+  const [retryingResumeId, setRetryingResumeId] = useState<number | null>(null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleResume, setScheduleResume] = useState<Resume | null>(null);
   const [interviewDate, setInterviewDate] = useState("");
@@ -244,6 +249,58 @@ export default function JobApplicationsClient({
   }, []);
 
   useEffect(() => {
+    for (const resume of data.resumes) {
+      if (resume.matchingStatus !== "PENDING" || matchingRequests.current.has(resume.id)) {
+        continue;
+      }
+
+      matchingRequests.current.add(resume.id);
+      void fetch(`/api/recruitment/job-application/${resume.id}/match`, {
+        method: "POST",
+      })
+        .then(async (response) => {
+          const result = await response.json();
+          if (!response.ok && result.status !== "FAILED") {
+            throw new Error(result.error || "Unable to start candidate matching");
+          }
+        })
+        .catch((error: unknown) => {
+          toast.error(error instanceof Error ? error.message : "Unable to start candidate matching");
+        })
+        .finally(() => {
+          matchingRequests.current.delete(resume.id);
+          void loadResumes();
+        });
+    }
+  }, [data.resumes]);
+
+  const retryMatching = async (resumeId: number) => {
+    matchingRequests.current.add(resumeId);
+    setRetryingResumeId(resumeId);
+    setData((current) => ({
+      ...current,
+      resumes: current.resumes.map((resume) =>
+        resume.id === resumeId
+          ? { ...resume, matchingStatus: "PROCESSING", matchingError: null }
+          : resume
+      ),
+    }));
+    try {
+      const response = await fetch(`/api/recruitment/job-application/${resumeId}/match`, {
+        method: "POST",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to retry candidate matching");
+      await loadResumes();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to retry candidate matching");
+    } finally {
+      matchingRequests.current.delete(resumeId);
+      setRetryingResumeId(null);
+    }
+  };
+
+  useEffect(() => {
     if (jobId === "all") { setMatches(null); return; }
     fetch(`/api/recruitment/job-description/${jobId}/matches`)
       .then((r) => r.json())
@@ -310,10 +367,39 @@ export default function JobApplicationsClient({
     });
   };
 
+  const isImmediateJoiner = (noticePeriod: string | null | undefined) => {
+    if (!noticePeriod) return false;
+    return /immediate|0\s*day|no\s*notice|joining\s*immediately|available\s*immediately/i.test(noticePeriod);
+  };
+
   const filtered = data.resumes.filter((resume) => {
     const searchMatch = matchesSearch(resume, search);
     const jobMatch = jobId === "all" || String(resume.jobDescriptionId) === String(jobId);
     return searchMatch && jobMatch;
+  });
+
+  const ranked = [...filtered].sort((a, b) => {
+    const value = (resume: Resume): number | null => {
+      if (sortBy === "score") return resume.matchingScore ?? null;
+      if (sortBy === "immediate") return isImmediateJoiner(resume.noticePeriod) ? 1 : 0;
+      const c = resume.matchingCriteria;
+      if (!c) return null;
+      if (sortBy === "skills") return c.skills;
+      if (sortBy === "experience") return c.experience;
+      if (sortBy === "education") return c.education;
+      if (sortBy === "keywords") return c.keywords;
+      if (sortBy === "location") return c.location;
+      if (sortBy === "salary") return c.salary;
+      if (sortBy === "notice") return c.noticePeriod;
+      if (sortBy === "certifications") return c.certifications;
+      if (sortBy === "projectsDomain") return c.projectsDomain;
+      return resume.matchingScore ?? null;
+    };
+    const first = value(a);
+    const second = value(b);
+    if (first === null) return second === null ? 0 : 1;
+    if (second === null) return -1;
+    return second - first;
   });
 
   const parsedCount = data.resumes.length;
@@ -376,6 +462,24 @@ export default function JobApplicationsClient({
                   <option key={job.id} value={job.id}>{job.title}</option>
                 ))}
               </select>
+              <select
+                aria-label="Sort candidates by"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600"
+              >
+                <option value="score">Sort by Overall score</option>
+                <option value="skills">Sort by Skills</option>
+                <option value="experience">Sort by Experience</option>
+                <option value="education">Sort by Education</option>
+                <option value="keywords">Sort by Keywords</option>
+                <option value="location">Sort by Location</option>
+                <option value="salary">Sort by Salary</option>
+                <option value="notice">Sort by Notice period</option>
+                <option value="certifications">Sort by Certifications</option>
+                <option value="projectsDomain">Sort by Projects & domain</option>
+                <option value="immediate">Sort by Immediate joiners first</option>
+              </select>
             </div>
 
             {jobId !== "all" && (
@@ -399,7 +503,7 @@ export default function JobApplicationsClient({
                   ) : filtered.length === 0 ? (
                     <tr><td colSpan={7} className="p-12 text-center text-sm text-gray-400">No parsed resumes match the current filters.</td></tr>
                   ) : (
-                    filtered.map((resume, index) => (
+                    ranked.map((resume, index) => (
                       <tr key={resume.id} className="hover:bg-gray-50">
                         <td className="px-5 py-4 text-sm font-bold text-gray-400">{index + 1}</td>
                         <td className="px-5 py-4 font-semibold text-gray-900">{resume.name}</td>
@@ -409,19 +513,51 @@ export default function JobApplicationsClient({
                           {resume.parsedAt ? new Date(resume.parsedAt).toLocaleDateString("en-IN") : "-"}
                         </td>
                         <td className="px-5 py-4">
-                          {resume.matchingScore !== null && resume.matchingScore !== undefined ? (
-                            <span className="text-sm font-bold text-indigo-600">{resume.matchingScore}%</span>
+                          {!resume.jobDescriptionId ? (
+                            <span className="text-xs text-gray-400">No linked job</span>
+                          ) : resume.matchingStatus === "COMPLETED" && resume.matchingScore !== null && resume.matchingScore !== undefined ? (
+                            <div>
+                              <span className="text-sm font-bold text-indigo-600">{resume.matchingScore}%</span>
+                              <p className="mt-1 text-xs text-gray-500">Final match score</p>
+                            </div>
+                          ) : resume.matchingStatus === "FAILED" ? (
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="max-w-56 text-xs text-red-600" title={resume.matchingError || undefined}>
+                                {resume.matchingError || "Comparison failed"}
+                              </span>
+                              <button
+                                onClick={() => retryMatching(resume.id)}
+                                disabled={retryingResumeId === resume.id}
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 disabled:text-gray-400"
+                              >
+                                <RefreshCw className={`h-3 w-3 ${retryingResumeId === resume.id ? "animate-spin" : ""}`} />
+                                {retryingResumeId === resume.id ? "Retrying..." : "Retry"}
+                              </button>
+                            </div>
                           ) : (
-                            <span className="inline-flex items-center gap-2 text-xs text-gray-400">
-                              <Loader2 className="w-4 h-4 animate-spin" />Calculating...
+                            <span className="inline-flex items-center gap-2 text-xs text-gray-500" title={resume.matchingStatus === "PROCESSING" ? "Matching is running in the background" : "Waiting for matching to start"}>
+                              <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                              {resume.matchingStatus === "PROCESSING" ? "Comparing..." : "Queued..."}
                             </span>
                           )}
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <button title="View parsed resume" onClick={() => setViewResume(resume)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer">
-                              <Eye className="w-4 h-4" />
-                            </button>
+                            {resume.jobDescriptionId && resume.matchingStatus === "COMPLETED" ? (
+                              <Link
+                                title="View candidate and job comparison"
+                                aria-label={`View match details for ${resume.name}`}
+                                href={`/Recruitment/job-applications/${resume.matchUrlId}/match`}
+                                className="inline-flex items-center gap-1 px-2 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                              >
+                                <Eye className="w-4 h-4" />
+                                <span className="text-xs font-semibold">View</span>
+                              </Link>
+                            ) : resume.jobDescriptionId ? (
+                              <span className="px-2 py-2 text-xs text-gray-400">Available when comparison is done</span>
+                            ) : (
+                              <span className="px-2 py-2 text-xs text-gray-400">No linked job</span>
+                            )}
                             {resume.applicationStatus === "Shortlisted" ? (
                               <>
                                 <span className="px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 rounded-lg">Shortlisted</span>
@@ -500,95 +636,6 @@ export default function JobApplicationsClient({
               <button onClick={parseResume} disabled={!file || !uploadJobId || !!fileError || parsing} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg disabled:bg-gray-300">
                 {parsing ? <><Loader2 className="w-4 h-4 inline mr-1 animate-spin" />Parsing...</> : "Parse resume"}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {viewResume && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Parsed resume</p>
-                <h2 className="text-2xl font-bold text-gray-900 mt-1">{viewResume.name}</h2>
-                <p className="text-sm text-gray-500">{viewResume.email}</p>
-              </div>
-              <button onClick={() => setViewResume(null)}><X className="w-5 h-5 text-gray-400" /></button>
-            </div>
-            <div className="space-y-6">
-              <section>
-                <h3 className="text-sm font-bold text-gray-800 mb-2">Personal information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-gray-600">
-                  <p><b>Mobile:</b> {viewResume.mobileNumber || "-"}</p>
-                  <p><b>Alternate phone:</b> {viewResume.alternatePhone || "-"}</p>
-                  <p><b>Address:</b> {viewResume.currentAddress || "-"}</p>
-                  <p><b>City / State / Country:</b> {[viewResume.city, viewResume.state, viewResume.country].filter(Boolean).join(" / ") || "-"}</p>
-                  <p><b>LinkedIn:</b> {viewResume.linkedin || "-"}</p>
-                  <p><b>Portfolio:</b> {viewResume.portfolio || "-"}</p>
-                  <p><b>GitHub:</b> {viewResume.github || "-"}</p>
-                </div>
-              </section>
-              <section>
-                <h3 className="text-sm font-bold text-gray-800 mb-2">Professional information</h3>
-                <p className="text-sm text-gray-600"><b>Career objective:</b> {viewResume.careerObjective || "-"}</p>
-                <p className="text-sm text-gray-600 mt-2"><b>Summary:</b> {viewResume.summary || "-"}</p>
-              </section>
-              <section>
-                <h3 className="text-sm font-bold text-gray-800 mb-2">Work experience</h3>
-                <p className="text-sm text-gray-600">{readable(viewResume.workExperience)}</p>
-              </section>
-              <section>
-                <h3 className="text-sm font-bold text-gray-800 mb-2">Education</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {["Degree", "Specialization", "Institution", "University", "Year", "Percentage", "CGPA"].map((h) => (
-                          <th key={h} className="px-3 py-2 text-left text-xs text-gray-500">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {(Array.isArray(viewResume.education) ? viewResume.education : []).map((edu, i) => (
-                        <tr key={i}>
-                          <td className="px-3 py-2">{edu.degree || "-"}</td>
-                          <td className="px-3 py-2">{edu.specialization || "-"}</td>
-                          <td className="px-3 py-2">{edu.institutionName || "-"}</td>
-                          <td className="px-3 py-2">{edu.university || "-"}</td>
-                          <td className="px-3 py-2">{edu.graduationYear || "-"}</td>
-                          <td className="px-3 py-2">{edu.percentage || "-"}</td>
-                          <td className="px-3 py-2">{edu.cgpa || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-              <section>
-                <h3 className="text-sm font-bold text-gray-800 mb-2">Skills and qualifications</h3>
-                <p className="text-sm text-gray-600"><b>Technical:</b> {readable(viewResume.technicalSkills)}</p>
-                <p className="text-sm text-gray-600"><b>Soft:</b> {readable(viewResume.softSkills)}</p>
-                <p className="text-sm text-gray-600"><b>Certifications:</b> {readable(viewResume.certifications)}</p>
-                <p className="text-sm text-gray-600"><b>Languages:</b> {readable(viewResume.languages)}</p>
-              </section>
-              <section>
-                <h3 className="text-sm font-bold text-gray-800 mb-2">Additional information</h3>
-                <p className="text-sm text-gray-600"><b>Projects:</b> {readable(viewResume.projects)}</p>
-                <p className="text-sm text-gray-600"><b>Awards:</b> {readable(viewResume.awards)}</p>
-                <p className="text-sm text-gray-600"><b>Publications:</b> {readable(viewResume.publications)}</p>
-                <p className="text-sm text-gray-600"><b>Training:</b> {readable(viewResume.training)}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
-                  <p><b>Notice period:</b> {viewResume.noticePeriod || "-"}</p>
-                  <p><b>Current salary:</b> {viewResume.currentSalary || "-"}</p>
-                  <p><b>Expected salary:</b> {viewResume.expectedSalary || "-"}</p>
-                  <p><b>Preferred location:</b> {viewResume.preferredLocation || "-"}</p>
-                </div>
-              </section>
-              <section className="text-xs text-gray-400">
-                <p>File: {viewResume.fileName || "-"}</p>
-                <p>Parser: {viewResume.aiModel || "-"} | Status: {viewResume.parsingStatus || "-"}</p>
-              </section>
             </div>
           </div>
         </div>

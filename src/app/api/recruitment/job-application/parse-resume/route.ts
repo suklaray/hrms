@@ -5,23 +5,32 @@ import path from "path";
 import { Readable } from "stream";
 import { validateResumeFile, extractResumeText } from "@/lib/resumeParser/extractText";
 import { parseResumeWithGemini } from "@/lib/resumeParser/geminiParser";
-import { scoreCandidateWithGemini } from "@/lib/resumeParser/candidateMatcher";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const runtime = "nodejs";
 
-const asList = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.flatMap((item) => asList(item));
-  if (value === null || value === undefined || value === "") return [];
-  if (typeof value === "object") return Object.values(value).flatMap((item) => asList(item));
-  return String(value)
-    .split(/[,;\n]/)
-    .flatMap((item) => item.split("|"))
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
+function getGeminiFailureMessage(error: unknown, task: string): string {
+  const details = error instanceof Error ? error.message : String(error);
+  const status =
+    error && typeof error === "object" && "status" in error
+      ? Number(error.status)
+      : undefined;
+
+  if (
+    status === 429 ||
+    /quota exceeded|quota.*limit|free.?tier.*requestsperday/i.test(details)
+  ) {
+    return "Gemini's request quota has been reached. Check your plan or billing, or try again after the quota resets.";
+  }
+
+  if (status === 503 || /high demand|service unavailable/i.test(details)) {
+    return "Gemini is temporarily busy. Please try again shortly.";
+  }
+
+  return `${task} failed. Please try again later.`;
+}
 
 export async function POST(req: NextRequest) {
   const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_PARSE]);
@@ -61,7 +70,6 @@ export async function POST(req: NextRequest) {
 
   const jobDescription = await prisma.job_descriptions.findUnique({
     where: { id: jobDescriptionId },
-    include: { analysis: true },
   });
 
   if (!jobDescription) {
@@ -120,9 +128,9 @@ export async function POST(req: NextRequest) {
   try {
     parsed = await parseResumeWithGemini(resumeText);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("Resume parsing failed:", err);
     return NextResponse.json(
-      { success: false, error: "Resume parsing failed: " + message },
+      { success: false, error: getGeminiFailureMessage(err, "Resume parsing") },
       { status: 502 }
     );
   }
@@ -130,77 +138,58 @@ export async function POST(req: NextRequest) {
   const pi = parsed.personalInformation;
   const ai = parsed.additionalInformation;
 
-  let matchingScore: number;
-
-  try {
-    const jobForScoring = {
-      ...jobDescription,
-      required_skills: asList(jobDescription.required_skills).join(", "),
-      preferred_skills: asList(jobDescription.preferred_skills).join(", "),
-    };
-
-    const match = await scoreCandidateWithGemini(jobForScoring, jobDescription.analysis, {
-      full_name: pi.fullName,
-      professional_summary: parsed.professionalInformation.professionalSummary,
-      career_objective: parsed.professionalInformation.careerObjective,
-      technical_skills: parsed.skills.technicalSkills,
-      soft_skills: parsed.skills.softSkills,
-      work_experience: parsed.workExperience,
-      education: parsed.education,
-      certifications: parsed.certifications,
-      projects: parsed.projects,
-    });
-
-    matchingScore = match.score;
-  } catch (err) {
-    console.error("Candidate matching failed:", err);
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { success: false, error: "Candidate matching failed: " + message },
-      { status: 502 }
-    );
-  }
-
   let record: { id: number };
   try {
-    record = await prisma.parsed_resumes.create({
-      data: {
-        full_name: pi.fullName,
-        email: pi.emailAddress,
-        mobile_number: pi.mobileNumber,
-        alternate_phone: pi.alternatePhoneNumber,
-        current_address: pi.currentAddress,
-        city: pi.city,
-        state: pi.state,
-        country: pi.country,
-        linkedin_profile: pi.linkedInProfile,
-        portfolio_url: pi.portfolioUrl,
-        github_url: pi.githubUrl,
-        career_objective: parsed.professionalInformation.careerObjective,
-        professional_summary: parsed.professionalInformation.professionalSummary,
-        work_experience: parsed.workExperience,
-        education: parsed.education,
-        technical_skills: parsed.skills.technicalSkills,
-        soft_skills: parsed.skills.softSkills,
-        certifications: parsed.certifications,
-        languages_known: parsed.languagesKnown,
-        projects: parsed.projects,
-        awards_and_achievements: parsed.awardsAndAchievements,
-        publications: parsed.publications,
-        training: parsed.training,
-        notice_period: ai.noticePeriod,
-        current_salary: ai.currentSalary,
-        expected_salary: ai.expectedSalary,
-        preferred_location: ai.preferredLocation,
-        resume_file_path: resumePath,
-        original_file_name: file.originalFilename,
-        resume_mime_type: file.mimetype,
-        resume_file_size: file.size,
-        parsing_status: "DONE",
-        ai_model: "gemini-3.6-flash",
-        job_description_id: jobDescriptionId,
-        matching_score: matchingScore,
-      },
+    record = await prisma.$transaction(async (transaction) => {
+      const resume = await transaction.parsed_resumes.create({
+        data: {
+          full_name: pi.fullName,
+          email: pi.emailAddress,
+          mobile_number: pi.mobileNumber,
+          alternate_phone: pi.alternatePhoneNumber,
+          current_address: pi.currentAddress,
+          city: pi.city,
+          state: pi.state,
+          country: pi.country,
+          linkedin_profile: pi.linkedInProfile,
+          portfolio_url: pi.portfolioUrl,
+          github_url: pi.githubUrl,
+          career_objective: parsed.professionalInformation.careerObjective,
+          professional_summary: parsed.professionalInformation.professionalSummary,
+          work_experience: parsed.workExperience,
+          education: parsed.education,
+          technical_skills: parsed.skills.technicalSkills,
+          soft_skills: parsed.skills.softSkills,
+          certifications: parsed.certifications,
+          languages_known: parsed.languagesKnown,
+          projects: parsed.projects,
+          awards_and_achievements: parsed.awardsAndAchievements,
+          publications: parsed.publications,
+          training: parsed.training,
+          notice_period: ai.noticePeriod,
+          current_salary: ai.currentSalary,
+          expected_salary: ai.expectedSalary,
+          preferred_location: ai.preferredLocation,
+          resume_file_path: resumePath,
+          original_file_name: file.originalFilename,
+          resume_mime_type: file.mimetype,
+          resume_file_size: file.size,
+          parsing_status: "DONE",
+          ai_model: "gemini-3.6-flash",
+          job_description_id: jobDescriptionId,
+          matching_score: null,
+        },
+      });
+
+      await transaction.candidate_job_matches.create({
+        data: {
+          job_description_id: jobDescriptionId,
+          parsed_resume_id: resume.id,
+          processing_status: "PENDING",
+        },
+      });
+
+      return resume;
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -214,7 +203,7 @@ export async function POST(req: NextRequest) {
     success: true,
     data: parsed,
     recordId: record.id,
-    matchingScore: matchingScore,
+    matchingStatus: "PENDING",
     jobDescription: { id: jobDescription.id, title: jobDescription.title },
   });
 }

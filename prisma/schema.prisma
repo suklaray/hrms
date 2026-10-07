@@ -996,11 +996,12 @@ model parsed_resumes {
 
   //
   job_description_id Int?
-  matching_score     Int?
+  matching_score     Decimal? @db.Decimal(5, 2)
 
   job_description job_descriptions? @relation(fields: [job_description_id], references: [id], onDelete: SetNull)
 
   candidate candidates?
+  candidate_job_matches candidate_job_matches[]
 
   @@index([job_description_id])
 }
@@ -1033,6 +1034,7 @@ model job_descriptions {
   updated_at        DateTime                  @updatedAt
   analysis          job_description_analysis?
   parsed_resumes    parsed_resumes[]
+  candidate_job_matches candidate_job_matches[]
 }
 
 model job_description_analysis {
@@ -1133,4 +1135,65 @@ model departments {
   positions   positions[]
 
   @@index([created_by])
+}
+
+model candidate_job_matches {
+  id                 Int      @id @default(autoincrement())
+  uid                String   @unique @default(uuid())
+
+  job_description_id Int
+  parsed_resume_id   Int
+
+  job_description job_descriptions @relation(fields: [job_description_id], references: [id], onDelete: Cascade)
+
+  parsed_resume parsed_resumes @relation(fields: [parsed_resume_id], references: [id], onDelete: Cascade)
+
+  // AI comparison scores
+  ai_match_score   Decimal? @db.Decimal(5, 2)
+  ai_overall_score Decimal? @db.Decimal(5, 2)
+  final_score      Decimal? @db.Decimal(5, 2)
+
+  // Individual criteria scores
+  skills_score        Decimal? @db.Decimal(5, 2)
+  experience_score    Decimal? @db.Decimal(5, 2)
+  education_score     Decimal? @db.Decimal(5, 2)
+  keyword_score       Decimal? @db.Decimal(5, 2)
+  certification_score Decimal? @db.Decimal(5, 2)
+  project_score       Decimal? @db.Decimal(5, 2)
+  location_score      Decimal? @db.Decimal(5, 2)
+  salary_score        Decimal? @db.Decimal(5, 2)
+  notice_period_score Decimal? @db.Decimal(5, 2)
+
+  // Detailed comparison
+  score_breakdown Json?
+
+  // AI explanation
+  ai_recommendation String? @db.Text
+
+  // Recruiter review
+  recruiter_decision          String?
+  recruiter_note              String?  @db.Text
+  recruiter_selected_criteria Json?
+  recruiter_reviewed_at       DateTime?
+
+  // Processing
+  processing_status String @default("PENDING")
+  processing_error  String? @db.Text
+
+  // AI information
+  model_name     String?
+  model_version  String?
+  scoring_version String?
+
+  evaluated_at DateTime?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  // One comparison per resume + JD
+  @@unique([job_description_id, parsed_resume_id])
+
+  @@index([job_description_id])
+  @@index([parsed_resume_id])
+  @@index([job_description_id, final_score])
+  @@index([job_description_id, processing_status])
 }
