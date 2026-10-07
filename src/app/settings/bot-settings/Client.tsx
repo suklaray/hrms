@@ -2,47 +2,22 @@
 
 import { Suspense } from "react";
 import { useState, useEffect } from 'react';
-import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
-import axios from 'axios';
+import { swalConfirm, swalSuccess, swalError } from "@/utils/confirmDialog";
 
-function BotSettings() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [accessDenied, setAccessDenied] = useState(false);
-  const router = useRouter();
-
-
-  useEffect(() => {
-    axios.get('/api/auth/settings/user-profile')
-      .then((res) => {
-        setUser(res.data);
-
-        // Check if user is superadmin
-        if (res.data.role !== 'superadmin') {
-          setAccessDenied(true);
-          setLoading(false);
-          return;
-        }
-
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-        router.push('/dashboard');
-      });
-  }, [router]);
-
+function BotSettings({
+  canUpload,
+  canDelete,
+}: {
+  canUpload: boolean;
+  canDelete: boolean;
+}) {
   const [files, setFiles] = useState([]);
+  const [loadingFiles, setLoadingFiles] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState('');
   const [inputMode, setInputMode] = useState('upload');
   const [textContent, setTextContent] = useState('');
   const [fileName, setFileName] = useState('');
-
-  useEffect(() => {
-    fetchFiles();
-  }, []);
 
   const fetchFiles = async () => {
     try {
@@ -50,18 +25,26 @@ function BotSettings() {
       const data = await res.json();
       if (res.ok) {
         setFiles(data.files || []);
+      } else {
+        swalError(data.error || 'Failed to load files');
       }
     } catch (error) {
       console.error('Error fetching files:', error);
+      swalError('Failed to load files');
+    } finally {
+      setLoadingFiles(false);
     }
   };
+
+  useEffect(() => {
+    fetchFiles();
+  }, []);
 
   const handleFileUpload = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
 
     setUploading(true);
-    setMessage('');
 
     try {
       const res = await fetch('/api/bot/upload', {
@@ -72,14 +55,14 @@ function BotSettings() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage('File uploaded successfully!');
+        swalSuccess('File uploaded successfully!');
         fetchFiles();
         e.target.reset();
       } else {
-        setMessage(data.error || 'Upload failed');
+        swalError(data.error || 'Upload failed');
       }
     } catch (error) {
-      setMessage('Upload error: ' + error.message);
+      swalError('Upload error: ' + error.message);
     } finally {
       setUploading(false);
     }
@@ -89,7 +72,6 @@ function BotSettings() {
     e.preventDefault();
 
     setUploading(true);
-    setMessage('');
 
     try {
       const res = await fetch('/api/bot/text', {
@@ -104,22 +86,23 @@ function BotSettings() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage('Content saved successfully!');
+        swalSuccess('Content saved successfully!');
         fetchFiles();
         setFileName('');
         setTextContent('');
       } else {
-        setMessage(data.error || 'Save failed');
+        swalError(data.error || 'Save failed');
       }
     } catch (error) {
-      setMessage('Save error: ' + error.message);
+      swalError('Save error: ' + error.message);
     } finally {
       setUploading(false);
     }
   };
 
   const deleteFile = async (filename) => {
-    if (!confirm(`Delete ${filename}?`)) return;
+    const confirmed = await swalConfirm(`Delete ${filename}?`, 'Yes');
+    if (!confirmed) return;
 
     try {
       const res = await fetch('/api/bot/files', {
@@ -129,44 +112,17 @@ function BotSettings() {
       });
 
       if (res.ok) {
-        setMessage('File deleted successfully!');
+        swalSuccess('File deleted successfully!');
         fetchFiles();
       } else {
         const data = await res.json();
-        setMessage(data.error || 'Delete failed');
+        swalError(data.error || 'Delete failed');
       }
     } catch (error) {
-      setMessage('Delete error: ' + error.message);
+      swalError('Delete error: ' + error.message);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (accessDenied) {
-    return (
-      <>
-        <Head>
-          <title>Access Denied - HRMS</title>
-        </Head>
-        <div className="flex min-h-screen">
-          <div className="flex-1 bg-gradient-to-b from-white to-gray-100 p-10">
-            <div className="max-w-4xl mx-auto text-center">
-              <div className="bg-red-50 border border-red-200 rounded-lg p-8">
-                <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-                <p className="text-red-700 mb-4">You don&apos;t have permission to access this page.</p>
-                {/* <p className="text-gray-600">Only Super Administrators can access Bot Settings.</p> */}
-                <button
-                  onClick={() => router.push('/dashboard')}
-                  className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-                >
-                  Go to Dashboard
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
   return (
     <>
       <Head>
@@ -177,8 +133,7 @@ function BotSettings() {
           <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl font-bold mb-6">HR Assistant Data Management</h1>
 
-            {/* Input Mode Selection */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+            {canUpload && <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
               <h2 className="text-lg font-semibold mb-4">Add HR Assistant Data</h2>
 
               <div className="flex space-x-4 mb-6">
@@ -203,7 +158,7 @@ function BotSettings() {
               </div>
 
               {inputMode === 'upload' ? (
-                <form onSubmit={handleFileUpload} className="space-y-4">
+                <form key="upload" onSubmit={handleFileUpload} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Select File
@@ -238,7 +193,7 @@ function BotSettings() {
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleTextSubmit} className="space-y-4">
+                <form key="text" onSubmit={handleTextSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       File Name
@@ -276,19 +231,15 @@ function BotSettings() {
                   </button>
                 </form>
               )}
-
-              {message && (
-                <div className={`mt-4 p-3 rounded-md ${message.includes('success') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {message}
-                </div>
-              )}
-            </div>
+            </div>}
 
             {/* Files List */}
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h2 className="text-lg font-semibold mb-4">Uploaded Files</h2>
 
-              {files.length === 0 ? (
+              {loadingFiles ? (
+                <p className="text-gray-500">Loading files...</p>
+              ) : files.length === 0 ? (
                 <p className="text-gray-500">No files uploaded yet.</p>
               ) : (
                 <div className="space-y-3">
@@ -303,12 +254,12 @@ function BotSettings() {
                           Uploaded: {new Date(file.uploadedAt).toLocaleString()}
                         </p>
                       </div>
-                      <button
+                      {canDelete && <button
                         onClick={() => deleteFile(file.name)}
                         className="text-red-600 hover:text-red-800 text-sm font-medium"
                       >
                         Delete
-                      </button>
+                      </button>}
                     </div>
                   ))}
                 </div>
@@ -321,13 +272,10 @@ function BotSettings() {
   );
 }
 
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-
-
-export default function ClientPageWrapper(props: any) {
+export default function ClientPageWrapper(props: {
+  canUpload: boolean;
+  canDelete: boolean;
+}) {
   return (
     <Suspense fallback={null}>
       <BotSettings {...props} />

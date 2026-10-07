@@ -23,7 +23,7 @@ async function getServerSideProps(context) {
     };
   }
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_VIEW);
   if (!hasAccess) {
     return {
       redirect: {

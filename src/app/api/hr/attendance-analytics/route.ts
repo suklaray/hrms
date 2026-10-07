@@ -1,8 +1,11 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
-  
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.ATTENDANCE_ANALYTICS]);
+  if (error) return error;
 
   try {
     // Get total employees
@@ -141,5 +144,4 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ error: "Failed to fetch analytics data" }, { status: 500 });
   }
 }
-
 

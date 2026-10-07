@@ -21,10 +21,11 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
     }
 
     decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_EDIT);
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.RBAC_ROLE_ASSIGN);
     if (!hasAccess) {
       return NextResponse.json({ message: "Access denied: insufficient permissions" }, { status: 403 });
     }
+
   } catch (authError) {
     return NextResponse.json({ message: "Invalid token" }, { status: 401 });
   }
@@ -61,8 +62,19 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
           updateData.role = knownEnums[lowerName] || "employee";
         }
       }
+
     } else if (role && typeof role === 'string') {
       const lower = role.toLowerCase().replace(/\s+/g, '');
+      const matchingAssignableRole = assignableRoles.find(
+        (assignableRole) =>
+          assignableRole.name.toLowerCase().replace(/\s+/g, '') === lower
+      );
+      if (!isSuperAdmin(decoded) && !matchingAssignableRole) {
+        return NextResponse.json(
+          { message: "Forbidden: You can only assign lower roles under your hierarchy." },
+          { status: 403 }
+        );
+      }
       const knownEnums: Record<string, any> = {
         superadmin: "superadmin",
         admin: "admin",
@@ -72,6 +84,7 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
       };
       if (knownEnums[lower]) {
         updateData.role = knownEnums[lower];
+        if (matchingAssignableRole) updateData.roleId = matchingAssignableRole.id;
       }
     }
 
@@ -94,4 +107,4 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
   }
 }
 
-
+export const PATCH = PUT;

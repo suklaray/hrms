@@ -17,8 +17,20 @@ import {
 
 import SideBar from "@/Components/SideBar";
 import { swalConfirm } from "@/utils/confirmDialog";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 const TABS = ["Departments", "Positions"] as const;
+const SUPER_ADMIN_SETTINGS_PERMISSIONS = [
+  PERMISSION_KEYS.SETTINGS_DEPARTMENT_VIEW,
+  PERMISSION_KEYS.SETTINGS_DEPARTMENT_CREATE,
+  PERMISSION_KEYS.SETTINGS_DEPARTMENT_EDIT,
+  PERMISSION_KEYS.SETTINGS_DEPARTMENT_DELETE,
+  PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+  PERMISSION_KEYS.SETTINGS_POSITION_CREATE,
+  PERMISSION_KEYS.SETTINGS_POSITION_EDIT,
+  PERMISSION_KEYS.SETTINGS_POSITION_DELETE,
+  PERMISSION_KEYS.SETTINGS_POSITION_ASSIGN,
+];
 
 type Tab = (typeof TABS)[number];
 
@@ -56,13 +68,28 @@ interface AxiosErrorResponse {
   };
 }
 
-export default function DepartmentManagement() {
+export default function DepartmentManagement({
+  canAccessDepartments,
+  canAccessPositions,
+}: {
+  canAccessDepartments: boolean;
+  canAccessPositions: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("Departments");
   const [departments, setDepartments] = useState<Department[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const hasPermission = (permission: string) => isSuperAdmin || permissions.includes(permission);
+  const canCreateDepartment = hasPermission(PERMISSION_KEYS.SETTINGS_DEPARTMENT_CREATE);
+  const canEditDepartment = hasPermission(PERMISSION_KEYS.SETTINGS_DEPARTMENT_EDIT);
+  const canDeleteDepartment = hasPermission(PERMISSION_KEYS.SETTINGS_DEPARTMENT_DELETE);
+  const canCreatePosition = hasPermission(PERMISSION_KEYS.SETTINGS_POSITION_CREATE);
+  const canEditPosition = hasPermission(PERMISSION_KEYS.SETTINGS_POSITION_EDIT);
+  const canDeletePosition = hasPermission(PERMISSION_KEYS.SETTINGS_POSITION_DELETE);
 
   // Department form state
   const [showForm, setShowForm] = useState(false);
@@ -86,21 +113,52 @@ export default function DepartmentManagement() {
       .then((r) => r.json())
       .then((d) => {
         setUserRole(d.user?.role);
-        fetchAll();
+        setIsSuperAdmin(Boolean(d.isSuperAdmin || d.user?.isSuperAdmin));
+        const userPermissions: string[] = d.permissions || d.user?.permissions || [];
+        setPermissions(userPermissions);
+        if (!canAccessDepartments && !canAccessPositions) {
+          setUserRole("unauthorized");
+          setLoading(false);
+          return;
+        }
+        if (!canAccessDepartments) {
+          setTab("Positions");
+        }
+        const effectivePermissions = Boolean(d.isSuperAdmin || d.user?.isSuperAdmin)
+          ? SUPER_ADMIN_SETTINGS_PERMISSIONS
+          : userPermissions;
+        fetchAll(effectivePermissions);
+      })
+      .catch((error) => {
+        console.error("Failed to load settings permissions:", error);
+        setUserRole("unauthorized");
+        setLoading(false);
       });
   }, []);
 
-  const fetchAll = async () => {
+  const fetchAll = async (
+    activePermissions = isSuperAdmin ? SUPER_ADMIN_SETTINGS_PERMISSIONS : permissions
+  ) => {
     setLoading(true);
 
-    const [d, p] = await Promise.all([
-      axios.get<Department[]>("/api/settings/departments"),
-      axios.get<Position[]>("/api/settings/positions"),
-    ]);
+    try {
+      const [d, p] = await Promise.all([
+        activePermissions.includes(PERMISSION_KEYS.SETTINGS_DEPARTMENT_VIEW)
+          ? axios.get<Department[]>("/api/settings/departments")
+          : Promise.resolve({ data: [] as Department[] }),
+        activePermissions.includes(PERMISSION_KEYS.SETTINGS_POSITION_VIEW)
+          ? axios.get<Position[]>("/api/settings/positions?purpose=departments")
+          : Promise.resolve({ data: [] as Position[] }),
+      ]);
 
-    setDepartments(d.data);
-    setPositions(p.data);
-    setLoading(false);
+      setDepartments(d.data);
+      setPositions(p.data);
+    } catch (error) {
+      console.error("Failed to fetch departments and positions:", error);
+      toast.error("Failed to load department and position data");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ── Department CRUD ──
@@ -174,6 +232,10 @@ export default function DepartmentManagement() {
     e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
+    if (editingPosId ? !canEditPosition : !canCreatePosition) {
+      toast.error("You don't have permission to manage positions");
+      return;
+    }
 
     try {
       const payload = {
@@ -212,6 +274,10 @@ export default function DepartmentManagement() {
   };
 
   const handlePosDelete = async (pos: Position) => {
+    if (!canDeletePosition) {
+      toast.error("You don't have permission to delete positions");
+      return;
+    }
     if (!(await swalConfirm("Delete this position?"))) {
       return;
     }
@@ -242,7 +308,7 @@ export default function DepartmentManagement() {
     });
   };
 
-  if (userRole === "employee") {
+  if (userRole === "unauthorized") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -277,7 +343,7 @@ export default function DepartmentManagement() {
 
           {/* Tabs */}
           <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
-            {TABS.map((t) => (
+            {TABS.filter((t) => t === "Departments" ? canAccessDepartments : canAccessPositions).map((t) => (
               <button
                 key={t}
                 onClick={() => {
@@ -307,7 +373,7 @@ export default function DepartmentManagement() {
             <div className="space-y-4">
 
               <div className="flex justify-end">
-                <button
+                {canCreateDepartment && <button
                   onClick={() => {
                     resetDeptForm();
                     setShowForm(true);
@@ -316,7 +382,7 @@ export default function DepartmentManagement() {
                 >
                   <Plus className="w-4 h-4" />
                   Add Department
-                </button>
+                </button>}
               </div>
 
               {/* Department Form */}
@@ -383,12 +449,12 @@ export default function DepartmentManagement() {
                     </div>
 
                     <div className="flex gap-3">
-                      <button
+                      {(editingId ? canEditDepartment : canCreateDepartment) && <button
                         type="submit"
                         className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer"
                       >
                         {editingId ? "Update" : "Create"}
-                      </button>
+                      </button>}
 
                       <button
                         type="button"
@@ -423,14 +489,12 @@ export default function DepartmentManagement() {
                       <div key={dept.id}>
 
                         <div
-                          className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors cursor-pointer"
-                          onClick={() =>
-                            setExpanded(
-                              expanded === dept.id
-                                ? null
-                                : dept.id
-                            )
-                          }
+                          className={`px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                            canAccessPositions ? "cursor-pointer" : ""
+                          }`}
+                          onClick={canAccessPositions ? () =>
+                            setExpanded(expanded === dept.id ? null : dept.id)
+                            : undefined}
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
@@ -443,20 +507,21 @@ export default function DepartmentManagement() {
                               </p>
 
                               <p className="text-xs text-gray-400">
-                                {dept.description ||
-                                  "No description"}{" "}
-                                · {dept.positions.length}{" "}
-                                position
-                                {dept.positions.length !== 1
-                                  ? "s"
-                                  : ""}
+                                {dept.description || "No description"}
+                                {canAccessPositions && (
+                                  <>
+                                    {" · "}
+                                    {dept.positions.length} position
+                                    {dept.positions.length !== 1 ? "s" : ""}
+                                  </>
+                                )}
                               </p>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-1">
 
-                            <button
+                            {canEditDepartment && <button
                               onClick={(e) => {
                                 e.stopPropagation();
 
@@ -472,9 +537,9 @@ export default function DepartmentManagement() {
                               className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                             >
                               <Pencil className="w-4 h-4" />
-                            </button>
+                            </button>}
 
-                            <button
+                            {canDeleteDepartment && <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeptDelete(dept);
@@ -482,19 +547,19 @@ export default function DepartmentManagement() {
                               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-4 h-4" />
-                            </button>
+                            </button>}
 
-                            {expanded === dept.id ? (
+                            {canAccessPositions && expanded === dept.id ? (
                               <ChevronUp className="w-4 h-4 text-gray-400 ml-1" />
-                            ) : (
+                            ) : canAccessPositions ? (
                               <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />
-                            )}
+                            ) : null}
 
                           </div>
                         </div>
 
                         {/* Positions under department */}
-                        {expanded === dept.id && (
+                        {canAccessPositions && expanded === dept.id && (
                           <div className="bg-gray-50 border-t border-gray-100 px-6 py-4">
 
                             {dept.positions.length === 0 ? (
@@ -546,7 +611,7 @@ export default function DepartmentManagement() {
             <div className="space-y-4">
 
               <div className="flex justify-end">
-                <button
+                {canCreatePosition && <button
                   onClick={() => {
                     resetPosForm();
                     setShowPosForm(true);
@@ -555,7 +620,7 @@ export default function DepartmentManagement() {
                 >
                   <Plus className="w-4 h-4" />
                   Add Position
-                </button>
+                </button>}
               </div>
 
               {/* Position Form */}
@@ -659,14 +724,14 @@ export default function DepartmentManagement() {
                     </div>
 
                     <div className="flex gap-3">
-                      <button
+                      {(editingPosId ? canEditPosition : canCreatePosition) && <button
                         type="submit"
                         className="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer"
                       >
                         {editingPosId
                           ? "Update"
                           : "Create"}
-                      </button>
+                      </button>}
 
                       <button
                         type="button"
@@ -767,7 +832,7 @@ export default function DepartmentManagement() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-1">
 
-                                <button
+                                {canEditPosition && <button
                                   onClick={() => {
                                     setPosForm({
                                       position_name:
@@ -791,16 +856,16 @@ export default function DepartmentManagement() {
                                   className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Pencil className="w-4 h-4" />
-                                </button>
+                                </button>}
 
-                                <button
+                                {canDeletePosition && <button
                                   onClick={() =>
                                     handlePosDelete(pos)
                                   }
                                   className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4" />
-                                </button>
+                                </button>}
 
                               </div>
                             </td>

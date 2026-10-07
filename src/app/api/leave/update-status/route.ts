@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getRequestBody } from "@/lib/routeHelper";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function POST(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.LEAVE_APPROVE]);
+  if (error) return error;
+
   const { id, status } = (await getRequestBody(req)) || {};
 
   try {

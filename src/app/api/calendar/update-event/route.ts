@@ -11,8 +11,11 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
   if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const canManage = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
-    if (!canManage) {
+    const [canEdit, canManage] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_EDIT),
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE),
+    ]);
+    if (!canEdit && !canManage) {
       return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 

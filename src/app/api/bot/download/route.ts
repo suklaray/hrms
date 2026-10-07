@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
-import jwt from 'jsonwebtoken';
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { checkBotPermission } from "@/lib/botAuth";
 
 const uploadDir = path.join(process.cwd(), 'hr-assistant-data');
 
 export async function GET(req: NextRequest) {
+  const auth = await checkBotPermission(req, PERMISSION_KEYS.SETTINGS_BOT);
+  if (auth.error) return auth.error;
+
   try {
-    const token = req.cookies.get('token')?.value || req.cookies.get('employeeToken')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET!);
-
     const filename = req.nextUrl.searchParams.get('filename');
     if (!filename) {
       return NextResponse.json({ error: 'Filename required' }, { status: 400 });

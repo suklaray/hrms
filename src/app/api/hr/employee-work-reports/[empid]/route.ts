@@ -21,10 +21,13 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       return NextResponse.json({ message: "Access denied" }, { status: 403 });
     }
 
-    const isSelf = decoded.empid === empid || String(decoded.id) === empid;
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.REPORT_VIEW);
+    const isSelf = decoded.empid === empid;
+    const [canViewAllReports, canViewOwnReports] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.REPORT_VIEW),
+      checkPermission(decoded, PERMISSION_KEYS.REPORT_VIEW_OWN),
+    ]);
 
-    if (!isSelf && !hasAccess) {
+    if ((!isSelf && !canViewAllReports) || (isSelf && !canViewAllReports && !canViewOwnReports)) {
       return NextResponse.json({ message: "Access denied: insufficient permissions" }, { status: 403 });
     }
     
@@ -61,4 +64,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
-

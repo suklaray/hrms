@@ -33,6 +33,10 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!currentUser) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
+    const canReviewRegularization = await checkPermission(
+      decoded,
+      PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE
+    );
 
     // Dynamic role-hierarchy filtering
     let usersWhereClause: any = { status: { not: 'Inactive' } };
@@ -80,13 +84,15 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         attendance_status: true
       }
     });
-    const pendingRegularizations = await prisma.attendance_regularization.findMany({
-      where: {
-        status: "PENDING",
-        ...(!isSuperAdmin(decoded) && { empid: { not: currentUser.empid } }),
-      },
-      select: { empid: true },
-    });
+    const pendingRegularizations = canReviewRegularization
+      ? await prisma.attendance_regularization.findMany({
+          where: {
+            status: "PENDING",
+            ...(!isSuperAdmin(decoded) && { empid: { not: currentUser.empid } }),
+          },
+          select: { empid: true },
+        })
+      : [];
 
     // Create a Set for quick lookup
     const pendingEmpIds = new Set(pendingRegularizations.map((r) => r.empid));
@@ -209,7 +215,8 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         total_hours: userRealTimeHours.toFixed(1),
         attendance_status,
         is_logged_in: user.has_open_session,
-        has_pending_regularization: pendingEmpIds.has(user.empid)
+        has_pending_regularization:
+          canReviewRegularization && pendingEmpIds.has(user.empid)
       };
     });
 
@@ -222,4 +229,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-

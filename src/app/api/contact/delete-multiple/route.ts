@@ -1,8 +1,13 @@
 import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const auth = await checkAuth(req, [PERMISSION_KEYS.CUSTOMER_DELETE]);
+  if (auth.error) return auth.error;
+
   const body = (await getRequestBody(req)) || {};
 
   
@@ -23,5 +28,4 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     return NextResponse.json({ error: "Failed to delete messages." }, { status: 500 });
   }
 }
-
 

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { getAccessibleRoles } from "@/lib/roleBasedAccess";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import cookie from "cookie";
 import { formatMonthShort } from "@/utils/dateTime";
 
@@ -17,6 +19,12 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
   const user = getUserFromToken(token);
   if (!user) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  if (!(await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_ANALYTICS))) {
+    return NextResponse.json(
+      { error: "Forbidden: insufficient permissions" },
+      { status: 403 }
+    );
+  }
 
   const { period = 'today' } = query;
 
@@ -486,5 +494,4 @@ async function getDepartmentAttendance(startDate, endDate, prisma) {
       attendance: Math.round((stats.present / stats.total) * 100)
     }));
 }
-
 

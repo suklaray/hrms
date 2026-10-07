@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Check if user has permission to view all tasks
-    const hasAccess = (await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW)) || (await checkPermission(decoded, PERMISSION_KEYS.TASK_CREATE));
+    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW);
     if (!hasAccess) {
       return NextResponse.json({ error: 'Access denied: insufficient permissions' }, { status: 403 });
     }
@@ -58,4 +58,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-

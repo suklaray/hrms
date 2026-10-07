@@ -1,16 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { checkAuth } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req, [
-    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
-    PERMISSION_KEYS.EMPLOYEE_CREATE,
-    PERMISSION_KEYS.EMPLOYEE_EDIT,
-  ]);
+  const accessByPurpose: Record<string, string[]> = {
+    departments: [
+      PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+    ],
+    "employee-create": [
+      PERMISSION_KEYS.EMPLOYEE_CREATE,
+      PERMISSION_KEYS.RECRUITMENT_CONVERT_EMPLOYEE,
+    ],
+    "employee-edit": [PERMISSION_KEYS.EMPLOYEE_EDIT],
+    "daily-reports": [PERMISSION_KEYS.REPORT_VIEW],
+  };
+  const purpose = req.nextUrl.searchParams.get("purpose") || "position-management";
+  const requiredPermissions =
+    purpose === "position-management"
+      ? [PERMISSION_KEYS.SETTINGS_POSITION_VIEW]
+      : accessByPurpose[purpose];
+  if (!requiredPermissions) {
+    return NextResponse.json({ error: "Invalid position lookup purpose" }, { status: 400 });
+  }
+
+  const auth = await checkAuth(req, requiredPermissions);
   if (auth.error) return auth.error;
 
   try {
@@ -40,18 +54,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await checkAuth(req, [
-    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
-  ]);
+  const auth = await checkAuth(req, PERMISSION_KEYS.SETTINGS_POSITION_CREATE);
   if (auth.error) return auth.error;
-  const hasManageAccess = await checkPermission(
-    auth.user,
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE
-  );
-  if (!hasManageAccess) {
-    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
-  }
   const user = auth.user;
 
   try {
@@ -78,18 +82,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const auth = await checkAuth(req, [
-    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
-  ]);
+  const auth = await checkAuth(req, PERMISSION_KEYS.SETTINGS_POSITION_EDIT);
   if (auth.error) return auth.error;
-  const hasManageAccess = await checkPermission(
-    auth.user,
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE
-  );
-  if (!hasManageAccess) {
-    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
-  }
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -116,18 +110,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await checkAuth(req, [
-    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
-  ]);
+  const auth = await checkAuth(req, PERMISSION_KEYS.SETTINGS_POSITION_DELETE);
   if (auth.error) return auth.error;
-  const hasManageAccess = await checkPermission(
-    auth.user,
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE
-  );
-  if (!hasManageAccess) {
-    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
-  }
 
   try {
     const idStr = req.nextUrl.searchParams.get("id");

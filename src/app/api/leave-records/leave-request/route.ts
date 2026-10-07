@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 function getAuth(req: NextRequest) {
   const token = req.cookies.get('token')?.value;
@@ -20,6 +22,9 @@ export async function GET(req: NextRequest) {
   const auth = getAuth(req);
   if (auth.error) return auth.error;
   const decoded = auth.decoded;
+  if (!(await checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW_OWN))) {
+    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+  }
 
   try {
     const userEmpid = decoded.empid || decoded.id;
@@ -57,6 +62,9 @@ export async function POST(req: NextRequest) {
   const auth = getAuth(req);
   if (auth.error) return auth.error;
   const decoded = auth.decoded;
+  if (!(await checkPermission(decoded, PERMISSION_KEYS.LEAVE_REQUEST))) {
+    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+  }
 
   try {
     const body = await req.json().catch(() => ({}));

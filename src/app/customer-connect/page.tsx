@@ -6,7 +6,15 @@ import Head from "@/lib/compatHead";
 import { Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { swalConfirm } from '@/utils/confirmDialog';
 import { formatDate, formatTime } from "@/utils/dateTime";
+import { useAppSelector } from "@/store/hooks";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 function CustomerConnect() {
+  const { user, permissions = [] } = useAppSelector((state) => state.auth);
+  const canDelete =
+    !!user?.isSuperAdmin ||
+    user?.role === "superadmin" ||
+    user?.roleId === 23 ||
+    permissions.includes(PERMISSION_KEYS.CUSTOMER_DELETE);
   const [messages, setMessages] = useState([]);
   const [selected, setSelected] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -41,6 +49,8 @@ function CustomerConnect() {
   };
 
   const handleDelete = async () => {
+    if (!canDelete) return;
+
     const confirmDelete = await swalConfirm(`Are you sure you want to delete ${selected.length} selected message(s)? This action cannot be undone.`);
 
     if (!confirmDelete) {
@@ -82,7 +92,7 @@ function CustomerConnect() {
                 <p className="text-gray-600">Manage customer inquiries and feedback</p>
               </div>
 
-              {selected.length > 0 && (
+              {canDelete && selected.length > 0 && (
                 <div className="flex items-center space-x-3">
                   <span className="text-sm text-gray-600">{selected.length} selected</span>
                   <button
@@ -121,6 +131,7 @@ function CustomerConnect() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      {canDelete && (
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <input
                           type="checkbox"
@@ -129,6 +140,7 @@ function CustomerConnect() {
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                         />
                       </th>
+                      )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Message</th>
@@ -147,14 +159,14 @@ function CustomerConnect() {
                           className={`hover:bg-gray-50 transition-colors ${selected.includes(msg.id) ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''
                             }`}
                         >
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          {canDelete && <td className="px-6 py-4 whitespace-nowrap">
                             <input
                               type="checkbox"
                               checked={selected.includes(msg.id)}
                               onChange={() => toggleSelection(msg.id)}
                               className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                             />
-                          </td>
+                          </td>}
                           <td className="px-6 py-4">
                             <div>
                               <div className="text-sm font-medium text-gray-900">{msg.name}</div>

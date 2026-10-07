@@ -14,7 +14,11 @@ async function getServerSideProps({ req }) {
   const user = getUserFromToken(token);
   if (!user) return { redirect: { destination: "/login", permanent: false } };
 
-  const allowed = await checkPermission(user, PERMISSION_KEYS.CALENDAR_VIEW);
+  const [canView, canManage] = await Promise.all([
+    checkPermission(user, PERMISSION_KEYS.CALENDAR_VIEW),
+    checkPermission(user, PERMISSION_KEYS.CALENDAR_MANAGE),
+  ]);
+  const allowed = canView || canManage;
   if (!allowed) return { redirect: { destination: "/403", permanent: false } };
 
   return { props: {} };

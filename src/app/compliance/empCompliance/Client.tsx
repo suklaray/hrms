@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import { Eye, FileText, CheckCircle, XCircle, AlertCircle, ExternalLink, X, Filter, Users, Shield } from "lucide-react";
-function ComplianceDashboard() {
+function ComplianceDashboard({ canViewDocuments = false }) {
   const router = useRouter();
   const [employees, setEmployees] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -355,13 +355,15 @@ function ComplianceDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(emp.status)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.lastUpdated}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => router.push(`/compliance/documents/${emp.empid}?type=employee`)}
-                          className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View Documents
-                        </button>
+                        {canViewDocuments && (
+                          <button
+                            onClick={() => router.push(`/compliance/documents/${emp.empid}?type=employee`)}
+                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4" />
+                            View Documents
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -444,13 +446,15 @@ function ComplianceDashboard() {
                         <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(intern.status)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{intern.lastUpdated}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => router.push(`/compliance/documents/${intern.empid}?type=employee`)}
-                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Documents
-                          </button>
+                          {canViewDocuments && (
+                            <button
+                              onClick={() => router.push(`/compliance/documents/${intern.empid}?type=employee`)}
+                              className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Documents
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -529,13 +533,15 @@ function ComplianceDashboard() {
                         <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(contractor.status)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contractor.lastUpdated}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button
-                            onClick={() => router.push(`/compliance/documents/${contractor.empid}?type=employee`)}
-                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Documents
-                          </button>
+                          {canViewDocuments && (
+                            <button
+                              onClick={() => router.push(`/compliance/documents/${contractor.empid}?type=employee`)}
+                              className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View Documents
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

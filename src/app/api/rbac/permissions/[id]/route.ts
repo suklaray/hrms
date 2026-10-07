@@ -14,8 +14,8 @@ export async function GET(
 ) {
   const auth = await checkAuth(req, [
     PERMISSIONS.RBAC.PERMISSION_VIEW,
-    PERMISSIONS.RBAC.ROLE_MANAGE,
-    PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE,
+    PERMISSIONS.SETTINGS.ROLE_VIEW,
+    PERMISSIONS.RBAC.ROLE_PERMISSION_ASSIGN,
   ]);
   if (auth.error) return auth.error;
 

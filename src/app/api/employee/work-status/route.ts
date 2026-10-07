@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import type { DecodedToken } from "@/lib/jwtTypes";
 import cookie from "cookie";
 import prisma from "@/lib/prisma";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   
@@ -12,6 +14,9 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
+    if (!(await checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_MY))) {
+      return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+    }
     
     let user = null;
     let attendance = null;
@@ -58,5 +63,4 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     await prisma.$disconnect();
   }
 }
-
 

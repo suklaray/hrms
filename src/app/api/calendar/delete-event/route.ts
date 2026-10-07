@@ -11,8 +11,11 @@ export async function DELETE(req: NextRequest, context?: { params?: Promise<any>
   if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const canManage = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
-    if (!canManage) {
+    const [canDelete, canManage] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_DELETE),
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE),
+    ]);
+    if (!canDelete && !canManage) {
       return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 

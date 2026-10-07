@@ -17,9 +17,10 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const hasAccess =
-      (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS)) ||
-      (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW));
+    const hasAccess = await checkPermission(
+      decoded,
+      PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS
+    );
     if (!hasAccess) return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
   } catch {
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 });
@@ -96,4 +97,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     await prisma.$disconnect();
   }
 }
-

@@ -23,7 +23,7 @@ async function getServerSideProps(context) {
     };
   }
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.POSITION_VIEW);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_VIEW);
   if (!hasAccess) {
     return {
       redirect: {

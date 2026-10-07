@@ -8,9 +8,13 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
   const { user, errorResponse } = await getAuthenticatedUser(req);
   if (errorResponse) return errorResponse;
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  const hasAccess =
+    (await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_VIEW)) ||
+    (await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_CREATE)) ||
+    (await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_EDIT)) ||
+    (await checkPermission(user, PERMISSION_KEYS.RBAC_ROLE_PERMISSION_ASSIGN));
   if (!hasAccess) {
-    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: insufficient permissions to manage roles" }, { status: 403 });
   }
 
   try {

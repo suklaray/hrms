@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import moment from "moment";
 import Head from "@/lib/compatHead";
 import { useRouter } from "@/lib/compatRouter";
@@ -15,7 +15,21 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 
 
-function ViewLeaveRequests() {
+function ViewLeaveRequests({
+  canViewPending = false,
+  canViewHistory = false,
+  canViewLeaveTypes = false,
+  canCreateLeaveType = false,
+  canEditLeaveType = false,
+  canDeleteLeaveType = false,
+}: {
+  canViewPending?: boolean;
+  canViewHistory?: boolean;
+  canViewLeaveTypes?: boolean;
+  canCreateLeaveType?: boolean;
+  canEditLeaveType?: boolean;
+  canDeleteLeaveType?: boolean;
+}) {
   const router = useRouter();
   const [allLeaveData, setAllLeaveData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,27 +42,46 @@ function ViewLeaveRequests() {
   });
   const [editingLeaveType, setEditingLeaveType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "history">(
+    canViewPending ? "pending" : "history"
+  );
   const itemsPerPage = 10;
+  const canManageAnyLeaveType =
+    canCreateLeaveType || canEditLeaveType || canDeleteLeaveType;
+  const canAccessLeaveTypes = canViewLeaveTypes || canManageAnyLeaveType;
+
+  const fetchLeaveRequests = useCallback(async (view: "pending" | "history") => {
+    try {
+      const response = await fetch(`/api/hr/leave-requests?view=${view}`);
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch leave requests");
+      }
+      if (data.success) setAllLeaveData(data.data);
+    } catch (error) {
+      console.error("Error fetching leave requests:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Fetching leave requests
-    fetch("/api/hr/leave-requests")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setAllLeaveData(data.data);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching leave requests:", err);
-        setLoading(false);
-      });
+    if (activeTab === "pending" && canViewPending) {
+      void fetchLeaveRequests("pending");
+    } else if (activeTab === "history" && canViewHistory) {
+      void fetchLeaveRequests("history");
+    } else {
+      setLoading(false);
+    }
 
-    // Fetch leave types
-    fetchLeaveTypes();
-  }, []);
+    if (canAccessLeaveTypes) fetchLeaveTypes();
+  }, [
+    activeTab,
+    canAccessLeaveTypes,
+    canViewHistory,
+    canViewPending,
+    fetchLeaveRequests,
+  ]);
 
   const fetchLeaveTypes = async () => {
     try {
@@ -75,13 +108,13 @@ function ViewLeaveRequests() {
       });
 
       const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || data.message || "Failed to update leave status");
+        return;
+      }
       if (data.success) {
         // Refetch the data to get the latest status
-        const refreshRes = await fetch("/api/hr/leave-requests");
-        const refreshData = await refreshRes.json();
-        if (refreshData.success) {
-          setAllLeaveData(refreshData.data);
-        }
+        await fetchLeaveRequests(activeTab);
       }
     } catch (error) {
       console.error("Error updating status:", error);
@@ -127,6 +160,7 @@ function ViewLeaveRequests() {
 
   const handleLeaveTypeSubmit = async (e) => {
     e.preventDefault();
+    if (editingLeaveType ? !canEditLeaveType : !canCreateLeaveType) return;
     try {
       const method = editingLeaveType ? "PUT" : "POST";
       const body = editingLeaveType
@@ -140,7 +174,7 @@ function ViewLeaveRequests() {
       });
 
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         fetchLeaveTypes();
         setShowLeaveTypeModal(false);
         setLeaveTypeForm({ type_name: "", max_days: "", paid: true });
@@ -159,6 +193,7 @@ function ViewLeaveRequests() {
   };
 
   const handleEditLeaveType = (leaveType) => {
+    if (!canEditLeaveType) return;
     setEditingLeaveType(leaveType);
     setLeaveTypeForm({
       type_name: leaveType.type_name,
@@ -170,6 +205,7 @@ function ViewLeaveRequests() {
 
   // Delete Leave type
   const handleDeleteLeaveType = async (leaveType) => {
+    if (!canDeleteLeaveType) return;
     if (await swalConfirm("Are you sure you want to delete this leave type?")) {
       try {
         const res = await fetch("/api/hr/leave-types", {
@@ -259,6 +295,8 @@ function ViewLeaveRequests() {
           </div>
 
           <div className="p-6 space-y-6">
+            {canAccessLeaveTypes && (
+              <>
             {/* Leave Types Management */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100">
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -271,21 +309,23 @@ function ViewLeaveRequests() {
                     Configure available leave types for employees
                   </p>
                 </div>
-                <button
-                  onClick={() => {
-                    setEditingLeaveType(null);
-                    setLeaveTypeForm({
-                      type_name: "",
-                      max_days: "",
-                      paid: true,
-                    });
-                    setShowLeaveTypeModal(true);
-                  }}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Leave Type</span>
-                </button>
+                {canCreateLeaveType && (
+                  <button
+                    onClick={() => {
+                      setEditingLeaveType(null);
+                      setLeaveTypeForm({
+                        type_name: "",
+                        max_days: "",
+                        paid: true,
+                      });
+                      setShowLeaveTypeModal(true);
+                    }}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Leave Type</span>
+                  </button>
+                )}
               </div>
 
               <div className="p-6">
@@ -302,9 +342,11 @@ function ViewLeaveRequests() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Payment
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
+                        {canManageAnyLeaveType && (
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Actions
+                          </th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -319,26 +361,36 @@ function ViewLeaveRequests() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {type.paid ? "Paid" : "Unpaid"}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => handleEditLeaveType(type)}
-                              className="text-blue-600 hover:text-blue-900 mr-3"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteLeaveType(type)}
-                              className="text-blue-600 hover:text-blue-900 mr-3"
-                            >
-                              <Trash2 className="w-4 h-4 text-red-600 hover:text-red-900" />
-                            </button>
-                          </td>
+                          {canManageAnyLeaveType && (
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                              {canEditLeaveType && (
+                                <button
+                                  onClick={() => handleEditLeaveType(type)}
+                                  className="text-blue-600 hover:text-blue-900 mr-3"
+                                  aria-label={`Edit ${type.type_name}`}
+                                  title="Edit leave type"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canDeleteLeaveType && (
+                                <button
+                                  onClick={() => handleDeleteLeaveType(type)}
+                                  className="text-blue-600 hover:text-blue-900 mr-3"
+                                  aria-label={`Delete ${type.type_name}`}
+                                  title="Delete leave type"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-600 hover:text-red-900" />
+                                </button>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       ))}
                       {leaveTypes.length === 0 && (
                         <tr>
                           <td
-                            colSpan={4}
+                            colSpan={canManageAnyLeaveType ? 4 : 3}
                             className="px-6 py-12 text-center text-gray-500"
                           >
                             <Settings className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -354,6 +406,8 @@ function ViewLeaveRequests() {
                 </div>
               </div>
             </div>
+              </>
+            )}
 
             {/* Leave Requests List with Tabs */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -364,18 +418,10 @@ function ViewLeaveRequests() {
 
                 {/* Tabs */}
                 <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-                  <button
+                  {canViewPending && <button
                     onClick={() => {
                       setActiveTab("pending");
                       setCurrentPage(1);
-                      // Refresh data when switching to pending tab
-                      fetch("/api/hr/leave-requests")
-                        .then((res) => res.json())
-                        .then((data) => {
-                          if (data.success) {
-                            setAllLeaveData(data.data);
-                          }
-                        });
                     }}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "pending"
                         ? "bg-white text-indigo-600 shadow-sm"
@@ -383,9 +429,9 @@ function ViewLeaveRequests() {
                       }`}
                   >
                     Pending Requests
-                  </button>
+                  </button>}
 
-                  <button
+                  {canViewHistory && <button
                     onClick={() => {
                       setActiveTab("history");
                       setCurrentPage(1);
@@ -396,7 +442,7 @@ function ViewLeaveRequests() {
                       }`}
                   >
                     All Leave History
-                  </button>
+                  </button>}
                 </div>
 
                 {filteredData.length > 0 &&
@@ -427,6 +473,7 @@ function ViewLeaveRequests() {
                   })()}
               </div>
 
+              {(activeTab === "pending" ? canViewPending : canViewHistory) ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
@@ -475,7 +522,7 @@ function ViewLeaveRequests() {
                                 <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
                                   <User className="w-5 h-5 text-indigo-600" />
                                 </div>
-                                <div className="ml-4">
+                                                <div className="ml-4">
                                   <div className="text-sm font-medium text-gray-900">
                                     {leave.name}
                                   </div>
@@ -575,6 +622,11 @@ function ViewLeaveRequests() {
                   </tbody>
                 </table>
               </div>
+              ) : (
+                <div className="p-6 text-center text-gray-500">
+                  You do not have permission to view this leave request list.
+                </div>
+              )}
 
               {/* Pagination */}
               {(() => {
@@ -638,7 +690,8 @@ function ViewLeaveRequests() {
           </div>
 
           {/* Leave Type Modal */}
-          {showLeaveTypeModal && (
+          {showLeaveTypeModal &&
+            (editingLeaveType ? canEditLeaveType : canCreateLeaveType) && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 w-full max-w-md">
                 <div className="flex justify-between items-center mb-4">

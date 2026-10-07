@@ -13,7 +13,11 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 
 
-function AttendanceList() {
+function AttendanceList({
+  canReviewRegularization = false,
+}: {
+  canReviewRegularization?: boolean;
+}) {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,7 +58,7 @@ function AttendanceList() {
       filtered = filtered.filter(user => user.attendance_status === "Present");
     } else if (activeFilter === "online") {
       filtered = filtered.filter(user => user.is_logged_in === true);
-    } else if (activeFilter === "regularization") {
+    } else if (activeFilter === "regularization" && canReviewRegularization) {
       filtered = filtered.filter(user => user.has_pending_regularization);
       // or whatever field your API returns
     }
@@ -69,7 +73,7 @@ function AttendanceList() {
 
     setFilteredData(filtered);
     setCurrentPage(1);
-  }, [searchTerm, data, activeFilter]);
+  }, [searchTerm, data, activeFilter, canReviewRegularization]);
 
   const handleFilterClick = (filter) => {
     setActiveFilter(filter);
@@ -98,7 +102,9 @@ function AttendanceList() {
     total: data.length,
     present: data.filter(u => u.attendance_status === "Present").length,
     loggedIn: data.filter(u => u.is_logged_in === true).length,
-    regularization: data.filter(u => u.has_pending_regularization).length,
+    regularization: canReviewRegularization
+      ? data.filter(u => u.has_pending_regularization).length
+      : 0,
     avgHours: apiAvgHours
   };
   console.log("stats", stats);
@@ -186,7 +192,7 @@ function AttendanceList() {
                   </div>
                 </div>
               </div>
-              <div
+              {canReviewRegularization && <div
                 onClick={() => handleFilterClick("regularization")}
                 className={`bg-white rounded-xl shadow-sm border p-4 cursor-pointer transition-all hover:shadow-md ${activeFilter === "regularization" ? "border-amber-500 ring-2 ring-amber-200" : "border-gray-100"
                   }`}
@@ -200,7 +206,7 @@ function AttendanceList() {
                     <AlertCircle className="w-4 h-4 text-amber-600" />
                   </div>
                 </div>
-              </div>
+              </div>}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                 <div className="flex items-center justify-between">
                   <div>

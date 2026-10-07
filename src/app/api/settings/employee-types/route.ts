@@ -8,19 +8,13 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
   const { user, errorResponse } = await getAuthenticatedUser(req);
   if (errorResponse) return errorResponse;
 
-  const canManageEmployeeTypes = await checkPermission(
-    user,
-    PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE
-  );
-  const canManageEmployees =
-    (await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_CREATE)) ||
-    (await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_EDIT));
-
-  if (!canManageEmployeeTypes && !canManageEmployees) {
+  const canViewRoles = await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_VIEW);
+  const canAssignRoles = await checkPermission(user, PERMISSION_KEYS.RBAC_ROLE_ASSIGN);
+  if (!canViewRoles && !canAssignRoles) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
-  if (!canManageEmployeeTypes) {
+  if (!canViewRoles) {
     const assignableRoles = await getAssignableRolesForUser(user);
     return NextResponse.json(
       { roles: assignableRoles, assignableRoles },
@@ -45,13 +39,20 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
   const { user, errorResponse } = await getAuthenticatedUser(req);
   if (errorResponse) return errorResponse;
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_CREATE);
   if (!hasAccess) {
-    return NextResponse.json({ error: "Insufficient permissions to manage employee types" }, { status: 403 });
+    return NextResponse.json({ error: "Insufficient permissions to create roles" }, { status: 403 });
   }
 
   const body = await req.json().catch(() => ({}));
   const { name, description, status = "active", parentId, permissionIds = [] } = body;
+  if (
+    Array.isArray(permissionIds) &&
+    permissionIds.length > 0 &&
+    !(await checkPermission(user, PERMISSION_KEYS.RBAC_ROLE_PERMISSION_ASSIGN))
+  ) {
+    return NextResponse.json({ error: "Insufficient permissions to assign role permissions" }, { status: 403 });
+  }
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Employee type name is required" }, { status: 400 });

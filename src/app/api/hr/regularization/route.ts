@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const user = getUserFromToken(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE) || await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE);
   if (!hasAccess) {
     return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
   }
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest) {
   const user = getUserFromToken(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE) || await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE);
   if (!hasAccess) {
     return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
   }

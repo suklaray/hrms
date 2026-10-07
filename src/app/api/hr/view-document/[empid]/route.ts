@@ -2,11 +2,33 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
 import fs from 'fs';
 import path from 'path';
+import { checkAuth } from "@/lib/apiAuth";
+import { isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ empid: string }> }
 ) {
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS,
+    PERMISSION_KEYS.EMPLOYEE_VIEW,
+    PERMISSION_KEYS.EMPLOYEE_EDIT,
+  ]);
+  if (auth.error) return auth.error;
+
+  const canViewDocuments =
+    isSuperAdmin(auth.user) ||
+    auth.permissions?.has(PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS) ||
+    (auth.permissions?.has(PERMISSION_KEYS.EMPLOYEE_VIEW) &&
+      auth.permissions?.has(PERMISSION_KEYS.EMPLOYEE_EDIT));
+  if (!canViewDocuments) {
+    return NextResponse.json(
+      { error: 'Forbidden: insufficient permissions' },
+      { status: 403 }
+    );
+  }
+
   const { empid } = await params;
   const type = req.nextUrl.searchParams.get('type');
 

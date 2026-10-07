@@ -8,8 +8,6 @@ import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
-  
-
   try {
     // Get user from token
     const cookies = cookie.parse(req.headers.get('cookie') || '');
@@ -17,17 +15,22 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW);
+    const view = req.nextUrl.searchParams.get("view");
+    if (view !== "pending" && view !== "history") {
+      return NextResponse.json({ message: "A valid leave request view is required" }, { status: 400 });
+    }
+
+    const requiredPermission =
+      view === "pending"
+        ? PERMISSION_KEYS.LEAVE_VIEW_PENDING
+        : PERMISSION_KEYS.LEAVE_VIEW_HISTORY;
+    const hasAccess = await checkPermission(decoded, requiredPermission);
     if (!hasAccess) {
       return NextResponse.json({ message: 'Unauthorized: insufficient permissions' }, { status: 403 });
     }
 
-    const currentUser = await prisma.users.findUnique({
-      where: { empid: (decoded.empid || decoded.id) as string },
-      select: { empid: true, role: true }
-    });
-
     const leaveRequests = await prisma.leave_requests.findMany({
+      where: view === "pending" ? { status: 'Pending' } : {},
       include: {
         users: {
           select: {
@@ -69,6 +72,4 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ success: false, error: "Server error" }, { status: 500 });
   }
 }
-
-
 

@@ -16,10 +16,16 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW);
+    const hasAccess =
+      (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW)) ||
+      (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS));
     if (!hasAccess) {
       return NextResponse.json({ message: 'Unauthorized: insufficient permissions' }, { status: 403 });
     }
+    const canViewDocuments = await checkPermission(
+      decoded,
+      PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS
+    );
 
     // Build role filter: superadmin sees all, others filter by accessible roleIds
     let roleFilter: any = { is_active: "ACTIVE" };
@@ -95,14 +101,15 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         status,
         lastUpdated:
           emp?.created_at?.toISOString().split("T")[0] || "—",
-        // Include all document fields from employee record
-        resume: emp?.resume,
-        profile_photo: emp?.profile_photo,
-        aadhar_card: emp?.aadhar_card,
-        pan_card: emp?.pan_card,
-        bank_details: emp?.bank_details?.[0]?.checkbook_document,
-        education_certificates: emp?.education_certificates,
-        experience_certificate: emp?.experience_certificate,
+        ...(canViewDocuments && {
+          resume: emp?.resume,
+          profile_photo: emp?.profile_photo,
+          aadhar_card: emp?.aadhar_card,
+          pan_card: emp?.pan_card,
+          bank_details: emp?.bank_details?.[0]?.checkbook_document,
+          education_certificates: emp?.education_certificates,
+          experience_certificate: emp?.experience_certificate,
+        }),
         documents: [
           {
             type: "Aadhar Card",
@@ -143,5 +150,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
-
-

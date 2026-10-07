@@ -13,9 +13,17 @@ async function getServerSideProps({ req }) {
   const token = req?.cookies?.token || '';
   const user = getUserFromToken(token);
   if (!user) return { redirect: { destination: '/login', permanent: false } };
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.LEAVE_VIEW);
-  if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
-  return { props: {} };
+  const [canViewPending, canViewHistory, canApprove, canViewLeaveTypes] =
+    await Promise.all([
+      checkPermission(user, PERMISSION_KEYS.LEAVE_VIEW_PENDING),
+      checkPermission(user, PERMISSION_KEYS.LEAVE_VIEW_HISTORY),
+      checkPermission(user, PERMISSION_KEYS.LEAVE_APPROVE),
+      checkPermission(user, PERMISSION_KEYS.LEAVE_VIEW_LEAVE_TYPES),
+    ]);
+  if (!canViewPending && !canViewHistory) {
+    return { redirect: { destination: '/403', permanent: false } };
+  }
+  return { props: { canViewHistory, canApprove, canViewLeaveTypes } };
 }
 
 export default async function Page(props: {

@@ -14,7 +14,7 @@ export async function GET(
   req: NextRequest,
   context?: { params?: Promise<{ id: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSIONS.RBAC.ROLE_MANAGE, PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE]);
+  const auth = await checkAuth(req, PERMISSIONS.SETTINGS.ROLE_VIEW);
   if (auth.error) return auth.error;
 
   const params = await context?.params;
@@ -53,7 +53,7 @@ async function handleUpdate(
   req: NextRequest,
   context?: { params?: Promise<{ id: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSIONS.RBAC.ROLE_MANAGE, PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE]);
+  const auth = await checkAuth(req, PERMISSIONS.SETTINGS.ROLE_EDIT);
   if (auth.error) return auth.error;
 
   const user = auth.user!;
@@ -73,6 +73,12 @@ async function handleUpdate(
 
   const body = await req.json().catch(() => ({}));
   const { name, description, status, parentId, permissionIds } = body;
+  if (
+    permissionIds !== undefined &&
+    !auth.permissions?.has(PERMISSIONS.RBAC.ROLE_PERMISSION_ASSIGN)
+  ) {
+    return NextResponse.json({ error: "Insufficient permissions to assign role permissions" }, { status: 403 });
+  }
 
   const updateData: any = {};
 
@@ -174,7 +180,7 @@ export async function DELETE(
   req: NextRequest,
   context?: { params?: Promise<{ id: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSIONS.RBAC.ROLE_MANAGE, PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE]);
+  const auth = await checkAuth(req, PERMISSIONS.SETTINGS.ROLE_DELETE);
   if (auth.error) return auth.error;
 
   const user = auth.user!;
@@ -191,11 +197,6 @@ export async function DELETE(
       { error: "Cannot delete protected Super Admin system role" },
       { status: 403 }
     );
-  }
-
-  // Prevent non-superadmin from deleting roles without permission
-  if (!isSuperAdmin(user) && !auth.permissions?.has(PERMISSIONS.RBAC.ROLE_MANAGE)) {
-    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
   }
 
   try {

@@ -450,7 +450,8 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
               {/* Calendar and Quick Actions */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 {/* Calendar Section */}
-                {can(PERMISSION_KEYS.CALENDAR_VIEW) && (
+                {(can(PERMISSION_KEYS.CALENDAR_VIEW) ||
+                  can(PERMISSION_KEYS.CALENDAR_MANAGE)) && (
                   <EmployeeCalenderSection />
                 )}
                 {/* Quick Actions */}

@@ -72,7 +72,7 @@ function RegisterEmployee({
   useEffect(() => {
     // Fetch positions
     axios
-      .get("/api/settings/positions")
+      .get("/api/settings/positions?purpose=employee-create")
       .then((res) => {
         setPositions(res.data);
       })

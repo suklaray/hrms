@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.REPORT_SUBMIT]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.REPORT_VIEW_OWN]);
   if ("error" in auth) return auth.error;
   const decoded = auth.user;
 

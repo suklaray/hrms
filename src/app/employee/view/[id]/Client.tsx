@@ -142,6 +142,7 @@ function ViewEmployee({
   const role = currentUser?.role || "";
   const isSuperAdminUser = !!currentUser?.isSuperAdmin;
   const canEditEmployee = hasPerm("employee.edit");
+  const canAssignRoles = hasPerm(PERMISSION_KEYS.RBAC_ROLE_ASSIGN);
   const hasResubmissionPermission =
     canRequestResubmission &&
     hasPerm(PERMISSION_KEYS.COMPLIANCE_REQUEST_RESUBMISSION);
@@ -149,7 +150,7 @@ function ViewEmployee({
   useEffect(() => {
     const fetchEverything = async () => {
       try {
-        if (canEditEmployee) {
+        if (canAssignRoles) {
           // Fetch roles from roles table
           try {
             const rolesRes = await axios.get("/api/settings/employee-types", { withCredentials: true });
@@ -160,9 +161,12 @@ function ViewEmployee({
             setRolesList([]);
           }
 
+        }
+
+        if (canEditEmployee) {
           // Fetch positions
           try {
-            const posRes = await axios.get("/api/settings/positions");
+            const posRes = await axios.get("/api/settings/positions?purpose=employee-edit");
             setPositions(posRes.data);
           } catch (posError: any) {
             console.log("Could not fetch positions:", posError?.message);
@@ -184,7 +188,7 @@ function ViewEmployee({
     };
 
     fetchEverything();
-  }, [id, canEditEmployee]);
+  }, [id, canAssignRoles, canEditEmployee]);
 
   if (loading) {
     return (
@@ -802,7 +806,7 @@ function ViewEmployee({
                         </div>
                         <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
                           <div>{user?.position || "N/A"}</div>
-                          {hasPerm("employee.edit") && (
+                          {canEditEmployee && (
                             <div className="mt-1.5 flex items-center gap-1.5">
                               <select
                                 value={position}
@@ -834,7 +838,7 @@ function ViewEmployee({
                         </div>
                         <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
                           <div className="capitalize">{user?.employee_type || "N/A"}</div>
-                          {hasPerm("employee.edit") && (
+                          {canAssignRoles && (
                             <select
                               value={user?.employee_type || ""}
                               onChange={(e) => handleEmployeeTypeChange(e.target.value)}

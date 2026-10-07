@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { checkPermission, isSuperAdmin } from "@/lib/rbac";
+import { checkPermission } from "@/lib/rbac";
+import { getEmployeeDirectoryRoleScope } from "@/lib/roleBasedAccess";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import type { DecodedToken } from "@/lib/jwtTypes";
 
@@ -27,24 +28,8 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       }, { status: 403 });
     }
 
-    const loggedInUser = await prisma.users.findUnique({
-      where: {
-      empid: (decoded.empid || decoded.id) as string,
-      },
-      select: {
-        id: true,
-        empid: true,
-        roleId: true,
-
-        rbacRole: {
-          select: {
-            id: true,
-            name: true,
-            parentId: true,
-          },
-        },
-      },
-    });
+    const roleScope = await getEmployeeDirectoryRoleScope(decoded);
+    const loggedInUser = roleScope.currentUser;
 
     if (!loggedInUser) {
       return NextResponse.json({
@@ -53,9 +38,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       }, { status: 404 });
     }
 
-    const currentRoleId = loggedInUser.roleId || loggedInUser.rbacRole?.id;
-
-    if (!currentRoleId) {
+    if (roleScope.visibleRoleIds.length === 0) {
       return NextResponse.json({
         success: true,
         users: [],
@@ -64,59 +47,15 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       }, { status: 200 });
     }
 
-    const allRoles = await prisma.role.findMany({
-      where: {
-        status: "ACTIVE",
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        parentId: true,
-        status: true,
-      },
-      orderBy: {
-        name: "asc",
-      },
-    });
-
-    let visibleRoleIds = [];
-    if (isSuperAdmin(loggedInUser)) {
-      visibleRoleIds = allRoles.map((role) => role.id);
-    } else {
-
-      const getDescendantRoleIds = (parentId) => {
-        const ids = [];
-
-        const children = allRoles.filter(
-          (role) => role.parentId === parentId
-        );
-
-        for (const child of children) {
-          ids.push(child.id);
-
-          // Recursively get this child's children
-          ids.push(...getDescendantRoleIds(child.id));
-        }
-
-        return ids;
-      };
-
-      visibleRoleIds = getDescendantRoleIds(currentRoleId);
-    }
-
-    // Remove duplicate IDs
-    const uniqueVisibleRoleIds = [...new Set(visibleRoleIds)];
-
     // Only roles the user is allowed to see
-    const visibleRoles = allRoles.filter((role) =>
-      uniqueVisibleRoleIds.includes(role.id)
+    const visibleRoles = roleScope.roles.filter((role) =>
+      roleScope.visibleRoleIds.includes(role.id)
     );
     const { role } = query;
     const filters: Record<string, any> = {
       is_active: "ACTIVE",
       roleId: {
-        in: uniqueVisibleRoleIds,
+        in: roleScope.visibleRoleIds,
       },
     };
     if (
@@ -213,4 +152,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     }, { status: 500 });
   }
 }
-

@@ -15,7 +15,10 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const hasAccess = (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS)) || (await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_VIEW));
+    const hasAccess = await checkPermission(
+      decoded,
+      PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS
+    );
     
     if (!hasAccess) {
       return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
@@ -61,5 +64,4 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
-
 

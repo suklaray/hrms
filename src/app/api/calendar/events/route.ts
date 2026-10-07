@@ -11,8 +11,11 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
   if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
-    if (!canView) {
+    const [canView, canManage] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW),
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE),
+    ]);
+    if (!canView && !canManage) {
       return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 

@@ -36,12 +36,6 @@ function DocumentCenter({ user }) {
         if (empRes.ok) {
           const data = await empRes.json();
           if (!cancelled) setEmployees(data.users || []);
-        } else {
-          const empResponse = await fetch('/api/hr/employees', { credentials: 'include' });
-          if (empResponse.ok) {
-            const empData = await empResponse.json();
-            if (!cancelled) setEmployees(empData.employees || []);
-          }
         }
 
         if (rolesRes.ok) {

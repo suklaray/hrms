@@ -2,9 +2,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import ClientPage from "./Client";
-import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission, getUserPermissions, isSuperAdmin } from "@/lib/rbac";
+import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
@@ -14,17 +13,18 @@ async function getServerSideProps({ req }) {
   const user = getUserFromToken(token);
   if (!user) return { redirect: { destination: "/login", permanent: false } };
 
-  const [canView, canDelete, canEdit] = await Promise.all([
+  const [canView, canDelete, canEdit, canUpdateStatus] = await Promise.all([
     checkPermission(user, PERMISSION_KEYS.TASK_VIEW),
     checkPermission(user, PERMISSION_KEYS.TASK_DELETE),
     checkPermission(user, PERMISSION_KEYS.TASK_EDIT),
+    checkPermission(user, PERMISSION_KEYS.TASK_UPDATE_STATUS),
   ]);
 
-  if (!canView && !canDelete && !canEdit) {
+  if (!canView) {
     return { redirect: { destination: '/403', permanent: false } };
   }
 
-  return { props: { canDelete, canEdit } };
+  return { props: { canDelete, canEdit, canUpdateStatus } };
 }
 
 export default async function Page(props: {

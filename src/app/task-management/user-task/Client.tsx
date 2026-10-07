@@ -29,7 +29,9 @@ function UserTasks({ permissions }) {
   const [itemsPerPage] = useState(10);
   const [dateFilter, setDateFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState(() => permissions.tasks ? 'tasks' : 'reports');
+  const [activeTab, setActiveTab] = useState(() => (
+    permissions.tasks ? 'tasks' : permissions.viewReportHistory ? 'reports' : 'submit'
+  ));
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [filteredReports, setFilteredReports] = useState([]);
   const [stats, setStats] = useState({ total: 0, pending: 0, inProgress: 0, completed: 0, overdue: 0 });
@@ -49,10 +51,10 @@ function UserTasks({ permissions }) {
 
   useEffect(() => { fetchUserAndTasks(); }, []);
   useEffect(() => {
-    if (permissions.report) {
+    if (permissions.viewReportHistory) {
       dispatch(fetchWorkReports());
     }
-  }, [dispatch, permissions.report]);
+  }, [dispatch, permissions.viewReportHistory]);
   useEffect(() => { calculateStats(); }, [tasks, calculateStats]);
   useEffect(() => {
     if (workReports.length > 0) {
@@ -195,7 +197,7 @@ function UserTasks({ permissions }) {
                 <h1 className="text-2xl font-bold text-gray-900">Task Management</h1>
                 <p className="text-gray-600">Manage your tasks and work reports</p>
               </div>
-              {permissions.report && (
+              {permissions.submitReport && (
                 <button onClick={() => setShowWorkReportModal(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                   <FileText className="h-4 w-4 mr-2" />Daily Work Report
                 </button>
@@ -205,7 +207,7 @@ function UserTasks({ permissions }) {
               <nav className="-mb-px flex space-x-8">
                 {[
                   permissions.tasks && { key: 'tasks', label: 'My Tasks' },
-                  permissions.report && { key: 'reports', label: 'Work Reports History' },
+                  permissions.viewReportHistory && { key: 'reports', label: 'Work Reports History' },
                 ].filter(Boolean).map(({ key, label }) => (
                   <button key={key} onClick={() => setActiveTab(key)}
                     className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === key ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}>
@@ -333,7 +335,7 @@ function UserTasks({ permissions }) {
                   </div>
                 )}
               </>
-            ) : (
+            ) : activeTab === 'reports' && permissions.viewReportHistory ? (
               /* Work Reports Tab */
               <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -414,12 +416,22 @@ function UserTasks({ permissions }) {
                   </table>
                 </div>
               </div>
+            ) : (
+              <div className="rounded-lg border bg-white p-8 text-center shadow-sm">
+                <FileText className="mx-auto mb-3 h-10 w-10 text-blue-600" />
+                <h2 className="text-lg font-semibold text-gray-900">Daily Work Report</h2>
+                <p className="mt-2 text-sm text-gray-600">Submit your daily work report using the button above.</p>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      <WorkReportModal isOpen={showWorkReportModal} onClose={() => setShowWorkReportModal(false)} />
+      <WorkReportModal
+        isOpen={showWorkReportModal && permissions.submitReport}
+        canViewHistory={permissions.viewReportHistory}
+        onClose={() => setShowWorkReportModal(false)}
+      />
 
       {showDescriptionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

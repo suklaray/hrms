@@ -45,9 +45,7 @@ async function getAllowedRoleNames(user: any): Promise<string[] | null> {
   if (isSuperAdmin(user)) return null; // null = no filter
 
   const accessibleRoleNames = await getAccessibleRoles(user);
-  return accessibleRoleNames && accessibleRoleNames.length > 0
-    ? accessibleRoleNames
-    : null;
+  return accessibleRoleNames;
 }
 
 export async function GET(req: NextRequest) {
@@ -158,6 +156,91 @@ export async function POST(req: NextRequest) {
     console.error('Task management API error:', error);
     if (error.code === 'P2002') return NextResponse.json({ error: 'Database constraint violation' }, { status: 400 });
     if (error.code === 'P2025') return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const auth = await authenticate(req);
+    if ('error' in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+    const { user, decoded } = auth;
+
+    const canEdit = await checkPermission(decoded, PERMISSION_KEYS.TASK_EDIT);
+    if (!canEdit) {
+      return NextResponse.json({ error: 'Forbidden: insufficient permissions' }, { status: 403 });
+    }
+
+    const body = await getRequestBody(req);
+    const parsedTaskId = Number(body?.taskId);
+    const { title, description, deadline } = body || {};
+
+    if (!Number.isInteger(parsedTaskId) || parsedTaskId <= 0) {
+      return NextResponse.json({ error: 'A valid task ID is required' }, { status: 400 });
+    }
+    if (typeof title !== 'string' || title.trim().length < 3) {
+      return NextResponse.json({ error: 'Task title must be at least 3 characters' }, { status: 400 });
+    }
+    if (description != null && typeof description !== 'string') {
+      return NextResponse.json({ error: 'Task description must be text' }, { status: 400 });
+    }
+    if (typeof description === 'string' && description.length > 500) {
+      return NextResponse.json({ error: 'Task description must be 500 characters or fewer' }, { status: 400 });
+    }
+    if (typeof deadline !== 'string' || !deadline) {
+      return NextResponse.json({ error: 'A deadline is required' }, { status: 400 });
+    }
+
+    const deadlineValue = /(?:Z|[+-]\d{2}:\d{2})$/i.test(deadline)
+      ? deadline
+      : `${deadline}+05:30`;
+    const deadlineDate = new Date(deadlineValue);
+    if (Number.isNaN(deadlineDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid deadline format' }, { status: 400 });
+    }
+
+    const task = await prisma.tasks.findUnique({
+      where: { id: parsedTaskId },
+      select: {
+        id: true,
+        assignee: {
+          select: {
+            rbacRole: { select: { name: true, status: true } },
+          },
+        },
+      },
+    });
+    if (!task) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+    }
+
+    if (!isSuperAdmin(user)) {
+      const allowedRoleNames = await getAccessibleRoles(user);
+      const assigneeRole = task.assignee.rbacRole;
+      if (
+        !assigneeRole ||
+        assigneeRole.status !== 'ACTIVE' ||
+        !allowedRoleNames.some((roleName) => roleName.toLowerCase() === assigneeRole.name.toLowerCase())
+      ) {
+        return NextResponse.json({ error: 'Access denied: task is outside your hierarchy' }, { status: 403 });
+      }
+    }
+
+    const updatedTask = await prisma.tasks.update({
+      where: { id: parsedTaskId },
+      data: {
+        title: title.trim(),
+        description: typeof description === 'string' ? description.trim() || null : null,
+        deadline: deadlineDate,
+      },
+    });
+
+    return NextResponse.json({ message: 'Task updated successfully', task: updatedTask }, { status: 200 });
+  } catch (error: any) {
+    console.error('Task management API error:', error);
+    if (error.code === 'P2025') return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

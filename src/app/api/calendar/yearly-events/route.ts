@@ -11,8 +11,13 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (errorResponse) return errorResponse;
     if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    const allowed = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
-    if (!allowed) return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    const [canView, canManage] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW),
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE),
+    ]);
+    if (!canView && !canManage) {
+      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    }
 
     const { year } = await getQueryParams(req, context?.params);
     const targetYear = year ? parseInt(year) : new Date().getFullYear();

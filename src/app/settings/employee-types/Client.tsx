@@ -13,12 +13,17 @@ function EmployeeTypes() {
   const router = useRouter();
   const [roles, setRoles] = useState([]);
   const [groupedPermissions, setGroupedPermissions] = useState<Record<string, any[]>>({});
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
   const [parentSearchTerm, setParentSearchTerm] = useState('');
+  const canCreateRole = userPermissions.includes("settings.role_create");
+  const canEditRole = userPermissions.includes("settings.role_edit");
+  const canDeleteRole = userPermissions.includes("settings.role_delete");
+  const canAssignRolePermissions = userPermissions.includes("rbac.role_permission_assign");
 
   const [form, setForm] = useState({
     name: '',
@@ -30,6 +35,11 @@ function EmployeeTypes() {
 
   const fetchData = useCallback(async () => {
     try {
+      const authRes = await fetch("/api/auth/me");
+      if (!authRes.ok) throw new Error("Failed to load permissions");
+      const authData = await authRes.json();
+      const permissions: string[] = authData.permissions || authData.user?.permissions || [];
+      setUserPermissions(permissions);
       const [rolesRes, permsRes] = await Promise.all([
         fetch('/api/settings/employee-types'),
         fetch('/api/settings/employee-types/permissions'),
@@ -44,7 +54,7 @@ function EmployeeTypes() {
       }
 
       const { roles } = await rolesRes.json();
-      const { grouped } = await permsRes.json();
+      const { grouped = {} } = await permsRes.json();
 
       setRoles(roles);
       setGroupedPermissions(grouped);
@@ -90,7 +100,10 @@ function EmployeeTypes() {
       const res = await fetch('/api/settings/employee-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          ...(canAssignRolePermissions ? {} : { permissionIds: undefined }),
+        }),
       });
 
       const data = await res.json();
@@ -144,13 +157,13 @@ function EmployeeTypes() {
                 <h1 className="text-2xl font-bold text-gray-900">Employee Types</h1>
                 <p className="text-gray-500 text-sm mt-1">Manage roles and their permissions</p>
               </div>
-              <button
+              {canCreateRole && <button
                 onClick={() => setShowForm(!showForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition cursor-pointer"
               >
                 <Plus size={16} />
                 New Employee Type
-              </button>
+              </button>}
             </div>
 
             {/* Create Form */}
@@ -282,7 +295,7 @@ function EmployeeTypes() {
                   </div>
 
                   {/* Permissions */}
-                  <div>
+                  {canAssignRolePermissions && <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">Permissions</label>
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                       {Object.entries(groupedPermissions).map(([category, perms]) => {
@@ -337,7 +350,7 @@ function EmployeeTypes() {
                         );
                       })}
                     </div>
-                  </div>
+                  </div>}
 
                   <div className="flex gap-3 pt-2">
                     <button
@@ -432,7 +445,7 @@ function EmployeeTypes() {
                               >
                                 <Eye size={16} />
                               </button>
-                              {role.type !== 'SUPER_ADMIN' && (
+                              {canEditRole && role.type !== 'SUPER_ADMIN' && (
                                 <button
                                   onClick={() => router.push(`/settings/employee-types/${role.id}/edit`)}
                                   className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition cursor-pointer"
@@ -441,7 +454,7 @@ function EmployeeTypes() {
                                   <Edit size={16} />
                                 </button>
                               )}
-                              {role.type !== 'SUPER_ADMIN' && (
+                              {canDeleteRole && role.type !== 'SUPER_ADMIN' && (
                                 <button
                                   onClick={() => handleDelete(role.id, role.name)}
                                   className="p-1.5 text-red-600 hover:bg-red-50 rounded transition cursor-pointer"

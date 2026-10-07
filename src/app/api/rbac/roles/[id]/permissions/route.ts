@@ -14,7 +14,10 @@ export async function GET(
   req: NextRequest,
   context?: { params?: Promise<{ id: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSIONS.RBAC.ROLE_ASSIGN, PERMISSIONS.RBAC.ROLE_MANAGE, PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE]);
+  const auth = await checkAuth(req, [
+    PERMISSIONS.SETTINGS.ROLE_VIEW,
+    PERMISSIONS.RBAC.ROLE_PERMISSION_ASSIGN,
+  ]);
   if (auth.error) return auth.error;
 
   const params = await context?.params;
@@ -62,7 +65,7 @@ export async function PUT(
   req: NextRequest,
   context?: { params?: Promise<{ id: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSIONS.RBAC.ROLE_ASSIGN, PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE]);
+  const auth = await checkAuth(req, PERMISSIONS.RBAC.ROLE_PERMISSION_ASSIGN);
   if (auth.error) return auth.error;
 
   const user = auth.user!;

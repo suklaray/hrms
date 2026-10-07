@@ -15,7 +15,15 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 
 
-function EmployeeLeaveDetails() {
+function EmployeeLeaveDetails({
+  canViewHistory = false,
+  canApprove = false,
+  canViewLeaveTypes = false,
+}: {
+  canViewHistory?: boolean;
+  canApprove?: boolean;
+  canViewLeaveTypes?: boolean;
+}) {
   const router = useRouter();
   const { empid } = router.query;
   const [employeeData, setEmployeeData] = useState(null);
@@ -31,7 +39,10 @@ function EmployeeLeaveDetails() {
   const [showViewReasonModal, setShowViewReasonModal] = useState(false);
   const fetchEmployeeData = async () => {
     try {
-      const res = await fetch(`/api/hr/employee-leave-details?empid=${empid}`);
+      const view = canViewHistory ? "history" : "pending";
+      const res = await fetch(
+        `/api/hr/employee-leave-details?empid=${empid}&view=${view}`
+      );
       const data = await res.json();
 
       if (data.success) {
@@ -47,7 +58,7 @@ function EmployeeLeaveDetails() {
       fetchEmployeeData();
       setLoading(false);
     }
-  }, [empid]);
+  }, [empid, canViewHistory]);
 
 
   const getStatusColor = (status) => {
@@ -70,6 +81,8 @@ function EmployeeLeaveDetails() {
 
 
   const handleStatusChange = async (leaveId, newStatus, currentStatus) => {
+    if (!canApprove) return;
+
     if (currentStatus === 'Rejected' && newStatus === 'Approved') {
       await swalConfirm(
         'Cannot change status from Rejected to Approved. This action is not allowed.',
@@ -125,6 +138,10 @@ function EmployeeLeaveDetails() {
 
         const data = await res.json();
 
+        if (!res.ok) {
+          toast.error(data.error || data.message || 'Failed to update leave status');
+          return;
+        }
         if (data.success) {
           fetchEmployeeData();
         }
@@ -162,6 +179,10 @@ function EmployeeLeaveDetails() {
 
       const data = await res.json();
 
+      if (!res.ok) {
+        toast.error(data.error || data.message || 'Failed to update leave status');
+        return;
+      }
       if (data.success) {
         toast.success('Leave status updated successfully');
         setShowReasonModal(false);
@@ -180,6 +201,7 @@ function EmployeeLeaveDetails() {
 
 
   const calculateLeaveBalances = async (leaveHistory) => {
+    if (!canViewLeaveTypes || !canViewHistory) return;
     try {
       const res = await fetch('/api/hr/leave-types');
       const data = await res.json();
@@ -285,7 +307,7 @@ function EmployeeLeaveDetails() {
           </div>
 
           {/* Leave Balance Chart */}
-          {leaveBalances.length > 0 && (
+          {canViewHistory && canViewLeaveTypes && leaveBalances.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
               {/* <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Calendar className="w-5 h-5 mr-2" />
@@ -444,30 +466,33 @@ function EmployeeLeaveDetails() {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <select
-                              value={leave.status}
-                              onChange={(e) => handleStatusChange(leave.id, e.target.value, leave.status)}
-                              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                              {leave.status === 'Pending' && (
-                                <>
-                                  <option value="Pending">Pending</option>
-                                  <option value="Approved">Approved</option>
+                            {canApprove ? (
+                              <select
+                                value={leave.status}
+                                onChange={(e) => handleStatusChange(leave.id, e.target.value, leave.status)}
+                                className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              >
+                                {leave.status === 'Pending' && (
+                                  <>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Rejected">Rejected</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                  </>
+                                )}
+                                {leave.status === 'Approved' && (
+                                  <>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Rejected">Rejected</option>
+                                  </>
+                                )}
+                                {leave.status === 'Rejected' && (
                                   <option value="Rejected">Rejected</option>
-                                  <option value="Cancelled">Cancelled</option>
-                                </>
-                              )}
-                              {leave.status === 'Approved' && (
-                                <>
-                                  <option value="Approved">Approved</option>
-                                  <option value="Rejected">Rejected</option>
-                                </>
-                              )}
-                              {leave.status === 'Rejected' && (
-                                <option value="Rejected">Rejected</option>
-                              )}
-                            </select>
-
+                                )}
+                              </select>
+                            ) : (
+                              <span>{leave.status}</span>
+                            )}
                           </td>
                         </tr>
                       );

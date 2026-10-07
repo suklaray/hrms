@@ -1,8 +1,16 @@
 import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS,
+    PERMISSION_KEYS.RECRUITMENT_CONVERT_EMPLOYEE,
+  ]);
+  if (auth.error) return auth.error;
+
   const query = await getQueryParams(req, context?.params);
 
   const { id } = query;
@@ -57,5 +65,4 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     // Don't disconnect here as it might be used by other requests
   }
 }
-
 

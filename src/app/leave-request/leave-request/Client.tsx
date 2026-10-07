@@ -13,8 +13,18 @@ import { formatLongDate } from "@/utils/dateTime";
 
 
 
-function LeaveRequest({ user }) {
-  const [activeTab, setActiveTab] = useState("apply");
+function LeaveRequest({
+  user,
+  canRequestLeave = false,
+  canViewOwnLeave = false,
+  canCancelLeave = false,
+}: {
+  user: any;
+  canRequestLeave?: boolean;
+  canViewOwnLeave?: boolean;
+  canCancelLeave?: boolean;
+}) {
+  const [activeTab, setActiveTab] = useState(canRequestLeave ? "apply" : "history");
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -44,11 +54,11 @@ const fileInputRef = useRef(null);
 
 
   useEffect(() => {
-    fetchLeaveTypes();
-    if (activeTab === "history") {
+    if (canRequestLeave || canViewOwnLeave) fetchLeaveTypes();
+    if (canViewOwnLeave && activeTab === "history") {
       fetchLeaveRequests();
     }
-  }, [activeTab]);
+  }, [activeTab, canRequestLeave, canViewOwnLeave]);
 
   const fetchLeaveRequests = async () => {
     setLoading(true);
@@ -126,6 +136,7 @@ const fileInputRef = useRef(null);
 
   const handleSubmit = async (e) => {
   e.preventDefault();
+  if (!canRequestLeave) return;
   
   if (!validateForm()) {
     setMessage("Please fix the errors below");
@@ -258,11 +269,13 @@ const fetchLeaveTypes = async () => {
   };
 
   const handleCancelLeave = async (leaveId) => {
-  setPendingLeaveId(leaveId);
+    if (!canCancelLeave) return;
+    setPendingLeaveId(leaveId);
   setCancelReason('');
   setShowReasonModal(true);
 };
 const submitCancellation = async () => {
+  if (!canCancelLeave) return;
   if (!cancelReason.trim()) {
     toast.error('Please enter a cancellation reason');
     return;
@@ -375,7 +388,7 @@ const submitCancellation = async () => {
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 mb-6">
               <div className="border-b border-gray-200">
                 <nav className="flex space-x-8 px-6">
-                  <button
+                  {canRequestLeave && <button
                     onClick={() => setActiveTab("apply")}
                     className={`py-4 px-1 border-b-2 font-medium text-sm ${
                       activeTab === "apply"
@@ -385,8 +398,8 @@ const submitCancellation = async () => {
                   >
                     <Plus className="w-4 h-4 inline mr-2" />
                     Apply Leave
-                  </button>
-                  <button
+                  </button>}
+                  {canViewOwnLeave && <button
                     onClick={() => setActiveTab("history")}
                     className={`py-4 px-1 border-b-2 font-medium text-sm ${
                       activeTab === "history"
@@ -396,12 +409,12 @@ const submitCancellation = async () => {
                   >
                     <FileText className="w-4 h-4 inline mr-2" />
                     Leave History
-                  </button>
+                  </button>}
                 </nav>
               </div>
 
               {/* Apply Leave Tab */}
-              {activeTab === "apply" && (
+              {canRequestLeave && activeTab === "apply" && (
                 <div className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Submit Leave Request</h3>
                   
@@ -593,7 +606,7 @@ const submitCancellation = async () => {
               )}
 
               {/* Leave History Tab */}
-              {activeTab === "history" && (
+              {canViewOwnLeave && activeTab === "history" && (
                 <div className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Leave History</h3>
                   
@@ -705,7 +718,7 @@ const submitCancellation = async () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="flex items-center space-x-2">
-                                  {request.status === 'Pending' && new Date(request.from_date) > new Date() ? (
+                                  {canCancelLeave && request.status === 'Pending' && new Date(request.from_date) > new Date() ? (
                                     <button
                                       onClick={() => handleCancelLeave(request.id)}
                                       disabled={cancellingLeave === request.id}
@@ -758,7 +771,7 @@ const submitCancellation = async () => {
             </div>
           </div>
         )}
-        {showReasonModal && (
+        {canCancelLeave && showReasonModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
               <h3 className="text-lg font-semibold mb-4">
@@ -808,4 +821,3 @@ export default function ClientPageWrapper(props: any) {
     </Suspense>
   );
 }
-

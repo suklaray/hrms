@@ -18,6 +18,14 @@ export default async function Page(props: {
   searchParams?: Promise<Record<string, string | string[]>>;
 }) {
   const cookieStore = await cookies();
+  const user = getUserFromToken(cookieStore.get("token")?.value || "");
+  if (!user) redirect("/login");
+  if (
+    !(await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_VIEW)) ||
+    !(await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_EDIT))
+  ) {
+    redirect("/403");
+  }
   const resolvedParams = (await props.params) || {};
   const resolvedSearchParams = (await props.searchParams) || {};
 

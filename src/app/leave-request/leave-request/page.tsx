@@ -38,6 +38,21 @@ async function getServerSideProps(context) {
     console.error('Error fetching user data:', error);
   }
 
+  const [canRequestLeave, canViewOwnLeave, canCancelLeave] = await Promise.all([
+    checkPermission(user, PERMISSION_KEYS.LEAVE_REQUEST),
+    checkPermission(user, PERMISSION_KEYS.LEAVE_VIEW_OWN),
+    checkPermission(user, PERMISSION_KEYS.LEAVE_CANCEL),
+  ]);
+
+  if (!canRequestLeave && !canViewOwnLeave) {
+    return {
+      redirect: {
+        destination: "/403",
+        permanent: false,
+      },
+    };
+  }
+
   return {
     props: {
       user: {
@@ -46,6 +61,9 @@ async function getServerSideProps(context) {
         role: (userData?.role || user.role).toLowerCase(),
         email: userData?.email || user.email,
       },
+      canRequestLeave,
+      canViewOwnLeave,
+      canCancelLeave,
     },
   };
 }

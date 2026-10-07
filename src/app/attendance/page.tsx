@@ -15,7 +15,11 @@ async function getServerSideProps({ req }) {
   if (!user) return { redirect: { destination: '/login', permanent: false } };
   const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_VIEW);
   if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
-  return { props: {} };
+  const canReviewRegularization = await checkPermission(
+    user,
+    PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE
+  );
+  return { props: { canReviewRegularization } };
 }
 
 export default async function Page(props: {

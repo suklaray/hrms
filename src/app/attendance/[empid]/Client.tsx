@@ -14,7 +14,17 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 
 // Regularization Detail Modal
-const RegularizationModal = ({ request, onClose, onUpdated }) => {
+const RegularizationModal = ({
+  request,
+  onClose,
+  onUpdated,
+  canReview,
+}: {
+  request: any;
+  onClose: () => void;
+  onUpdated: (id: number, action: string) => void;
+  canReview: boolean;
+}) => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [showReject, setShowReject] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,6 +32,7 @@ const RegularizationModal = ({ request, onClose, onUpdated }) => {
   const isPending = request.status === "PENDING";
 
   const handleAction = async (action) => {
+    if (!canReview) return;
     if (action === "REJECTED" && !rejectionReason.trim()) {
       toast.error("Rejection reason is required");
       return;
@@ -105,7 +116,7 @@ const RegularizationModal = ({ request, onClose, onUpdated }) => {
             </p>
           </div>
 
-          {isPending && (
+          {isPending && canReview && (
             <>
               {showReject && (
                 <div>
@@ -257,7 +268,13 @@ const LeaveModal = ({ isOpen, onClose, leaveData, employeeName }) => {
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-const ViewAttendance = () => {
+const ViewAttendance = ({
+  canViewLeave = false,
+  canReviewRegularization = false,
+}: {
+  canViewLeave?: boolean;
+  canReviewRegularization?: boolean;
+}) => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [employeeData, setEmployeeData] = useState(null);
@@ -307,8 +324,9 @@ const ViewAttendance = () => {
         const attendanceRes = await fetch(`/api/hr/attendance/${empid}?month=${selectedMonth + 1}&year=${selectedYear}`);
         const attendanceJson = await attendanceRes.json();
 
-        const leaveRes = await fetch(`/api/hr/employee-leave-details?empid=${empid}`);
-        const leaveJson = await leaveRes.json();
+        const leaveJson = canViewLeave
+          ? await fetch(`/api/hr/employee-leave-details?empid=${empid}&view=history`).then((res) => res.json())
+          : null;
 
         // Working days for selected month (up to today if current month)
         const lastDay = isCurrentMonth
@@ -318,7 +336,7 @@ const ViewAttendance = () => {
         setAttendanceData(attendanceJson.attendance);
         setAbsentRegMap(attendanceJson.absentRegMap || {});
 
-        if (leaveJson.success) {
+        if (leaveJson?.success) {
           setLeaveData({ history: leaveJson.data.leaveHistory || [], balances: [] });
         }
       } catch (error) {
@@ -329,7 +347,7 @@ const ViewAttendance = () => {
     };
 
     fetchData();
-  }, [empid, selectedMonth, selectedYear]);
+  }, [empid, selectedMonth, selectedYear, canViewLeave]);
 
   // Calculate approved leaves taken
   const approvedLeaves = leaveData.history?.filter(leave => leave.status === 'Approved') || [];
@@ -538,7 +556,7 @@ const ViewAttendance = () => {
                 </div>
               </div>
 
-              <div
+              {canViewLeave && <div
                 onClick={() => setShowLeaveModal(true)}
                 className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 cursor-pointer transition-all hover:shadow-md hover:border-orange-500"
               >
@@ -552,7 +570,7 @@ const ViewAttendance = () => {
                     <FileText className="w-6 h-6 text-orange-600" />
                   </div>
                 </div>
-              </div>
+              </div>}
             </div>
 
             {/* Attendance Table */}
@@ -711,6 +729,7 @@ const ViewAttendance = () => {
         {selectedRegularization && (
           <RegularizationModal
             request={selectedRegularization}
+            canReview={canReviewRegularization}
             onClose={() => setSelectedRegularization(null)}
             onUpdated={(id, action) => {
               setAttendanceData(prev => prev.map(r =>
@@ -721,12 +740,14 @@ const ViewAttendance = () => {
         )}
 
         {/* Leave Modal */}
-        <LeaveModal
-          isOpen={showLeaveModal}
-          onClose={() => setShowLeaveModal(false)}
-          leaveData={leaveData}
-          employeeName={employeeData?.name || "N/A"}
-        />
+        {canViewLeave && (
+          <LeaveModal
+            isOpen={showLeaveModal}
+            onClose={() => setShowLeaveModal(false)}
+            leaveData={leaveData}
+            employeeName={employeeData?.name || "N/A"}
+          />
+        )}
 
       </div>
     </>
