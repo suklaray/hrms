@@ -225,17 +225,50 @@ model MonthlySummary {
   @@map("monthly_summary")
 }
 
-model audit_logs {
-  id                                           Int        @id @default(autoincrement())
-  empid                                        Int?
-  performed_by                                 Int?
-  action                                       String?
-  timestamp                                    DateTime?  @default(now())
-  employees_audit_logs_empidToemployees        employees? @relation("audit_logs_empidToemployees", fields: [empid], references: [empid], onDelete: Cascade, onUpdate: Restrict)
-  employees_audit_logs_performed_byToemployees employees? @relation("audit_logs_performed_byToemployees", fields: [performed_by], references: [empid], onUpdate: Restrict)
+// ─── Audit System ──────────────────────────────────────────────────────────────
 
-  @@index([empid])
-  @@index([performed_by])
+enum AuditStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model audit_logs {
+  id        Int    @id @default(autoincrement())
+  uid       String @unique @default(cuid())
+
+  // Who performed the action
+  userId    Int?
+  userName  String?
+  userRole  String?
+
+  // What happened
+  module      String
+  action      String
+  targetId    String?
+  description String?
+
+  // Approval / review
+  currentStatus AuditStatus @default(NOT_REQUIRED)
+  oldStatus     String?
+  newStatus     String?
+  reviewedBy    Int?
+  reviewedAt    DateTime?
+
+  // When
+  createdAt DateTime @default(now())
+
+  // User relation
+  user users? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([module])
+  @@index([action])
+  @@index([currentStatus])
+  @@index([targetId])
+  @@index([createdAt])
+  @@map("audit_log")
 }
 
 model bank_details {
@@ -324,8 +357,6 @@ model employees {
   pan_number                                    String?
   highest_qualification                         String?
   addresses                                     addresses[]
-  audit_logs_audit_logs_empidToemployees        audit_logs[]           @relation("audit_logs_empidToemployees")
-  audit_logs_audit_logs_performed_byToemployees audit_logs[]           @relation("audit_logs_performed_byToemployees")
   bank_details                                  bank_details[]
   compliance_documents                          compliance_documents[]
   compliance_status                             compliance_status?
@@ -496,6 +527,7 @@ model users {
   monthlySummaries MonthlySummary[]
   employeeProfile  employees?
   departments                departments[]
+  audit_logs                 audit_logs[]
   @@index([roleId])
   @@index([company_id])
 }
@@ -990,6 +1022,10 @@ model parsed_resumes {
   parser_version     String?
   ai_model           String?
   application_status String   @default("Waiting")
+  approval_status    String   @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
+  approved_by        String?
+  approved_at        DateTime?
+  approval_comment   String?  @db.VarChar(1000)
   parsing_error      String?  @db.Text
   parsed_at          DateTime @default(now())
   updated_at         DateTime @updatedAt
@@ -1029,6 +1065,10 @@ model job_descriptions {
   interview_process String?                   @db.Text
   keywords          String?
   status            String                    @default("Draft")
+  approval_status   String                    @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
+  approved_by       String?
+  approved_at       DateTime?
+  approval_comment  String?                   @db.VarChar(1000)
   created_by        String?
   created_at        DateTime                  @default(now())
   updated_at        DateTime                  @updatedAt

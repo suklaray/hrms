@@ -133,6 +133,7 @@ export default function EditJobDescriptionClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [pendingAudit, setPendingAudit] = useState<{ uid: string } | null>(null);
   const [hrUsers, setHrUsers] = useState<HRUser[]>([]);
   const [userRole, setUserRole] = useState("");
 
@@ -198,11 +199,8 @@ export default function EditJobDescriptionClient({
       setSaved(false);
     };
 
-  const handleUpdate = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
-
+  const handleUpdate = async (event?: React.FormEvent<HTMLFormElement>, auditUid?: string) => {
+    event?.preventDefault();
     if (!form) return;
 
     setError("");
@@ -210,30 +208,54 @@ export default function EditJobDescriptionClient({
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `/api/recruitment/job-description/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(form),
-        }
-      );
+      const response = await fetch(`/api/recruitment/job-description/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, ...(auditUid ? { auditUid } : {}) }),
+      });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        setError(data.message);
+      if (response.status === 202 && data.requiresApproval) {
+        setPendingAudit({ uid: data.auditUid });
+        pollApproval(data.auditUid);
         return;
       }
 
+      if (!response.ok) {
+        setError(data.message || "Something went wrong.");
+        setPendingAudit(null);
+        return;
+      }
+
+      setPendingAudit(null);
       setSaved(true);
     } catch {
       setError("Something went wrong.");
+      setPendingAudit(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const pollApproval = (uid: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/audit/logs?page=1&limit=10&action=jd.update`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const log = data.data?.find((l: any) => l.uid === uid);
+        if (!log) return;
+        if (log.currentStatus === "APPROVED") {
+          clearInterval(interval);
+          handleUpdate(undefined, uid);
+        } else if (log.currentStatus === "REJECTED") {
+          clearInterval(interval);
+          setPendingAudit(null);
+          setError("Your update request was rejected by the auditor.");
+        }
+      } catch {}
+    }, 5000);
   };
 
   if (fetching) {
@@ -334,6 +356,16 @@ export default function EditJobDescriptionClient({
             </div>
           </div>
 
+          {pendingAudit && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+              <span className="text-base leading-none mt-0.5">⏳</span>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Waiting for Auditor Approval</p>
+                <p className="text-xs text-amber-600 mt-0.5">Your update request has been submitted. Once an auditor approves it, the changes will be saved.</p>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-5 py-3 mb-5">
               {error}
@@ -364,7 +396,7 @@ export default function EditJobDescriptionClient({
             </div>
           )}
 
-          <form onSubmit={handleUpdate}>
+          <form onSubmit={(e) => handleUpdate(e)}>
             <SectionCard
               title="Basic Information"
               subtitle="General details about the job position"
@@ -686,10 +718,10 @@ export default function EditJobDescriptionClient({
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !!pendingAudit}
                   className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50"
                 >
-                  {loading ? "Saving..." : "Update Job"}
+                  {loading ? "Saving..." : pendingAudit ? "Awaiting Approval..." : "Update Job"}
                 </button>
               </div>
             </div>

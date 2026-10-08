@@ -82,6 +82,7 @@ const MODULE_DISPLAY_NAMES = {
   document: 'Documents',
   settings: 'Settings',
   rbac: 'Role-Based Access Control',
+  audit: 'Audit Logs',
 };
 
 async function syncRbac() {

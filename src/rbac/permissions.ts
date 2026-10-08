@@ -180,6 +180,24 @@ export const PERMISSIONS = {
     ROLE_ASSIGN: "rbac.role_assign",
     ROLE_PERMISSION_ASSIGN: "rbac.role_permission_assign",
   },
+
+  AUDIT: {
+    VIEW: "audit.view",
+    UPDATE_STATUS: "audit.update_status",
+    EXPORT: "audit.export",
+  },
+
+  AUDIT: {
+    VIEW: "audit.view",
+    UPDATE_STATUS: "audit.update_status",
+    EXPORT: "audit.export",
+  },
+
+  AUDIT: {
+    VIEW: "audit.view",
+    UPDATE_STATUS: "audit.update_status",
+    EXPORT: "audit.export",
+  },
 } as const;
 
 export type PermissionKey =
@@ -903,6 +921,32 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     action: "manage",
   },
 
+  // Audit Log
+  {
+    key: PERMISSIONS.AUDIT.VIEW,
+    name: "View Audit Logs",
+    description: "View the centralized audit log of all system activities",
+    module: "audit",
+    action: "view",
+    isSystem: true,
+  },
+  {
+    key: PERMISSIONS.AUDIT.UPDATE_STATUS,
+    name: "Update Audit Log Status",
+    description: "Approve or reject pending audit log entries",
+    module: "audit",
+    action: "update_status",
+    isSystem: true,
+  },
+  {
+    key: PERMISSIONS.AUDIT.EXPORT,
+    name: "Export Audit Logs",
+    description: "Export audit log data to CSV or other formats",
+    module: "audit",
+    action: "export",
+    isSystem: true,
+  },
+
   // Protected RBAC System Permissions
   {
     key: PERMISSIONS.RBAC.PERMISSION_VIEW,
@@ -956,4 +1000,5 @@ export const MODULE_NAMES: Record<string, string> = {
   document: "Documents",
   settings: "Settings",
   rbac: "Role-Based Access Control",
+  audit: "Audit Logs",
 };

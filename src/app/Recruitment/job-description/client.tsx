@@ -293,8 +293,49 @@ export default function JobDescriptions({
   const [deleteJob, setDeleteJob] =
     useState<Job | null>(null);
 
-  const [deleting, setDeleting] =
-    useState(false);
+  const [deleting, setDeleting] = useState(false);
+  // keyed by job id so state survives modal close/reopen
+  const [pendingCloseAudits, setPendingCloseAudits] = useState<Record<number, string>>({});
+
+  const executeClose = async (jobId: number, auditUid: string) => {
+    try {
+      const response = await fetch(
+        `/api/recruitment/job-description/${jobId}`,
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ auditUid }) }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status: "Closed" } : j));
+        setPendingCloseAudits((prev) => { const next = { ...prev }; delete next[jobId]; return next; });
+        toast.success("Job description closed successfully.");
+      } else {
+        toast.error(data.message || "Failed to close job description.");
+        setPendingCloseAudits((prev) => { const next = { ...prev }; delete next[jobId]; return next; });
+      }
+    } catch {
+      toast.error("Failed to close job description.");
+    }
+  };
+
+  const pollCloseApproval = (jobId: number, auditUid: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/audit/logs?page=1&limit=10&action=jd.close`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const log = data.data?.find((l: any) => l.uid === auditUid);
+        if (!log) return;
+        if (log.currentStatus === "APPROVED") {
+          clearInterval(interval);
+          executeClose(jobId, auditUid);
+        } else if (log.currentStatus === "REJECTED") {
+          clearInterval(interval);
+          setPendingCloseAudits((prev) => { const next = { ...prev }; delete next[jobId]; return next; });
+          toast.error("Close request was rejected by the auditor.");
+        }
+      } catch {}
+    }, 5000);
+  };
 
   const [analysis, setAnalysis] =
     useState<Analysis | null>(null);
@@ -346,32 +387,31 @@ export default function JobDescriptions({
     try {
       const response = await fetch(
         `/api/recruitment/job-description/${deleteJob.id}`,
-        {
-          method: "PATCH",
-        }
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) }
       );
 
+      const data = await response.json();
+
+      if (response.status === 202 && data.requiresApproval) {
+        setPendingCloseAudits((prev) => ({ ...prev, [deleteJob.id]: data.auditUid }));
+        pollCloseApproval(deleteJob.id, data.auditUid);
+        setDeleteJob(null);
+        toast.info("Close request submitted. Waiting for auditor approval.");
+        return;
+      }
+
       if (!response.ok) {
-        throw new Error(
-          "Failed to close job description"
-        );
+        toast.error(data.message || "Failed to close job description");
+        return;
       }
 
       setJobs((prev) =>
-        prev.map((j) =>
-          j.id === deleteJob.id
-            ? { ...j, status: "Closed" }
-            : j
-        )
+        prev.map((j) => j.id === deleteJob.id ? { ...j, status: "Closed" } : j)
       );
-
       setDeleteJob(null);
-    } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to close job description"
-      );
+      toast.success("Job description closed successfully.");
+    } catch {
+      toast.error("Failed to close job description");
     } finally {
       setDeleting(false);
     }
@@ -1030,15 +1070,16 @@ export default function JobDescriptions({
                                 </button>
                               </Link>}
 
-                              {canClose && <button
-                                onClick={() =>
-                                  setDeleteJob(job)
-                                }
-                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Delete"
-                              >
-                                <Lock className="w-4 h-4" />
-                              </button>}
+                              {canClose && (
+                                <button
+                                  onClick={() => !pendingCloseAudits[job.id] && job.status !== "Closed" && setDeleteJob(job)}
+                                  disabled={!!pendingCloseAudits[job.id] || job.status === "Closed"}
+                                  title={job.status === "Closed" ? "Job already closed" : pendingCloseAudits[job.id] ? "Waiting for auditor approval" : "Close job"}
+                                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
+                                >
+                                  <Lock className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -1362,15 +1403,21 @@ export default function JobDescriptions({
         <>
           <div
             className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm"
-            onClick={() =>
-              setDeleteJob(null)
-            }
+            onClick={() => setDeleteJob(null)}
           />
 
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-50 mx-auto mb-5">
-                <AlertTriangle className="w-8 h-8 text-red-500" />
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-50">
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+                <button
+                  onClick={() => setDeleteJob(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
               <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
@@ -1378,8 +1425,7 @@ export default function JobDescriptions({
               </h2>
 
               <p className="text-sm text-gray-500 text-center mb-1">
-                You are about to close the Job
-                Description
+                You are about to close the Job Description
               </p>
 
               <p className="text-sm font-semibold text-gray-800 text-center mb-4">
@@ -1388,18 +1434,14 @@ export default function JobDescriptions({
 
               <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-6">
                 <p className="text-xs text-red-600 text-center leading-relaxed">
-                  This will mark the job as Closed
-                  and it will no longer be active.
+                  This will mark the job as Closed and it will no longer be active.
                 </p>
               </div>
 
               <div className="flex gap-3">
                 <button
-                  onClick={() =>
-                    setDeleteJob(null)
-                  }
-                  disabled={deleting}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
+                  onClick={() => setDeleteJob(null)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1407,13 +1449,10 @@ export default function JobDescriptions({
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Lock className="w-4 h-4" />
-
-                  {deleting
-                    ? "Closing..."
-                    : "Yes, Close"}
+                  {deleting ? "Submitting..." : "Yes, Close"}
                 </button>
               </div>
             </div>

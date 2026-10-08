@@ -4,6 +4,7 @@ import {
   Users,
   Clock,
   Shield,
+  Logs,
   Phone,
   Settings,
   ListChecks,
@@ -11,6 +12,7 @@ import {
   Banknote,
   Calendar,
   FileSpreadsheet,
+  ClipboardList,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PERMISSIONS } from "@/rbac/permissions";
@@ -181,6 +183,15 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
     children: [
       { title: "Employee Compliance", route: "/compliance/empCompliance", permission: PERMISSIONS.COMPLIANCE.VIEW },
       { title: "Document Center", route: "/compliance/documentCenter", permission: PERMISSIONS.COMPLIANCE.VIEW_DOCUMENTS },
+    ],
+  },
+        
+  {
+    name: "Audit Logs",
+    icon: Logs,
+    permission: PERMISSIONS.AUDIT.VIEW,
+    children: [
+      { title: "Audit Logs", route: "/compliance/auditLog", permission: PERMISSIONS.AUDIT.VIEW },
     ],
   },
   {

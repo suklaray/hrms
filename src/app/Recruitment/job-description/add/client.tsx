@@ -166,6 +166,7 @@ export default function AddJobDescription({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pendingAudit, setPendingAudit] = useState<{ uid: string; status: string } | null>(null);
 
   const [departments, setDepartments] = useState<
     Department[]
@@ -192,44 +193,58 @@ export default function AddJobDescription({
       }));
     };
 
-  const submit = async (status: string) => {
+  const submit = async (status: string, auditUid?: string) => {
     setError("");
     setLoading(true);
 
     try {
-      const res = await fetch(
-        "/api/recruitment/job-description",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...form,
-            status,
-          }),
-        }
-      );
+      const res = await fetch("/api/recruitment/job-description", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, status, ...(auditUid ? { auditUid } : {}) }),
+      });
 
       const data = await res.json();
 
+      if (res.status === 202 && data.requiresApproval) {
+        setPendingAudit({ uid: data.auditUid, status });
+        pollApproval(data.auditUid, status);
+        return;
+      }
+
       if (!res.ok) {
-        setError(
-          data.message ||
-            data.error ||
-            "Failed to create job description."
-        );
+        setError(data.message || data.error || "Failed to create job description.");
+        setPendingAudit(null);
         return;
       }
 
       router.push("/Recruitment/job-description");
     } catch {
-      setError(
-        "Something went wrong. Please try again."
-      );
+      setError("Something went wrong. Please try again.");
+      setPendingAudit(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const pollApproval = (uid: string, status: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/audit/logs?page=1&limit=10&action=jd.create`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const log = data.data?.find((l: any) => l.uid === uid);
+        if (!log) return;
+        if (log.currentStatus === "APPROVED") {
+          clearInterval(interval);
+          submit(status, uid);
+        } else if (log.currentStatus === "REJECTED") {
+          clearInterval(interval);
+          setPendingAudit(null);
+          setError("Your request was rejected by the auditor.");
+        }
+      } catch {}
+    }, 5000);
   };
 
   useEffect(() => {
@@ -315,6 +330,16 @@ export default function AddJobDescription({
         </header>
 
         <main className="flex-1 overflow-auto p-8">
+          {pendingAudit && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl px-5 py-4 mb-5 flex items-start gap-3">
+              <span className="text-base leading-none mt-0.5">⏳</span>
+              <div>
+                <p className="font-semibold">Waiting for Auditor Approval</p>
+                <p className="text-xs text-amber-600 mt-0.5">Your request has been submitted. Once an auditor approves it, the job description will be created automatically.</p>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-5 py-3 mb-5">
               {error}
@@ -660,24 +685,20 @@ export default function AddJobDescription({
               <button
                 type="button"
                 onClick={() => submit("Draft")}
-                disabled={loading}
+                disabled={loading || !!pendingAudit}
                 className="px-5 py-2.5 text-sm font-medium text-indigo-600 bg-white border border-indigo-300 rounded-xl hover:bg-indigo-50 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
               >
-                {loading
-                  ? "Saving..."
-                  : "Save Draft"}
+                {loading ? "Saving..." : "Save Draft"}
               </button>
 
               {canPublish && (
                 <button
                   type="button"
                   onClick={() => submit("Published")}
-                  disabled={loading}
+                  disabled={loading || !!pendingAudit}
                   className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50"
                 >
-                  {loading
-                    ? "Publishing..."
-                    : "Publish Job"}
+                  {loading ? "Publishing..." : "Publish Job"}
                 </button>
               )}
             </div>

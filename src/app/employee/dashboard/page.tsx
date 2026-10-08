@@ -53,7 +53,8 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
 
         // Fetch only attendance state; Redux provides the authenticated user profile.
         const res = await fetch("/api/employee/work-status", { credentials: "include" });
-        if (!res.ok) return router.replace("/login");
+        if (res.status === 401) return router.replace("/login");
+        if (!res.ok) { setAttendanceLoading(false); return; }
         const data = await res.json();
 
         setIsWorking(data.isWorking);
