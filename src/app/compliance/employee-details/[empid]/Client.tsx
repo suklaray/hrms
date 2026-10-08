@@ -38,10 +38,6 @@ function EmployeeDetails({ user }) {
     }
   }, [empid, fetchEmployeeDetails]);
 
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
   const handleBack = () => {
     router.push("/compliance/documentCenter");
   };

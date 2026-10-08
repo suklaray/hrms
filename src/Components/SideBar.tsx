@@ -109,6 +109,11 @@ export default function Sidebar({
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  const handleLogout = () => {
+    window.location.href = "/login";
+    dispatch(logoutUser());
+  };
+
   if (
     !mounted ||
     (showAppShell && !isSharedShell) ||
@@ -119,11 +124,6 @@ export default function Sidebar({
   ) {
     return null;
   }
-
-  const handleLogout = async () => {
-    await dispatch(logoutUser());
-    router.push('/');
-  };
 
   const isAccessEnabled =
     isSuperAdminUser ||

@@ -19,9 +19,9 @@ function ForbiddenPage() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     void dispatch(logoutUser());
-    router.push("/login");
+    router.replace("/login");
   };
 
   return (

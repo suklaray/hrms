@@ -57,10 +57,6 @@ function DocumentCenter({ user }) {
     setCurrentPage(1);
   }, [searchTerm, roleFilter]);
 
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
   const handleViewEmployee = (employee) => {
     router.push(`/compliance/employee-details/${employee.empid}`);
   };

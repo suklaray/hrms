@@ -69,6 +69,7 @@ export const logoutUser = createAsyncThunk<void, void>(
         localStorage.removeItem("user");
         localStorage.removeItem("employee_user");
         document.cookie = "token=; Max-Age=0; path=/";
+        window.location.href = "/login";
       }
     }
   }

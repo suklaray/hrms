@@ -85,15 +85,15 @@ export async function middleware(request: NextRequest) {
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  // No token for protected routes -> redirect home
+  // No token for protected routes -> redirect to login
   if (!isPublic && !token) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (token) {
     const decoded = await verifyJWT(token);
     if (!decoded) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
     const role = decoded.role?.toString().toLowerCase() || "";

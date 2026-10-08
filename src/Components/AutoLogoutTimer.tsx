@@ -66,7 +66,7 @@ const AutoLogoutTimer = () => {
     if (logoutRequestedRef.current) return;
     logoutRequestedRef.current = true;
     stopCountdown();
-    await dispatch(logoutUser()).unwrap();
+    void dispatch(logoutUser());
     router.replace("/login");
   }, [router, stopCountdown]);
 

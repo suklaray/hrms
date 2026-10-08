@@ -240,12 +240,6 @@ function EmployeeLeaveDetails({
     }
   };
 
-
-
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">

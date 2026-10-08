@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import Breadcrumb from "@/Components/Breadcrumb";
+import { useAppSelector } from "@/store/hooks";
 
 
 
@@ -12,16 +13,17 @@ function ViewDetails() {
     const [employee, setEmployee] = useState(null);
     const [message, setMessage] = useState("");
     const router = useRouter();
+    const authUser = useAppSelector((state) => state.auth.user);
+    const initialized = useAppSelector((state) => state.auth.initialized);
 
     useEffect(() => {
-        const storedUser = JSON.parse(localStorage.getItem("employee"));
-        if (!storedUser) {
+        if (!initialized) return;
+        if (!authUser) {
             router.push("/login");
             return;
         }
-
-        fetchEmployeeDetails(storedUser.email);
-    }, [router]);
+        fetchEmployeeDetails(authUser.email);
+    }, [initialized, authUser]);
 
     const fetchEmployeeDetails = async (email) => {
         try {
