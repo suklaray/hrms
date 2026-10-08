@@ -1,32 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
-import jwt from 'jsonwebtoken';
-import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { checkBotPermission } from "@/lib/botAuth";
 
 const uploadDir = path.join(process.cwd(), 'hr-assistant-data');
 
-async function checkBotAccess(req: NextRequest) {
-  const token = req.cookies.get('token')?.value || req.cookies.get('employeeToken')?.value;
-  if (!token) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  }
-
-  try {
-    const user: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_BOT);
-    if (!hasAccess) {
-      return { error: NextResponse.json({ error: 'Access denied: insufficient permissions' }, { status: 403 }) };
-    }
-    return { user };
-  } catch {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
-  }
-}
-
 export async function GET(req: NextRequest) {
-  const auth = await checkBotAccess(req);
+  const auth = await checkBotPermission(req, PERMISSION_KEYS.SETTINGS_BOT);
   if (auth.error) return auth.error;
 
   try {
@@ -65,7 +46,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await checkBotAccess(req);
+  const auth = await checkBotPermission(req, PERMISSION_KEYS.SETTINGS_BOT_DELETE);
   if (auth.error) return auth.error;
 
   try {

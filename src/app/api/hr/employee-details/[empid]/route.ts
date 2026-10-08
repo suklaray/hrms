@@ -2,8 +2,15 @@ import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 // /pages/api/hr/employee-details/[empid].js
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS,
+  ]);
+  if (auth.error) return auth.error;
+
   const query = await getQueryParams(req, context?.params);
 
   
@@ -118,4 +125,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
-

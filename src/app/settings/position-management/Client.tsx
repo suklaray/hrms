@@ -23,6 +23,11 @@ function PositionManagement() {
   const [userRole, setUserRole] = useState(null);
   const [expandedPosition, setExpandedPosition] = useState(null);
   const [positionEmployees, setPositionEmployees] = useState({});
+  const [positionPermissions, setPositionPermissions] = useState<string[]>([]);
+  const canCreatePosition = positionPermissions.includes(PERMISSION_KEYS.SETTINGS_POSITION_CREATE);
+  const canEditPosition = positionPermissions.includes(PERMISSION_KEYS.SETTINGS_POSITION_EDIT);
+  const canDeletePosition = positionPermissions.includes(PERMISSION_KEYS.SETTINGS_POSITION_DELETE);
+  const canAssignPosition = positionPermissions.includes(PERMISSION_KEYS.SETTINGS_POSITION_ASSIGN);
 
   const fetchPositions = async () => {
     try {
@@ -75,7 +80,9 @@ function PositionManagement() {
 
           const isSuper = Boolean(authData.isSuperAdmin || authData.user?.isSuperAdmin);
           const perms: string[] = authData.permissions || authData.user?.permissions || [];
-          const canView = isSuper || perms.includes("settings.position_view") || perms.includes("settings.position_manage");
+          const canView =
+            isSuper ||
+            perms.includes(PERMISSION_KEYS.SETTINGS_POSITION_VIEW);
 
           if (!canView) {
             setUserRole("unauthorized");
@@ -83,6 +90,12 @@ function PositionManagement() {
             return;
           }
 
+          setPositionPermissions(isSuper ? [
+            PERMISSION_KEYS.SETTINGS_POSITION_CREATE,
+            PERMISSION_KEYS.SETTINGS_POSITION_EDIT,
+            PERMISSION_KEYS.SETTINGS_POSITION_DELETE,
+            PERMISSION_KEYS.SETTINGS_POSITION_ASSIGN,
+          ] : perms);
           fetchPositions();
         } else {
           setUserRole("unauthorized");
@@ -230,7 +243,7 @@ function PositionManagement() {
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Position Management</h1>
                 <p className="text-gray-600 text-sm sm:text-base">Manage company positions and roles</p>
               </div>
-              <button
+              {canCreatePosition && <button
                 onClick={() => {
                   if (showForm && editingId) {
                     handleCancel();
@@ -242,7 +255,7 @@ function PositionManagement() {
               >
                 <Plus className="w-4 h-4" />
                 <span className="sm:inline">Add Position</span>
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -279,12 +292,12 @@ function PositionManagement() {
                     />
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
-                    <button
+                    {(editingId ? canEditPosition : canCreatePosition) && <button
                       type="submit"
                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors w-full sm:w-auto"
                     >
                       {editingId ? 'Update Position' : 'Create Position'}
-                    </button>
+                    </button>}
                     <button
                       type="button"
                       onClick={handleCancel}
@@ -320,14 +333,14 @@ function PositionManagement() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            <button
+                            {canEditPosition && <button
                               onClick={() => handleEdit(position)}
                               className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                               title="Edit Position"
                             >
                               <Edit className="w-4 h-4" />
-                            </button>
-                            <button
+                            </button>}
+                            {canDeletePosition && <button
                               onClick={async () => {
                                 // Check employee count for mobile view
                                 try {
@@ -346,7 +359,7 @@ function PositionManagement() {
                               title="Delete Position"
                             >
                               <Trash2 className="w-4 h-4" />
-                            </button>
+                            </button>}
                           </div>
                         </div>
                         <div className="space-y-2 text-sm">
@@ -395,7 +408,7 @@ function PositionManagement() {
                                 </div>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <button
+                                {canEditPosition && <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleEdit(position);
@@ -404,8 +417,8 @@ function PositionManagement() {
                                   title="Edit Position"
                                 >
                                   <Edit className="w-4 h-4" />
-                                </button>
-                                <button
+                                </button>}
+                                {canDeletePosition && <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     const employeeCount = positionEmployees[position.id]?.employees?.length || 0;
@@ -426,7 +439,7 @@ function PositionManagement() {
                                     }`}
                                 >
                                   <Trash2 className="w-4 h-4" />
-                                </button>
+                                </button>}
                                 {expandedPosition === position.id ? (
                                   <ChevronUp className="w-5 h-5 text-gray-400" />
                                 ) : (
@@ -464,7 +477,7 @@ function PositionManagement() {
                                               </div>
                                             )}
                                           </div>
-                                          <div className="ml-4">
+                                          {canAssignPosition && <div className="ml-4">
                                             <div className="text-sm font-medium text-gray-700 mb-2">
                                               Reassign Position
                                             </div>
@@ -490,7 +503,7 @@ function PositionManagement() {
                                                 Insufficient permissions
                                               </div>
                                             )}
-                                          </div>
+                                          </div>}
                                         </div>
                                       </div>
                                     ))}

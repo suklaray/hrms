@@ -75,6 +75,10 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
   if (!hasAccess) {
     return NextResponse.json({ message: "Unauthorized: insufficient permissions" }, { status: 403 });
   }
+  const canReviewRegularization = await checkPermission(
+    decoded,
+    PERMISSION_KEYS.ATTENDANCE_REGULARIZE_APPROVE
+  );
 
   if (!empid) {
     return NextResponse.json({ error: "empid is required" }, { status: 400 });
@@ -98,22 +102,24 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     });
 
     // Fetch regularization requests for this employee this month
-    const regularizations = await prisma.attendance_regularization.findMany({
-      where: {
-        empid,
-        attendance_date: { gte: startOfMonth, lt: endOfMonth },
-      },
-      select: {
-        id: true,
-        attendance_date: true,
-        check_in_time: true,
-        requested_checkout: true,
-        reason: true,
-        status: true,
-        rejection_reason: true,
-        created_at: true,
-      },
-    });
+    const regularizations = canReviewRegularization
+      ? await prisma.attendance_regularization.findMany({
+          where: {
+            empid,
+            attendance_date: { gte: startOfMonth, lt: endOfMonth },
+          },
+          select: {
+            id: true,
+            attendance_date: true,
+            check_in_time: true,
+            requested_checkout: true,
+            reason: true,
+            status: true,
+            rejection_reason: true,
+            created_at: true,
+          },
+        })
+      : [];
 
     const regMap: Record<string, any> = {};
     const absentRegMap: Record<string, any> = {};

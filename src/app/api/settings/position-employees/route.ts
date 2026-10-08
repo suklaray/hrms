@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { checkAuth } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest) {
   const auth = await checkAuth(req, [
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
     PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+    PERMISSION_KEYS.SETTINGS_POSITION_ASSIGN,
   ]);
   if (auth.error) return auth.error;
 
@@ -59,11 +58,9 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const auth = await checkAuth(req, [
-    PERMISSION_KEYS.SETTINGS_POSITION_MANAGE,
-    PERMISSION_KEYS.SETTINGS_POSITION_VIEW,
+    PERMISSION_KEYS.SETTINGS_POSITION_ASSIGN,
   ]);
   if (auth.error) return auth.error;
-  const user = auth.user;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -80,11 +77,6 @@ export async function PUT(req: NextRequest) {
 
     if (!employee) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 });
-    }
-
-    const canReassign = await checkPermission(user, PERMISSION_KEYS.SETTINGS_POSITION_MANAGE);
-    if (!canReassign) {
-      return NextResponse.json({ error: "Insufficient permissions to reassign this employee" }, { status: 403 });
     }
 
     await prisma.users.update({

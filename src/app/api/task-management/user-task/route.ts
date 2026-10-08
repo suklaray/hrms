@@ -84,14 +84,19 @@ export async function PUT(req: NextRequest) {
     const body = await getRequestBody(req);
     const { taskId, status } = body || {};
     
-    if (!taskId || !status) {
+    const parsedTaskId = Number(taskId);
+    if (!Number.isInteger(parsedTaskId) || parsedTaskId <= 0 || !status) {
       return NextResponse.json({ error: 'Task ID and status are required' }, { status: 400 });
+    }
+
+    if (!['Pending', 'In Progress', 'Completed'].includes(status)) {
+      return NextResponse.json({ error: 'Invalid task status' }, { status: 400 });
     }
 
     // Verify task belongs to user
     const task = await prisma.tasks.findFirst({
       where: { 
-        id: parseInt(taskId),
+        id: parsedTaskId,
         assigned_to: user.empid 
       }
     });
@@ -101,7 +106,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const updatedTask = await prisma.tasks.update({
-      where: { id: parseInt(taskId) },
+      where: { id: parsedTaskId },
       data: { status }
     });
 

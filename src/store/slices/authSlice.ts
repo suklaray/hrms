@@ -8,6 +8,7 @@ export type AuthState = {
   loading: boolean;
   initialized: boolean;
   loggingOut: boolean;
+  logoutRedirectRequested: boolean;
 };
 
 type LoginSuccessPayload = {
@@ -22,6 +23,7 @@ const initialState: AuthState = {
   loading: true,
   initialized: false,
   loggingOut: false,
+  logoutRedirectRequested: false,
 };
 
 export const fetchCurrentUser = createAsyncThunk(
@@ -62,14 +64,13 @@ export const logoutUser = createAsyncThunk<void, void>(
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      dispatch(logoutSuccess());
-
       if (typeof window !== "undefined") {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         localStorage.removeItem("employee_user");
         document.cookie = "token=; Max-Age=0; path=/";
       }
+      dispatch(logoutSuccess());
     }
   }
 );
@@ -85,6 +86,7 @@ const authSlice = createSlice({
       state.loading = false;
       state.initialized = true;
       state.loggingOut = false;
+      state.logoutRedirectRequested = false;
     },
     setAuthUser: (state, action: PayloadAction<AuthUser | null>) => {
       state.user = action.payload;
@@ -92,6 +94,7 @@ const authSlice = createSlice({
       state.loading = false;
       state.initialized = true;
       state.loggingOut = false;
+      state.logoutRedirectRequested = false;
     },
     setPermissions: (state, action: PayloadAction<string[]>) => {
       state.permissions = action.payload;
@@ -103,6 +106,10 @@ const authSlice = createSlice({
       state.loading = false;
       state.initialized = true;
       state.loggingOut = false;
+      state.logoutRedirectRequested = true;
+    },
+    clearLogoutRedirectRequest: (state) => {
+      state.logoutRedirectRequested = false;
     },
     setAuthLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
@@ -144,5 +151,12 @@ const authSlice = createSlice({
   },
 });
 
-export const { loginSuccess, setAuthUser, setPermissions, logoutSuccess, setAuthLoading } = authSlice.actions;
+export const {
+  loginSuccess,
+  setAuthUser,
+  setPermissions,
+  logoutSuccess,
+  clearLogoutRedirectRequest,
+  setAuthLoading,
+} = authSlice.actions;
 export default authSlice.reducer;

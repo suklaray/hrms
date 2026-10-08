@@ -9,7 +9,7 @@ import { getAccessibleRoles } from '@/lib/roleBasedAccess';
 async function getAllowedRoleNames(user: any): Promise<string[] | null> {
   if (isSuperAdmin(user)) return null;
   const roles = await getAccessibleRoles(user);
-  return roles && roles.length > 0 ? roles : null;
+  return roles;
 }
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
@@ -35,11 +35,11 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     const { employeeId } = await getQueryParams(req, context?.params);
     if (!employeeId) return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
 
-    // Must have task.view OR be viewing own tasks
+    // This management endpoint requires view-all permission, including for self.
     const canViewAll = await checkPermission(decoded, PERMISSION_KEYS.TASK_VIEW);
     const isSelf = user.empid === employeeId;
 
-    if (!canViewAll && !isSelf) {
+    if (!canViewAll) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

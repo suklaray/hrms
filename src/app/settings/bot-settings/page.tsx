@@ -2,76 +2,30 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import ClientPage from "./Client";
-import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission, getUserPermissions, isSuperAdmin } from "@/lib/rbac";
+import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
 
-async function getServerSideProps(context) {
-  const { req } = context;
-  const token = req?.cookies?.token || "";
-  const user = getUserFromToken(token);
-
-  if (!user) {
-    return {
-      redirect: {
-        destination: "/login",
-        permanent: false,
-      },
-    };
-  }
-
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.BOT_SETTINGS);
-  if (!hasAccess) {
-    return {
-      redirect: {
-        destination: "/403",
-        permanent: false,
-      },
-    };
-  }
-
-  return { props: {} };
-}
-
-export default async function Page(props: {
-  params?: Promise<Record<string, string | string[]>>;
-  searchParams?: Promise<Record<string, string | string[]>>;
-}) {
+export default async function Page() {
   const cookieStore = await cookies();
-  const resolvedParams = (await props.params) || {};
-  const resolvedSearchParams = (await props.searchParams) || {};
+  const token =
+    cookieStore.get("token")?.value ||
+    cookieStore.get("employeeToken")?.value;
+  const user = getUserFromToken(token);
+  if (!user) redirect("/login");
 
-  const cookieMap: Record<string, string> = {};
-  cookieStore.getAll().forEach((c) => {
-    cookieMap[c.name] = c.value;
-  });
-
-  const context = {
-    req: {
-      cookies: cookieMap,
-      headers: {},
-    },
-    params: resolvedParams,
-    query: { ...resolvedParams, ...resolvedSearchParams },
-  };
-
-  let gsspResult: any = null;
-  try {
-    gsspResult = await getServerSideProps(context);
-  } catch (err) {
-    console.error("Error running getServerSideProps in settings/bot-settings:", err);
-  }
-
-  if (gsspResult?.redirect?.destination) {
-    redirect(gsspResult.redirect.destination);
-  }
+  const [canView, canUpload, canDelete] = await Promise.all([
+    checkPermission(user, PERMISSION_KEYS.SETTINGS_BOT),
+    checkPermission(user, PERMISSION_KEYS.SETTINGS_BOT_UPLOAD),
+    checkPermission(user, PERMISSION_KEYS.SETTINGS_BOT_DELETE),
+  ]);
+  if (!canView) redirect("/403");
 
   return (
     <Suspense fallback={null}>
-      <ClientPage {...(gsspResult?.props || {})} />
+      <ClientPage canUpload={canUpload} canDelete={canDelete} />
     </Suspense>
   );
 }

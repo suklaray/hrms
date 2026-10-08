@@ -9,6 +9,7 @@ import { logoutUser } from '@/store/slices/authSlice';
 const PUBLIC_PATHS = [
   "/",
   "/login",
+  "/setup/super-admin",
   "/AboutUs",
   "/Contact",
   "/Recruitment/form",
@@ -66,7 +67,6 @@ const AutoLogoutTimer = () => {
     logoutRequestedRef.current = true;
     stopCountdown();
     await dispatch(logoutUser()).unwrap();
-    router.replace("/login");
   }, [router, stopCountdown]);
 
   // Fallback ping — only fires when user is active but no backend requests are happening

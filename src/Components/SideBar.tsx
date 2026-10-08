@@ -122,13 +122,11 @@ export default function Sidebar({
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
-    router.push('/');
   };
 
   const isAccessEnabled =
     isSuperAdminUser ||
-    (authUser?.verified === 'verified' && Boolean(authUser?.form_submitted)) ||
-    reduxPermissions.length > 0;
+    (authUser?.verified === "verified" && authUser.form_submitted === true);
 
   if (authLoading) {
     return (
@@ -159,7 +157,11 @@ export default function Sidebar({
         <li key={item.name}>
           <div
             className="w-full px-3 py-2.5 bg-gray-700 rounded-lg text-gray-500 cursor-not-allowed flex items-center gap-3"
-            title={isCollapsed ? `${item.name} (Locked)` : 'Complete verification to access'}
+            title={
+              isCollapsed
+                ? `${item.name} (Locked)`
+                : "Submit your documents and complete verification to access"
+            }
           >
             <Icon size={18} className="flex-shrink-0" />
             {!isCollapsed && <span className="text-sm font-medium">{item.name} 🔒</span>}

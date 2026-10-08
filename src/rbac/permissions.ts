@@ -32,6 +32,7 @@ export const PERMISSIONS = {
     VERIFY: "employee.verify",
     SEND_CREDENTIALS: "employee.send_credentials",
     RESET_PASSWORD: "employee.reset_password",
+    EXPORT: "employee.export",
   },
 
   ATTENDANCE: {
@@ -45,11 +46,16 @@ export const PERMISSIONS = {
 
   LEAVE: {
     VIEW: "leave.view",
+    VIEW_PENDING: "leave.view_pending",
+    VIEW_HISTORY: "leave.view_history",
     APPROVE: "leave.approve",
     CANCEL: "leave.cancel",
     REQUEST: "leave.request",
     VIEW_OWN: "leave.view_own",
-    MANAGE_TYPES: "leave.manage_types",
+    VIEW_LEAVE_TYPES: "leave.view_types",
+    CREATE_TYPE: "leave.create_type",
+    EDIT_TYPE: "leave.edit_type",
+    DELETE_TYPE: "leave.delete_type",
   },
 
   PAYROLL: {
@@ -76,6 +82,33 @@ export const PERMISSIONS = {
     ANALYTICS: "recruitment.analytics",
   },
 
+  JD: {
+    VIEW: "jd.view",
+    CREATE: "jd.create",
+    PUBLISH: "jd.publish",
+    EDIT: "jd.edit",
+    CLOSE: "jd.close",
+    ANALYZE: "jd.analyze",
+  },
+
+  JOB_APPLICATION: {
+    VIEW: "job_application.view",
+    PARSE: "job_application.parse",
+    SHORTLIST: "job_application.shortlist",
+    REJECT: "job_application.reject",
+    SCHEDULE: "job_application.schedule",
+  },
+
+  RESUME: {
+    PARSE: "resume.parse",
+    DOWNLOAD: "resume.download",
+  },
+
+  CANDIDATE: {
+    RANK_VIEW: "candidate.rank_view",
+    COMPATIBILITY_VIEW: "candidate.compatibility_view",
+  },
+
   COMPLIANCE: {
     VIEW: "compliance.view",
     VIEW_DOCUMENTS: "compliance.view_documents",
@@ -93,12 +126,18 @@ export const PERMISSIONS = {
 
   REPORT: {
     VIEW: "report.view",
+    VIEW_OWN: "report.view_own",
     SUBMIT: "report.submit",
   },
 
   CALENDAR: {
     VIEW: "calendar.view",
     MANAGE: "calendar.manage",
+    CREATE: "calendar.create",
+    EDIT: "calendar.edit",
+    DELETE: "calendar.delete",
+    DOWNLOAD_HOLIDAYS: "calendar.download_holidays",
+    DOWNLOAD_EVENTS: "calendar.download_events",
   },
 
   CUSTOMER: {
@@ -121,7 +160,21 @@ export const PERMISSIONS = {
     POSITION_VIEW: "settings.position_view",
     POSITION_MANAGE: "settings.position_manage",
     EMPLOYEE_TYPES_MANAGE: "settings.employee_types_manage",
+    POSITION_CREATE: "settings.position_create",
+    POSITION_EDIT: "settings.position_edit",
+    POSITION_DELETE: "settings.position_delete",
+    POSITION_ASSIGN: "settings.position_assign",
+    DEPARTMENT_VIEW: "settings.department_view",
+    DEPARTMENT_CREATE: "settings.department_create",
+    DEPARTMENT_EDIT: "settings.department_edit",
+    DEPARTMENT_DELETE: "settings.department_delete",
+    ROLE_VIEW: "settings.role_view",
+    ROLE_CREATE: "settings.role_create",
+    ROLE_EDIT: "settings.role_edit",
+    ROLE_DELETE: "settings.role_delete",
     BOT: "settings.bot",
+    BOT_UPLOAD: "settings.bot_upload",
+    BOT_DELETE: "settings.bot_delete",
     MANAGE: "settings.manage",
   },
 
@@ -129,6 +182,7 @@ export const PERMISSIONS = {
     PERMISSION_VIEW: "rbac.permission_view",
     ROLE_MANAGE: "rbac.role_manage",
     ROLE_ASSIGN: "rbac.role_assign",
+    ROLE_PERMISSION_ASSIGN: "rbac.role_permission_assign",
   },
 } as const;
 
@@ -199,6 +253,13 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     module: "employee",
     action: "reset_password",
   },
+  {
+    key: PERMISSIONS.EMPLOYEE.EXPORT,
+    name: "Export Employee List to Excel",
+    description: "Download the employee list as an Excel spreadsheet",
+    module: "employee",
+    action: "export_excel",
+  },
 
   // Attendance
   {
@@ -253,6 +314,20 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     action: "view",
   },
   {
+    key: PERMISSIONS.LEAVE.VIEW_PENDING,
+    name: "View Pending Leave Requests",
+    description: "View pending employee leave requests",
+    module: "leave",
+    action: "view_pending",
+  },
+  {
+    key: PERMISSIONS.LEAVE.VIEW_HISTORY,
+    name: "View Leave Request History",
+    description: "View all employee leave request history",
+    module: "leave",
+    action: "view_history",
+  },
+  {
     key: PERMISSIONS.LEAVE.APPROVE,
     name: "Approve Leave",
     description: "Approve or reject employee leave requests",
@@ -262,7 +337,7 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   {
     key: PERMISSIONS.LEAVE.CANCEL,
     name: "Cancel Leave",
-    description: "Cancel approved or pending leave requests",
+    description: "Employee can cancel there own leave requests",
     module: "leave",
     action: "cancel",
   },
@@ -281,11 +356,32 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     action: "view_own",
   },
   {
-    key: PERMISSIONS.LEAVE.MANAGE_TYPES,
-    name: "Manage Leave Types",
-    description: "Create, edit, and configure available leave types and quotas",
+    key: PERMISSIONS.LEAVE.VIEW_LEAVE_TYPES,
+    name: "View Leave Types",
+    description: "View available leave types and their configurations",
     module: "leave",
-    action: "manage_types",
+    action: "view_types",
+  },
+  {
+    key: PERMISSIONS.LEAVE.CREATE_TYPE,
+    name: "Create Leave Type",
+    description: "Create leave types and configure their initial quotas",
+    module: "leave",
+    action: "create_type",
+  },
+  {
+    key: PERMISSIONS.LEAVE.EDIT_TYPE,
+    name: "Edit Leave Type",
+    description: "Edit existing leave types and their quotas",
+    module: "leave",
+    action: "edit_type",
+  },
+  {
+    key: PERMISSIONS.LEAVE.DELETE_TYPE,
+    name: "Delete Leave Type",
+    description: "Delete leave types",
+    module: "leave",
+    action: "delete_type",
   },
 
   // Payroll
@@ -398,7 +494,118 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     module: "recruitment",
     action: "analytics",
   },
+  // Job Descriptions (JD)
+  {
+    key: PERMISSIONS.JD.VIEW,
+    name: "View Job Descriptions",
+    description: "View job description listings and individual JD details",
+    module: "jd",
+    action: "view",
+  },
+  {
+    key: PERMISSIONS.JD.CREATE,
+    name: "Create Job Description",
+    description: "Create new job descriptions with role details and requirements",
+    module: "jd",
+    action: "create",
+  },
+  {
+    key: PERMISSIONS.JD.PUBLISH,
+    name: "Publish Job Description",
+    description: "Publish new or existing job descriptions",
+    module: "jd",
+    action: "publish",
+  },
+  {
+    key: PERMISSIONS.JD.EDIT,
+    name: "Edit Job Description",
+    description: "Edit existing job descriptions, requirements, and details",
+    module: "jd",
+    action: "edit",
+  },
+  {
+    key: PERMISSIONS.JD.CLOSE,
+    name: "Close Job Description",
+    description: "Close or archive a job description to stop accepting applications",
+    module: "jd",
+    action: "close",
+  },
+  {
+    key: PERMISSIONS.JD.ANALYZE,
+    name: "Analyze Job Description",
+    description: "Run AI analysis on a JD to extract skills, keywords, and match criteria",
+    module: "jd",
+    action: "analyze",
+  },
 
+  // Job Applications
+  {
+    key: PERMISSIONS.JOB_APPLICATION.VIEW,
+    name: "View Job Applications",
+    description: "View submitted job applications and candidate submissions",
+    module: "job_application",
+    action: "view",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.PARSE,
+    name: "Parse Job Application",
+    description: "Parse resumes attached to job applications to extract structured data",
+    module: "job_application",
+    action: "parse",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.SHORTLIST,
+    name: "Shortlist Job Application",
+    description: "Move applications to the shortlisted stage for further review",
+    module: "job_application",
+    action: "shortlist",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.REJECT,
+    name: "Reject Job Application",
+    description: "Reject job applications and mark candidates as not moving forward",
+    module: "job_application",
+    action: "reject",
+  },
+  {
+    key: PERMISSIONS.JOB_APPLICATION.SCHEDULE,
+    name: "Schedule Interview",
+    description: "Schedule interviews and send calendar invites to applicants",
+    module: "job_application",
+    action: "schedule",
+  },
+
+  // Resume
+  {
+    key: PERMISSIONS.RESUME.PARSE,
+    name: "Parse Resume",
+    description: "Parse resumes to extract skills, experience, and education data",
+    module: "resume",
+    action: "parse",
+  },
+  {
+    key: PERMISSIONS.RESUME.DOWNLOAD,
+    name: "Download Resume",
+    description: "Download candidate resumes and attachments",
+    module: "resume",
+    action: "download",
+  },
+
+  // Candidate Intelligence
+  {
+    key: PERMISSIONS.CANDIDATE.RANK_VIEW,
+    name: "View Candidate Ranking",
+    description: "View ranked ordering of candidates based on parsed and analyzed data",
+    module: "candidate",
+    action: "rank_view",
+  },
+  {
+    key: PERMISSIONS.CANDIDATE.COMPATIBILITY_VIEW,
+    name: "View Candidate Compatibility",
+    description: "View candidate-to-JD match score and compatibility insights",
+    module: "candidate",
+    action: "compatibility_view",
+  },
   // Compliance
   {
     key: PERMISSIONS.COMPLIANCE.VIEW,
@@ -475,6 +682,13 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     action: "view",
   },
   {
+    key: PERMISSIONS.REPORT.VIEW_OWN,
+    name: "View Own Daily Reports",
+    description: "View your own daily work report history",
+    module: "report",
+    action: "view_own",
+  },
+  {
     key: PERMISSIONS.REPORT.SUBMIT,
     name: "Submit Daily Report",
     description: "Submit own daily work report",
@@ -493,9 +707,44 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   {
     key: PERMISSIONS.CALENDAR.MANAGE,
     name: "Manage Calendar",
-    description: "Add, edit, and delete company calendar events and holidays",
+    description: "Legacy full calendar management permission",
     module: "calendar",
     action: "manage",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.CREATE,
+    name: "Create Calendar Events",
+    description: "Create company calendar events and holidays",
+    module: "calendar",
+    action: "create",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.EDIT,
+    name: "Edit Calendar Events",
+    description: "Edit company calendar events and holidays",
+    module: "calendar",
+    action: "edit",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.DELETE,
+    name: "Delete Calendar Events",
+    description: "Delete company calendar events and holidays",
+    module: "calendar",
+    action: "delete",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.DOWNLOAD_HOLIDAYS,
+    name: "Download Calendar Holidays",
+    description: "Download company holidays from the calendar",
+    module: "calendar",
+    action: "download_holidays",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.DOWNLOAD_EVENTS,
+    name: "Download Calendar Events",
+    description: "Download all visible calendar events",
+    module: "calendar",
+    action: "download_events",
   },
 
   // Customer Connect
@@ -563,15 +812,99 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   },
   {
     key: PERMISSIONS.SETTINGS.POSITION_MANAGE,
-    name: "Manage Positions",
-    description: "Create, edit, and delete job positions and designations",
+    name: "Manage Positions (Legacy)",
+    description: "Legacy combined position management permission",
     module: "settings",
     action: "position_manage",
   },
   {
+    key: PERMISSIONS.SETTINGS.POSITION_CREATE,
+    name: "Create Positions",
+    description: "Create job positions and designations",
+    module: "settings",
+    action: "position_create",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.POSITION_EDIT,
+    name: "Edit Positions",
+    description: "Edit job positions and designations",
+    module: "settings",
+    action: "position_edit",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.POSITION_DELETE,
+    name: "Delete Positions",
+    description: "Delete job positions and designations",
+    module: "settings",
+    action: "position_delete",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.POSITION_ASSIGN,
+    name: "Reassign Employee Positions",
+    description: "Assign employees to different positions",
+    module: "settings",
+    action: "position_assign",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.DEPARTMENT_VIEW,
+    name: "View Departments",
+    description: "View departments and their positions",
+    module: "settings",
+    action: "department_view",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.DEPARTMENT_CREATE,
+    name: "Create Departments",
+    description: "Create departments",
+    module: "settings",
+    action: "department_create",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.DEPARTMENT_EDIT,
+    name: "Edit Departments",
+    description: "Edit department names and details",
+    module: "settings",
+    action: "department_edit",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.DEPARTMENT_DELETE,
+    name: "Delete Departments",
+    description: "Delete departments with no linked positions",
+    module: "settings",
+    action: "department_delete",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.ROLE_VIEW,
+    name: "View Roles",
+    description: "View application roles and their assigned permissions",
+    module: "settings",
+    action: "role_view",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.ROLE_CREATE,
+    name: "Create Roles",
+    description: "Create custom application roles",
+    module: "settings",
+    action: "role_create",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.ROLE_EDIT,
+    name: "Edit Roles",
+    description: "Edit role details and hierarchy",
+    module: "settings",
+    action: "role_edit",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.ROLE_DELETE,
+    name: "Delete Roles",
+    description: "Delete custom application roles",
+    module: "settings",
+    action: "role_delete",
+  },
+  {
     key: PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE,
-    name: "Manage Employee Types / Roles",
-    description: "Create, edit, and assign permissions to custom roles / employee types",
+    name: "Manage Employee Types / Roles (Legacy)",
+    description: "Legacy combined employee type and role management permission",
     module: "settings",
     action: "employee_types_manage",
   },
@@ -583,9 +916,23 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     action: "bot",
   },
   {
+    key: PERMISSIONS.SETTINGS.BOT_UPLOAD,
+    name: "Upload HR Bot Data",
+    description: "Upload and save HR assistant knowledge-base content",
+    module: "settings",
+    action: "bot_upload",
+  },
+  {
+    key: PERMISSIONS.SETTINGS.BOT_DELETE,
+    name: "Delete HR Bot Data",
+    description: "Delete files from the HR assistant knowledge base",
+    module: "settings",
+    action: "bot_delete",
+  },
+  {
     key: PERMISSIONS.SETTINGS.MANAGE,
-    name: "Manage Department Settings",
-    description: "Create, edit, and manage departments and organizational units",
+    name: "Manage Department Settings (Legacy)",
+    description: "Legacy combined department management permission",
     module: "settings",
     action: "manage",
   },
@@ -609,10 +956,17 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
   },
   {
     key: PERMISSIONS.RBAC.ROLE_ASSIGN,
+    name: "Assign Roles to Employees",
+    description: "Assign roles to employees within your role hierarchy",
+    module: "rbac",
+    action: "role_assign",
+  },
+  {
+    key: PERMISSIONS.RBAC.ROLE_PERMISSION_ASSIGN,
     name: "Assign Role Permissions",
     description: "Assign or revoke permission sets for roles",
     module: "rbac",
-    action: "role_assign",
+    action: "role_permission_assign",
     isSystem: true,
   },
 ];

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/authMiddleware";
-import { checkPermission, isSuperAdmin, getAssignableRolesForUser } from "@/lib/rbac";
+import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { getEmployeeDirectoryRoleScope } from "@/lib/roleBasedAccess";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
@@ -20,20 +21,23 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Determine accessible users dynamically from DB
-    const canViewAll = isSuperAdmin(decoded) || (await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW));
-    let userWhereClause: any = { is_active: "ACTIVE" };
-
-    if (!canViewAll) {
-      const assignableRoles = await getAssignableRolesForUser(decoded);
-      const assignableIds = assignableRoles.map((r: any) => r.id);
-      userWhereClause = {
-        OR: [
-          { roleId: { in: assignableIds }, is_active: "ACTIVE" },
-          { empid: (decoded.empid || decoded.id) as string, is_active: "ACTIVE" },
-        ],
-      };
-    }
+    const [
+      canViewEmployees,
+      canViewAttendance,
+      canViewLeaves,
+      canViewCandidates,
+    ] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW),
+      checkPermission(decoded, PERMISSION_KEYS.ATTENDANCE_VIEW),
+      checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW),
+      checkPermission(decoded, PERMISSION_KEYS.RECRUITMENT_VIEW),
+    ]);
+    const { visibleRoleIds: roleIds } =
+      await getEmployeeDirectoryRoleScope(decoded);
+    const userWhereClause = {
+      is_active: "ACTIVE",
+      roleId: { in: roleIds },
+    };
 
     let totalEmployees = 0;
     let activeEmployees = 0;
@@ -43,10 +47,8 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     let recentEmployees: any[] = [];
     let currentlyOnline: any[] = [];
 
-    try {
-      const results = await Promise.allSettled([
-        // Query 1: Get users with attendance data
-        prisma.users.findMany({
+    const users = canViewEmployees || canViewAttendance
+      ? await prisma.users.findMany({
           where: userWhereClause,
           select: {
             empid: true,
@@ -59,92 +61,86 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
             id: true,
           },
           orderBy: { id: "desc" },
-        }),
+        })
+      : [];
 
-        // Query 2: Get today's attendance
-        prisma.attendance.findMany({
-          where: {
-            date: { gte: today, lt: tomorrow },
-          },
-          select: {
-            empid: true,
-            check_in: true,
-            check_out: true,
-            attendance_status: true,
-          },
-          orderBy: [{ empid: "asc" }, { check_in: "asc" }],
-        }),
-
-        // Query 3: Count pending leaves
-        prisma.leave_requests.count({
-          where: {
-            status: "Pending",
-            users: userWhereClause,
-          },
-        }),
-
-        // Query 4: Count candidates
-        prisma.candidates.count(),
-      ]);
-
-      const [usersResult, attendanceResult, leavesResult, candidatesResult] = results;
-
-      if (usersResult.status === "fulfilled") {
-        const users = usersResult.value;
-        totalEmployees = users.length;
-        recentEmployees = users.slice(0, 5).map((emp) => ({
-          empid: emp.empid,
-          name: emp.name,
-          role: emp.role,
-          position: emp.position,
-          type: emp.employee_type,
-          createdAt: emp.date_of_joining || new Date(),
-          profile_photo: emp.profile_photo,
-        }));
-
-        if (attendanceResult.status === "fulfilled") {
-          const attendanceRecords = attendanceResult.value;
-
-          todayAttendance = attendanceRecords.filter((a) => a.attendance_status === "Present").length;
-
-          const loggedInUsers: any[] = [];
-          users.forEach((u) => {
-            const userAttendance = attendanceRecords.filter((a) => a.empid === u.empid);
-            const currentlyLoggedIn = userAttendance.some((a) => a.check_in && !a.check_out);
-
-            if (currentlyLoggedIn) {
-              const firstCheckIn = userAttendance.find((a) => a.check_in)?.check_in;
-              loggedInUsers.push({
-                empid: u.empid,
-                name: u.name,
-                role: u.role,
-                position: u.position,
-                profile_photo: u.profile_photo,
-                check_in: firstCheckIn,
-                workingHours: firstCheckIn
-                  ? Math.round(
-                      ((new Date().getTime() - new Date(firstCheckIn).getTime()) / (1000 * 60 * 60)) * 10
-                    ) / 10
-                  : 0,
-              });
-            }
-          });
-
-          currentlyOnline = loggedInUsers;
-          activeEmployees = currentlyOnline.length;
-        }
-      }
-
-      if (leavesResult.status === "fulfilled") {
-        pendingLeaves = leavesResult.value;
-      }
-
-      if (candidatesResult.status === "fulfilled") {
-        totalCandidates = candidatesResult.value;
-      }
-    } catch (error) {
-      console.error("Dashboard stats query error:", error);
+    if (canViewEmployees) {
+      totalEmployees = users.length;
+      recentEmployees = users.slice(0, 5).map((emp) => ({
+        empid: emp.empid,
+        name: emp.name,
+        role: emp.role,
+        position: emp.position,
+        type: emp.employee_type,
+        createdAt: emp.date_of_joining || new Date(),
+        profile_photo: emp.profile_photo,
+      }));
     }
+
+    if (canViewAttendance && users.length > 0) {
+      const attendanceRecords = await prisma.attendance.findMany({
+        where: {
+          date: { gte: today, lt: tomorrow },
+          empid: { in: users.map((user) => user.empid) },
+        },
+        select: {
+          empid: true,
+          check_in: true,
+          check_out: true,
+          attendance_status: true,
+        },
+        orderBy: [{ empid: "asc" }, { check_in: "asc" }],
+      });
+
+      todayAttendance = attendanceRecords.filter(
+        (attendance) => attendance.attendance_status === "Present"
+      ).length;
+
+      users.forEach((user) => {
+        const userAttendance = attendanceRecords.filter(
+          (attendance) => attendance.empid === user.empid
+        );
+        const currentlyLoggedIn = userAttendance.some(
+          (attendance) => attendance.check_in && !attendance.check_out
+        );
+
+        if (currentlyLoggedIn) {
+          const firstCheckIn = userAttendance.find(
+            (attendance) => attendance.check_in
+          )?.check_in;
+          currentlyOnline.push({
+            empid: user.empid,
+            name: user.name,
+            role: user.role,
+            position: user.position,
+            profile_photo: user.profile_photo,
+            check_in: firstCheckIn,
+            workingHours: firstCheckIn
+              ? Math.round(
+                  ((new Date().getTime() - new Date(firstCheckIn).getTime()) /
+                    (1000 * 60 * 60)) *
+                    10
+                ) / 10
+              : 0,
+          });
+        }
+      });
+      activeEmployees = currentlyOnline.length;
+    }
+
+    const [pendingLeaveCount, candidateCount] = await Promise.all([
+      canViewLeaves
+        ? prisma.leave_requests.count({
+            where: {
+              status: "Pending",
+              users: userWhereClause,
+            },
+          })
+        : Promise.resolve(0),
+      canViewCandidates ? prisma.candidates.count() : Promise.resolve(0),
+    ]);
+    pendingLeaves = pendingLeaveCount;
+    totalCandidates = candidateCount;
 
     const attendancePercentage =
       activeEmployees > 0 ? Math.round((todayAttendance / activeEmployees) * 100) : 0;

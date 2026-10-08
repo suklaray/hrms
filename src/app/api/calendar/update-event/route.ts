@@ -11,12 +11,23 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
   if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const canManage = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
-    if (!canManage) {
+    const [canEdit, canManage] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_EDIT),
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE),
+    ]);
+    if (!canEdit && !canManage) {
       return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 
-    const { id, title, description, event_date, event_type, visible_to } =
+    const {
+      id,
+      title,
+      description,
+      event_date,
+      event_type,
+      visibility,
+      visible_to,
+    } =
       (await getRequestBody(req)) || {};
 
     if (!id) {
@@ -41,13 +52,45 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
       );
     }
 
-    const newVisibleTo = visible_to
-      ? visible_to.split(",").map((e: string) => e.trim()).filter((e: string) => e)
-      : [];
+    const requestedVisibility = visibility ?? visible_to;
+    const requestedEmails = Array.isArray(requestedVisibility)
+      ? requestedVisibility.filter(
+          (email: unknown): email is string => typeof email === "string"
+        )
+      : typeof requestedVisibility === "string"
+        ? requestedVisibility
+            .split(",")
+            .map((email: string) => email.trim())
+            .filter(Boolean)
+        : [];
+    const visibleToAll = requestedEmails.includes("all");
+    const visibleEmployees = await prisma.users.findMany({
+      where: visibleToAll
+        ? { is_active: "ACTIVE", status: { not: "Inactive" } }
+        : {
+            email: {
+              in: requestedEmails.filter((email) => email !== "all"),
+            },
+          },
+      select: { empid: true },
+    });
+    const visibleEmployeeIds = new Set(
+      visibleEmployees.map((employee) => employee.empid)
+    );
 
-    const updatedVisibleTo = newVisibleTo.includes("all")
+    const eventCreator = await prisma.users.findUnique({
+      where: { email: existingEvent.created_by },
+      select: { empid: true },
+    });
+    if (eventCreator) visibleEmployeeIds.delete(eventCreator.empid);
+    const visibleEmployeeEmails = await prisma.users.findMany({
+      where: { empid: { in: [...visibleEmployeeIds] } },
+      select: { email: true },
+    });
+    const legacyVisibility = visibleToAll
       ? "all"
-      : Array.from(new Set([...newVisibleTo, decoded.email])).join(",");
+      : [...new Set(visibleEmployeeEmails.map((employee) => employee.email))]
+          .join(",");
 
     const updatedEvent = await prisma.calendar_events.update({
       where: { id: Number(id) },
@@ -56,7 +99,15 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
         description,
         event_date: new Date(event_date),
         event_type,
-        visible_to: updatedVisibleTo,
+        visible_to:
+          requestedVisibility === undefined ? undefined : legacyVisibility,
+        visibility:
+          requestedVisibility === undefined
+            ? undefined
+            : {
+                deleteMany: {},
+                create: [...visibleEmployeeIds].map((empid) => ({ empid })),
+              },
       },
     });
 

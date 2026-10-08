@@ -20,8 +20,11 @@ export type AuthResult = {
  */
 export async function checkAuth(
   req: NextRequest,
-  requiredPermissions: string[] = []
+  requiredPermissions: string | string[] = []
 ): Promise<AuthResult> {
+  const permissionsRequired = Array.isArray(requiredPermissions)
+    ? requiredPermissions
+    : [requiredPermissions];
   const cookieHeader = req.headers.get("cookie") || "";
   const cookies = parse(cookieHeader);
   const token = cookies.token || req.cookies.get("token")?.value;
@@ -37,9 +40,9 @@ export async function checkAuth(
   const permissions = await getUserPermissions(user);
   user._resolvedPermissions = permissions;
 
-  if (requiredPermissions.length > 0) {
+  if (permissionsRequired.length > 0) {
     if (!isSuperAdmin(user)) {
-      const hasAccess = requiredPermissions.some((perm) => permissions.has(perm));
+      const hasAccess = permissionsRequired.some((perm) => permissions.has(perm));
       if (!hasAccess) {
         return {
           error: NextResponse.json(
@@ -59,8 +62,11 @@ export async function checkAuth(
  */
 export async function checkAuthAll(
   req: NextRequest,
-  requiredPermissions: string[] = []
+  requiredPermissions: string | string[] = []
 ): Promise<AuthResult> {
+  const permissionsRequired = Array.isArray(requiredPermissions)
+    ? requiredPermissions
+    : [requiredPermissions];
   const cookieHeader = req.headers.get("cookie") || "";
   const cookies = parse(cookieHeader);
   const token = cookies.token || req.cookies.get("token")?.value;
@@ -75,9 +81,9 @@ export async function checkAuthAll(
   const permissions = await getUserPermissions(user);
   user._resolvedPermissions = permissions;
 
-  if (requiredPermissions.length > 0) {
+  if (permissionsRequired.length > 0) {
     if (!isSuperAdmin(user)) {
-      const hasAll = requiredPermissions.every((perm) => permissions.has(perm));
+      const hasAll = permissionsRequired.every((perm) => permissions.has(perm));
       if (!hasAll) {
         return {
           error: NextResponse.json(

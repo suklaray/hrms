@@ -23,7 +23,10 @@ async function getServerSideProps(context) {
     };
   }
 
-  const hasAccess = (await checkPermission(user, PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS)) || (await checkPermission(user, PERMISSION_KEYS.COMPLIANCE_VIEW));
+  const hasAccess = await checkPermission(
+    user,
+    PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS
+  );
   if (!hasAccess) {
     return {
       redirect: {

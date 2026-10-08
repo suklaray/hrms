@@ -11,65 +11,99 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
   if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const canManage = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE);
-    if (!canManage) {
+    const [canCreate, canManage] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_CREATE),
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE),
+    ]);
+    if (!canCreate && !canManage) {
       return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 
-    const { title, description, event_date, event_type, visible_to, selected_groups } =
+    const {
+      title,
+      description,
+      event_date,
+      event_type,
+      visibility,
+      visible_to,
+      selected_groups,
+    } =
       (await getRequestBody(req)) || {};
 
     if (!title || !event_date || !event_type) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
-    const creatorEmail = decoded.email;
-    if (!creatorEmail) {
-      return NextResponse.json({ message: "Creator email missing in token" }, { status: 400 });
+    const creator = decoded.empid
+      ? await prisma.users.findUnique({
+          where: { empid: decoded.empid },
+          select: { empid: true, email: true },
+        })
+      : decoded.email
+        ? await prisma.users.findUnique({
+            where: { email: decoded.email },
+            select: { empid: true, email: true },
+          })
+        : null;
+    if (!creator) {
+      return NextResponse.json({ message: "Creator account not found" }, { status: 400 });
     }
 
-    let finalVisibleTo: string[] = [];
+    const allEmployees = await prisma.users.findMany({
+      where: { is_active: "ACTIVE", status: { not: "Inactive" } },
+      select: { empid: true, email: true },
+    });
+    const requestedVisibility = visibility ?? visible_to;
+    const visibleEmails = Array.isArray(requestedVisibility)
+      ? requestedVisibility.filter(
+          (email: unknown): email is string => typeof email === "string"
+        )
+      : typeof requestedVisibility === "string"
+        ? requestedVisibility.split(",").map((email: string) => email.trim())
+        : [];
+    const visibleToAll = visibleEmails.includes("all");
+    const visibleEmployeeIds = new Set(
+      visibleToAll
+        ? allEmployees.map((employee) => employee.empid)
+        : (
+            await prisma.users.findMany({
+              where: {
+                email: { in: visibleEmails.filter((email) => email !== "all") },
+                is_active: "ACTIVE",
+                status: { not: "Inactive" },
+              },
+              select: { empid: true },
+            })
+          ).map((employee) => employee.empid)
+    );
 
-    // Handle "all" selection
-    if (visible_to && visible_to.includes("all")) {
-      finalVisibleTo = ["all"];
-    } else {
-      // Process individual employee selections
-      if (visible_to && Array.isArray(visible_to)) {
-        finalVisibleTo = [...visible_to.filter((email: string) => email !== "all")];
-      }
+    if (Array.isArray(selected_groups)) {
+      for (const group of selected_groups) {
+        if (typeof group?.key !== "string") continue;
+        const [groupType, groupValue] = group.key.split(":");
+        if (!groupValue) continue;
 
-      // Process group selections
-      if (selected_groups && Array.isArray(selected_groups)) {
-        for (const group of selected_groups) {
-          const [groupType, groupValue] = group.key.split(":");
+        const whereClause: Record<string, unknown> = {
+          is_active: "ACTIVE",
+          status: { not: "Inactive" },
+        };
+        if (groupType === "role") whereClause.role = groupValue;
+        else if (groupType === "position") whereClause.position = groupValue;
+        else if (groupType === "employee_type") whereClause.employee_type = groupValue;
+        else continue;
 
-          let whereClause: any = { status: { not: "Inactive" } };
-
-          if (groupType === "role") {
-            whereClause.role = groupValue;
-          } else if (groupType === "position") {
-            whereClause.position = groupValue;
-          } else if (groupType === "employee_type") {
-            whereClause.employee_type = groupValue;
-          }
-
-          const groupEmployees = await prisma.users.findMany({
-            where: whereClause,
-            select: { email: true },
-          });
-
-          const groupEmails = groupEmployees.map((emp) => emp.email);
-          finalVisibleTo = [...finalVisibleTo, ...groupEmails];
-        }
-      }
-
-      // Remove duplicates and add creator
-      finalVisibleTo = [...new Set(finalVisibleTo)];
-      if (!finalVisibleTo.includes(creatorEmail)) {
-        finalVisibleTo.push(creatorEmail);
+        const groupEmployees = await prisma.users.findMany({
+          where: whereClause,
+          select: { empid: true },
+        });
+        groupEmployees.forEach((employee) => visibleEmployeeIds.add(employee.empid));
       }
     }
+    visibleEmployeeIds.delete(creator.empid);
+    const selectedEmployees = await prisma.users.findMany({
+      where: { empid: { in: [...visibleEmployeeIds] } },
+      select: { email: true },
+    });
 
     const event = await prisma.calendar_events.create({
       data: {
@@ -77,8 +111,14 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
         description: description || null,
         event_date: new Date(event_date),
         event_type,
-        visible_to: finalVisibleTo.join(","),
-        created_by: creatorEmail,
+        visible_to: visibleToAll
+          ? "all"
+          : [...new Set(selectedEmployees.map((employee) => employee.email))]
+              .join(","),
+        created_by: creator.email,
+        visibility: {
+          create: [...visibleEmployeeIds].map((empid) => ({ empid })),
+        },
       },
     });
 

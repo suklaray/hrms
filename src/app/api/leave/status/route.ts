@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 // pages/api/leave/status.js
 import prisma from "@/lib/prisma";
 import { verifyEmployeeToken } from '@/lib/auth';
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   // Verify JWT token and get user data
   const user = await verifyEmployeeToken(req);
   if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  if (!(await checkPermission(user, PERMISSION_KEYS.LEAVE_VIEW_OWN))) {
+    return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
+  }
 
   try {
     const rows = await prisma.leave_requests.findMany({
@@ -34,5 +39,4 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
-
 

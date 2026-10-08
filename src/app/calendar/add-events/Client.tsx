@@ -168,7 +168,7 @@ function AddEvent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          visible_to: formData.visible_to,
+          visibility: formData.visible_to,
           selected_groups: selectedGroups
         })
       });
@@ -663,4 +663,3 @@ export default function ClientPageWrapper(props: any) {
     </Suspense>
   );
 }
-

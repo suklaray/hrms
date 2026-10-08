@@ -13,7 +13,13 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 
 
-function MyAttendance() {
+function MyAttendance({
+    canRequestRegularization = false,
+    canDownloadHolidays = false,
+}: {
+    canRequestRegularization?: boolean;
+    canDownloadHolidays?: boolean;
+}) {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -250,11 +256,11 @@ function MyAttendance() {
                                         <option key={year} value={year}>{year}</option>
                                     ))}
                                 </select>
-                                <button
+                                {canDownloadHolidays && <button
                                     onClick={downloadHolidaysPDF}
                                     className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg text-sm font-medium cursor-pointer">
                                     Holiday List PDF
-                                </button>
+                                </button>}
                             </div>
                         </div>
                     </div>
@@ -381,7 +387,7 @@ function MyAttendance() {
                                                                         ? "bg-yellow-100 text-yellow-800"
                                                                         : record.attendance_status === "Weekend"
                                                                             ? "bg-blue-100 text-blue-800"
-                                                                            : "bg-red-100 text-red-800"
+                                                                                : "bg-red-100 text-red-800"
                                                                     }`}
                                                             >
                                                                 {record.attendance_status}
@@ -398,6 +404,8 @@ function MyAttendance() {
                                                                         <span title={record.regularization.rejection_reason} className="text-xs text-red-600 truncate max-w-[140px]">{record.regularization.rejection_reason}</span>
                                                                     )}
                                                                 </div>
+                                                            ) : !canRequestRegularization ? (
+                                                                <span className="text-xs text-gray-400">—</span>
                                                             ) : (() => {
                                                                 const today = new Date();
                                                                 const todayStr = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`;
@@ -442,7 +450,7 @@ function MyAttendance() {
                     </div>
                 </div>
             </div>
-            {selectedAttendance && (
+            {canRequestRegularization && selectedAttendance && (
                 <RegularizationModal
                     attendance={selectedAttendance}
                     onClose={() => setSelectedAttendance(null)}

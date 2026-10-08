@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Pagination from "@/Components/Pagination";
 import { toast } from "react-toastify";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 type Status = "Draft" | "Published" | "Closed";
 
@@ -266,7 +267,17 @@ const AnalysisList = ({
   );
 };
 
-export default function JobDescriptions() {
+export default function JobDescriptions({
+  permissions = [],
+}: {
+  permissions?: string[];
+}) {
+  const userPermissions = new Set(permissions);
+  const canCreate = userPermissions.has(PERMISSION_KEYS.JD_CREATE);
+  const canEdit = userPermissions.has(PERMISSION_KEYS.JD_EDIT);
+  const canClose = userPermissions.has(PERMISSION_KEYS.JD_CLOSE);
+  const canAnalyze = userPermissions.has(PERMISSION_KEYS.JD_ANALYZE);
+  const canView = userPermissions.has(PERMISSION_KEYS.JD_VIEW);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -325,6 +336,10 @@ export default function JobDescriptions() {
   // to "Closed" instead of deleting it from the database.
   const handleDelete = async () => {
     if (!deleteJob) return;
+    if (!canClose) {
+      toast.error("Permission denied: You cannot close job descriptions");
+      return;
+    }
 
     setDeleting(true);
 
@@ -363,6 +378,11 @@ export default function JobDescriptions() {
   };
 
   const handleAnalyze = async (job: Job) => {
+    if (!canAnalyze) {
+      toast.error("Permission denied: You cannot analyze job descriptions");
+      return;
+    }
+
     setAnalyzingId(job.id);
 
     try {
@@ -503,6 +523,10 @@ export default function JobDescriptions() {
 
   const handleSaveAnalysis = async () => {
     if (!analysisJob || !analysis) return;
+    if (!canAnalyze) {
+      toast.error("Permission denied: You cannot save job description analysis");
+      return;
+    }
 
     setSavingAnalysis(true);
 
@@ -694,12 +718,14 @@ export default function JobDescriptions() {
             </p>
           </div>
 
-          <Link href="/Recruitment/job-description/add">
-            <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm shadow-indigo-200 cursor-pointer">
-              <Plus className="w-4 h-4" />
-              Add Job
-            </button>
-          </Link>
+          {canCreate && (
+            <Link href="/Recruitment/job-description/add">
+              <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm shadow-indigo-200 cursor-pointer">
+                <Plus className="w-4 h-4" />
+                Add Job
+              </button>
+            </Link>
+          )}
         </header>
 
         <main className="flex-1 overflow-auto p-8">
@@ -961,7 +987,7 @@ export default function JobDescriptions() {
                                 <Eye className="w-4 h-4" />
                               </button>
 
-                              <button
+                              {canAnalyze && <button
                                 onClick={() =>
                                   handleAnalyze(job)
                                 }
@@ -978,9 +1004,9 @@ export default function JobDescriptions() {
                                 ) : (
                                   <Sparkles className="w-4 h-4" />
                                 )}
-                              </button>
+                              </button>}
 
-                              <button
+                              {canView && <button
                                 onClick={() => handleViewSavedAnalysis(job)}
                                 disabled={viewingAnalysisId === job.id}
                                 className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -991,9 +1017,9 @@ export default function JobDescriptions() {
                                 ) : (
                                   <BarChart3 className="w-4 h-4" />
                                 )}
-                              </button>
+                              </button>}
 
-                              <Link
+                              {canEdit && <Link
                                 href={`/Recruitment/job-description/${job.id}`}
                               >
                                 <button
@@ -1002,9 +1028,9 @@ export default function JobDescriptions() {
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </button>
-                              </Link>
+                              </Link>}
 
-                              <button
+                              {canClose && <button
                                 onClick={() =>
                                   setDeleteJob(job)
                                 }
@@ -1012,7 +1038,7 @@ export default function JobDescriptions() {
                                 title="Delete"
                               >
                                 <Lock className="w-4 h-4" />
-                              </button>
+                              </button>}
                             </div>
                           </td>
                         </tr>
@@ -1320,14 +1346,12 @@ export default function JobDescriptions() {
                 Close
               </button>
 
-              <Link
-                href={`/Recruitment/job-description/${viewJob.id}`}
-              >
+              {canEdit && <Link href={`/Recruitment/job-description/${viewJob.id}`}>
                 <button className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer">
                   <Pencil className="w-4 h-4" />
                   Edit Job
                 </button>
-              </Link>
+              </Link>}
             </div>
           </div>
         </>
@@ -1811,36 +1835,40 @@ export default function JobDescriptions() {
             </div>
 
             <div className="px-8 py-4 border-t border-gray-100 bg-white flex justify-end gap-3">
-              <button
-                onClick={handleReAnalyze}
-                disabled={
-                  analyzingId ===
-                    analysisJob.id ||
-                  savingAnalysis
-                }
-                className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-50 transition-colors disabled:opacity-50"
-              >
-                <Sparkles className="w-4 h-4" />
+              {canAnalyze && (
+                <>
+                  <button
+                    onClick={handleReAnalyze}
+                    disabled={
+                      analyzingId ===
+                        analysisJob.id ||
+                      savingAnalysis
+                    }
+                    className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-50 transition-colors disabled:opacity-50"
+                  >
+                    <Sparkles className="w-4 h-4" />
 
-                {analyzingId ===
-                analysisJob.id
-                  ? "Re-analyzing..."
-                  : "Re-analyze"}
-              </button>
-
-              <button
-                onClick={handleSaveAnalysis}
-                disabled={
-                  savingAnalysis ||
-                  analyzingId ===
+                    {analyzingId ===
                     analysisJob.id
-                }
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50"
-              >
-                {savingAnalysis
-                  ? "Saving..."
-                  : "Save Analysis"}
-              </button>
+                      ? "Re-analyzing..."
+                      : "Re-analyze"}
+                  </button>
+
+                  <button
+                    onClick={handleSaveAnalysis}
+                    disabled={
+                      savingAnalysis ||
+                      analyzingId ===
+                        analysisJob.id
+                    }
+                    className="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {savingAnalysis
+                      ? "Saving..."
+                      : "Save Analysis"}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </>

@@ -1,4 +1,4 @@
-// src/middleware.ts
+// src/proxy.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify, JWTPayload } from "jose";
@@ -38,6 +38,7 @@ const PUBLIC_ROUTES = [
 
 const ALLOWED_PATHS = [
   "/dashboard",
+  "/employee/dashboard",
   "/settings/profile",
 ];
 
@@ -53,7 +54,7 @@ async function verifyJWT(token: string): Promise<CustomJWTPayload | null> {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow all public and static paths
@@ -110,12 +111,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // For non-superadmin users: check verification
-    if (role !== "superadmin") {
-      const needsVerification = !isVerified && !hasFormSubmitted;
-      if (needsVerification) {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
+    if (!isVerified || !hasFormSubmitted) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 

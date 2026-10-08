@@ -39,18 +39,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "Account is deactivated. Please contact your administrator." }, { status: 403 });
     }
 
-    const employee = await prisma.employees.findUnique({ where: { email: user.email } });
-    let hasFormSubmitted = !!employee;
+    let hasFormSubmitted = user.form_submitted === true;
 
     if (!hasFormSubmitted && user.candidate_id) {
       const candidate = await prisma.candidates.findUnique({
         where: { candidate_id: user.candidate_id },
       });
       hasFormSubmitted = candidate?.form_submitted === true;
-    }
-
-    if (!hasFormSubmitted) {
-      hasFormSubmitted = true;
     }
 
     const permissions = await getUserPermissions(user);

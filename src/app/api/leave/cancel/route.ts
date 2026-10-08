@@ -2,6 +2,8 @@ import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyEmployeeToken } from '@/lib/auth';
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
   const body = (await getRequestBody(req)) || {};
@@ -10,6 +12,9 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
 
   const user = await verifyEmployeeToken(req);
   if (!user) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  if (!(await checkPermission(user, PERMISSION_KEYS.LEAVE_CANCEL))) {
+    return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
+  }
 
   const { leaveId ,reason_to_cancel } = body;
   // console.log(body);
@@ -67,4 +72,3 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
-

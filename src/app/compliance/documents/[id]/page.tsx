@@ -13,9 +13,10 @@ async function getServerSideProps({ req }) {
   const token = req?.cookies?.token || '';
   const user = getUserFromToken(token);
   if (!user) return { redirect: { destination: '/login', permanent: false } };
-  const hasAccess =
-    (await checkPermission(user, PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS)) ||
-    (await checkPermission(user, PERMISSION_KEYS.COMPLIANCE_VIEW));
+  const hasAccess = await checkPermission(
+    user,
+    PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS
+  );
   if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
   return { props: {} };
 }

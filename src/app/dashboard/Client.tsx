@@ -133,7 +133,8 @@ function HRDashboardView({ user, permissions }) {
               ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {can(PERMISSION_KEYS.CALENDAR_VIEW) && (
+            {(can(PERMISSION_KEYS.CALENDAR_VIEW) ||
+              can(PERMISSION_KEYS.CALENDAR_MANAGE)) && (
               <CalendarSection />
             )}
             <div className="bg-white rounded-lg shadow">

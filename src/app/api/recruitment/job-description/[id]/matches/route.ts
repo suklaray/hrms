@@ -1,7 +1,8 @@
-//C:\OfficeWork\hrms\pages\api\recruitment\job-description\[id]\matches.js
-//src/app/api/recruitment/job-description/[id]/candidates/route.ts
+//src/app/api/recruitment/job-description/[id]/matches/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface RouteContext {
   params: Promise<{
@@ -21,6 +22,25 @@ export async function POST(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  const body = (await request.json()) as CandidateActionBody;
+  const permission =
+    body.action === "SHORTLISTED"
+      ? PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST
+      : body.action === "REJECTED"
+        ? PERMISSION_KEYS.JOB_APPLICATION_REJECT
+        : body.action === "INTERVIEW"
+          ? PERMISSION_KEYS.JOB_APPLICATION_SCHEDULE
+          : null;
+  if (!permission) {
+    return NextResponse.json(
+      { success: false, error: "Candidate action is required" },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await checkAuth(request, [permission]);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const jobId = Number(id);
@@ -34,8 +54,6 @@ export async function POST(
         { status: 400 }
       );
     }
-
-    const body = (await request.json()) as CandidateActionBody;
 
     const {
       candidateId,
@@ -118,6 +136,12 @@ export async function GET(
   request: NextRequest,
   { params }: RouteContext
 ) {
+  const { error } = await checkAuth(request, [
+    PERMISSION_KEYS.JOB_APPLICATION_VIEW,
+    PERMISSION_KEYS.CANDIDATE_RANK_VIEW,
+  ]);
+  if (error) return error;
+
   try {
     const { id } = await params;
     const jobId = Number(id);

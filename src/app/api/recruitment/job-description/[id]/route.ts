@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
-import { PERMISSIONS } from "@/rbac/permissions";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface RouteContext {
   params: Promise<{
@@ -37,9 +37,8 @@ export async function GET(
   { params }: RouteContext
 ) {
   const { error } = await checkAuth(request, [
-    PERMISSIONS.RECRUITMENT.VIEW,
-    PERMISSIONS.RECRUITMENT.ANALYTICS,
-    PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
+    PERMISSION_KEYS.JD_VIEW,
+    PERMISSION_KEYS.JD_EDIT,
   ]);
   if (error) return error;
 
@@ -84,7 +83,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSIONS.RECRUITMENT.EDIT]);
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_EDIT]);
   if (error) return error;
 
   const { id } = await params;
@@ -160,6 +159,35 @@ export async function PUT(
     );
   }
 
+  if (status?.toLowerCase() === "published") {
+    try {
+      const currentJob = await prisma.job_descriptions.findUnique({
+        where: { id: jdId },
+        select: { status: true },
+      });
+
+      if (!currentJob) {
+        return NextResponse.json(
+          { message: "Not found" },
+          { status: 404 }
+        );
+      }
+
+      if (currentJob.status?.toLowerCase() !== "published") {
+        const { error: publishError } = await checkAuth(request, [
+          PERMISSION_KEYS.JD_PUBLISH,
+        ]);
+        if (publishError) return publishError;
+      }
+    } catch (error) {
+      console.error("Error checking job description publish status:", error);
+      return NextResponse.json(
+        { message: "Server error" },
+        { status: 500 }
+      );
+    }
+  }
+
   try {
     const job = await prisma.job_descriptions.update({
       where: {
@@ -209,7 +237,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteContext
 ) {
-  const { error } = await checkAuth(request, [PERMISSIONS.RECRUITMENT.EDIT]);
+  const { error } = await checkAuth(request, [PERMISSION_KEYS.JD_CLOSE]);
   if (error) return error;
 
   const { id } = await params;
@@ -240,4 +268,3 @@ export async function PATCH(
     );
   }
 }
-

@@ -11,7 +11,7 @@ import { isSuperAdmin } from "@/rbac/service";
  * List all roles with permission count, user count, and hierarchy.
  */
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSIONS.RBAC.ROLE_MANAGE, PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE]);
+  const auth = await checkAuth(req, PERMISSIONS.SETTINGS.ROLE_VIEW);
   if (auth.error) return auth.error;
 
   try {
@@ -44,12 +44,19 @@ export async function GET(req: NextRequest) {
  * Create a new role.
  */
 export async function POST(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSIONS.RBAC.ROLE_MANAGE, PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE]);
+  const auth = await checkAuth(req, PERMISSIONS.SETTINGS.ROLE_CREATE);
   if (auth.error) return auth.error;
 
   const user = auth.user!;
   const body = await req.json().catch(() => ({}));
   const { name, description, status = RoleStatus.ACTIVE, parentId, permissionIds = [], companyId } = body;
+  if (
+    Array.isArray(permissionIds) &&
+    permissionIds.length > 0 &&
+    !auth.permissions?.has(PERMISSIONS.RBAC.ROLE_PERMISSION_ASSIGN)
+  ) {
+    return NextResponse.json({ error: "Insufficient permissions to assign role permissions" }, { status: 403 });
+  }
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "Role name is required" }, { status: 400 });

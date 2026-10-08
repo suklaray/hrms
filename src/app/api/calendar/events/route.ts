@@ -4,6 +4,11 @@ import { getAuthenticatedUser } from "@/lib/authMiddleware";
 import { checkPermission, isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { getQueryParams } from "@/lib/routeHelper";
+import {
+  formatCalendarEventVisibility,
+  getCalendarEventVisibilityViewer,
+  isCalendarEventVisible,
+} from "@/lib/calendarEventVisibility";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
@@ -11,8 +16,11 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
   if (!decoded) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
   try {
-    const canView = await checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW);
-    if (!canView) {
+    const [canView, canManage] = await Promise.all([
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_VIEW),
+      checkPermission(decoded, PERMISSION_KEYS.CALENDAR_MANAGE),
+    ]);
+    if (!canView && !canManage) {
       return NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 
@@ -55,26 +63,17 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       },
     });
 
-    const userEmail = decoded.email;
-    let visibilityFilter = {};
+    const canViewAllCalendarEvents = isSuperAdmin(decoded);
+    const visibilityViewer = canViewAllCalendarEvents
+      ? null
+      : await getCalendarEventVisibilityViewer(decoded);
 
-    if (!isSuperAdmin(decoded)) {
-      visibilityFilter = {
-        OR: [
-          { visible_to: "all" },
-          { visible_to: { startsWith: "all," } },
-          { visible_to: { contains: userEmail } },
-        ],
-      };
-    }
-
-    const calendarEvents = await prisma.calendar_events.findMany({
+    const fetchedCalendarEvents = await prisma.calendar_events.findMany({
       where: {
         event_date: {
           gte: new Date(targetYear, targetMonth - 1, 1),
           lt: new Date(targetYear, targetMonth, 1),
         },
-        ...visibilityFilter,
       },
       select: {
         id: true,
@@ -82,9 +81,21 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         description: true,
         event_date: true,
         event_type: true,
+        visibility: {
+          select: {
+            empid: true,
+            user: { select: { email: true } },
+          },
+        },
         visible_to: true,
+        created_by: true,
       },
-    });
+  });
+    const calendarEvents = canViewAllCalendarEvents
+      ? fetchedCalendarEvents
+      : fetchedCalendarEvents.filter((event) =>
+          isCalendarEventVisible(event, visibilityViewer)
+        );
 
     const events: any[] = [];
 
@@ -154,6 +165,11 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         title: `${icon} ${event.title}`,
         description: event.description,
         event_type: event.event_type,
+        visibility: formatCalendarEventVisibility(
+          event.visibility,
+          event.visible_to
+        ),
+        visible_to: event.visible_to,
       });
     });
 

@@ -41,20 +41,26 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
       PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW,
       PERMISSIONS.RECRUITMENT.ANALYTICS,
       PERMISSIONS.RECRUITMENT.CREATE,
-
+      PERMISSIONS.JD.VIEW,
+      PERMISSIONS.JD.CREATE,
+      PERMISSIONS.JOB_APPLICATION.VIEW,
     ],
     children: [
       { title: "Candidate Management", route: "/Recruitment/recruitment", permission: [PERMISSIONS.RECRUITMENT.VIEW] },
       { title: "Add Candidates", route: "/Recruitment/addCandidates", permission: PERMISSIONS.RECRUITMENT.CREATE },
-      { title: "Job Descriptions", route: "/Recruitment/job-description", permission: PERMISSIONS.RECRUITMENT.VIEW },
-      { title: "Job Applications", route: "/Recruitment/job-applications", permission: PERMISSIONS.RECRUITMENT.APPLICATIONS_VIEW },
+      { title: "Job Descriptions", route: "/Recruitment/job-description", permission: PERMISSIONS.JD.VIEW },
+      { title: "Add Job Description", route: "/Recruitment/job-description/add", permission: PERMISSIONS.JD.CREATE },
+      { title: "Job Applications", route: "/Recruitment/job-applications", permission: PERMISSIONS.JOB_APPLICATION.VIEW },
       { title: "Analytics", route: "/Recruitment/analytics", permission: PERMISSIONS.RECRUITMENT.ANALYTICS },
     ],
   },
   {
     name: "Employee Management",
     icon: Users,
-    permission: PERMISSIONS.EMPLOYEE.VIEW,
+    permission: [
+      PERMISSIONS.EMPLOYEE.VIEW,
+      PERMISSIONS.EMPLOYEE.CREATE,
+    ],
     children: [
       { title: "Employee List", route: "/employeeList", permission: PERMISSIONS.EMPLOYEE.VIEW },
       { title: "Register Employee", route: "/registerEmployee", permission: PERMISSIONS.EMPLOYEE.CREATE },
@@ -63,10 +69,31 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
   {
     name: "Attendance & Leave",
     icon: Clock,
-    permission: PERMISSIONS.ATTENDANCE.VIEW,
+    permission: [
+      PERMISSIONS.ATTENDANCE.VIEW,
+      PERMISSIONS.LEAVE.VIEW,
+      PERMISSIONS.LEAVE.VIEW_PENDING,
+      PERMISSIONS.LEAVE.VIEW_HISTORY,
+      PERMISSIONS.LEAVE.VIEW_LEAVE_TYPES,
+      PERMISSIONS.LEAVE.CREATE_TYPE,
+      PERMISSIONS.LEAVE.EDIT_TYPE,
+      PERMISSIONS.LEAVE.DELETE_TYPE,
+      PERMISSIONS.ATTENDANCE.ANALYTICS,
+    ],
     children: [
       { title: "Attendance", route: "/attendance", permission: PERMISSIONS.ATTENDANCE.VIEW },
-      { title: "Leave Management", route: "/view-leave-requests", permission: PERMISSIONS.LEAVE.VIEW },
+      {
+        title: "Leave Management",
+        route: "/view-leave-requests",
+        permission: [
+          PERMISSIONS.LEAVE.VIEW_PENDING,
+          PERMISSIONS.LEAVE.VIEW_HISTORY,
+          PERMISSIONS.LEAVE.VIEW_LEAVE_TYPES,
+          PERMISSIONS.LEAVE.CREATE_TYPE,
+          PERMISSIONS.LEAVE.EDIT_TYPE,
+          PERMISSIONS.LEAVE.DELETE_TYPE,
+        ],
+      },
       { title: "Attendance Analytics", route: "/attendance/analytics", permission: PERMISSIONS.ATTENDANCE.ANALYTICS },
     ],
   },
@@ -179,7 +206,10 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
   {
     name: "Compliance",
     icon: Shield,
-    permission: PERMISSIONS.COMPLIANCE.VIEW,
+    permission: [
+      PERMISSIONS.COMPLIANCE.VIEW,
+      PERMISSIONS.COMPLIANCE.VIEW_DOCUMENTS,
+    ],
     children: [
       { title: "Employee Compliance", route: "/compliance/empCompliance", permission: PERMISSIONS.COMPLIANCE.VIEW },
       { title: "Document Center", route: "/compliance/documentCenter", permission: PERMISSIONS.COMPLIANCE.VIEW_DOCUMENTS },
@@ -188,20 +218,44 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
   {
     name: "Task Management",
     icon: ListChecks,
-    permission: PERMISSIONS.TASK.VIEW,
+    permission: [
+      PERMISSIONS.TASK.VIEW,
+      PERMISSIONS.TASK.CREATE,
+      PERMISSIONS.REPORT.VIEW,
+    ],
     children: [
-      { title: "Task Management", route: "/task-management/manage-tasks", permission: PERMISSIONS.TASK.CREATE },
+      {
+        title: "Task Management",
+        route: "/task-management/manage-tasks",
+        permission: [PERMISSIONS.TASK.VIEW, PERMISSIONS.TASK.CREATE],
+      },
       { title: "Daily Reports", route: "/task-management/daily-reports", permission: PERMISSIONS.REPORT.VIEW },
     ],
   },
   {
     name: "Roles & Titles",
     icon: UserCog,
-    permission: PERMISSIONS.SETTINGS.POSITION_VIEW,
+    permission: [
+      PERMISSIONS.SETTINGS.POSITION_VIEW,
+      PERMISSIONS.SETTINGS.DEPARTMENT_VIEW,
+      PERMISSIONS.SETTINGS.ROLE_VIEW,
+    ],
     children: [
-      { title: "Designation Management", route: "/settings/position-management", permission: PERMISSIONS.SETTINGS.POSITION_MANAGE },
-      { title: "Role Management", route: "/settings/employee-types", permission: PERMISSIONS.SETTINGS.EMPLOYEE_TYPES_MANAGE },
-      { title: "Department Management", route: "/settings/departments", permission: PERMISSIONS.SETTINGS.MANAGE },
+      {
+        title: "Designation Management",
+        route: "/settings/position-management",
+        permission: PERMISSIONS.SETTINGS.POSITION_VIEW,
+      },
+      {
+        title: "Role Management",
+        route: "/settings/employee-types",
+        permission: PERMISSIONS.SETTINGS.ROLE_VIEW,
+      },
+      {
+        title: "Department Management",
+        route: "/settings/departments",
+        permission: PERMISSIONS.SETTINGS.DEPARTMENT_VIEW,
+      },
     ],
   },
   {
@@ -213,13 +267,22 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
   {
     name: "Settings",
     icon: Settings,
-    permission: PERMISSIONS.SETTINGS.PROFILE,
+    permission: [
+      PERMISSIONS.SETTINGS.PROFILE,
+      PERMISSIONS.TASK.MY,
+      PERMISSIONS.REPORT.SUBMIT,
+      PERMISSIONS.REPORT.VIEW_OWN,
+    ],
     children: [
       { title: "My profile", route: "/settings/profile", permission: PERMISSIONS.SETTINGS.PROFILE },
       { title: "My Attendance", route: "/attendance/my-attendance", permission: PERMISSIONS.ATTENDANCE.MY },
-      { title: "Leave Request", route: "/leave-request/leave-request", permission: PERMISSIONS.LEAVE.REQUEST },
+      { title: "Leave Request", route: "/leave-request/leave-request", permission: [PERMISSIONS.LEAVE.REQUEST, PERMISSIONS.LEAVE.VIEW_OWN] },
       { title: "Payslip & Documents", route: "/payslip/payslip-lists", permission: PERMISSIONS.PAYSLIP.VIEW },
-      { title: "My Tasks", route: "/task-management/user-task", permission: [PERMISSIONS.TASK.MY, PERMISSIONS.REPORT.SUBMIT] },
+      {
+        title: "My Tasks",
+        route: "/task-management/user-task",
+        permission: [PERMISSIONS.TASK.MY, PERMISSIONS.REPORT.SUBMIT, PERMISSIONS.REPORT.VIEW_OWN],
+      },
       { title: "Bot Settings", route: "/settings/bot-settings", permission: PERMISSIONS.SETTINGS.BOT },
     ],
   },

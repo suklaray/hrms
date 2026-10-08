@@ -14,9 +14,17 @@ function ViewEmployeeType() {
   const { id } = router.query;
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [canEditRole, setCanEditRole] = useState(false);
 
   useEffect(() => {
     if (!id) return;
+    fetch("/api/auth/me")
+      .then((response) => response.ok ? response.json() : null)
+      .then((authData) => {
+        const permissions: string[] = authData?.permissions || authData?.user?.permissions || [];
+        setCanEditRole(permissions.includes("settings.role_edit"));
+      })
+      .catch((error) => console.error("Failed to load role permissions:", error));
     fetch(`/api/settings/employee-types/${id}`)
       .then((r) => {
         if (r.status === 403) { router.replace('/dashboard'); return null; }
@@ -63,12 +71,12 @@ function ViewEmployeeType() {
               >
                 <ArrowLeft size={18} /> Back
               </button>
-              <button
+              {canEditRole && <button
                 onClick={() => router.push(`/settings/employee-types/${id}/edit`)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition cursor-pointer"
               >
                 <Edit size={16} /> Edit
-              </button>
+              </button>}
             </div>
 
             {/* Basic Info */}

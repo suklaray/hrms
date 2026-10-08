@@ -1,28 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import jwt from 'jsonwebtoken';
-import { checkPermission } from "@/lib/rbac";
+import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-async function checkManageAccess(req: NextRequest) {
-  const token = req.cookies.get('token')?.value;
-  if (!token) {
-    return { error: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
-  }
+export async function GET(req: NextRequest) {
+  const { error } = await checkAuth(req, [
+    PERMISSION_KEYS.LEAVE_REQUEST,
+    PERMISSION_KEYS.LEAVE_VIEW_OWN,
+    PERMISSION_KEYS.LEAVE_VIEW,
+    PERMISSION_KEYS.LEAVE_VIEW_LEAVE_TYPES,
+    PERMISSION_KEYS.LEAVE_CREATE_TYPE,
+    PERMISSION_KEYS.LEAVE_EDIT_TYPE,
+    PERMISSION_KEYS.LEAVE_DELETE_TYPE,
+  ]);
+  if (error) return error;
 
-  try {
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_MANAGE_TYPES);
-    if (!hasAccess) {
-      return { error: NextResponse.json({ success: false, message: 'Access denied: insufficient permissions' }, { status: 403 }) };
-    }
-    return { decoded };
-  } catch {
-    return { error: NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 }) };
-  }
-}
-
-export async function GET() {
   try {
     const leaveTypes = await prisma.leave_types.findMany({
       orderBy: { id: 'asc' }
@@ -35,8 +27,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await checkManageAccess(req);
-  if (auth.error) return auth.error;
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.LEAVE_CREATE_TYPE]);
+  if (error) return error;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -62,8 +54,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const auth = await checkManageAccess(req);
-  if (auth.error) return auth.error;
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.LEAVE_EDIT_TYPE]);
+  if (error) return error;
 
   try {
     const body = await req.json().catch(() => ({}));
@@ -90,8 +82,8 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await checkManageAccess(req);
-  if (auth.error) return auth.error;
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.LEAVE_DELETE_TYPE]);
+  if (error) return error;
 
   try {
     const body = await req.json().catch(() => ({}));

@@ -21,7 +21,6 @@ function ForbiddenPage() {
 
   const handleLogout = async () => {
     void dispatch(logoutUser());
-    router.push("/login");
   };
 
   return (

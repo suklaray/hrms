@@ -26,6 +26,7 @@ import Link from "next/link";
 import { toast } from "react-toastify";
 import { swalConfirm } from "@/utils/confirmDialog";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 interface EmployeeRecord {
   aadhar_card?: string | null;
@@ -96,7 +97,11 @@ interface EmployeeData {
   [key: string]: unknown;
 }
 
-function ViewEmployee() {
+function ViewEmployee({
+  canRequestResubmission = false,
+}: {
+  canRequestResubmission?: boolean;
+}) {
   const router = useRouter();
   const { id } = router.query;
 
@@ -136,27 +141,37 @@ function ViewEmployee() {
 
   const role = currentUser?.role || "";
   const isSuperAdminUser = !!currentUser?.isSuperAdmin;
+  const canEditEmployee = hasPerm("employee.edit");
+  const canAssignRoles = hasPerm(PERMISSION_KEYS.RBAC_ROLE_ASSIGN);
+  const hasResubmissionPermission =
+    canRequestResubmission &&
+    hasPerm(PERMISSION_KEYS.COMPLIANCE_REQUEST_RESUBMISSION);
 
   useEffect(() => {
     const fetchEverything = async () => {
       try {
-        // Fetch roles from roles table
-        try {
-          const rolesRes = await axios.get("/api/settings/employee-types", { withCredentials: true });
-          const available = rolesRes.data?.assignableRoles || rolesRes.data?.roles || [];
-          setRolesList(available);
-        } catch (rErr: any) {
-          console.log("Could not fetch roles list:", rErr?.message);
-          setRolesList([]);
+        if (canAssignRoles) {
+          // Fetch roles from roles table
+          try {
+            const rolesRes = await axios.get("/api/settings/employee-types", { withCredentials: true });
+            const available = rolesRes.data?.assignableRoles || rolesRes.data?.roles || [];
+            setRolesList(available);
+          } catch (rErr: any) {
+            console.log("Could not fetch roles list:", rErr?.message);
+            setRolesList([]);
+          }
+
         }
 
-        // Fetch positions
-        try {
-          const posRes = await axios.get("/api/settings/positions");
-          setPositions(posRes.data);
-        } catch (posError: any) {
-          console.log("Could not fetch positions:", posError?.message);
-          setPositions([]);
+        if (canEditEmployee) {
+          // Fetch positions
+          try {
+            const posRes = await axios.get("/api/settings/positions?purpose=employee-edit");
+            setPositions(posRes.data);
+          } catch (posError: any) {
+            console.log("Could not fetch positions:", posError?.message);
+            setPositions([]);
+          }
         }
 
         if (id) {
@@ -173,7 +188,7 @@ function ViewEmployee() {
     };
 
     fetchEverything();
-  }, [id]);
+  }, [id, canAssignRoles, canEditEmployee]);
 
   if (loading) {
     return (
@@ -791,7 +806,7 @@ function ViewEmployee() {
                         </div>
                         <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
                           <div>{user?.position || "N/A"}</div>
-                          {hasPerm("employee.edit") && (
+                          {canEditEmployee && (
                             <div className="mt-1.5 flex items-center gap-1.5">
                               <select
                                 value={position}
@@ -823,7 +838,7 @@ function ViewEmployee() {
                         </div>
                         <div className="flex-1 px-3 py-2 text-[12px] text-[#222]">
                           <div className="capitalize">{user?.employee_type || "N/A"}</div>
-                          {hasPerm("employee.edit") && (
+                          {canAssignRoles && (
                             <select
                               value={user?.employee_type || ""}
                               onChange={(e) => handleEmployeeTypeChange(e.target.value)}
@@ -1066,6 +1081,7 @@ function ViewEmployee() {
                               empid={empid}
                               onResubmit={handleResubmitDocument}
                               onRequestResubmission={handleRequestResubmission}
+                              canRequestResubmission={hasResubmissionPermission}
                               isResubmitting={resubmitStates.checkbook_document}
                               userRole={role}
                               resubmitStates={resubmitStates}
@@ -1124,6 +1140,7 @@ function ViewEmployee() {
                                 empid={empid}
                                 onResubmit={handleResubmitDocument}
                                 onRequestResubmission={handleRequestResubmission}
+                                canRequestResubmission={hasResubmissionPermission}
                                 isResubmitting={resubmitStates.aadhar_card}
                                 userRole={role}
                                 resubmitStates={resubmitStates}
@@ -1148,6 +1165,7 @@ function ViewEmployee() {
                                 empid={empid}
                                 onResubmit={handleResubmitDocument}
                                 onRequestResubmission={handleRequestResubmission}
+                                canRequestResubmission={hasResubmissionPermission}
                                 isResubmitting={resubmitStates.pan_card}
                                 userRole={role}
                                 resubmitStates={resubmitStates}
@@ -1172,6 +1190,7 @@ function ViewEmployee() {
                                 empid={empid}
                                 onResubmit={handleResubmitDocument}
                                 onRequestResubmission={handleRequestResubmission}
+                                canRequestResubmission={hasResubmissionPermission}
                                 isResubmitting={resubmitStates.resume}
                                 userRole={role}
                                 resubmitStates={resubmitStates}
@@ -1196,6 +1215,7 @@ function ViewEmployee() {
                                 empid={empid}
                                 onResubmit={handleResubmitDocument}
                                 onRequestResubmission={handleRequestResubmission}
+                                canRequestResubmission={hasResubmissionPermission}
                                 isResubmitting={resubmitStates.experience_certificate}
                                 userRole={role}
                                 resubmitStates={resubmitStates}
@@ -1255,6 +1275,7 @@ function ViewEmployee() {
                                 empid={empid}
                                 onResubmit={handleResubmitDocument}
                                 onRequestResubmission={handleRequestResubmission}
+                                canRequestResubmission={hasResubmissionPermission}
                                 isResubmitting={resubmitStates.education_certificates}
                                 userRole={role}
                                 resubmitStates={resubmitStates}
@@ -1296,14 +1317,16 @@ function ViewEmployee() {
                             <span className="text-[11px] font-medium text-[#555]">
                               Password Management
                             </span>
-                            <button
-                              onClick={handlePasswordReset}
-                              disabled={isResetting}
-                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-[11px] font-medium rounded transition-colors cursor-pointer"
-                            >
-                              <RefreshCw size={12} className={isResetting ? "animate-spin" : ""} />
-                              <span>{isResetting ? "Resetting..." : "Reset Password"}</span>
-                            </button>
+                            {hasPerm("employee.reset_password") && (
+                              <button
+                                onClick={handlePasswordReset}
+                                disabled={isResetting}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-[11px] font-medium rounded transition-colors cursor-pointer"
+                              >
+                                <RefreshCw size={12} className={isResetting ? "animate-spin" : ""} />
+                                <span>{isResetting ? "Resetting..." : "Reset Password"}</span>
+                              </button>
+                            )}
                           </div>
 
                           {newPassword && (
@@ -1334,14 +1357,16 @@ function ViewEmployee() {
                                   <Copy size={12} />
                                   <span>Copy</span>
                                 </button>
-                                <button
-                                  onClick={handleSendCredentials}
-                                  disabled={isSending}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
-                                >
-                                  <Mail size={12} />
-                                  <span>{isSending ? "Sending..." : "Send Credentials"}</span>
-                                </button>
+                                {hasPerm("employee.send_credentials") && (
+                                  <button
+                                    onClick={handleSendCredentials}
+                                    disabled={isSending}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded text-[11px] font-medium transition-colors cursor-pointer"
+                                  >
+                                    <Mail size={12} />
+                                    <span>{isSending ? "Sending..." : "Send Credentials"}</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           )}
@@ -1366,6 +1391,7 @@ function FileDetail({
   empid,
   onResubmit,
   onRequestResubmission,
+  canRequestResubmission,
   isResubmitting,
   userRole,
   resubmitStates,
@@ -1378,6 +1404,7 @@ function FileDetail({
   empid?: string;
   onResubmit: (documentType: string, file: File) => void;
   onRequestResubmission: (documentType: string, reason: string) => void;
+  canRequestResubmission?: boolean;
   isResubmitting?: boolean | string;
   userRole?: string;
   resubmitStates?: Record<string, boolean | string>;
@@ -1418,7 +1445,6 @@ function FileDetail({
   };
 
   const isEmployee = userRole?.toLowerCase() === "employee";
-  const isAdminHR = userRole ? userRole.toLowerCase() !== "employee" : false;
   const canInteract = empid && documentType && onResubmit;
 
   return (
@@ -1439,7 +1465,7 @@ function FileDetail({
         <span className="text-[#888] text-[11px] italic">Not uploaded</span>
       )}
 
-      {canInteract && isEmployee && (
+      {canInteract && isEmployee && canRequestResubmission && (
         !showResubmit ? (
           <button
             onClick={() => setShowResubmit(true)}
@@ -1477,7 +1503,7 @@ function FileDetail({
         )
       )}
 
-      {canInteract && isAdminHR && (
+      {canInteract && canRequestResubmission && (
         <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
           <input
             type="text"
@@ -1517,10 +1543,14 @@ function FileDetail({
   );
 }
 
-export default function ClientPageWrapper(props: any) {
+export default function ClientPageWrapper({
+  canRequestResubmission = false,
+}: {
+  canRequestResubmission?: boolean;
+}) {
   return (
     <Suspense fallback={null}>
-      <ViewEmployee {...props} />
+      <ViewEmployee canRequestResubmission={canRequestResubmission} />
     </Suspense>
   );
 }

@@ -1,31 +1,40 @@
 import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import jwt from 'jsonwebtoken';
-import type { DecodedToken } from "@/lib/jwtTypes";
-import { checkPermission } from "@/lib/rbac";
+import { checkAuth } from "@/lib/apiAuth";
+import { isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
+  const auth = await checkAuth(req);
+  if (auth.error) return auth.error;
+  if (!auth.user) {
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+  }
+
   const body = (await getRequestBody(req)) || {};
+  const { type_name, max_days, paid } = body;
+  if (!type_name || !max_days) {
+    return NextResponse.json({ message: "Type name and max days are required" }, { status: 400 });
+  }
 
   try {
-    const token = req.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_MANAGE_TYPES);
-    if (!hasAccess) {
-      return NextResponse.json({ message: 'Access denied: insufficient permissions' }, { status: 403 });
-    }
-
-    const { type_name, max_days, paid } = body;
-
     const existingLeaveType = await prisma.leave_types.findFirst({
       where: { type_name },
     });
+
+    const requiredPermission = existingLeaveType
+      ? PERMISSION_KEYS.LEAVE_EDIT_TYPE
+      : PERMISSION_KEYS.LEAVE_CREATE_TYPE;
+    if (
+      !isSuperAdmin(auth.user) &&
+      !auth.permissions?.has(requiredPermission)
+    ) {
+      return NextResponse.json(
+        { message: "Forbidden: insufficient permissions" },
+        { status: 403 }
+      );
+    }
 
     if (existingLeaveType) {
       await prisma.leave_types.update({
@@ -51,5 +60,3 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     return NextResponse.json({ message: 'Database error' }, { status: 500 });
   }
 }
-
-

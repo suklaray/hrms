@@ -15,7 +15,11 @@ async function getServerSideProps({ req }) {
   if (!user) return { redirect: { destination: '/login', permanent: false } };
   const hasAccess = await checkPermission(user, PERMISSION_KEYS.COMPLIANCE_VIEW);
   if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
-  return { props: {} };
+  const canViewDocuments = await checkPermission(
+    user,
+    PERMISSION_KEYS.COMPLIANCE_VIEW_DOCUMENTS
+  );
+  return { props: { canViewDocuments } };
 }
 
 export default async function Page(props: {

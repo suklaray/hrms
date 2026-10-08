@@ -1,12 +1,8 @@
-import { getRequestBody } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
-import jwt from 'jsonwebtoken';
-import { DecodedToken } from "@/lib/jwtTypes";
-
-import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { checkBotPermission } from "@/lib/botAuth";
 
 const uploadDir = path.join(process.cwd(), 'hr-assistant-data');
 
@@ -16,19 +12,11 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 export async function POST(req: NextRequest, context?: { params?: Promise<any> }) {
-  const body = (await getRequestBody(req)) || {};
+  const auth = await checkBotPermission(req, PERMISSION_KEYS.SETTINGS_BOT_UPLOAD);
+  if (auth.error) return auth.error;
 
   try {
-    const token = req.cookies.get('token')?.value || req.cookies.get('employeeToken')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = jwt.verify(token, process.env.JWT_SECRET as string) as DecodedToken;
-    const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_BOT);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Access denied: insufficient permissions' }, { status: 403 });
-    }
+    const body = await req.json();
 
     const { filename, content } = body;
 
@@ -46,7 +34,7 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
       description: '',
       size: Buffer.byteLength(content, 'utf8'),
       uploadedAt: new Date().toISOString(),
-      uploadedBy: user.empid || user.id,
+      uploadedBy: auth.user.empid || auth.user.id,
     };
 
     const metadataPath = path.join(uploadDir, `${filename}.meta.json`);
@@ -62,5 +50,4 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     return NextResponse.json({ error: 'Save failed' }, { status: 500 });
   }
 }
-
 

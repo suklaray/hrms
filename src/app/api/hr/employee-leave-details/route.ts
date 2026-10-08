@@ -1,11 +1,29 @@
 import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
-  const query = await getQueryParams(req, context?.params);
+  const view = req.nextUrl.searchParams.get("view");
+  const requiredPermission =
+    view === "history"
+      ? PERMISSION_KEYS.LEAVE_VIEW_HISTORY
+      : view === "pending"
+        ? PERMISSION_KEYS.LEAVE_VIEW_PENDING
+        : null;
 
-  
+  if (!requiredPermission) {
+    return NextResponse.json(
+      { success: false, message: "Invalid leave details view" },
+      { status: 400 }
+    );
+  }
+
+  const { error } = await checkAuth(req, [requiredPermission]);
+  if (error) return error;
+
+  const query = await getQueryParams(req, context?.params);
 
   const { empid } = query;
 
@@ -30,7 +48,10 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     // Get all leave requests for this employee
     const leaveHistory = await prisma.leave_requests.findMany({
-      where: { empid: empid },
+      where: {
+        empid: empid,
+        ...(view === "pending" ? { status: "Pending" } : {}),
+      },
       orderBy: { id: 'desc' },
       select: {
         id: true,
@@ -56,4 +77,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ success: false, message: 'Internal server error' }, { status: 500 });
   }
 }
-

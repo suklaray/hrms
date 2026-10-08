@@ -15,7 +15,15 @@ async function getServerSideProps({ req }) {
   if (!user) return { redirect: { destination: '/login', permanent: false } };
   const hasAccess = await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_MY);
   if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
-  return { props: {} };
+  const canRequestRegularization = await checkPermission(
+    user,
+    PERMISSION_KEYS.ATTENDANCE_REGULARIZE
+  );
+  const canDownloadHolidays = await checkPermission(
+    user,
+    PERMISSION_KEYS.CALENDAR_DOWNLOAD_HOLIDAYS
+  );
+  return { props: { canRequestRegularization, canDownloadHolidays } };
 }
 
 export default async function Page(props: {

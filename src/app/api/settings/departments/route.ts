@@ -1,38 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
+import { isSuperAdmin } from "@/rbac/service";
 import { PERMISSIONS } from "@/rbac/permissions";
-
-const ALLOWED_ROLES = ["admin", "hr", "superadmin"];
 
 interface DepartmentBody {
   name?: string;
   description?: string | null;
 }
 
-async function verifyDepartmentAccess(request: NextRequest) {
-  const auth = await checkAuth(request, [PERMISSIONS.SETTINGS.MANAGE]);
-  if (auth.user) {
-    if (auth.error) {
-      if (ALLOWED_ROLES.includes(auth.user.role)) {
-        return { user: auth.user, error: null };
-      }
-      return { user: null, error: auth.error };
-    }
-    return { user: auth.user, error: null };
-  }
-  return { user: null, error: auth.error || NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+async function verifyDepartmentAccess(request: NextRequest, permission: string) {
+  const auth = await checkAuth(request, permission);
+  return { user: auth.user ?? null, error: auth.error ?? null };
 }
 
 export async function GET(request: NextRequest) {
-  const { user, error } = await verifyDepartmentAccess(request);
-  if (error) return error;
+  const auth = await checkAuth(request, PERMISSIONS.SETTINGS.DEPARTMENT_VIEW);
+  if (auth.error) return auth.error;
 
   try {
+    const canViewPositions =
+      isSuperAdmin(auth.user) ||
+      (auth.permissions?.has(PERMISSIONS.SETTINGS.POSITION_VIEW) ?? false);
     const departments = await prisma.departments.findMany({
-      include: {
-        positions: true,
-      },
+      include: { positions: canViewPositions },
       orderBy: {
         created_at: "desc",
       },
@@ -50,7 +41,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { user, error } = await verifyDepartmentAccess(request);
+  const { user, error } = await verifyDepartmentAccess(request, PERMISSIONS.SETTINGS.DEPARTMENT_CREATE);
   if (error || !user) return error || NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -93,7 +84,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  const { user, error } = await verifyDepartmentAccess(request);
+  const { user, error } = await verifyDepartmentAccess(request, PERMISSIONS.SETTINGS.DEPARTMENT_EDIT);
   if (error || !user) return error || NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -153,8 +144,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const { user, error } = await verifyDepartmentAccess(request);
-  if (error || !user) return error || NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { error } = await verifyDepartmentAccess(request, PERMISSIONS.SETTINGS.DEPARTMENT_DELETE);
+  if (error) return error;
 
   try {
     const { searchParams } = new URL(request.url);

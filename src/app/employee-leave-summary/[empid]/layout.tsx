@@ -1,24 +1,23 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Client from "./client";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "Add Job Description - HRMS",
-};
-
-export default async function AddJobDescriptionPage() {
+export default async function EmployeeLeaveSummaryLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const cookieStore = await cookies();
   const user = getUserFromToken(cookieStore.get("token")?.value || "");
 
   if (!user) redirect("/login");
-  if (!(await checkPermission(user, PERMISSION_KEYS.JD_CREATE))) redirect("/403");
+  if (!(await checkPermission(user, PERMISSION_KEYS.LEAVE_VIEW_HISTORY))) {
+    redirect("/403");
+  }
 
-  const canPublish = await checkPermission(user, PERMISSION_KEYS.JD_PUBLISH);
-
-  return <Client canPublish={canPublish} />;
+  return children;
 }

@@ -2,15 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import SideBar from "@/Components/SideBar";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Clock, AlertCircle } from "lucide-react";
 import MultiSelect from "@/Components/MultiSelect";
-
-interface Department {
-  id: number | string;
-  name: string;
-}
 
 interface HRUser {
   empid: string;
@@ -18,40 +13,43 @@ interface HRUser {
   role?: string;
 }
 
-interface JobForm {
+interface JobDescription {
+  id?: number;
   title: string;
   department: string;
   employment_type: string;
   work_mode: string;
   location: string;
-  openings: string;
+  openings: number | string;
   experience: string;
   education: string;
   required_skills: string[];
   preferred_skills: string[];
   responsibilities: string;
   summary: string;
-  salary_min: string;
-  salary_max: string;
-  benefits: string;
+  salary_min?: string;
+  salary_max?: string;
+  benefits?: string;
   deadline: string;
-  hiring_manager: string;
-  interview_process: string;
-  keywords: string;
+  hiring_manager?: string;
+  interview_process?: string;
+  keywords?: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
 }
 
-interface LabelProps {
+function Label({
+  children,
+  required,
+}: {
   children: React.ReactNode;
   required?: boolean;
-}
-
-function Label({ children, required }: LabelProps) {
+}) {
   return (
     <label className="block text-sm font-semibold text-gray-700 mb-1.5">
       {children}
-      {required && (
-        <span className="text-red-500 ml-0.5">*</span>
-      )}
+      {required && <span className="text-red-500 ml-0.5">*</span>}
     </label>
   );
 }
@@ -67,12 +65,10 @@ function Input(
   );
 }
 
-interface SelectProps
-  extends React.SelectHTMLAttributes<HTMLSelectElement> {
-  children: React.ReactNode;
-}
-
-function Select({ children, ...props }: SelectProps) {
+function Select({
+  children,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <div className="relative">
       <select
@@ -87,15 +83,10 @@ function Select({ children, ...props }: SelectProps) {
   );
 }
 
-interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-  rows?: number;
-}
-
 function Textarea({
   rows = 4,
   ...props
-}: TextareaProps) {
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
       rows={rows}
@@ -105,28 +96,22 @@ function Textarea({
   );
 }
 
-interface SectionCardProps {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}
-
 function SectionCard({
   title,
   subtitle,
   children,
-}: SectionCardProps) {
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-5">
       <div className="mb-5 pb-4 border-b border-gray-100">
-        <h2 className="text-base font-bold text-gray-800">
-          {title}
-        </h2>
+        <h2 className="text-base font-bold text-gray-800">{title}</h2>
 
         {subtitle && (
-          <p className="text-xs text-gray-400 mt-0.5">
-            {subtitle}
-          </p>
+          <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
         )}
       </div>
 
@@ -135,138 +120,147 @@ function SectionCard({
   );
 }
 
-export default function AddJobDescription({
+export default function EditJobDescriptionClient({
   canPublish,
 }: {
   canPublish: boolean;
 }) {
-  const router = useRouter();
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  const [form, setForm] = useState<JobForm>({
-    title: "",
-    department: "",
-    employment_type: "",
-    work_mode: "",
-    location: "",
-    openings: "",
-    experience: "",
-    education: "",
-    required_skills: [],
-    preferred_skills: [],
-    responsibilities: "",
-    summary: "",
-    salary_min: "",
-    salary_max: "",
-    benefits: "",
-    deadline: "",
-    hiring_manager: "",
-    interview_process: "",
-    keywords: "",
-  });
-
+  const [form, setForm] = useState<JobDescription | null>(null);
+  const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  const [departments, setDepartments] = useState<
-    Department[]
-  >([]);
-
-  const [hrUsers, setHrUsers] = useState<HRUser[]>(
-    []
-  );
-
+  const [saved, setSaved] = useState(false);
+  const [hrUsers, setHrUsers] = useState<HRUser[]>([]);
   const [userRole, setUserRole] = useState("");
 
-  const set =
-    (field: keyof JobForm) =>
-    (
-      e: React.ChangeEvent<
-        HTMLInputElement |
-          HTMLSelectElement |
-          HTMLTextAreaElement
-      >
-    ) => {
-      setForm((f) => ({
-        ...f,
-        [field]: e.target.value,
-      }));
-    };
-
-  const submit = async (status: string) => {
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await fetch(
-        "/api/recruitment/job-description",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...form,
-            status,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(
-          data.message ||
-            data.error ||
-            "Failed to create job description."
-        );
-        return;
-      }
-
-      router.push("/Recruitment/job-description");
-    } catch {
-      setError(
-        "Something went wrong. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => r.json())
-      .then((data) =>
-        setUserRole(
-          data.user?.role?.toLowerCase() || ""
-        )
-      )
-      .catch(() => {});
+    document.title = "Edit Job Description - HRMS";
 
-    fetch("/api/settings/departments")
-      .then((r) => r.json())
+    fetch("/api/auth/me")
+      .then((response) => response.json())
       .then((data) =>
-        setDepartments(
-          Array.isArray(data) ? data : []
-        )
-      )
-      .catch(() => setDepartments([]));
+        setUserRole(data.user?.role?.toLowerCase() || "")
+      );
+
+    if (!id || !/^\d+$/.test(id)) return;
+
+    fetch(`/api/recruitment/job-description/${id}`)
+      .then((response) => response.json())
+      .then((data: JobDescription) => {
+        setForm({
+          ...data,
+          deadline: data.deadline
+            ? new Date(data.deadline).toISOString().split("T")[0]
+            : "",
+        });
+
+        setFetching(false);
+      })
+      .catch(() => {
+        setError("Failed to load job description.");
+        setFetching(false);
+      });
 
     fetch("/api/hr/users")
-      .then((r) => r.json())
+      .then((response) => response.json())
       .then((data) => {
-        const users = Array.isArray(data?.users)
+        const users: HRUser[] = Array.isArray(data?.users)
           ? data.users
           : [];
 
         setHrUsers(
           users.filter(
-            (user: HRUser) =>
-              user.role?.toLowerCase() === "hr"
+            (user) => user.role?.toLowerCase() === "hr"
           )
         );
-      })
-      .catch(() => setHrUsers([]));
-  }, []);
+      });
+  }, [id]);
+
+  const set =
+    (field: keyof JobDescription) =>
+    (
+      event: React.ChangeEvent<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >
+    ) => {
+      setForm((current) =>
+        current
+          ? {
+              ...current,
+              [field]: event.target.value,
+            }
+          : current
+      );
+
+      setSaved(false);
+    };
+
+  const handleUpdate = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+
+    if (!form) return;
+
+    setError("");
+    setSaved(false);
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/recruitment/job-description/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(form),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message);
+        return;
+      }
+
+      setSaved(true);
+    } catch {
+      setError("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (fetching) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <SideBar />
+
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-gray-400 text-sm">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!form) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <SideBar />
+
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-red-500 text-sm">
+            {error || "Job not found."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -299,41 +293,85 @@ export default function AddJobDescription({
               <span>/</span>
 
               <span className="text-gray-600 font-medium">
-                Add Job
+                Edit Job
               </span>
             </nav>
 
             <h1 className="text-xl font-bold text-gray-900">
-              Add Job Description
+              Edit Job Description
             </h1>
 
             <p className="text-sm text-gray-400 mt-0.5">
-              Create a new job description for
-              recruitment.
+              Update and manage this job description.
             </p>
           </div>
         </header>
 
         <main className="flex-1 overflow-auto p-8">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+
+              <div>
+                <p className="text-sm font-semibold text-amber-800">
+                  You are editing a live job description
+                </p>
+
+                <p className="text-xs text-amber-600 mt-0.5">
+                  Changes will reflect immediately if status is Published.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-xs text-amber-600">
+              <Clock className="w-3.5 h-3.5" />
+              Last updated:{" "}
+              {new Date(form.updated_at).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            </div>
+          </div>
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-5 py-3 mb-5">
               {error}
             </div>
           )}
 
-          <form
-            onSubmit={(e) => e.preventDefault()}
-          >
+          {saved && (
+            <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 mb-6 flex items-center gap-3">
+              <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                <svg
+                  className="w-3 h-3 text-white"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+
+              <p className="text-sm font-semibold text-green-800">
+                Job description updated successfully.
+              </p>
+            </div>
+          )}
+
+          <form onSubmit={handleUpdate}>
             <SectionCard
               title="Basic Information"
               subtitle="General details about the job position"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="md:col-span-2">
-                  <Label required>
-                    Job Title
-                  </Label>
-
+                  <Label required>Job Title</Label>
                   <Input
                     placeholder="e.g. Senior Frontend Developer"
                     value={form.title}
@@ -342,34 +380,16 @@ export default function AddJobDescription({
                 </div>
 
                 <div>
-                  <Label required>
-                    Department
-                  </Label>
-
-                  <Select
+                  <Label required>Department</Label>
+                  <Input
+                    placeholder="e.g. Engineering"
                     value={form.department}
                     onChange={set("department")}
-                  >
-                    <option value="">
-                      Select department
-                    </option>
-
-                    {departments.map((d) => (
-                      <option
-                        key={d.id}
-                        value={d.name}
-                      >
-                        {d.name}
-                      </option>
-                    ))}
-                  </Select>
+                  />
                 </div>
 
                 <div>
-                  <Label required>
-                    Employment Type
-                  </Label>
-
+                  <Label required>Employment Type</Label>
                   <Select
                     value={form.employment_type}
                     onChange={set("employment_type")}
@@ -385,17 +405,12 @@ export default function AddJobDescription({
                 </div>
 
                 <div>
-                  <Label required>
-                    Work Mode
-                  </Label>
-
+                  <Label required>Work Mode</Label>
                   <Select
                     value={form.work_mode}
                     onChange={set("work_mode")}
                   >
-                    <option value="">
-                      Select work mode
-                    </option>
+                    <option value="">Select work mode</option>
                     <option>On-site</option>
                     <option>Remote</option>
                     <option>Hybrid</option>
@@ -403,10 +418,7 @@ export default function AddJobDescription({
                 </div>
 
                 <div>
-                  <Label required>
-                    Job Location
-                  </Label>
-
+                  <Label required>Job Location</Label>
                   <Input
                     placeholder="e.g. Bangalore, India"
                     value={form.location}
@@ -415,10 +427,7 @@ export default function AddJobDescription({
                 </div>
 
                 <div>
-                  <Label required>
-                    Number of Openings
-                  </Label>
-
+                  <Label required>Number of Openings</Label>
                   <Input
                     type="number"
                     min="1"
@@ -436,10 +445,7 @@ export default function AddJobDescription({
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label required>
-                    Experience Required
-                  </Label>
-
+                  <Label required>Experience Required</Label>
                   <Input
                     placeholder="e.g. 3-5 Years"
                     value={form.experience}
@@ -451,7 +457,6 @@ export default function AddJobDescription({
                   <Label required>
                     Educational Qualification
                   </Label>
-
                   <Input
                     placeholder="e.g. B.Tech / B.E. in Computer Science"
                     value={form.education}
@@ -460,35 +465,43 @@ export default function AddJobDescription({
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label required>
-                    Required Skills
-                  </Label>
+                  <Label required>Required Skills</Label>
 
                   <MultiSelect
-                    selected={form.required_skills}
-                    onChange={(v: string[]) =>
-                      setForm((f) => ({
-                        ...f,
-                        required_skills: v,
-                      }))
-                    }
+                    selected={form.required_skills || []}
+                    onChange={(value: string[]) => {
+                      setForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              required_skills: value,
+                            }
+                          : current
+                      );
+
+                      setSaved(false);
+                    }}
                     placeholder="Search and select required skills..."
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label>
-                    Preferred Skills
-                  </Label>
+                  <Label>Preferred Skills</Label>
 
                   <MultiSelect
-                    selected={form.preferred_skills}
-                    onChange={(v: string[]) =>
-                      setForm((f) => ({
-                        ...f,
-                        preferred_skills: v,
-                      }))
-                    }
+                    selected={form.preferred_skills || []}
+                    onChange={(value: string[]) => {
+                      setForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              preferred_skills: value,
+                            }
+                          : current
+                      );
+
+                      setSaved(false);
+                    }}
                     placeholder="Search and select preferred skills..."
                   />
                 </div>
@@ -501,9 +514,7 @@ export default function AddJobDescription({
             >
               <div className="space-y-5">
                 <div>
-                  <Label required>
-                    Job Responsibilities
-                  </Label>
+                  <Label required>Job Responsibilities</Label>
 
                   <Textarea
                     rows={5}
@@ -514,9 +525,7 @@ export default function AddJobDescription({
                 </div>
 
                 <div>
-                  <Label required>
-                    Job Summary
-                  </Label>
+                  <Label required>Job Summary</Label>
 
                   <Textarea
                     rows={4}
@@ -534,38 +543,32 @@ export default function AddJobDescription({
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label>
-                    Salary Range (Min)
-                  </Label>
+                  <Label>Salary Range (Min)</Label>
 
                   <Input
                     placeholder="e.g. ₹8,00,000"
-                    value={form.salary_min}
+                    value={form.salary_min || ""}
                     onChange={set("salary_min")}
                   />
                 </div>
 
                 <div>
-                  <Label>
-                    Salary Range (Max)
-                  </Label>
+                  <Label>Salary Range (Max)</Label>
 
                   <Input
                     placeholder="e.g. ₹14,00,000"
-                    value={form.salary_max}
+                    value={form.salary_max || ""}
                     onChange={set("salary_max")}
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label>
-                    Benefits & Perks
-                  </Label>
+                  <Label>Benefits & Perks</Label>
 
                   <Textarea
                     rows={3}
                     placeholder="e.g. Health insurance, flexible hours..."
-                    value={form.benefits}
+                    value={form.benefits || ""}
                     onChange={set("benefits")}
                   />
                 </div>
@@ -578,34 +581,36 @@ export default function AddJobDescription({
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <Label required>
-                    Application Deadline
-                  </Label>
+                  <Label required>Application Deadline</Label>
 
                   <Input
                     type="date"
                     value={form.deadline}
                     onChange={set("deadline")}
-                    min={
-                      new Date()
-                        .toISOString()
-                        .split("T")[0]
-                    }
+                    min={new Date().toISOString().split("T")[0]}
                   />
                 </div>
 
                 <div>
-                  <Label required>
-                    Hiring Manager
-                  </Label>
+                  <Label required>Hiring Manager</Label>
 
                   <Select
-                    value={form.hiring_manager}
+                    value={form.hiring_manager || ""}
                     onChange={set("hiring_manager")}
                   >
                     <option value="">
                       Select HR hiring manager
                     </option>
+
+                    {form.hiring_manager &&
+                      !hrUsers.some(
+                        (user) =>
+                          user.name === form.hiring_manager
+                      ) && (
+                        <option value={form.hiring_manager}>
+                          {form.hiring_manager}
+                        </option>
+                      )}
 
                     {hrUsers.map((user) => (
                       <option
@@ -619,67 +624,74 @@ export default function AddJobDescription({
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label>
-                    Interview Process
-                  </Label>
+                  <Label>Interview Process</Label>
 
                   <Textarea
                     rows={3}
-                    placeholder="e.g. Round 1: HR Screening, Round 2: Technical..."
-                    value={form.interview_process}
-                    onChange={set(
-                      "interview_process"
-                    )}
+                    placeholder="e.g. Round 1: HR Screening..."
+                    value={form.interview_process || ""}
+                    onChange={set("interview_process")}
                   />
                 </div>
 
                 <div>
-                  <Label>
-                    Keywords / Tags
-                  </Label>
+                  <Label>Keywords / Tags</Label>
 
                   <Input
                     placeholder="e.g. react, frontend, remote"
-                    value={form.keywords}
+                    value={form.keywords || ""}
                     onChange={set("keywords")}
                   />
+                </div>
+
+                <div>
+                  <Label required>Job Status</Label>
+
+                  <Select
+                    value={form.status}
+                    onChange={set("status")}
+                  >
+                    <option value="Draft">Draft</option>
+                    {(canPublish || form.status.toLowerCase() === "published") && (
+                      <option value="Published">Published</option>
+                    )}
+                  </Select>
                 </div>
               </div>
             </SectionCard>
 
-            <div className="flex items-center justify-end gap-3 pt-2 pb-6">
-              <Link href="/Recruitment/job-description">
-                <button
-                  type="button"
-                  className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer shadow-sm"
-                >
-                  Cancel
-                </button>
-              </Link>
+            <div className="flex items-center justify-between pt-2 pb-6">
+              <p className="text-xs text-gray-400">
+                Created:{" "}
+                {new Date(form.created_at).toLocaleDateString(
+                  "en-IN",
+                  {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  }
+                )}{" "}
+                &nbsp;·&nbsp; Job ID: #{id}
+              </p>
 
-              <button
-                type="button"
-                onClick={() => submit("Draft")}
-                disabled={loading}
-                className="px-5 py-2.5 text-sm font-medium text-indigo-600 bg-white border border-indigo-300 rounded-xl hover:bg-indigo-50 transition-colors cursor-pointer shadow-sm disabled:opacity-50"
-              >
-                {loading
-                  ? "Saving..."
-                  : "Save Draft"}
-              </button>
+              <div className="flex items-center gap-3">
+                <Link href="/Recruitment/job-description">
+                  <button
+                    type="button"
+                    className="px-5 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer shadow-sm"
+                  >
+                    Cancel
+                  </button>
+                </Link>
 
-              {canPublish && (
                 <button
-                  type="button"
-                  onClick={() => submit("Published")}
+                  type="submit"
                   disabled={loading}
                   className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50"
                 >
-                  {loading
-                    ? "Publishing..."
-                    : "Publish Job"}
+                  {loading ? "Saving..." : "Update Job"}
                 </button>
-              )}
+              </div>
             </div>
           </form>
         </main>

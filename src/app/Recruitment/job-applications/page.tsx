@@ -20,10 +20,11 @@ export default async function JobApplicationsPage() {
     redirect("/login");
   }
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.RECRUITMENT_APPLICATIONS_VIEW);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.JOB_APPLICATION_VIEW);
   if (!hasAccess) {
     redirect("/403");
   }
 
-  return <Client />;
+  const permissions = await getUserPermissions(user);
+  return <Client permissions={Array.from(permissions)} />;
 }

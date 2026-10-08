@@ -14,12 +14,13 @@ async function getServerSideProps({ req }) {
   const user = getUserFromToken(token);
   if (!user) return { redirect: { destination: '/login', permanent: false } };
 
-  const [canViewTasks, canSubmitReport] = await Promise.all([
+  const [canViewTasks, canSubmitReport, canViewReportHistory] = await Promise.all([
     checkPermission(user, PERMISSION_KEYS.TASK_MY),
     checkPermission(user, PERMISSION_KEYS.REPORT_SUBMIT),
+    checkPermission(user, PERMISSION_KEYS.REPORT_VIEW_OWN),
   ]);
 
-  if (!canViewTasks && !canSubmitReport) {
+  if (!canViewTasks && !canSubmitReport && !canViewReportHistory) {
     return { redirect: { destination: '/403', permanent: false } };
   }
 
@@ -27,7 +28,8 @@ async function getServerSideProps({ req }) {
     props: {
       permissions: {
         tasks: canViewTasks,
-        report: canSubmitReport,
+        submitReport: canSubmitReport,
+        viewReportHistory: canViewReportHistory,
       },
     },
   };

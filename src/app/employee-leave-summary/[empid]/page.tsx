@@ -18,7 +18,7 @@ function EmployeeLeaveSummary() {
   const [showViewReasonModal, setShowViewReasonModal] = useState(false);
   useEffect(() => {
     if (empid) {
-      fetch(`/api/hr/employee-leave-details?empid=${empid}`)
+      fetch(`/api/hr/employee-leave-details?empid=${empid}&view=history`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import type { DecodedToken } from "@/lib/jwtTypes";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   try {
@@ -13,6 +15,11 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
     if (!decoded) {
       return NextResponse.json({ message: 'Invalid token' }, { status: 401 });
+    }
+    const canViewOwnLeave = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_VIEW_OWN);
+    const canRequestLeave = await checkPermission(decoded, PERMISSION_KEYS.LEAVE_REQUEST);
+    if (!canViewOwnLeave && !canRequestLeave) {
+      return NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 });
     }
 
     // Get all leave types
@@ -67,6 +74,5 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: 'Server error' }, { status: 500 });
   }
 }
-
 
 

@@ -79,6 +79,11 @@ function EmployeeDocumentForm() {
     return Array.isArray(pendingResubmissions) && pendingResubmissions.some(req => req.document_type === documentType);
   };
 
+  const isDocumentUploadDisabled = (
+    documentType: string,
+    field: keyof NonNullable<typeof existingData>
+  ) => Boolean(existingData?.[field]) && !isDocumentPendingResubmission(documentType);
+
   const getPendingResubmissionInfo = (documentType) => {
     return Array.isArray(pendingResubmissions) ? pendingResubmissions.find(req => req.document_type === documentType) : null;
   };
@@ -1026,7 +1031,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.aadhar_card || isDocumentPendingResubmission('aadhar_card')}
-                      disabled={isDocumentPendingResubmission('aadhar_card') || !existingData?.aadhar_card}
+                      disabled={isDocumentUploadDisabled('aadhar_card', 'aadhar_card')}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.aadhar_card ? 'border-red-500' : 
                         isDocumentPendingResubmission('aadhar_card') ? 'border-orange-500 bg-orange-50' :
@@ -1118,7 +1123,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.pan_card || isDocumentPendingResubmission('pan_card')}
-                      disabled={!isDocumentPendingResubmission('pan_card') && !existingData?.pan_card}
+                      disabled={isDocumentUploadDisabled('pan_card', 'pan_card')}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.pan_card ? 'border-red-500' : 
                         isDocumentPendingResubmission('pan_card') ? 'border-orange-500 bg-orange-50' :
@@ -1240,7 +1245,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.education_certificates || isDocumentPendingResubmission('education_certificates')}
-                      disabled={!isDocumentPendingResubmission('education_certificates') && !existingData?.education_certificates}
+                      disabled={isDocumentUploadDisabled('education_certificates', 'education_certificates')}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.education_certificates ? 'border-red-500' : 
                         isDocumentPendingResubmission('education_certificates') ? 'border-orange-500 bg-orange-50' :
@@ -1301,7 +1306,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.resume || isDocumentPendingResubmission('resume')}
-                      disabled={!isDocumentPendingResubmission('resume') && !existingData?.resume}
+                      disabled={isDocumentUploadDisabled('resume', 'resume')}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.resume ? 'border-red-500' : 
                         isDocumentPendingResubmission('resume') ? 'border-orange-500 bg-orange-50' :
@@ -1363,7 +1368,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.profile_photo || isDocumentPendingResubmission('profile_photo')}
-                      disabled={!isDocumentPendingResubmission('profile_photo') && !existingData?.profile_photo}
+                      disabled={isDocumentUploadDisabled('profile_photo', 'profile_photo')}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.profile_photo ? 'border-red-500' : 
                         isDocumentPendingResubmission('profile_photo') ? 'border-orange-500 bg-orange-50' :
@@ -1427,11 +1432,7 @@ function EmployeeDocumentForm() {
                         onBlur={handleBlur}
                         // CRITICAL DIFFERENCE: It is only mandatory IF HR asked for a resubmission
                         required={isDocumentPendingResubmission('experience_certificate')}
-                        // Locks the field if it exists, UNLESS HR asked for a new one
-                        disabled={
-                          !isDocumentPendingResubmission('experience_certificate') &&
-                          !existingData?.experience_certificate
-                        }
+                        disabled={isDocumentUploadDisabled('experience_certificate', 'experience_certificate')}
                         className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.experience_certificate
                             ? 'border-red-500'
                             : isDocumentPendingResubmission('experience_certificate')
@@ -1633,7 +1634,7 @@ function EmployeeDocumentForm() {
                       onChange={handleChange}
                       onBlur={handleBlur}
                       required={!existingData?.bank_details || isDocumentPendingResubmission('checkbook_document')}
-                      disabled={!isDocumentPendingResubmission('checkbook_document') && !existingData?.bank_details}
+                      disabled={isDocumentUploadDisabled('checkbook_document', 'bank_details')}
                       className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                         errors.bank_details ? 'border-red-500' : 
                         isDocumentPendingResubmission('checkbook_document') ? 'border-orange-500 bg-orange-50' :

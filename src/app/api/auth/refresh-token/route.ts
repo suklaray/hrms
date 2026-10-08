@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import cookie from "cookie";
-import { isSuperAdmin } from "@/lib/rbac";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,26 +21,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    // Check if user has submitted employee form
-    let hasFormSubmitted = false;
+    let hasFormSubmitted = user.form_submitted === true;
 
-    // Check employees table for document submission using email
-    const employee = await prisma.employees.findUnique({
-      where: { email: user.email }
-    });
-    hasFormSubmitted = !!employee;
-
-    // If not found in employees table and user came from candidate, check candidates table
     if (!hasFormSubmitted && user.candidate_id) {
       const candidate = await prisma.candidates.findUnique({
         where: { candidate_id: user.candidate_id }
       });
       hasFormSubmitted = candidate?.form_submitted === true;
-    }
-
-    // For non-candidate users or superadmin, form submission is satisfied
-    if (!hasFormSubmitted && (isSuperAdmin(user) || !user.candidate_id || user.form_submitted)) {
-      hasFormSubmitted = true;
     }
 
     // Create new JWT with updated data

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Client from "./client";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
+import { checkPermission, getUserPermissions } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +20,11 @@ export default async function JobDescriptionsPage() {
     redirect("/login");
   }
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.RECRUITMENT_VIEW);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.JD_VIEW);
   if (!hasAccess) {
     redirect("/403");
   }
 
-  return <Client />;
+  const permissions = await getUserPermissions(user);
+  return <Client permissions={Array.from(permissions)} />;
 }

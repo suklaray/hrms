@@ -1,16 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
-import jwt from 'jsonwebtoken';
 import { sendNotificationToUser } from '@/lib/notificationEmitter';
-import { checkPermission } from "@/lib/rbac";
+import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest) {
   try {
+    const auth = await checkAuth(req);
+    if (auth.error) return auth.error;
+
     const empid = req.nextUrl.searchParams.get('empid');
 
     if (!empid) {
       return NextResponse.json({ error: 'Employee ID is required' }, { status: 400 });
+    }
+
+    const isOwnRequest = auth.user?.empid === empid;
+    const canViewComplianceRequests =
+      auth.permissions?.has(PERMISSION_KEYS.COMPLIANCE_REQUEST_RESUBMISSION);
+
+    if (!isOwnRequest && !canViewComplianceRequests) {
+      return NextResponse.json(
+        { error: 'Forbidden: insufficient permissions' },
+        { status: 403 }
+      );
     }
 
     const requests = await prisma.document_resubmission_requests.findMany({
@@ -46,19 +59,16 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'No token provided' }, { status: 401 });
-    }
+    const auth = await checkAuth(req, [
+      PERMISSION_KEYS.COMPLIANCE_REQUEST_RESUBMISSION,
+    ]);
+    if (auth.error) return auth.error;
 
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.COMPLIANCE_REQUEST_RESUBMISSION);
-    if (!hasAccess) {
-      return NextResponse.json({ error: 'Unauthorized: insufficient permissions' }, { status: 403 });
+    const requestorEmpid = auth.user?.empid;
+    const requestorRole = auth.user?.role;
+    if (!requestorEmpid) {
+      return NextResponse.json({ error: 'Employee ID is unavailable' }, { status: 401 });
     }
-
-    const requestorEmpid = decoded.empid;
-    const requestorRole = decoded.role;
 
     const body = await req.json().catch(() => ({}));
     const { empid, documentType, reason } = body;

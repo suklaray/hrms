@@ -17,13 +17,22 @@ import {
 import { swalConfirm } from "@/utils/confirmDialog";
 import { toast } from "react-toastify";
 import Link from "next/link";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 
 
-function YearlyCalendar({ canManage }) {
+function YearlyCalendar({
+  canCreate = false,
+  canEdit = false,
+  canDelete = false,
+  canDownloadHolidays = false,
+  canDownloadEvents = false,
+}: {
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canDownloadHolidays?: boolean;
+  canDownloadEvents?: boolean;
+}) {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [events, setEvents] = useState({});
   const [loading, setLoading] = useState(true);
@@ -319,7 +328,7 @@ const downloadHolidaysPDF = () => {
     setEditingEvent(event);
     
     // Get the visible_to data from the event
-    const visibleToString = event.visible_to || '';
+    const visibleToString = event.visibility || event.visible_to || '';
     const visibleToArray = visibleToString ? visibleToString.split(',').map(e => e.trim()) : [];
     const selectedEmps = [];
     
@@ -396,7 +405,7 @@ const downloadHolidaysPDF = () => {
           description: formData.description,
           event_date: formData.date,
           event_type: formData.type,
-          visible_to: formData.visible_to.join(','),
+          visibility: formData.visible_to.join(','),
         }),
       });
       const data = await res.json();
@@ -608,16 +617,16 @@ const downloadHolidaysPDF = () => {
                                       {event.type === "event" &&
                                         `${event.title}`}
                                     </span>
-                                    {canManage && (event.type === "event" || event.type === "holiday") && (
+                                    {(canEdit || canDelete) && (event.type === "event" || event.type === "holiday") && (
                                       <div className="flex items-center space-x-2 ml-2">
-                                        <FaEdit
+                                        {canEdit && <FaEdit
                                           className="w-3 h-3 text-blue-400 hover:text-blue-600 cursor-pointer"
                                           onClick={() => handleEdit(event)}
-                                        />
-                                        <FaTrash
+                                        />}
+                                        {canDelete && <FaTrash
                                           className="w-3 h-3 text-red-400 hover:text-red-600 cursor-pointer"
                                           onClick={() => handleDelete(event.id)}
-                                        />
+                                        />}
                                       </div>
                                     )}
                                   </div>
@@ -714,7 +723,7 @@ const downloadHolidaysPDF = () => {
                   </div>
                 </div>
                 <div className="flex items-center space-x-1">
-                  {canManage && (
+                  {canCreate && (
                   <Link
                     href="/calendar/add-events"
                     className="px-2 sm:px-4 py-2 bg-indigo-100 hover:bg-indigo-300 text-indigo-800 text-xs sm:text-sm font-medium rounded-lg transition-colors"
@@ -723,9 +732,11 @@ const downloadHolidaysPDF = () => {
                     <span className="sm:hidden">+</span>
                   </Link>
                   )}
+                  {(canDownloadHolidays || canDownloadEvents) && (
                   <div className="flex items-center space-x-1">
                   
                   {/* Holidays Download Dropdown */}
+                  {canDownloadHolidays && (
                   <div className="relative">
                     <button 
                       onClick={() => setShowDownloadDropdown(showDownloadDropdown === 'holidays' ? null : 'holidays')}
@@ -751,8 +762,10 @@ const downloadHolidaysPDF = () => {
                       </div>
                     )}
                   </div>
+                  )}
                   
                   {/* All Events Download Dropdown */}
+                  {canDownloadEvents && (
                   <div className="relative">
                     <button 
                       onClick={() => setShowDownloadDropdown(showDownloadDropdown === 'events' ? null : 'events')}
@@ -778,7 +791,9 @@ const downloadHolidaysPDF = () => {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
+                  )}
 
                 </div>
               </div>
@@ -798,7 +813,7 @@ const downloadHolidaysPDF = () => {
             )}
           </div>
         </div>
-        {editingEvent && (
+        {canEdit && editingEvent && (
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div className="bg-white p-6 rounded-lg shadow-lg w-96 max-h-[90vh] overflow-y-auto">
               <h2 className="text-lg font-semibold mb-4">Edit Event</h2>
@@ -949,7 +964,13 @@ const downloadHolidaysPDF = () => {
 }
 
 
-export default function ClientPageWrapper(props: any) {
+export default function ClientPageWrapper(props: {
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  canDownloadHolidays: boolean;
+  canDownloadEvents: boolean;
+}) {
   return (
     <Suspense fallback={null}>
       <YearlyCalendar {...props} />

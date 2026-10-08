@@ -15,6 +15,7 @@ function EditEmployeeType() {
   const { id } = router.query;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [canAssignRolePermissions, setCanAssignRolePermissions] = useState(false);
   const [allRoles, setAllRoles] = useState([]);
   const [groupedPermissions, setGroupedPermissions] = useState<Record<string, any[]>>({});
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -31,9 +32,15 @@ function EditEmployeeType() {
   const fetchData = useCallback(async () => {
     if (!id) return;
     try {
+      const authRes = await fetch("/api/auth/me");
+      if (!authRes.ok) throw new Error();
+      const authData = await authRes.json();
+      const permissions: string[] = authData.permissions || authData.user?.permissions || [];
+      const canAssign = permissions.includes("rbac.role_permission_assign");
+      setCanAssignRolePermissions(canAssign);
       const [roleRes, permsRes, allRolesRes] = await Promise.all([
         fetch(`/api/settings/employee-types/${id}`),
-        fetch('/api/settings/employee-types/permissions'),
+        canAssign ? fetch('/api/settings/employee-types/permissions') : Promise.resolve(null),
         fetch('/api/settings/employee-types'),
       ]);
 
@@ -41,7 +48,7 @@ function EditEmployeeType() {
       if (!roleRes.ok) throw new Error();
 
       const { role } = await roleRes.json();
-      const { grouped } = await permsRes.json();
+      const { grouped = {} } = permsRes ? await permsRes.json() : {};
       const { roles: roles_ } = await allRolesRes.json();
 
       setAllRoles(roles_.filter((r) => r.id !== parseInt(id)));
@@ -94,7 +101,10 @@ function EditEmployeeType() {
       const res = await fetch(`/api/settings/employee-types/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          ...(canAssignRolePermissions ? {} : { permissionIds: undefined }),
+        }),
       });
 
       const data = await res.json();
@@ -277,7 +287,7 @@ function EditEmployeeType() {
               </div>
 
               {/* Permissions */}
-              <div className="bg-white shadow-sm border border-gray-200 p-6">
+              {canAssignRolePermissions && <div className="bg-white shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">
                   Permissions
                   <span className="ml-2 text-sm font-normal text-gray-500">
@@ -337,7 +347,7 @@ function EditEmployeeType() {
                     );
                   })}
                 </div>
-              </div>
+              </div>}
 
               {/* Actions */}
               <div className="flex gap-3">

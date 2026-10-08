@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchWorkReports, submitWorkReport } from '@/store/slices/workReportSlice';
 
-export default function WorkReportModal({ isOpen, onClose }: any) {
+export default function WorkReportModal({ isOpen, onClose, canViewHistory }: any) {
   const dispatch = useAppDispatch();
   const reports = useAppSelector((state) => state.workReport.reports);
   const loading = useAppSelector((state) => state.workReport.submitting);
@@ -16,13 +16,13 @@ export default function WorkReportModal({ isOpen, onClose }: any) {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && canViewHistory) {
       dispatch(fetchWorkReports());
     }
-  }, [dispatch, isOpen]);
+  }, [dispatch, isOpen, canViewHistory]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !canViewHistory) return;
 
     const today = new Date().toDateString();
     const todayReport = reports.find(
@@ -36,7 +36,7 @@ export default function WorkReportModal({ isOpen, onClose }: any) {
         issues: todayReport.issues || ''
       });
     }
-  }, [isOpen, reports]);
+  }, [isOpen, reports, canViewHistory]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

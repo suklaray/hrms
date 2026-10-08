@@ -6,6 +6,8 @@ import { Readable } from "stream";
 import { validateResumeFile, extractResumeText } from "@/lib/resumeParser/extractText";
 import { parseResumeWithGemini } from "@/lib/resumeParser/geminiParser";
 import prisma from "@/lib/prisma";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const runtime = "nodejs";
 
@@ -31,6 +33,9 @@ function getGeminiFailureMessage(error: unknown, task: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_PARSE]);
+  if (error) return error;
+
   const form = formidable({ multiples: false, maxFileSize: 5 * 1024 * 1024 });
 
   let fields: Record<string, unknown>;

@@ -11,9 +11,12 @@ export async function GET(
   const { user, errorResponse } = await getAuthenticatedUser(req);
   if (errorResponse) return errorResponse;
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  const hasAccess =
+    (await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_VIEW)) ||
+    (await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_EDIT)) ||
+    (await checkPermission(user, PERMISSION_KEYS.RBAC_ROLE_PERMISSION_ASSIGN));
   if (!hasAccess) {
-    return NextResponse.json({ error: "Insufficient permissions to manage employee types" }, { status: 403 });
+    return NextResponse.json({ error: "Insufficient permissions to view roles" }, { status: 403 });
   }
 
   const params = await context?.params;
@@ -51,9 +54,9 @@ export async function PUT(
   const { user, errorResponse } = await getAuthenticatedUser(req);
   if (errorResponse) return errorResponse;
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_EDIT);
   if (!hasAccess) {
-    return NextResponse.json({ error: "Insufficient permissions to manage employee types" }, { status: 403 });
+    return NextResponse.json({ error: "Insufficient permissions to edit roles" }, { status: 403 });
   }
 
   const params = await context?.params;
@@ -62,7 +65,13 @@ export async function PUT(
   if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   const body = await req.json().catch(() => ({}));
-  const { name, description, status, parentId, permissionIds = [] } = body;
+  const { name, description, status, parentId, permissionIds } = body;
+  if (
+    permissionIds !== undefined &&
+    !(await checkPermission(user, PERMISSION_KEYS.RBAC_ROLE_PERMISSION_ASSIGN))
+  ) {
+    return NextResponse.json({ error: "Insufficient permissions to assign role permissions" }, { status: 403 });
+  }
 
   if (!name?.trim()) {
     return NextResponse.json({ error: "Employee type name is required" }, { status: 400 });
@@ -78,7 +87,7 @@ export async function PUT(
   const currentRole = await prisma.role.findUnique({ where: { id } });
   if (!currentRole) return NextResponse.json({ error: "Employee type not found" }, { status: 404 });
 
-  if (currentRole.type === "SUPER_ADMIN" && !checkPermission(user, "superadmin")) {
+  if (currentRole.type === "SUPER_ADMIN" && !(await checkPermission(user, "superadmin"))) {
     const isUserSuperAdmin = user.role === "superadmin" || user.roleId === 23;
     if (!isUserSuperAdmin) {
       return NextResponse.json({ error: "Forbidden: Super Admin system role cannot be modified by ordinary administrators" }, { status: 403 });
@@ -114,10 +123,14 @@ export async function PUT(
       description: description?.trim() || null,
       status: normalizedStatus as any,
       parentId: resolvedParentId,
-      permissions: {
-        deleteMany: {},
-        create: permissionIds.map((pid: number) => ({ permissionId: pid })),
-      },
+      ...(Array.isArray(permissionIds)
+        ? {
+            permissions: {
+              deleteMany: {},
+              create: permissionIds.map((pid: number) => ({ permissionId: pid })),
+            },
+          }
+        : {}),
     },
     include: {
       permissions: { include: { permission: true } },
@@ -136,9 +149,9 @@ export async function DELETE(
   const { user, errorResponse } = await getAuthenticatedUser(req);
   if (errorResponse) return errorResponse;
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_EMPLOYEE_TYPES_MANAGE);
+  const hasAccess = await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_DELETE);
   if (!hasAccess) {
-    return NextResponse.json({ error: "Insufficient permissions to manage employee types" }, { status: 403 });
+    return NextResponse.json({ error: "Insufficient permissions to delete roles" }, { status: 403 });
   }
 
   const params = await context?.params;

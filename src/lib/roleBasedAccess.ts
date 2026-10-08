@@ -61,3 +61,70 @@ export async function canAccessRole(user: any, targetRoleIdOrName: number | stri
     return false;
   }
 }
+
+export async function getEmployeeDirectoryRoleScope(user: {
+  empid?: string;
+  id?: number | string;
+}) {
+  const currentUser = user.empid
+    ? await prisma.users.findUnique({
+        where: { empid: user.empid },
+        select: {
+          id: true,
+          empid: true,
+          roleId: true,
+          rbacRole: { select: { id: true, name: true, parentId: true } },
+        },
+      })
+    : typeof user.id === "number" ||
+        (typeof user.id === "string" && /^\d+$/.test(user.id))
+      ? await prisma.users.findUnique({
+          where: { id: Number(user.id) },
+          select: {
+            id: true,
+            empid: true,
+            roleId: true,
+            rbacRole: { select: { id: true, name: true, parentId: true } },
+          },
+        })
+      : null;
+
+  if (!currentUser) {
+    return { currentUser: null, roles: [], visibleRoleIds: [] };
+  }
+
+  const currentRoleId = currentUser.roleId || currentUser.rbacRole?.id;
+  if (!currentRoleId) {
+    return { currentUser, roles: [], visibleRoleIds: [] };
+  }
+
+  const roles = await prisma.role.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      parentId: true,
+      status: true,
+    },
+    orderBy: { name: "asc" },
+  });
+
+  if (isSuperAdmin(currentUser)) {
+    return { currentUser, roles, visibleRoleIds: roles.map((role) => role.id) };
+  }
+
+  const findDescendantIds = (parentId: number): number[] => {
+    const children = roles.filter((role) => role.parentId === parentId);
+    return children.flatMap((child) => [
+      child.id,
+      ...findDescendantIds(child.id),
+    ]);
+  };
+
+  return {
+    currentUser,
+    roles,
+    visibleRoleIds: [...new Set(findDescendantIds(currentRoleId))],
+  };
+}

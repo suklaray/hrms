@@ -14,7 +14,7 @@ async function checkAuth(req: NextRequest) {
     return { error: NextResponse.json({ message: 'Invalid token' }, { status: 401 }) };
   }
   const hasAccess =
-    (await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_EDIT));
+    (await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_DELETE));
   if (!hasAccess) return { error: NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 }) };
   return { decoded };
 }
@@ -37,5 +37,4 @@ export async function DELETE(req: NextRequest, context?: { params?: Promise<any>
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }
-
 

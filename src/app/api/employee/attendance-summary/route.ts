@@ -2,6 +2,8 @@ import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { verifyEmployeeToken } from "@/lib/auth";
+import { checkPermission } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   const query = await getQueryParams(req, context?.params);
@@ -12,6 +14,9 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     const user = await verifyEmployeeToken(req);
     if (!user) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+    if (!(await checkPermission(user, PERMISSION_KEYS.ATTENDANCE_MY))) {
+      return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
     }
 
     const { month, year } = query;
@@ -48,4 +53,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
-
