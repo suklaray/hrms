@@ -27,6 +27,9 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     include: {
       permissions: { include: { permission: true } },
       _count: { select: { users: true } },
+      parent: {
+        select: { id: true, name: true },
+      },
     },
   });
 
