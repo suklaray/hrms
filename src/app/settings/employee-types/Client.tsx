@@ -57,7 +57,6 @@ function EmployeeTypes() {
       const { grouped = {} } = await permsRes.json();
 
       setRoles(roles);
-      console.log("role",roles);
       setGroupedPermissions(grouped);
       // Expand all categories by default
       setExpandedCategories(Object.keys(grouped).reduce((a, k) => ({ ...a, [k]: true }), {}));

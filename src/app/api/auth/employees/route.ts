@@ -53,7 +53,6 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     );
     const { role } = query;
     const filters: Record<string, any> = {
-      is_active: "ACTIVE",
       roleId: {
         in: roleScope.visibleRoleIds,
       },
@@ -95,7 +94,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         employee_type: true,
         date_of_joining: true,
         status: true,
-
+        is_active: true,
         roleId: true,
 
         // Role table relation
