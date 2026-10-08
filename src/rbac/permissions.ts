@@ -134,6 +134,8 @@ export const PERMISSIONS = {
     CREATE: "calendar.create",
     EDIT: "calendar.edit",
     DELETE: "calendar.delete",
+    DOWNLOAD_HOLIDAYS: "calendar.download_holidays",
+    DOWNLOAD_EVENTS: "calendar.download_events",
   },
 
   CUSTOMER: {
@@ -711,6 +713,20 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     description: "Delete company calendar events and holidays",
     module: "calendar",
     action: "delete",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.DOWNLOAD_HOLIDAYS,
+    name: "Download Calendar Holidays",
+    description: "Download company holidays from the calendar",
+    module: "calendar",
+    action: "download_holidays",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.DOWNLOAD_EVENTS,
+    name: "Download Calendar Events",
+    description: "Download all visible calendar events",
+    module: "calendar",
+    action: "download_events",
   },
 
   // Customer Connect

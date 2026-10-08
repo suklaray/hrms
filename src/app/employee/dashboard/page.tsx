@@ -7,7 +7,7 @@ import Head from "@/lib/compatHead";
 import Image from "next/image";
 import { Clock, Calendar, User, Mail, Briefcase, TrendingUp } from "lucide-react";
 import { toast } from "react-toastify";
-import EmployeeCalenderSection from "@/Components/EmployeeCalenderSection";
+import CalendarSection from "@/Components/CalendarSection";
 import { formatLongDate } from "@/utils/dateTime";
 import RegularizationCard from "@/Components/RegularizationCard";
 import RegularizationModal from "@/Components/RegularizationModal";
@@ -452,7 +452,7 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
                 {/* Calendar Section */}
                 {(can(PERMISSION_KEYS.CALENDAR_VIEW) ||
                   can(PERMISSION_KEYS.CALENDAR_MANAGE)) && (
-                  <EmployeeCalenderSection />
+                  <CalendarSection />
                 )}
                 {/* Quick Actions */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100">

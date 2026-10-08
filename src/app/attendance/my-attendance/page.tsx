@@ -19,7 +19,11 @@ async function getServerSideProps({ req }) {
     user,
     PERMISSION_KEYS.ATTENDANCE_REGULARIZE
   );
-  return { props: { canRequestRegularization } };
+  const canDownloadHolidays = await checkPermission(
+    user,
+    PERMISSION_KEYS.CALENDAR_DOWNLOAD_HOLIDAYS
+  );
+  return { props: { canRequestRegularization, canDownloadHolidays } };
 }
 
 export default async function Page(props: {

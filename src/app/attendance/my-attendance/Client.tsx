@@ -15,8 +15,10 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 function MyAttendance({
     canRequestRegularization = false,
+    canDownloadHolidays = false,
 }: {
     canRequestRegularization?: boolean;
+    canDownloadHolidays?: boolean;
 }) {
     const [attendance, setAttendance] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -254,11 +256,11 @@ function MyAttendance({
                                         <option key={year} value={year}>{year}</option>
                                     ))}
                                 </select>
-                                <button
+                                {canDownloadHolidays && <button
                                     onClick={downloadHolidaysPDF}
                                     className="px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg text-sm font-medium cursor-pointer">
                                     Holiday List PDF
-                                </button>
+                                </button>}
                             </div>
                         </div>
                     </div>
@@ -385,7 +387,7 @@ function MyAttendance({
                                                                         ? "bg-yellow-100 text-yellow-800"
                                                                         : record.attendance_status === "Weekend"
                                                                             ? "bg-blue-100 text-blue-800"
-                                                                            : "bg-red-100 text-red-800"
+                                                                                : "bg-red-100 text-red-800"
                                                                     }`}
                                                             >
                                                                 {record.attendance_status}

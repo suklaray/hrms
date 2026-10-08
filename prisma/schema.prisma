@@ -496,6 +496,8 @@ model users {
   monthlySummaries MonthlySummary[]
   employeeProfile  employees?
   departments                departments[]
+  calendar_event_visibility visible_to[]
+
   @@index([roleId])
   @@index([company_id])
 }
@@ -576,8 +578,24 @@ model calendar_events {
   created_by  String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
-}
 
+  visibility visible_to[]
+}
+model visible_to{
+
+  id          Int      @id @default(autoincrement())
+  event_id    Int
+  empid       String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  calendar_event calendar_events @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user  users @relation(fields:[empid], references:[empid], onDelete:Cascade)
+
+  @@unique([event_id, empid])
+  @@index([event_id])
+  @@index([empid])
+}
 model contact_submissions {
   id         Int       @id @default(autoincrement())
   name       String
