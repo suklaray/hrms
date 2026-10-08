@@ -12,7 +12,8 @@ import { AppShellContext } from "@/contexts/AppShellContext";
 import { activateSharedSidebarShell } from "@/lib/appShell";
 import { useRouter, usePathname } from "next/navigation";
 import { ToastContainer } from "react-toastify";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { clearLogoutRedirectRequest } from "@/store/slices/authSlice";
 
 import "react-toastify/dist/ReactToastify.css";
 import "react-confirm-alert/src/react-confirm-alert.css";
@@ -21,6 +22,17 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname() || "/";
   const loggingOut = useAppSelector((state) => state.auth.loggingOut);
+  const logoutRedirectRequested = useAppSelector(
+    (state) => state.auth.logoutRedirectRequested
+  );
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (!logoutRedirectRequested) return;
+
+    router.replace("/login");
+    dispatch(clearLogoutRedirectRequest());
+  }, [dispatch, logoutRedirectRequested, router]);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(

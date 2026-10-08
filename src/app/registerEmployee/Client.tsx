@@ -528,7 +528,6 @@ function RegisterEmployee({
 
     const handleLogout = async () => {
         await dispatch(logoutUser());
-        router.push("/login");
     };
 
     const InputField = ({ icon: Icon, label, type = "text", field, placeholder, error }) => (

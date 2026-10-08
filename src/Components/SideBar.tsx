@@ -122,7 +122,6 @@ export default function Sidebar({
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
-    router.push('/');
   };
 
   const isAccessEnabled =
