@@ -92,10 +92,12 @@ function Profile() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    axios.get("/api/auth/settings/user-profile").then((res) => {
-      console.log('User data:', res.data); // Add this line to debug
-      setUser(res.data);
-    });
+    axios.get("/api/auth/settings/user-profile")
+      .then((res) => setUser(res.data))
+      .catch((error) => {
+        console.error("Failed to load profile:", error);
+        toast.error(error.response?.data?.error || "Failed to load profile details.");
+      });
   }, []);
 
   const handleFileChange = async (e) => {
