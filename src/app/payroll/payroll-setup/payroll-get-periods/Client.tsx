@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { formatLongDate } from "@/utils/dateTime";
 import formatDate from "@/lib/formatDate";
+import { isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 // Static status badge styling definitions (read-only)
 const PERIOD_STATUSES = [
@@ -53,13 +55,32 @@ function PeriodStatusBadge({ value }: { value: string }) {
     );
 }
 
-function PayrollGetPeriods() {
+function PayrollGetPeriods(
+    {
+        user,
+        permissions = [],
+    }: {
+        user?: any;
+        permissions?: string[];
+    }
+) {
     const [financialYears, setFinancialYears] = useState<any[]>([]);
     const [selectedFyUid, setSelectedFyUid] = useState<string>("");
     const [loadingFy, setLoadingFy] = useState(false);
 
     const [periods, setPeriods] = useState<any[]>([]);
     const [loadingPeriods, setLoadingPeriods] = useState(false);
+
+    // RBAC Permission Checks
+    const userPerms = new Set(Array.isArray(permissions) ? permissions : []);
+    const can = (permKey: string): boolean => {
+        if (!user) return false;
+        if (isSuperAdmin(user)) return true;
+        return userPerms.has(permKey);
+    };
+
+    const canCreate = can(PERMISSION_KEYS.PAYROLL_GENERATE);
+    const canInitiate = can(PERMISSION_KEYS.PAYSLIP_GENERATE);
 
     // Filter states
     const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("ALL");
@@ -173,13 +194,17 @@ function PayrollGetPeriods() {
                     />
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mb-4">
-                        <Link
-                            href="/payroll/payroll-setup/payroll-create-periods"
-                            className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
-                        >
-                            <Plus size={14} />
-                            <span>Generate Periods</span>
-                        </Link>
+                        {
+                            canCreate && (
+                                <Link
+                                    href="/payroll/payroll-setup/payroll-create-periods"
+                                    className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+                                >
+                                    <Plus size={14} />
+                                    <span>Generate Periods</span>
+                                </Link>
+                            )
+                        }
                     </div>
 
                     {/* ========================================================= */}
@@ -395,7 +420,7 @@ function PayrollGetPeriods() {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50/70">
                                         <tr>
-                                            {["#", "Period Name", "Start Date", "End Date", "Salary Payment", "Cycle", "Status", "Action"].map((h) => (
+                                            {["#", "Period Name", "Start Date", "End Date", "Salary Payment", "Cycle", "Status", ...(canInitiate ? ["Action"] : [])].map((h) => (
                                                 <th
                                                     key={h}
                                                     className="px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider"
@@ -461,15 +486,19 @@ function PayrollGetPeriods() {
                                                         <PeriodStatusBadge value={period.status} />
                                                     </td>
 
-                                                    <td>
-                                                        <Link
-                                                            href={`/payroll/salary/initiate-salary/${period.uid}`}
-                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
-                                                        >
-                                                            <Banknote size={14} />
-                                                            <span>Initiate Salary</span>
-                                                        </Link>
-                                                    </td>
+                                                    {
+                                                        canInitiate && (
+                                                            <td>
+                                                                <Link
+                                                                    href={`/payroll/salary/initiate-salary/${period.uid}`}
+                                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
+                                                                >
+                                                                    <Banknote size={14} />
+                                                                    <span>Initiate Salary</span>
+                                                                </Link>
+                                                            </td>
+                                                        )
+                                                    }
                                                 </tr>
                                             );
                                         })}

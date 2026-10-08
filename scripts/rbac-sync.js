@@ -72,6 +72,7 @@ const MODULE_DISPLAY_NAMES = {
   attendance: 'Attendance',
   leave: 'Leave',
   payroll: 'Payroll',
+  payslip: 'Payslip',
   recruitment: 'Recruitment',
   compliance: 'Compliance',
   task: 'Task Management',
@@ -218,7 +219,7 @@ async function syncRbac() {
   });
   if (legacyDev) {
     await prisma.rolePermission.deleteMany({ where: { roleId: legacyDev.id } });
-    await prisma.role.delete({ where: { id: legacyDev.id } }).catch(() => {});
+    await prisma.role.delete({ where: { id: legacyDev.id } }).catch(() => { });
   }
 
   // 6. Print Summary

@@ -156,6 +156,8 @@ model payroll_period {
   period_start DateTime @db.Date
   period_end   DateTime @db.Date
 
+  payrolls payroll[]
+
   salary_payment_date DateTime? @db.Date
 
   status PayrollPeriodStatus @default(OPEN)
@@ -213,6 +215,7 @@ model MonthlySummary {
   year               Int      @db.SmallInt
   total_working_days Int      @default(0)
   days_worked        Decimal  @default(0.0) @db.Decimal(5, 2)
+  days_absent        Decimal  @default(0.0) @db.Decimal(5, 2)
   overtime_hours     Decimal  @default(0.0) @db.Decimal(5, 2)
   weekend            Int      @default(0)
   createdAt          DateTime @default(now())
@@ -516,36 +519,68 @@ model session {
 
 model payroll {
   id                Int             @id @default(autoincrement())
-  empid             String?
-  month             String?
-  year              Int?
-  basic_salary      Decimal?
-  hra               Decimal?
-  bonus             Decimal?        @default(0.00)
-  da                Decimal?
-  allowances        Decimal?
-  deductions        Decimal?
-  net_pay           Decimal?
-  generated_on      DateTime?       @default(now())
-  payslip_pdf       String?
-  payslip_status    payslip_status? @default(pending)
-  pf                Decimal?        @default(0.00)
-  ptax              Decimal?        @default(0.00)
-  esic              Decimal?        @default(0.00)
-  allowance_details String?
-  deduction_details String?
-  company_id        String?
-  company           company?        @relation(fields: [company_id], references: [uid], onDelete: SetNull)
-  users             users?          @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+  uid               String?         @unique @default(cuid())
+  empid             String
+  users             users           @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+  company_id        String
+  company           company         @relation(fields: [company_id], references: [uid], onDelete: Restrict)
 
+  period_name       String
+  period_id         String
+  period            payroll_period @relation(fields: [period_id], references: [uid], onDelete: Cascade)
+
+  gross_salary      Decimal         @db.Decimal(10, 2)
+  total_deduction   Decimal         @db.Decimal(10, 2)
+  net_salary        Decimal         @db.Decimal(10, 2)
+
+  total_working_days Int @default(0)
+  days_worked Int @default(0)
+  days_absent Int @default(0)
+  overtime_hours Int @default(0)
+  overtime_rate_perhour Decimal @default(0)
+  weekend Int @default(0)
+
+  salary_payment_date DateTime @default(now())
+  total_payable_amount Decimal @default(0)
+  status payslipStatus @default(PENDING)
+  generated_at DateTime @default(now())
+
+  components payroll_components[]
+  
+  @@unique([period_id, empid])
   @@index([empid])
   @@index([company_id])
 }
 
-enum payslip_status {
-  pending
-  generated
+enum payslipStatus {
+  PENDING
+  DRAFT
+  GENERATED
+  INITIATED
+  DISBURSED
+  REJECTED
 }
+
+model payroll_components {
+  id                  Int             @id @default(autoincrement())
+  payroll_id          String
+  component_name      String
+  component_code      String
+  component_formulla  String
+  component_ammount   Decimal         @db.Decimal(10, 2)
+  component_type      component_type 
+  payroll             payroll         @relation(fields: [payroll_id], references: [uid], onDelete: Cascade)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @default(now())
+  
+  @@index([payroll_id])
+}
+
+enum component_type {
+  EARNING
+  DEDUCTION
+}
+
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model employees_backup {
   empid                  Int       @id

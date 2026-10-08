@@ -19,7 +19,7 @@ async function getServerSideProps(context) {
 
   const hasPayrollGenerateAccess = await checkPermission(
     user,
-    PERMISSION_KEYS.PAYROLL_GENERATE
+    PERMISSION_KEYS.PAYROLL_EDIT
   );
 
   if (!hasPayrollGenerateAccess) {

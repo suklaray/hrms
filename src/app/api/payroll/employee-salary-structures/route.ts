@@ -251,7 +251,7 @@ export async function GET(req: NextRequest) {
 
 // ─── POST /api/payroll/employee-salary-structures ───────────────────────────────
 export async function POST(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT, PERMISSION_KEYS.PAYSLIP_GENERATE]);
   if ("error" in auth) return auth.error;
 
   try {

@@ -22,6 +22,7 @@ import {
     Code,
     Copy,
     Check,
+    Lock,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
@@ -62,6 +63,8 @@ export default function GeneratePayslipPage({
     const [loadingEmployees, setLoadingEmployees] = useState<Record<string, boolean>>({});
     const [salaryPaymentDate, setSalaryPaymentDate] = useState<string>("");
     const [otHourlyRates, setOtHourlyRates] = useState<Record<string, number | string>>({});
+    const [submittingEmployees, setSubmittingEmployees] = useState<Record<string, boolean>>({});
+    const [submittedPayrolls, setSubmittedPayrolls] = useState<Record<string, any>>({});
     const [showJsonModal, setShowJsonModal] = useState<boolean>(false);
     const [copiedJson, setCopiedJson] = useState<boolean>(false);
     const [activeModalData, setActiveModalData] = useState<{ title: string; data: any; empName?: string; empid?: string } | null>(null);
@@ -84,6 +87,51 @@ export default function GeneratePayslipPage({
                     setSalaryPaymentDate(`${yyyy}-${mm}-${dd}`);
                 }
             }
+
+            // 1. Populate payrolls if directly embedded in generate endpoint response
+            const initialMap: Record<string, any> = {};
+            if (Array.isArray(data?.data?.payrolls)) {
+                data.data.payrolls.forEach((p: any) => {
+                    if (p.empid) {
+                        initialMap[p.empid] = p;
+                        if (p.overtime_rate_perhour !== undefined && p.overtime_rate_perhour !== null) {
+                            setOtHourlyRates((prev) => ({
+                                ...prev,
+                                [p.empid]: Number(p.overtime_rate_perhour),
+                            }));
+                        }
+                    }
+                });
+                setSubmittedPayrolls((prev) => ({ ...prev, ...initialMap }));
+            }
+
+            // 2. Query /api/payslip/initiate with periodId and period name for fresh status
+            const periodUid = data?.data?.uid || resolvedId;
+            const periodName = data?.data?.period_name;
+            const queryParams = new URLSearchParams();
+            if (periodUid) queryParams.set("periodId", periodUid);
+            if (periodName) queryParams.set("period", periodName);
+
+            fetch(`/api/payslip/initiate?${queryParams.toString()}`)
+                .then((res) => res.json())
+                .then((initData) => {
+                    if (initData?.success && Array.isArray(initData.data)) {
+                        const map: Record<string, any> = {};
+                        initData.data.forEach((p: any) => {
+                            if (p.empid) {
+                                map[p.empid] = p;
+                                if (p.overtime_rate_perhour !== undefined && p.overtime_rate_perhour !== null) {
+                                    setOtHourlyRates((prev) => ({
+                                        ...prev,
+                                        [p.empid]: Number(p.overtime_rate_perhour),
+                                    }));
+                                }
+                            }
+                        });
+                        setSubmittedPayrolls((prev) => ({ ...prev, ...map }));
+                    }
+                })
+                .catch((err) => console.error("Error fetching initiated payrolls:", err));
         } catch (error) {
             console.error("Error fetching payroll data:", error);
         } finally {
@@ -115,6 +163,13 @@ export default function GeneratePayslipPage({
     }, []);
 
     const handleCalculateSalary = async (employeeId: string) => {
+        const existing = submittedPayrolls[employeeId];
+        const status = existing?.status ? String(existing.status).toUpperCase() : "";
+        if (status === "INITIATED" || status === "DISBURSED" || status === "REJECTED") {
+            toast.warning(`Payroll for this employee is ${status} and cannot be modified.`);
+            return;
+        }
+
         const isCurrentlyOpen = !!expandedEmployees[employeeId];
 
         setExpandedEmployees((prev) => ({
@@ -172,17 +227,17 @@ export default function GeneratePayslipPage({
         const calc = calculatedSalary[empid];
         if (!emp || !calc) return null;
 
+        const existing = submittedPayrolls[empid];
         const otHours = Number(calc.attendance?.overtimeHours || 0);
-        const otRate = parseFloat(String(otHourlyRates[empid] ?? 0)) || 0;
+        const otRate = parseFloat(String(otHourlyRates[empid] ?? (existing?.overtime_rate_perhour ?? 0))) || 0;
         const otTotalPayable = Math.round(otHours * otRate * 100) / 100;
         const basePayableAmount = Number(calc.totalPayableAmount || 0);
         const finalTotalPayableAmount = Math.round((basePayableAmount + otTotalPayable) * 100) / 100;
 
         const bankDetails = calc.employee?.employeeProfile?.bank_details?.[0] || null;
 
-        console.log("payroll data:", payrollData)
-
         return {
+            uid: existing?.uid || undefined,
             companyInfo: {
                 id: payrollData?.data?.company?.uid ?? null,
                 name: payrollData?.data?.company?.name ?? "N/A",
@@ -212,6 +267,10 @@ export default function GeneratePayslipPage({
                     checkbook_document: bankDetails.checkbook_document,
                 }
                 : null,
+            period: {
+                name: payrollData?.data?.period_name ?? null,
+                uid: payrollData?.data?.uid ?? resolvedId ?? null,
+            },
             salaryDetails: {
                 structureName: calc.salary?.structureName,
                 employeeSalaryStructureId: calc.salary?.employeeSalaryStructureId,
@@ -223,6 +282,7 @@ export default function GeneratePayslipPage({
                 attendance: {
                     totalWorkingDays: calc.attendance?.totalWorkingDays,
                     daysWorked: calc.attendance?.daysWorked,
+                    daysAbsent: calc.attendance?.daysAbsent,
                     overtimeHours: calc.attendance?.overtimeHours,
                     weekend: calc.attendance?.weekend,
                 },
@@ -243,33 +303,53 @@ export default function GeneratePayslipPage({
         };
     };
 
-    const handleSubmitIndividualPayroll = (empid: string) => {
+    const handleSubmitIndividualPayroll = async (empid: string) => {
+        const existing = submittedPayrolls[empid];
+        const currentStatus = existing?.status ? String(existing.status).toUpperCase() : "";
+        if (currentStatus === "INITIATED" || currentStatus === "DISBURSED" || currentStatus === "REJECTED") {
+            toast.error(`Payroll for this employee is ${currentStatus} and cannot be modified.`);
+            return;
+        }
+
         const payload = generateIndividualPayload(empid);
         if (!payload) {
             toast.error("Please calculate salary first before submitting.");
             return;
         }
 
-        console.log(`=== INDIVIDUAL EMPLOYEE SALARY SUBMISSION [${payload.employeeInfo.empid} - ${payload.employeeInfo.name}] ===`);
-        console.log(payload);
-        console.log(JSON.stringify(payload, null, 2));
+        try {
+            setSubmittingEmployees((prev) => ({ ...prev, [empid]: true }));
+            const res = await fetch("/api/payslip/initiate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ payload }),
+            });
 
-        toast.success(`Salary data for ${payload.employeeInfo.name} logged to console!`);
-    };
+            const data = await res.json();
 
-    const handlePreviewIndividualJson = (empid: string) => {
-        const payload = generateIndividualPayload(empid);
-        if (!payload) {
-            toast.error("Please calculate salary first to preview data.");
-            return;
+            if (res.ok && data.success) {
+                const isUpdate = currentStatus === "GENERATED" || !!existing;
+                toast.success(
+                    data.message ||
+                    (isUpdate
+                        ? `Payroll for ${payload.employeeInfo.name} updated successfully!`
+                        : `Payroll for ${payload.employeeInfo.name} generated successfully!`)
+                );
+                setSubmittedPayrolls((prev) => ({
+                    ...prev,
+                    [empid]: data.data,
+                }));
+            } else {
+                toast.error(data.message || data.error || "Failed to process payroll");
+            }
+        } catch (error: any) {
+            console.error("Error submitting payroll:", error);
+            toast.error("An error occurred while submitting payroll");
+        } finally {
+            setSubmittingEmployees((prev) => ({ ...prev, [empid]: false }));
         }
-        setActiveModalData({
-            title: `Payroll Data — ${payload.employeeInfo.name} (${payload.employeeInfo.empid})`,
-            data: payload,
-            empName: payload.employeeInfo.name,
-            empid: payload.employeeInfo.empid,
-        });
-        setShowJsonModal(true);
     };
 
     return (
@@ -517,25 +597,75 @@ export default function GeneratePayslipPage({
                                 <div className="w-full mx-auto mt-3 border border-slate-300 bg-white text-[12px] text-slate-800 font-sans shadow-sm">
 
                                     {/* TABLE HEADER / DOCUMENT TITLE */}
-                                    <div className="px-5 py-3 border-b border-slate-300 bg-slate-50 flex items-center justify-between">
+                                    <div className="px-5 py-3 border-b border-slate-300 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 
                                         <div>
                                             <div className="text-[11px] uppercase tracking-[0.18em] font-semibold text-slate-500">
                                                 Payroll Register
                                             </div>
 
-                                            <div className="mt-0.5 text-[13px] font-bold tracking-wide text-slate-900">
-                                                Employee Payroll Summary
+                                            <div className="mt-0.5 text-[13px] font-bold tracking-wide text-slate-900 flex items-center gap-2">
+                                                <span>Employee Payroll Summary</span>
                                             </div>
                                         </div>
 
-                                        <div className="text-right">
-                                            <div className="text-[9px] uppercase tracking-wider text-slate-400">
-                                                Period
-                                            </div>
+                                        <div className="flex items-center gap-3 flex-wrap sm:justify-end">
+                                            {/* Summary status pill counters */}
+                                            {(() => {
+                                                const totalEmps = employees.length;
+                                                let countGen = 0;
+                                                let countInit = 0;
+                                                let countDisb = 0;
+                                                let countRej = 0;
+                                                let countPend = 0;
+                                                employees.forEach((emp) => {
+                                                    const s = submittedPayrolls[emp.empid]?.status ? String(submittedPayrolls[emp.empid].status).toUpperCase() : "";
+                                                    if (s === "GENERATED") countGen++;
+                                                    else if (s === "INITIATED") countInit++;
+                                                    else if (s === "DISBURSED") countDisb++;
+                                                    else if (s === "REJECTED") countRej++;
+                                                    else countPend++;
+                                                });
+                                                return (
+                                                    <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                                                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono">
+                                                            Total: {totalEmps}
+                                                        </span>
+                                                        {countGen > 0 && (
+                                                            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold font-mono">
+                                                                Generated: {countGen}
+                                                            </span>
+                                                        )}
+                                                        {countInit > 0 && (
+                                                            <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold font-mono">
+                                                                Initiated: {countInit}
+                                                            </span>
+                                                        )}
+                                                        {countDisb > 0 && (
+                                                            <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold font-mono">
+                                                                Disbursed: {countDisb}
+                                                            </span>
+                                                        )}
+                                                        {countRej > 0 && (
+                                                            <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200 font-semibold font-mono">
+                                                                Rejected: {countRej}
+                                                            </span>
+                                                        )}
+                                                        <span className="px-2 py-0.5 rounded bg-slate-50 text-slate-500 border border-slate-200 font-mono">
+                                                            Pending: {countPend}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
 
-                                            <div className="font-mono text-[11px] font-semibold text-slate-700">
-                                                {payrollData?.data?.period_name}
+                                            <div className="text-right pl-3 sm:border-l border-slate-200">
+                                                <div className="text-[9px] uppercase tracking-wider text-slate-400">
+                                                    Period
+                                                </div>
+
+                                                <div className="font-mono text-[11px] font-semibold text-slate-700">
+                                                    {payrollData?.data?.period_name}
+                                                </div>
                                             </div>
                                         </div>
 
@@ -569,6 +699,10 @@ export default function GeneratePayslipPage({
                                                         Role
                                                     </th>
 
+                                                    <th className="px-4 py-2.5 text-center text-[9px] uppercase tracking-[0.15em] font-semibold text-slate-500 border-r border-slate-200">
+                                                        Status
+                                                    </th>
+
                                                     <th className="px-4 py-2.5 text-right text-[9px] uppercase tracking-[0.15em] font-semibold text-slate-500">
                                                         Action
                                                     </th>
@@ -580,18 +714,31 @@ export default function GeneratePayslipPage({
                                                 {
                                                     employees.map((employee, index) => {
                                                         const isExpanded = !!expandedEmployees[employee.empid];
+                                                        const existingPayroll = submittedPayrolls[employee.empid];
+                                                        const rawStatus = existingPayroll?.status ? String(existingPayroll.status).toUpperCase() : "";
+                                                        const isGenerated = rawStatus === "GENERATED";
+                                                        const isInitiated = rawStatus === "INITIATED";
+                                                        const isDisbursed = rawStatus === "DISBURSED";
+                                                        const isRejected = rawStatus === "REJECTED";
+                                                        const isLocked = isInitiated || isDisbursed || isRejected;
 
                                                         return (
                                                             <Fragment key={employee.empid}>
-                                                                <tr className={`border-b border-slate-200 hover:bg-slate-50 transition-colors ${isExpanded ? "bg-slate-50/80" : ""}`}>
+                                                                <tr className={`border-b border-slate-200 transition-colors ${
+                                                                    isExpanded
+                                                                        ? "bg-slate-50/80"
+                                                                        : isLocked
+                                                                            ? "bg-slate-50/40 hover:bg-slate-50/70"
+                                                                            : "hover:bg-slate-50"
+                                                                }`}>
 
                                                                     <td className="px-4 py-2.5 font-mono text-slate-400 border-r border-slate-100">
                                                                         {index + 1}
                                                                     </td>
 
                                                                     <td className="px-4 py-2.5 border-r border-slate-100">
-                                                                        <div className="font-semibold text-slate-900">
-                                                                            {employee.name}
+                                                                        <div className="font-semibold text-slate-900 flex items-center gap-2">
+                                                                            <span>{employee.name}</span>
                                                                         </div>
 
                                                                         <div className="text-[10px] text-slate-400 mt-0.5">
@@ -611,19 +758,79 @@ export default function GeneratePayslipPage({
                                                                         {employee?.rbacRole?.name || 'N/A'}
                                                                     </td>
 
-                                                                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-slate-900">
-                                                                        <button
-                                                                            onClick={() => handleCalculateSalary(employee.empid)}
-                                                                            className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-medium rounded transition-colors ${isExpanded
-                                                                                ? "bg-slate-800 text-white hover:bg-slate-700 shadow-xs"
-                                                                                : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                                                                                }`}
-                                                                        >
-                                                                            <span className="flex items-center justify-center gap-1.5">
-                                                                                <Calculator size={13} />
-                                                                                {isExpanded ? "Close" : "Calculate"}
+                                                                    {/* Status Column */}
+                                                                    <td className="px-4 py-2.5 text-center border-r border-slate-100">
+                                                                        {isGenerated ? (
+                                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                                                                                <CheckCircle2 size={10} className="text-blue-600" />
+                                                                                <span>Generated</span>
                                                                             </span>
-                                                                        </button>
+                                                                        ) : isInitiated ? (
+                                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-indigo-100 text-indigo-800 border border-indigo-300">
+                                                                                <Clock size={10} className="text-indigo-600" />
+                                                                                <span>Initiated</span>
+                                                                            </span>
+                                                                        ) : isDisbursed ? (
+                                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                                                <CheckCircle2 size={10} className="text-emerald-600" />
+                                                                                <span>Disbursed</span>
+                                                                            </span>
+                                                                        ) : isRejected ? (
+                                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-rose-100 text-rose-800 border border-rose-300">
+                                                                                <AlertCircle size={10} className="text-rose-600" />
+                                                                                <span>Rejected</span>
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                                                                                <span>Pending</span>
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
+
+                                                                    {/* Action Column */}
+                                                                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-slate-900">
+                                                                        {isLocked ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled
+                                                                                title={`Payroll is ${rawStatus}. Further edits are disabled.`}
+                                                                                className="px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-semibold rounded bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed inline-flex items-center gap-1.5 shadow-none"
+                                                                            >
+                                                                                <Lock size={12} className="text-slate-400" />
+                                                                                <span>{rawStatus}</span>
+                                                                            </button>
+                                                                        ) : isGenerated ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleCalculateSalary(employee.empid)}
+                                                                                className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-medium rounded transition-colors ${
+                                                                                    isExpanded
+                                                                                        ? "bg-slate-800 text-white hover:bg-slate-700 shadow-xs"
+                                                                                        : "bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
+                                                                                }`}
+                                                                                title="Update generated payroll for this employee"
+                                                                            >
+                                                                                <span className="flex items-center justify-center gap-1.5">
+                                                                                    {isExpanded ? <X size={13} /> : <Calculator size={13} />}
+                                                                                    {isExpanded ? "Close" : "Update"}
+                                                                                </span>
+                                                                            </button>
+                                                                        ) : (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleCalculateSalary(employee.empid)}
+                                                                                className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-medium rounded transition-colors ${
+                                                                                    isExpanded
+                                                                                        ? "bg-slate-800 text-white hover:bg-slate-700 shadow-xs"
+                                                                                        : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                                                                }`}
+                                                                            >
+                                                                                <span className="flex items-center justify-center gap-1.5">
+                                                                                    <Calculator size={13} />
+                                                                                    {isExpanded ? "Close" : "Calculate"}
+                                                                                </span>
+                                                                            </button>
+                                                                        )}
                                                                     </td>
 
                                                                 </tr>
@@ -640,7 +847,7 @@ export default function GeneratePayslipPage({
 
                                                                     return (
                                                                         <tr className="border-b-2 border-slate-300 bg-slate-50/60 transition-all">
-                                                                            <td colSpan={6} className="p-0 border-r border-l border-slate-200">
+                                                                            <td colSpan={7} className="p-0 border-r border-l border-slate-200">
                                                                                 <div className="border-l-4 border-l-emerald-600 bg-white">
                                                                                     {/* Header bar of the section */}
                                                                                     <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50/70">
@@ -649,7 +856,7 @@ export default function GeneratePayslipPage({
                                                                                                 <Calculator size={15} />
                                                                                             </div>
                                                                                             <div>
-                                                                                                <div className="text-[12px] font-bold text-slate-900 flex items-center gap-2">
+                                                                                                <div className="text-[12px] font-bold text-slate-900 flex items-center gap-2 flex-wrap">
                                                                                                     <span>Salary Calculation — {data?.employee?.name || employee.name}</span>
                                                                                                     <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-normal border border-slate-200">
                                                                                                         {data?.employee?.empid || employee.empid}
@@ -657,6 +864,12 @@ export default function GeneratePayslipPage({
                                                                                                     {data?.employee?.role && (
                                                                                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">
                                                                                                             {data.employee.role}
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                    {isGenerated && (
+                                                                                                        <span className="text-[10px] px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold flex items-center gap-1">
+                                                                                                            <CheckCircle2 size={12} className="text-blue-600" />
+                                                                                                            <span>Generated — Ready to Update</span>
                                                                                                         </span>
                                                                                                     )}
                                                                                                 </div>
@@ -688,11 +901,12 @@ export default function GeneratePayslipPage({
                                                                                                     <button
                                                                                                         type="button"
                                                                                                         onClick={() => handleSubmitIndividualPayroll(employee.empid)}
-                                                                                                        className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-semibold rounded transition shadow-2xs cursor-pointer"
-                                                                                                        title="Submit this employee's salary and log JSON to console"
+                                                                                                        disabled={isLocked || loadingEmployees[employee.empid] || submittingEmployees[employee.empid] || data.attendance === null || data.salary === null}
+                                                                                                        className={`flex items-center gap-1.5 px-2.5 py-1 ${isGenerated ? "bg-blue-600 hover:bg-blue-700" : "bg-slate-900 hover:bg-slate-800"} text-white text-[10px] font-semibold rounded transition shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                                                                        title={isGenerated ? "Update this employee's generated salary record" : "Submit this employee's salary"}
                                                                                                     >
-                                                                                                        <Wallet size={12} className="text-emerald-400" />
-                                                                                                        <span>Submit</span>
+                                                                                                        <Wallet size={12} className={isGenerated ? "text-blue-200" : "text-emerald-400"} />
+                                                                                                        <span>{submittingEmployees[employee.empid] ? "Saving..." : (isGenerated ? "Update" : "Submit")}</span>
                                                                                                     </button>
                                                                                                 </>
                                                                                             ) : null}
@@ -759,6 +973,7 @@ export default function GeneratePayslipPage({
                                                                                                         </span>
                                                                                                     </div>
                                                                                                     <div className="mt-2 pt-1.5 border-t border-dashed border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+                                                                                                        <span>Absent: {data.attendance?.daysAbsent ?? 0} d</span>
                                                                                                         <span>OT: {data.attendance?.overtimeHours ?? 0} hrs</span>
                                                                                                         <span>Weekend: {data.attendance?.weekend ?? 0} d</span>
                                                                                                     </div>
@@ -1101,34 +1316,69 @@ export default function GeneratePayslipPage({
                                                                                             </div>
 
                                                                                             {/* Individual Employee Submit Action Strip */}
-                                                                                            <div className="px-5 py-3 border-t border-slate-200 bg-emerald-50/40 flex flex-col sm:flex-row items-center justify-between gap-3">
-                                                                                                <div className="flex items-center gap-2.5 text-[11px] text-slate-700">
-                                                                                                    <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                                                                            <div className={`px-5 py-3 border-t border-slate-200 ${isGenerated ? "bg-blue-50/40" : isLocked ? "bg-slate-100/60" : "bg-emerald-50/40"} flex flex-col sm:flex-row items-center justify-between gap-3`}>
+                                                                                                <div className="flex items-center gap-2.5 text-[11px] text-slate-700 flex-wrap">
+                                                                                                    {isLocked ? (
+                                                                                                        <Lock size={16} className="text-slate-500 shrink-0" />
+                                                                                                    ) : isGenerated ? (
+                                                                                                        <CheckCircle2 size={16} className="text-blue-600 shrink-0" />
+                                                                                                    ) : (
+                                                                                                        <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                                                                                    )}
                                                                                                     <span>
                                                                                                         <strong>{employee.name}</strong> ({employee.empid}) &bull; Revised Total Payable: <strong className="font-mono text-emerald-800 text-[13px]">{formatCurrency(finalTotalPayableAmount)}</strong>
                                                                                                     </span>
+                                                                                                    {isGenerated ? (
+                                                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800 border border-blue-300">
+                                                                                                            <Check size={11} />
+                                                                                                            <span>Status: Generated (Ready to Update)</span>
+                                                                                                        </span>
+                                                                                                    ) : isLocked ? (
+                                                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 text-slate-800 border border-slate-300">
+                                                                                                            <Lock size={11} />
+                                                                                                            <span>Locked ({rawStatus})</span>
+                                                                                                        </span>
+                                                                                                    ) : submittedPayrolls[employee.empid] ? (
+                                                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                                                                            <Check size={11} />
+                                                                                                            <span>Status: {submittedPayrolls[employee.empid]?.status || "PENDING"}</span>
+                                                                                                        </span>
+                                                                                                    ) : null}
                                                                                                 </div>
 
                                                                                                 <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                                                                                                     <button
                                                                                                         type="button"
-                                                                                                        onClick={() => handlePreviewIndividualJson(employee.empid)}
-                                                                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-[11px] font-medium rounded transition shadow-2xs cursor-pointer"
-                                                                                                    >
-                                                                                                        <Code size={13} />
-                                                                                                        <span>Preview JSON</span>
-                                                                                                    </button>
-
-                                                                                                    <button
-                                                                                                        type="button"
                                                                                                         onClick={() => handleSubmitIndividualPayroll(employee.empid)}
-                                                                                                        className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white text-[11px] font-semibold rounded transition shadow-xs cursor-pointer"
+                                                                                                        disabled={isLocked || loadingEmployees[employee.empid] || submittingEmployees[employee.empid] || data.attendance === null || data.salary === null}
+                                                                                                        className={`flex items-center gap-1.5 px-4 py-1.5 ${
+                                                                                                            isLocked
+                                                                                                                ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                                                                                                                : isGenerated
+                                                                                                                ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white cursor-pointer"
+                                                                                                                : "bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white cursor-pointer"
+                                                                                                        } text-[11px] font-semibold rounded transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed`}
                                                                                                     >
-                                                                                                        <Wallet size={13} className="text-emerald-400" />
-                                                                                                        <span>Submit {employee.name}&apos;s Payroll</span>
+                                                                                                        {isLocked ? (
+                                                                                                            <Lock size={13} className="text-slate-500" />
+                                                                                                        ) : (
+                                                                                                            <Wallet size={13} className={isGenerated ? "text-blue-200" : "text-emerald-400"} />
+                                                                                                        )}
+                                                                                                        <span>
+                                                                                                            {isLocked
+                                                                                                                ? `Locked (${rawStatus})`
+                                                                                                                : submittingEmployees[employee.empid]
+                                                                                                                ? "Saving..."
+                                                                                                                : isGenerated
+                                                                                                                ? `Update ${employee.name}'s Payroll`
+                                                                                                                : submittedPayrolls[employee.empid]
+                                                                                                                ? `Update ${employee.name}'s Payroll`
+                                                                                                                : `Submit ${employee.name}'s Payroll`}
+                                                                                                        </span>
                                                                                                     </button>
                                                                                                 </div>
                                                                                             </div>
+
 
                                                                                             {/* Sub-footer / Ledger reference */}
                                                                                             <div className="px-5 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-[10px] font-mono text-slate-400">
@@ -1248,9 +1498,10 @@ export default function GeneratePayslipPage({
                                         }
                                         setShowJsonModal(false);
                                     }}
-                                    className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[12px] font-semibold rounded transition cursor-pointer"
+                                    disabled={activeModalData.empid ? submittingEmployees[activeModalData.empid] : false}
+                                    className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[12px] font-semibold rounded transition cursor-pointer disabled:opacity-50"
                                 >
-                                    Print to Console &amp; Close
+                                    {activeModalData.empid && submittingEmployees[activeModalData.empid] ? "Submitting..." : "Submit Payroll & Close"}
                                 </button>
                             </div>
                         </div>

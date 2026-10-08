@@ -50,6 +50,12 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Fetch Employee by empid, uid, or numeric id
+        const periodStart = new Date(payrollPeriod.period_start);
+        periodStart.setUTCHours(0, 0, 0, 0);
+
+        const periodEnd = new Date(payrollPeriod.period_end);
+        periodEnd.setUTCHours(23, 59, 59, 999);
+
         const numericEmpId = Number(empId);
         const employee = await prisma.users.findFirst({
             where: {
@@ -68,6 +74,10 @@ export async function POST(req: NextRequest) {
                 position: true,
                 employee_type: true,
                 leave_requests: {
+                    where: {
+                        from_date: { lte: periodEnd },
+                        to_date: { gte: periodStart },
+                    },
                     select: {
                         uid: true,
                         from_date: true,
@@ -85,6 +95,9 @@ export async function POST(req: NextRequest) {
                         },
                         attachment: true,
                         status: true,
+                    },
+                    orderBy: {
+                        from_date: "asc",
                     },
                 },
                 company: {
@@ -383,6 +396,7 @@ export async function POST(req: NextRequest) {
                         year: attendance.year,
                         totalWorkingDays: attendance.total_working_days,
                         daysWorked: Number(attendance.days_worked),
+                        daysAbsent: Number(attendance.days_absent),
                         overtimeHours: Number(attendance.overtime_hours),
                         weekend: attendance.weekend,
                     }
@@ -469,6 +483,29 @@ export async function GET(req: NextRequest) {
                         salary_calendar: true,
                         approval: true,
                         status: true,
+                    },
+                },
+                payrolls: {
+                    select: {
+                        id: true,
+                        uid: true,
+                        empid: true,
+                        period_id: true,
+                        period_name: true,
+                        status: true,
+                        gross_salary: true,
+                        total_deduction: true,
+                        net_salary: true,
+                        total_payable_amount: true,
+                        overtime_hours: true,
+                        overtime_rate_perhour: true,
+                        days_worked: true,
+                        days_absent: true,
+                        total_working_days: true,
+                        weekend: true,
+                        salary_payment_date: true,
+                        generated_at: true,
+                        components: true,
                     },
                 },
             },

@@ -56,6 +56,7 @@ export const PERMISSIONS = {
     VIEW: "payroll.view",
     GENERATE: "payroll.generate",
     EDIT: "payroll.edit",
+    CHANGE_STATUS: "payroll.change_status",
   },
 
   PAYSLIP: {
@@ -309,6 +310,15 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     module: "payroll",
     action: "edit",
   },
+  {
+    key: PERMISSIONS.PAYROLL.CHANGE_STATUS,
+    name: "Change Payroll Status",
+    description: "Change payroll status",
+    module: "payroll",
+    action: "change_status",
+  },
+
+  // Payslip
   {
     key: PERMISSIONS.PAYSLIP.VIEW,
     name: "View Payslips",

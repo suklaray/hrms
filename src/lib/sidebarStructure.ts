@@ -78,12 +78,24 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
       {
         name: "Payroll Setup",
         icon: Banknote,
-        permission: PERMISSIONS.PAYROLL.GENERATE,
+        permission: [
+          PERMISSIONS.PAYROLL.GENERATE,
+          PERMISSIONS.PAYROLL.VIEW,
+          PERMISSIONS.PAYROLL.EDIT,
+          PERMISSIONS.PAYROLL.CHANGE_STATUS,
+          PERMISSIONS.PAYSLIP.GENERATE,
+
+        ],
         children: [
           {
             name: "Payroll Configuration",
             icon: Banknote,
-            permission: PERMISSIONS.PAYROLL.GENERATE,
+            permission: [
+              PERMISSIONS.PAYROLL.GENERATE,
+              PERMISSIONS.PAYROLL.VIEW,
+              PERMISSIONS.PAYROLL.EDIT,
+              PERMISSIONS.PAYROLL.CHANGE_STATUS,
+            ],
             children: [
               { title: "Create Configuration", route: "/payroll/payroll-setup/payroll-create-config", permission: PERMISSIONS.PAYROLL.GENERATE },
               { title: "Manage Configurations", route: "/payroll/payroll-setup/payroll-get-configs", permission: PERMISSIONS.PAYROLL.VIEW },
@@ -92,7 +104,12 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
           {
             name: "Financial Year",
             icon: Calendar,
-            permission: PERMISSIONS.PAYROLL.GENERATE,
+            permission: [
+              PERMISSIONS.PAYROLL.GENERATE,
+              PERMISSIONS.PAYROLL.VIEW,
+              PERMISSIONS.PAYROLL.EDIT,
+              PERMISSIONS.PAYROLL.CHANGE_STATUS,
+            ],
             children: [
               { title: "Create Financial Year", route: "/payroll/financial-year-setup/payroll-create-financial-year", permission: PERMISSIONS.PAYROLL.GENERATE },
               { title: "Manage Financial Years", route: "/payroll/financial-year-setup/payroll-get-financial-years", permission: PERMISSIONS.PAYROLL.VIEW },
@@ -101,16 +118,27 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
           {
             name: "Salary Calendar",
             icon: Calendar,
-            permission: PERMISSIONS.PAYROLL.GENERATE,
+            permission: [
+              PERMISSIONS.PAYROLL.GENERATE,
+              PERMISSIONS.PAYROLL.VIEW,
+              PERMISSIONS.PAYROLL.EDIT,
+              PERMISSIONS.PAYROLL.CHANGE_STATUS,
+              PERMISSIONS.PAYSLIP.GENERATE,
+            ],
             children: [
               { title: "Create Calendar", route: "/payroll/payroll-setup/payroll-create-periods", permission: PERMISSIONS.PAYROLL.GENERATE },
-              { title: "Manage Calendars", route: "/payroll/payroll-setup/payroll-get-periods", permission: PERMISSIONS.PAYROLL.VIEW },
+              { title: "Manage Calendars", route: "/payroll/payroll-setup/payroll-get-periods", permission: [PERMISSIONS.PAYROLL.VIEW, PERMISSIONS.PAYSLIP.GENERATE] },
             ],
           },
           {
             name: "Salary Structures",
             icon: FileSpreadsheet,
-            permission: PERMISSIONS.PAYROLL.VIEW,
+            permission: [
+              PERMISSIONS.PAYROLL.GENERATE,
+              PERMISSIONS.PAYROLL.VIEW,
+              PERMISSIONS.PAYROLL.EDIT,
+              PERMISSIONS.PAYROLL.CHANGE_STATUS,
+            ],
             children: [
               { title: "Create Salary Structure", route: "/payroll/payroll-setup/salary-structures/create", permission: PERMISSIONS.PAYROLL.GENERATE },
               { title: "Manage Salary Structures", route: "/payroll/payroll-setup/salary-structures", permission: PERMISSIONS.PAYROLL.VIEW },
@@ -121,12 +149,16 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
       {
         name: "Salary",
         icon: Banknote,
-        permission: PERMISSIONS.PAYROLL.VIEW,
+        permission: [
+          PERMISSIONS.PAYROLL.GENERATE,
+          PERMISSIONS.PAYSLIP.GENERATE,
+          PERMISSIONS.PAYSLIP.VIEW
+        ],
         children: [
           {
             name: "Salary Component",
             icon: Banknote,
-            permission: PERMISSIONS.PAYROLL.VIEW,
+            permission: [PERMISSIONS.PAYROLL.VIEW, PERMISSIONS.PAYROLL.GENERATE],
             children: [
               { title: "Create Component", route: "/payroll/salary/salary-components/salary-create-component", permission: PERMISSIONS.PAYROLL.GENERATE },
               { title: "Manage Components", route: "/payroll/salary/salary-components/salary-get-components", permission: PERMISSIONS.PAYROLL.VIEW },
@@ -135,9 +167,9 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
           {
             name: "Employee Salary",
             icon: Banknote,
-            permission: PERMISSIONS.PAYROLL.VIEW,
+            permission: [PERMISSIONS.PAYSLIP.GENERATE],
             children: [
-              { title: "Manage Employee Salary", route: "/payroll/employee-salary", permission: PERMISSIONS.PAYROLL.VIEW },
+              { title: "Manage Employee Salary", route: "/payroll/employee-salary", permission: PERMISSIONS.PAYSLIP.GENERATE },
             ],
           },
         ],

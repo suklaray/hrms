@@ -40,7 +40,7 @@ async function resolveCompanyUid(companyIdInput: string | number | undefined, us
 
 // ─── GET /api/payroll/salary-structures ─────────────────────────────────────────
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYROLL_GENERATE]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYSLIP_GENERATE]);
   if ("error" in auth) return auth.error;
 
   try {

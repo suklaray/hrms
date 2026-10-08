@@ -18,8 +18,7 @@ async function getServerSideProps() {
   }
 
   const hasAccess = await checkAnyPermission(user, [
-    PERMISSION_KEYS.PAYROLL_VIEW,
-    PERMISSION_KEYS.PAYROLL_GENERATE,
+    PERMISSION_KEYS.PAYSLIP_GENERATE
   ]);
 
   if (!hasAccess) {

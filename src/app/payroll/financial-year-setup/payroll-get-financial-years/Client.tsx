@@ -12,6 +12,7 @@ import {
     Building2,
     Calendar,
     CalendarDays,
+    Check,
     CheckCircle2,
     Clock,
     Eye,
@@ -23,22 +24,22 @@ import {
     Plus,
     RefreshCw,
     Search,
+    X,
 } from "lucide-react";
 import { swalConfirm } from "@/utils/confirmDialog";
+import { formatLongDate } from "@/utils/dateTime";
+import { isSuperAdmin } from "@/lib/rbac";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-function formatDisplayDate(dateVal: string | Date | null | undefined): string {
-    if (!dateVal) return "-";
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return "-";
-    return d.toLocaleDateString("en-US", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        timeZone: "UTC",
-    });
-}
-
-const GetFinancialYears = () => {
+const GetFinancialYears = (
+    {
+        user,
+        permissions = [],
+    }: {
+        user?: any;
+        permissions?: string[];
+    }
+) => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -47,6 +48,17 @@ const GetFinancialYears = () => {
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [lockFilter, setLockFilter] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState<string>("");
+
+    // RBAC Permission Checks
+    const userPerms = new Set(Array.isArray(permissions) ? permissions : []);
+    const can = (permKey: string): boolean => {
+        if (!user) return false;
+        if (isSuperAdmin(user)) return true;
+        return userPerms.has(permKey);
+    };
+
+    const canCreate = can(PERMISSION_KEYS.PAYROLL_GENERATE);
+    const canUpdateStatus = can(PERMISSION_KEYS.PAYROLL_CHANGE_STATUS);
 
     const fetchFinancialYears = () => {
         setLoading(true);
@@ -176,13 +188,15 @@ const GetFinancialYears = () => {
                         href="/dashboard"
                     />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4 mb-4">
-                        <Link
-                            href="/payroll/financial-year-setup/payroll-create-financial-year"
-                            className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
-                        >
-                            <Plus size={14} />
-                            <span>Create Financial Year</span>
-                        </Link>
+                        {canCreate && (
+                            <Link
+                                href="/payroll/financial-year-setup/payroll-create-financial-year"
+                                className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer shrink-0 self-start sm:self-auto"
+                            >
+                                <Plus size={14} />
+                                <span>Create Financial Year</span>
+                            </Link>
+                        )}
                     </div>
 
                     {/* ========================================================= */}
@@ -402,7 +416,7 @@ const GetFinancialYears = () => {
                                                 {/* Start Date */}
                                                 <td className="px-6 py-3.5 whitespace-nowrap">
                                                     <div className="text-[12px] text-gray-700">
-                                                        {formatDisplayDate(fy?.start_date)}
+                                                        {formatLongDate(fy?.start_date)}
                                                     </div>
                                                     <span className="text-[10px] text-gray-400">
                                                         {getMonthName(fy?.start_date)}
@@ -412,7 +426,7 @@ const GetFinancialYears = () => {
                                                 {/* End Date */}
                                                 <td className="px-6 py-3.5 whitespace-nowrap">
                                                     <div className="text-[12px] text-gray-700">
-                                                        {formatDisplayDate(fy?.end_date)}
+                                                        {formatLongDate(fy?.end_date)}
                                                     </div>
                                                     <span className="text-[10px] text-gray-400">
                                                         {getMonthName(fy?.end_date)}
@@ -421,13 +435,30 @@ const GetFinancialYears = () => {
 
                                                 {/* Status Selector */}
                                                 <td className="px-6 py-3.5 whitespace-nowrap">
-                                                    <StatusSelector
-                                                        value={fy.status}
-                                                        disabled={updatingId === fy.uid}
-                                                        onChange={(newVal: string) => {
-                                                            handleStatusUpdate(fy, newVal);
-                                                        }}
-                                                    />
+                                                    {
+                                                        canUpdateStatus ? (
+                                                            <StatusSelector
+                                                                value={fy.status}
+                                                                disabled={updatingId === fy.uid}
+                                                                onChange={(newVal: string) => {
+                                                                    handleStatusUpdate(fy, newVal);
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <span
+                                                                className={`
+                                                                    inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border
+                                                                    ${fy.status === "ACTIVE"
+                                                                        ? "bg-green-50 text-green-700 border-green-200"
+                                                                        : "bg-red-50 text-red-700 border-red-200"
+                                                                    }
+                                                                `}
+                                                            >
+                                                                {fy.status === "ACTIVE" ? <Check size={11} className="text-green-500" /> : <X size={11} className="text-red-500" />}
+                                                                <span>{fy.status}</span>
+                                                            </span>
+                                                        )
+                                                    }
                                                 </td>
 
                                                 {/* Lock State */}

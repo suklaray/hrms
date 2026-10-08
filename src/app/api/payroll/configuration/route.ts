@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
 // ─── PUT (Update / Toggle Status) ──────────────────────────────────────────────
 export async function PUT(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_EDIT, PERMISSION_KEYS.PAYROLL_CHANGE_STATUS]);
   if ("error" in auth) return auth.error;
 
   try {
@@ -129,7 +129,7 @@ export async function PATCH(req: NextRequest) {
 
 // ─── GET (Get Payroll Configuration from uid or id) ───────────────────────────
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT, PERMISSION_KEYS.PAYROLL_VIEW]);
   if ("error" in auth) return auth.error;
 
   const id = req.nextUrl.searchParams.get('uid') || req.nextUrl.searchParams.get('id');

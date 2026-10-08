@@ -3,25 +3,31 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import ClientPage from "./Client";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
+import { checkAnyPermission, checkPermission, getUserPermissions } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
 
-async function getServerSideProps(context: { req: any; params?: Record<string, string | string[]>; query?: { [x: string]: string | string[]; }; }) {
+export const metadata = {
+  title: "Get Payroll Periods",
+};
+
+async function getServerSideProps(context: any) {
   const { req } = context;
   const token = req?.cookies?.token || "";
   const user = getUserFromToken(token);
 
   if (!user) {
-    return { redirect: { destination: "/login", permanent: false } };
+    return {
+      redirect: {
+        destination: "/login",
+        permanent: false,
+      },
+    };
   }
 
-  const hasPayrollViewAccess =
-    (await checkPermission(user, PERMISSION_KEYS.PAYROLL_VIEW)) ||
-    (await checkPermission(user, PERMISSION_KEYS.PAYROLL_GENERATE));
-
-  if (!hasPayrollViewAccess) {
+  const hasAccess = await checkAnyPermission(user, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYSLIP_GENERATE]);
+  if (!hasAccess) {
     return {
       redirect: {
         destination: "/403",
@@ -30,7 +36,22 @@ async function getServerSideProps(context: { req: any; params?: Record<string, s
     };
   }
 
-  return { props: { user } };
+  const permissions = await getUserPermissions(user);
+
+  return {
+    props: {
+      user: {
+        id: user.id,
+        empid: user.empid,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+        roleId: user.roleId || null,
+        rbacRole: (user as any).rbacRole || null,
+      },
+      permissions: Array.from(permissions),
+    },
+  };
 }
 
 export default async function Page(props: {
@@ -59,7 +80,7 @@ export default async function Page(props: {
   try {
     gsspResult = await getServerSideProps(context);
   } catch (err) {
-    console.error("Error running getServerSideProps in payroll/payroll-setup/payroll-get-periods:", err);
+    console.error("Error running getServerSideProps in PayrollGetConfigsPage:", err);
   }
 
   if (gsspResult?.redirect?.destination) {

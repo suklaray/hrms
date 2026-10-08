@@ -6,7 +6,7 @@ import { isSuperAdmin } from "@/lib/rbac";
 
 // ─── GET /api/payroll/employee-salary-structures/employees ──────────────────────
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYROLL_GENERATE]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYSLIP_GENERATE]);
   if ("error" in auth) return auth.error;
 
   try {
@@ -117,14 +117,14 @@ export async function GET(req: NextRequest) {
         hasActiveSalary: Boolean(activeStructure),
         currentSalary: activeStructure
           ? {
-              uid: activeStructure.uid,
-              salary_structure_name: activeStructure.salaryStructure?.name || "Custom Salary",
-              salary_structure_code: activeStructure.salaryStructure?.code || "CUSTOM",
-              financial_year_id: activeStructure.financial_year_id,
-              financial_year_name: activeStructure.financialYear?.name || "N/A",
-              grossSalary: currentGross,
-              netSalary: currentNet,
-            }
+            uid: activeStructure.uid,
+            salary_structure_name: activeStructure.salaryStructure?.name || "Custom Salary",
+            salary_structure_code: activeStructure.salaryStructure?.code || "CUSTOM",
+            financial_year_id: activeStructure.financial_year_id,
+            financial_year_name: activeStructure.financialYear?.name || "N/A",
+            grossSalary: currentGross,
+            netSalary: currentNet,
+          }
           : null,
       };
     });
