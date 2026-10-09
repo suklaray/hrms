@@ -208,6 +208,10 @@ export default function AddJobDescription({
 
       if (res.status === 202 && data.requiresApproval) {
         setPendingAudit({ uid: data.auditUid, status });
+        // Store pending publish audit + full form payload so the list page can re-submit after approval
+        const pending = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
+        pending.push({ auditUid: data.auditUid, title: form.title, form, status, ts: Date.now() });
+        localStorage.setItem("pendingPublishAudits", JSON.stringify(pending));
         pollApproval(data.auditUid, status);
         return;
       }
@@ -230,15 +234,13 @@ export default function AddJobDescription({
   const pollApproval = (uid: string, status: string) => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/audit/logs?page=1&limit=10&action=jd.create`);
+        const res = await fetch(`/api/audit/logs/${uid}/status`);
         if (!res.ok) return;
         const data = await res.json();
-        const log = data.data?.find((l: any) => l.uid === uid);
-        if (!log) return;
-        if (log.currentStatus === "APPROVED") {
+        if (data.currentStatus === "APPROVED") {
           clearInterval(interval);
           submit(status, uid);
-        } else if (log.currentStatus === "REJECTED") {
+        } else if (data.currentStatus === "REJECTED") {
           clearInterval(interval);
           setPendingAudit(null);
           setError("Your request was rejected by the auditor.");

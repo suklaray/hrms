@@ -82,31 +82,30 @@ export async function POST(request: NextRequest) {
   if (new Date(deadline) <= new Date())
     return NextResponse.json({ message: "Deadline must be a future date" }, { status: 400 });
 
-  // Step 1 — No auditUid yet: create the audit log and return it for approval
-  if (!auditUid) {
-    const auditLog = await logAudit({
-      req: request,
-      user,
-      action: "jd.create",
-      module: "Job Description",
-      description: `Request to create new Job Description: "${title.trim()}" | Department: ${department?.trim() || "N/A"} | Employment Type: ${employment_type || "N/A"} | Location: ${location || "N/A"} | Openings: ${openings || "N/A"}`,
-      requiresApproval: true,
-    });
-
-    return NextResponse.json(
-      { message: "Approval required. Audit log created and is pending review.", auditUid: auditLog?.uid, requiresApproval: true },
-      { status: 202 }
-    );
-  }
-
-  // Step 2 — auditUid provided: check if it's approved
-  const approved = await isAuditApproved(auditUid);
-  if (!approved)
-    return NextResponse.json({ message: "This action is pending audit approval. Please wait for an auditor to approve it.", requiresApproval: true }, { status: 403 });
-
   if (status?.toLowerCase() === "published") {
     const { error: publishError } = await checkAuth(request, [PERMISSION_KEYS.JD_PUBLISH]);
     if (publishError) return publishError;
+
+    // Require audit approval only for publishing
+    if (!auditUid) {
+      const auditLog = await logAudit({
+        req: request,
+        user,
+        action: "jd.create",
+        module: "Job Description",
+        description: `Request to create new Job Description: "${title.trim()}" | Department: ${department?.trim() || "N/A"} | Employment Type: ${employment_type || "N/A"} | Location: ${location || "N/A"} | Openings: ${openings || "N/A"}`,
+        requiresApproval: true,
+      });
+
+      return NextResponse.json(
+        { message: "Approval required. Audit log created and is pending review.", auditUid: auditLog?.uid, requiresApproval: true },
+        { status: 202 }
+      );
+    }
+
+    const approved = await isAuditApproved(auditUid);
+    if (!approved)
+      return NextResponse.json({ message: "This action is pending audit approval. Please wait for an auditor to approve it.", requiresApproval: true }, { status: 403 });
   }
 
   try {

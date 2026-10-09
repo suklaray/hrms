@@ -78,7 +78,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ message: "At least one required skill must be provided" }, { status: 400 });
   if (!deadline)
     return NextResponse.json({ message: "Deadline is required" }, { status: 400 });
-  if (new Date(deadline) <= new Date())
+  // Skip deadline future-date check when re-submitting after audit approval
+  if (!auditUid && new Date(deadline) <= new Date())
     return NextResponse.json({ message: "Deadline must be a future date" }, { status: 400 });
 
   const existingJob = await prisma.job_descriptions.findUnique({ where: { id: jdId } });

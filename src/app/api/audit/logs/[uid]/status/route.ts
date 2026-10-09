@@ -1,8 +1,26 @@
+// GET  /api/audit/logs/[uid]/status — check approval status of a specific audit log (any authenticated user).
 // PATCH /api/audit/logs/[uid]/status — approve or reject a pending audit log.
 import { NextRequest, NextResponse } from "next/server";
 import { checkAuth } from "@/lib/apiAuth";
 import prisma from "@/lib/prisma";
 import { PERMISSIONS } from "@/rbac/permissions";
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ uid: string }> }
+) {
+  // Any logged-in user can poll their own audit UID
+  const auth = await checkAuth(req, []);
+  if (auth.error) return auth.error;
+
+  const { uid } = await params;
+  const log = await prisma.audit_logs.findUnique({
+    where: { uid },
+    select: { currentStatus: true },
+  });
+  if (!log) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ currentStatus: log.currentStatus });
+}
 
 export async function PATCH(
   req: NextRequest,

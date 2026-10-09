@@ -218,6 +218,12 @@ export default function EditJobDescriptionClient({
 
       if (response.status === 202 && data.requiresApproval) {
         setPendingAudit({ uid: data.auditUid });
+        // Persist so the JD list can show "Pending Publish" badge
+        try {
+          const stored = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
+          stored.push({ auditUid: data.auditUid, jobId: id, form, ts: Date.now() });
+          localStorage.setItem("pendingUpdateAudits", JSON.stringify(stored));
+        } catch {}
         pollApproval(data.auditUid);
         return;
       }
@@ -241,16 +247,22 @@ export default function EditJobDescriptionClient({
   const pollApproval = (uid: string) => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/audit/logs?page=1&limit=10&action=jd.update`);
+        const res = await fetch(`/api/audit/logs/${uid}/status`);
         if (!res.ok) return;
         const data = await res.json();
-        const log = data.data?.find((l: any) => l.uid === uid);
-        if (!log) return;
-        if (log.currentStatus === "APPROVED") {
+        if (data.currentStatus === "APPROVED") {
           clearInterval(interval);
+          try {
+            const stored = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
+            localStorage.setItem("pendingUpdateAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== uid)));
+          } catch {}
           handleUpdate(undefined, uid);
-        } else if (log.currentStatus === "REJECTED") {
+        } else if (data.currentStatus === "REJECTED") {
           clearInterval(interval);
+          try {
+            const stored = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
+            localStorage.setItem("pendingUpdateAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== uid)));
+          } catch {}
           setPendingAudit(null);
           setError("Your update request was rejected by the auditor.");
         }
@@ -683,7 +695,9 @@ export default function EditJobDescriptionClient({
                     value={form.status}
                     onChange={set("status")}
                   >
-                    <option value="Draft">Draft</option>
+                    {form.status.toLowerCase() !== "published" && (
+                      <option value="Draft">Draft</option>
+                    )}
                     {(canPublish || form.status.toLowerCase() === "published") && (
                       <option value="Published">Published</option>
                     )}

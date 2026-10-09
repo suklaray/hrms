@@ -27,7 +27,7 @@ import Pagination from "@/Components/Pagination";
 import { toast } from "react-toastify";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-type Status = "Draft" | "Published" | "Closed";
+type Status = "Draft" | "Published" | "Closed" | "Pending Publish";
 
 interface Job {
   id: number;
@@ -78,6 +78,11 @@ const STATUS_CONFIG: Record<
     bg: "bg-red-100",
     text: "text-red-700",
     dot: "bg-red-500",
+  },
+  "Pending Publish": {
+    bg: "bg-amber-100",
+    text: "text-amber-700",
+    dot: "bg-amber-400",
   },
 };
 
@@ -296,6 +301,10 @@ export default function JobDescriptions({
   const [deleting, setDeleting] = useState(false);
   // keyed by job id so state survives modal close/reopen
   const [pendingCloseAudits, setPendingCloseAudits] = useState<Record<number, string>>({});
+  // job title -> auditUid for publish approvals (from localStorage, before the job is created)
+  const [pendingPublishTitles, setPendingPublishTitles] = useState<Set<string>>(new Set());
+  // job id -> pending for update approvals (existing jobs being published via edit)
+  const [pendingUpdateIds, setPendingUpdateIds] = useState<Set<string>>(new Set());
 
   const executeClose = async (jobId: number, auditUid: string) => {
     try {
@@ -365,12 +374,81 @@ export default function JobDescriptions({
     fetch("/api/recruitment/job-description")
       .then((r) => r.json())
       .then((data) => {
-        setJobs(
-          Array.isArray(data) ? data : []
-        );
+        setJobs(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    // Load pending publish audits from localStorage
+    try {
+      const raw = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
+      const titles = new Set<string>(raw.map((e: { title: string }) => e.title));
+      setPendingPublishTitles(titles);
+
+      // Poll each pending audit
+      raw.forEach(({ auditUid, title, form, status }: { auditUid: string; title: string; form: Record<string, unknown>; status: string }) => {
+        const interval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/audit/logs/${auditUid}/status`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.currentStatus === "APPROVED") {
+              clearInterval(interval);
+              const createRes = await fetch("/api/recruitment/job-description", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...form, status, auditUid }),
+              });
+              const stored = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
+              localStorage.setItem("pendingPublishAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== auditUid)));
+              setPendingPublishTitles((prev) => { const next = new Set(prev); next.delete(title); return next; });
+              if (createRes.ok) {
+                fetch("/api/recruitment/job-description").then((r) => r.json()).then((d) => setJobs(Array.isArray(d) ? d : []));
+              }
+            } else if (data.currentStatus === "REJECTED") {
+              clearInterval(interval);
+              const stored = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
+              localStorage.setItem("pendingPublishAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== auditUid)));
+              setPendingPublishTitles((prev) => { const next = new Set(prev); next.delete(title); return next; });
+            }
+          } catch {}
+        }, 5000);
+      });
+    } catch {}
+
+    // Load pending update audits (existing Draft jobs being published via edit page)
+    try {
+      const rawUpdates = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
+      setPendingUpdateIds(new Set<string>(rawUpdates.map((e: { jobId: string }) => String(e.jobId))));
+
+      rawUpdates.forEach(({ auditUid, jobId, form }: { auditUid: string; jobId: string; form: Record<string, unknown> }) => {
+        const interval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/audit/logs/${auditUid}/status`);
+            if (!res.ok) return;
+            const data = await res.json();
+            const cleanup = () => {
+              const stored = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
+              localStorage.setItem("pendingUpdateAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== auditUid)));
+              setPendingUpdateIds((prev) => { const next = new Set(prev); next.delete(String(jobId)); return next; });
+            };
+            if (data.currentStatus === "APPROVED") {
+              clearInterval(interval);
+              await fetch(`/api/recruitment/job-description/${jobId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...form, auditUid }),
+              });
+              cleanup();
+              fetch("/api/recruitment/job-description").then((r) => r.json()).then((d) => setJobs(Array.isArray(d) ? d : []));
+            } else if (data.currentStatus === "REJECTED") {
+              clearInterval(interval);
+              cleanup();
+            }
+          } catch {}
+        }, 5000);
+      });
+    } catch {}
   }, []);
 
   // For closing a job description, we update the status
@@ -923,11 +1001,9 @@ export default function JobDescriptions({
                     </tr>
                   ) : (
                     paginated.map((job) => {
-                      const badge =
-                        STATUS_CONFIG[
-                          job.status
-                        ] ||
-                        STATUS_CONFIG.Draft;
+                      const isPendingPublish = (pendingPublishTitles.has(job.title) || pendingUpdateIds.has(String(job.id))) && job.status === "Draft";
+                      const effectiveStatus: Status = isPendingPublish ? "Pending Publish" : job.status;
+                      const badge = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.Draft;
 
                       return (
                         <tr
@@ -1011,7 +1087,7 @@ export default function JobDescriptions({
                                 className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}
                               />
 
-                              {job.status}
+                              {isPendingPublish ? "Pending Publish" : job.status}
                             </span>
                           </td>
 
