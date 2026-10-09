@@ -5,11 +5,6 @@ import { useState, useEffect } from 'react';
 import Head from "@/lib/compatHead";
 import Link from 'next/link';
 import { FaCalendarPlus, FaArrowLeft } from 'react-icons/fa';
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-
 
 function AddEvent() {
   const [formData, setFormData] = useState({
@@ -33,59 +28,59 @@ function AddEvent() {
   const [positions, setPositions] = useState([]);
   const [visibilityTouched, setVisibilityTouched] = useState(false);
   const validateForm = () => {
-      const newErrors: Record<string, string> = {};
-      
-      if (!formData.title.trim()) {
-        newErrors.title = 'Title is required';
-      } else if (formData.title.trim().length < 3) {
-        newErrors.title = 'Title must be at least 3 characters';
-      } else if (formData.title.length > 100) {
-        newErrors.title = 'Title must be 100 characters or less';
-      }
-      
-      if (formData.description.trim() && formData.description.trim().length < 3) {
-        newErrors.description = 'Description must be at least 3 characters if provided';
-      } else if (formData.description && formData.description.length > 200) {
-        newErrors.description = 'Description must be 200 characters or less';
-      }
-      
-      if (!formData.event_date) {
-        newErrors.event_date = 'Date is required';
-      } else {
-        const selectedDate = new Date(formData.event_date);
-        const today = new Date();
-        const tenYearsFromNow = new Date();
-        tenYearsFromNow.setFullYear(today.getFullYear() + 10);
-        
-        today.setHours(0, 0, 0, 0);
-        selectedDate.setHours(0, 0, 0, 0);
-        
-        if (selectedDate < today) {
-          newErrors.event_date = 'Event date must be in the future';
-        } else if (selectedDate > tenYearsFromNow) {
-          newErrors.event_date = 'Event date cannot be more than 10 years in the future';
-        }
-      }
-      
-      setErrors(newErrors);
-      return Object.keys(newErrors).length === 0;
-    };
-    // Update the date input
-    const today = new Date();
-    const tenYearsFromNow = new Date();
-    tenYearsFromNow.setFullYear(today.getFullYear() + 10);
+    const newErrors: Record<string, string> = {};
 
-    const minDate = today.toISOString().split('T')[0];
-    const maxDate = tenYearsFromNow.toISOString().split('T')[0];
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    } else if (formData.title.trim().length < 3) {
+      newErrors.title = 'Title must be at least 3 characters';
+    } else if (formData.title.length > 100) {
+      newErrors.title = 'Title must be 100 characters or less';
+    }
+
+    if (formData.description.trim() && formData.description.trim().length < 3) {
+      newErrors.description = 'Description must be at least 3 characters if provided';
+    } else if (formData.description && formData.description.length > 200) {
+      newErrors.description = 'Description must be 200 characters or less';
+    }
+
+    if (!formData.event_date) {
+      newErrors.event_date = 'Date is required';
+    } else {
+      const selectedDate = new Date(formData.event_date);
+      const today = new Date();
+      const tenYearsFromNow = new Date();
+      tenYearsFromNow.setFullYear(today.getFullYear() + 10);
+
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        newErrors.event_date = 'Event date must be in the future';
+      } else if (selectedDate > tenYearsFromNow) {
+        newErrors.event_date = 'Event date cannot be more than 10 years in the future';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  // Update the date input
+  const today = new Date();
+  const tenYearsFromNow = new Date();
+  tenYearsFromNow.setFullYear(today.getFullYear() + 10);
+
+  const minDate = today.toISOString().split('T')[0];
+  const maxDate = tenYearsFromNow.toISOString().split('T')[0];
 
 
   useEffect(() => {
-    const isValid = formData.title.trim().length >= 3 && 
-                   formData.title.length <= 100 && 
-                   formData.event_date && 
-                   formData.description.length <= 200 &&
-                   (!formData.description.trim() || formData.description.trim().length >= 3) &&
-                   (selectedEmployees.length > 0 || selectedGroups.length > 0);
+    const isValid = formData.title.trim().length >= 3 &&
+      formData.title.length <= 100 &&
+      formData.event_date &&
+      formData.description.length <= 200 &&
+      (!formData.description.trim() || formData.description.trim().length >= 3) &&
+      (selectedEmployees.length > 0 || selectedGroups.length > 0);
     setIsFormValid(isValid);
   }, [formData, selectedEmployees, selectedGroups]);
 
@@ -110,38 +105,38 @@ function AddEvent() {
         const data = await res.json();
         const employeeList = data.employees || [];
         setEmployees(employeeList);
-        
+
         // Extract unique roles, employment types, and positions with proper deduplication
         const allRoles = employeeList.map(emp => emp.role).filter(Boolean);
         const allEmploymentTypes = employeeList.map(emp => emp.employee_type).filter(Boolean);
         const allPositions = employeeList.map(emp => emp.position).filter(Boolean);
-        
+
         // Create a Map to store unique values (case-insensitive key, original value)
         const roleMap = new Map();
         const employmentTypeMap = new Map();
         const positionMap = new Map();
-        
+
         allRoles.forEach(role => {
           const key = role.toLowerCase();
           if (!roleMap.has(key)) {
             roleMap.set(key, role);
           }
         });
-        
+
         allEmploymentTypes.forEach(type => {
           const key = type.toLowerCase();
           if (!employmentTypeMap.has(key)) {
             employmentTypeMap.set(key, type);
           }
         });
-        
+
         allPositions.forEach(pos => {
           const key = pos.toLowerCase();
           if (!positionMap.has(key)) {
             positionMap.set(key, pos);
           }
         });
-        
+
         setRoles(Array.from(roleMap.values()));
         setEmploymentTypes(Array.from(employmentTypeMap.values()));
         setPositions(Array.from(positionMap.values()));
@@ -153,7 +148,7 @@ function AddEvent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -163,7 +158,7 @@ function AddEvent() {
       setMessage('Please select at least one employee or group for visibility');
       return;
     }
-    
+
     setLoading(true);
     setMessage('');
 
@@ -173,13 +168,13 @@ function AddEvent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          visible_to: formData.visible_to,
+          visibility: formData.visible_to,
           selected_groups: selectedGroups
         })
       });
 
       const data = await res.json();
-      
+
       if (res.ok) {
         setMessage('Event added successfully!');
         setFormData({ title: '', description: '', event_date: '', event_type: 'event', visible_to: [] });
@@ -199,11 +194,11 @@ function AddEvent() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     if (errors[name]) {
       setErrors({ ...errors, [name]: '' });
     }
-    
+
     if (name === 'visible_to') {
       // Handle multi-select for visible_to
       return;
@@ -219,7 +214,7 @@ function AddEvent() {
     visible_to: []
   };
 
-  const filteredEmployees = searchTerm.length >= 3 ? employees.filter(emp => 
+  const filteredEmployees = searchTerm.length >= 3 ? employees.filter(emp =>
     emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.empid.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -232,7 +227,7 @@ function AddEvent() {
     if (selectedEmployees.some(emp => emp.empid === 'all')) {
       return;
     }
-    
+
     const isSelected = selectedEmployees.some(emp => emp.empid === employee.empid);
     if (isSelected) {
       const updated = selectedEmployees.filter(emp => emp.empid !== employee.empid);
@@ -251,10 +246,10 @@ function AddEvent() {
     if (selectedEmployees.some(emp => emp.empid === 'all')) {
       return;
     }
-    
+
     const groupKey = `${groupType}:${groupValue}`;
     const isSelected = selectedGroups.some(group => group.key === groupKey);
-    
+
     if (isSelected) {
       const updated = selectedGroups.filter(group => group.key !== groupKey);
       setSelectedGroups(updated);
@@ -290,7 +285,7 @@ function AddEvent() {
         <title>Add Event - HRMS</title>
       </Head>
       <div className="flex min-h-screen bg-gray-50">
-        
+
         <div className="flex-1 overflow-auto">
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4">
             <div className="sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
@@ -327,9 +322,8 @@ function AddEvent() {
                       minLength={3}
                       maxLength={100}
                       required
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                        errors.title ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.title ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       placeholder="Enter event title (minimum 3 characters)"
                     />
                     {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
@@ -347,9 +341,8 @@ function AddEvent() {
                       minLength={3}
                       maxLength={200}
                       rows={3}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${
-                        errors.description ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${errors.description ? 'border-red-500' : 'border-gray-300'
+                        }`}
                       placeholder="Enter event description (optional, minimum 3 characters if provided)"
                     />
                     {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
@@ -361,18 +354,17 @@ function AddEvent() {
                       Event Date *
                     </label>
 
-                      <input
-                        type="date"
-                        name="event_date"
-                        value={formData.event_date}
-                        onChange={handleChange}
-                        min={minDate}
-                        max={maxDate}
-                        required
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                          errors.event_date ? 'border-red-500' : 'border-gray-300'
+                    <input
+                      type="date"
+                      name="event_date"
+                      value={formData.event_date}
+                      onChange={handleChange}
+                      min={minDate}
+                      max={maxDate}
+                      required
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.event_date ? 'border-red-500' : 'border-gray-300'
                         }`}
-                      />
+                    />
                     {errors.event_date && <p className="text-red-500 text-sm mt-1">{errors.event_date}</p>}
                   </div>
 
@@ -438,7 +430,7 @@ function AddEvent() {
                           placeholder={selectedEmployees.some(emp => emp.empid === 'all') ? "All employees selected" : "Type to search (min 3 characters)..."}
                         />
                       </div>
-                      
+
                       {showDropdown && (
                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                           {/* Everyone Option */}
@@ -469,111 +461,108 @@ function AddEvent() {
                                   {shouldShowGroups && (() => {
                                     const lowerSearch = searchTerm.toLowerCase();
                                     return roles.some(r => r.toLowerCase().includes(lowerSearch)) ||
-                                           positions.some(p => p.toLowerCase().includes(lowerSearch)) ||
-                                           employmentTypes.some(t => t.toLowerCase().includes(lowerSearch));
+                                      positions.some(p => p.toLowerCase().includes(lowerSearch)) ||
+                                      employmentTypes.some(t => t.toLowerCase().includes(lowerSearch));
                                   })() && (
-                                    <div className="border-b">
-                                      <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide">Groups</div>
-                                      
-                                      {(() => {
-                                        const lowerSearch = searchTerm.toLowerCase();
-                                        const matchedRoles = roles.filter(r => r.toLowerCase().includes(lowerSearch));
-                                        const matchedPositions = positions.filter(p => p.toLowerCase().includes(lowerSearch));
-                                        const matchedTypes = employmentTypes.filter(t => t.toLowerCase().includes(lowerSearch));
-                                        
-                                        // Create a set to track shown values (case-insensitive)
-                                        const shownValues = new Set();
-                                        const results = [];
-                                        
-                                        // Add roles first
-                                        matchedRoles.forEach(role => {
-                                          const lowerValue = role.toLowerCase();
-                                          if (!shownValues.has(lowerValue)) {
-                                            shownValues.add(lowerValue);
-                                            results.push({ type: 'role', value: role });
-                                          }
-                                        });
-                                        
-                                        // Add positions only if not already shown
-                                        matchedPositions.forEach(position => {
-                                          const lowerValue = position.toLowerCase();
-                                          if (!shownValues.has(lowerValue)) {
-                                            shownValues.add(lowerValue);
-                                            results.push({ type: 'position', value: position });
-                                          }
-                                        });
-                                        
-                                        // Add employment types only if not already shown
-                                        matchedTypes.forEach(type => {
-                                          const lowerValue = type.toLowerCase();
-                                          if (!shownValues.has(lowerValue)) {
-                                            shownValues.add(lowerValue);
-                                            results.push({ type: 'employee_type', value: type });
-                                          }
-                                        });
-                                        
-                                        return results;
-                                      })().map((item) => {
-                                        if (item.type === 'role') {
-                                          return (
-                                            <div
-                                              key={`role-${item.value}`}
-                                              className={`px-4 py-3 hover:bg-green-50 cursor-pointer flex items-center gap-3 ${
-                                                selectedGroups.some(group => group.key === `role:${item.value}`) ? 'bg-green-50 border-l-4 border-green-400' : ''
-                                              }`}
-                                              onClick={() => handleGroupSelect('role', item.value)}
-                                            >
-                                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                                <span className="text-green-600 text-xs font-bold">R</span>
-                                              </div>
-                                              <div>
-                                                <div className="font-medium uppercase">{item.value}</div>
-                                                <div className="text-xs text-gray-500">All {item.value} employees</div>
-                                              </div>
-                                            </div>
-                                          );
-                                        } else if (item.type === 'position') {
-                                          return (
-                                            <div
-                                              key={`position-${item.value}`}
-                                              className={`px-4 py-3 hover:bg-purple-50 cursor-pointer flex items-center gap-3 ${
-                                                selectedGroups.some(group => group.key === `position:${item.value}`) ? 'bg-purple-50 border-l-4 border-purple-400' : ''
-                                              }`}
-                                              onClick={() => handleGroupSelect('position', item.value)}
-                                            >
-                                              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                                <span className="text-purple-600 text-xs font-bold">P</span>
-                                              </div>
-                                              <div>
-                                                <div className="font-medium">{item.value}</div>
-                                                <div className="text-xs text-gray-500">All {item.value} employees</div>
-                                              </div>
-                                            </div>
-                                          );
-                                        } else {
-                                          return (
-                                            <div
-                                              key={`employment-${item.value}`}
-                                              className={`px-4 py-3 hover:bg-orange-50 cursor-pointer flex items-center gap-3 ${
-                                                selectedGroups.some(group => group.key === `employee_type:${item.value}`) ? 'bg-orange-50 border-l-4 border-orange-400' : ''
-                                              }`}
-                                              onClick={() => handleGroupSelect('employee_type', item.value)}
-                                            >
-                                              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                                                <span className="text-orange-600 text-xs font-bold">E</span>
-                                              </div>
-                                              <div>
-                                                <div className="font-medium">{item.value} Staff</div>
-                                                <div className="text-xs text-gray-500">All {item.value.toLowerCase()} employees</div>
-                                              </div>
-                                            </div>
-                                          );
-                                        }
-                                      })}
+                                      <div className="border-b">
+                                        <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-600 uppercase tracking-wide">Groups</div>
 
-                                    </div>
-                                  )}
-                                  
+                                        {(() => {
+                                          const lowerSearch = searchTerm.toLowerCase();
+                                          const matchedRoles = roles.filter(r => r.toLowerCase().includes(lowerSearch));
+                                          const matchedPositions = positions.filter(p => p.toLowerCase().includes(lowerSearch));
+                                          const matchedTypes = employmentTypes.filter(t => t.toLowerCase().includes(lowerSearch));
+
+                                          // Create a set to track shown values (case-insensitive)
+                                          const shownValues = new Set();
+                                          const results = [];
+
+                                          // Add roles first
+                                          matchedRoles.forEach(role => {
+                                            const lowerValue = role.toLowerCase();
+                                            if (!shownValues.has(lowerValue)) {
+                                              shownValues.add(lowerValue);
+                                              results.push({ type: 'role', value: role });
+                                            }
+                                          });
+
+                                          // Add positions only if not already shown
+                                          matchedPositions.forEach(position => {
+                                            const lowerValue = position.toLowerCase();
+                                            if (!shownValues.has(lowerValue)) {
+                                              shownValues.add(lowerValue);
+                                              results.push({ type: 'position', value: position });
+                                            }
+                                          });
+
+                                          // Add employment types only if not already shown
+                                          matchedTypes.forEach(type => {
+                                            const lowerValue = type.toLowerCase();
+                                            if (!shownValues.has(lowerValue)) {
+                                              shownValues.add(lowerValue);
+                                              results.push({ type: 'employee_type', value: type });
+                                            }
+                                          });
+
+                                          return results;
+                                        })().map((item) => {
+                                          if (item.type === 'role') {
+                                            return (
+                                              <div
+                                                key={`role-${item.value}`}
+                                                className={`px-4 py-3 hover:bg-green-50 cursor-pointer flex items-center gap-3 ${selectedGroups.some(group => group.key === `role:${item.value}`) ? 'bg-green-50 border-l-4 border-green-400' : ''
+                                                  }`}
+                                                onClick={() => handleGroupSelect('role', item.value)}
+                                              >
+                                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                                  <span className="text-green-600 text-xs font-bold">R</span>
+                                                </div>
+                                                <div>
+                                                  <div className="font-medium uppercase">{item.value}</div>
+                                                  <div className="text-xs text-gray-500">All {item.value} employees</div>
+                                                </div>
+                                              </div>
+                                            );
+                                          } else if (item.type === 'position') {
+                                            return (
+                                              <div
+                                                key={`position-${item.value}`}
+                                                className={`px-4 py-3 hover:bg-purple-50 cursor-pointer flex items-center gap-3 ${selectedGroups.some(group => group.key === `position:${item.value}`) ? 'bg-purple-50 border-l-4 border-purple-400' : ''
+                                                  }`}
+                                                onClick={() => handleGroupSelect('position', item.value)}
+                                              >
+                                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                                  <span className="text-purple-600 text-xs font-bold">P</span>
+                                                </div>
+                                                <div>
+                                                  <div className="font-medium">{item.value}</div>
+                                                  <div className="text-xs text-gray-500">All {item.value} employees</div>
+                                                </div>
+                                              </div>
+                                            );
+                                          } else {
+                                            return (
+                                              <div
+                                                key={`employment-${item.value}`}
+                                                className={`px-4 py-3 hover:bg-orange-50 cursor-pointer flex items-center gap-3 ${selectedGroups.some(group => group.key === `employee_type:${item.value}`) ? 'bg-orange-50 border-l-4 border-orange-400' : ''
+                                                  }`}
+                                                onClick={() => handleGroupSelect('employee_type', item.value)}
+                                              >
+                                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                                                  <span className="text-orange-600 text-xs font-bold">E</span>
+                                                </div>
+                                                <div>
+                                                  <div className="font-medium">{item.value} Staff</div>
+                                                  <div className="text-xs text-gray-500">All {item.value.toLowerCase()} employees</div>
+                                                </div>
+                                              </div>
+                                            );
+                                          }
+                                        })}
+
+                                      </div>
+                                    )}
+
                                   {/* Individual Employees */}
                                   {filteredEmployees.length > 0 && (
                                     <div>
@@ -581,9 +570,8 @@ function AddEvent() {
                                       {filteredEmployees.map((employee) => (
                                         <div
                                           key={employee.email}
-                                          className={`px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center gap-3 ${
-                                            selectedEmployees.some(emp => emp.email === employee.email) ? 'bg-blue-50 border-l-4 border-blue-400' : ''
-                                          }`}
+                                          className={`px-4 py-3 hover:bg-blue-50 cursor-pointer flex items-center gap-3 ${selectedEmployees.some(emp => emp.email === employee.email) ? 'bg-blue-50 border-l-4 border-blue-400' : ''
+                                            }`}
                                           onClick={() => handleEmployeeSelect(employee)}
                                         >
                                           <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -597,19 +585,19 @@ function AddEvent() {
                                       ))}
                                     </div>
                                   )}
-                                  
-                                  {filteredEmployees.length === 0 && 
-                                   (!shouldShowGroups || (() => {
-                                     const lowerSearch = searchTerm.toLowerCase();
-                                     const hasRoleMatch = roles.some(r => r.toLowerCase().includes(lowerSearch));
-                                     const hasPositionMatch = positions.some(p => p.toLowerCase().includes(lowerSearch));
-                                     const hasTypeMatch = employmentTypes.some(t => t.toLowerCase().includes(lowerSearch));
-                                     return !hasRoleMatch && !hasPositionMatch && !hasTypeMatch;
-                                   })()) && (
-                                    <div className="px-4 py-6 text-center text-gray-500">
-                                      <div className="text-sm">No matches found for &quot;{searchTerm}&quot;</div>
-                                    </div>
-                                  )}
+
+                                  {filteredEmployees.length === 0 &&
+                                    (!shouldShowGroups || (() => {
+                                      const lowerSearch = searchTerm.toLowerCase();
+                                      const hasRoleMatch = roles.some(r => r.toLowerCase().includes(lowerSearch));
+                                      const hasPositionMatch = positions.some(p => p.toLowerCase().includes(lowerSearch));
+                                      const hasTypeMatch = employmentTypes.some(t => t.toLowerCase().includes(lowerSearch));
+                                      return !hasRoleMatch && !hasPositionMatch && !hasTypeMatch;
+                                    })()) && (
+                                      <div className="px-4 py-6 text-center text-gray-500">
+                                        <div className="text-sm">No matches found for &quot;{searchTerm}&quot;</div>
+                                      </div>
+                                    )}
                                 </>
                               )}
                             </>
@@ -624,11 +612,10 @@ function AddEvent() {
                   </div>
 
                   {message && (
-                    <div className={`p-3 rounded-lg text-sm ${
-                      message.includes('successfully') 
-                        ? 'bg-green-100 text-green-700' 
+                    <div className={`p-3 rounded-lg text-sm ${message.includes('successfully')
+                        ? 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700'
-                    }`}>
+                      }`}>
                       {message}
                     </div>
                   )}
@@ -642,19 +629,19 @@ function AddEvent() {
                       {loading ? 'Adding...' : 'Add Event'}
                     </button>
                     <button
-                        type="button"
-                        onClick={() => {
-                          setFormData(initialFormState); 
-                          setSelectedEmployees([]);
-                          setSelectedGroups([]);
-                          setErrors({}); 
-                          setMessage('');
-                          setVisibilityTouched(false);
-                        }}
-                        className="w-full sm:w-auto px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
-                      >
-                        Cancel
-                      </button>
+                      type="button"
+                      onClick={() => {
+                        setFormData(initialFormState);
+                        setSelectedEmployees([]);
+                        setSelectedGroups([]);
+                        setErrors({});
+                        setMessage('');
+                        setVisibilityTouched(false);
+                      }}
+                      className="w-full sm:w-auto px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
 
 
                   </div>
@@ -676,4 +663,3 @@ export default function ClientPageWrapper(props: any) {
     </Suspense>
   );
 }
-

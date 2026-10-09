@@ -22,12 +22,16 @@ export default async function Page() {
     canCreate,
     canEdit,
     canDelete,
+    canDownloadHolidays,
+    canDownloadEvents,
   ] = await Promise.all([
     checkPermission(user, PERMISSION_KEYS.CALENDAR_VIEW),
     checkPermission(user, PERMISSION_KEYS.CALENDAR_MANAGE),
     checkPermission(user, PERMISSION_KEYS.CALENDAR_CREATE),
     checkPermission(user, PERMISSION_KEYS.CALENDAR_EDIT),
     checkPermission(user, PERMISSION_KEYS.CALENDAR_DELETE),
+    checkPermission(user, PERMISSION_KEYS.CALENDAR_DOWNLOAD_HOLIDAYS),
+    checkPermission(user, PERMISSION_KEYS.CALENDAR_DOWNLOAD_EVENTS),
   ]);
 
   if (!canView && !canManage) redirect("/403");
@@ -38,6 +42,8 @@ export default async function Page() {
         canCreate={canCreate || canManage}
         canEdit={canEdit || canManage}
         canDelete={canDelete || canManage}
+        canDownloadHolidays={canDownloadHolidays || canManage}
+        canDownloadEvents={canDownloadEvents || canManage}
       />
     </Suspense>
   );

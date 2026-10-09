@@ -66,8 +66,7 @@ const AutoLogoutTimer = () => {
     if (logoutRequestedRef.current) return;
     logoutRequestedRef.current = true;
     stopCountdown();
-    void dispatch(logoutUser());
-    router.replace("/login");
+    await dispatch(logoutUser()).unwrap();
   }, [router, stopCountdown]);
 
   // Fallback ping — only fires when user is active but no backend requests are happening

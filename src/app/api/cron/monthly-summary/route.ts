@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { getAuthenticatedUser } from "@/lib/authMiddleware";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { Prisma } from "@prisma/client";
 
 // ---------- Config ----------
 const FULL_DAY_HOURS = 8;
 const HALF_DAY_MIN_HOURS = 4;
+const STANDARD_MONTHLY_WORKING_DAYS = 22;
 
 // ---------- Helpers ----------
 
@@ -29,6 +27,10 @@ function toUTCDateOnly(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
+function toDateKey(d: Date): string {
+  return toUTCDateOnly(d).toISOString().slice(0, 10);
+}
+
 /** Round to 2 decimals to keep DECIMAL(5,2) clean */
 function round2(n: number): number {
   return Number(n.toFixed(2));
@@ -36,17 +38,21 @@ function round2(n: number): number {
 
 function classifyByHours(hours: number): {
   workingDay: number;
+  isAbsent: boolean;
   overtime: number;
 } {
   if (hours < HALF_DAY_MIN_HOURS) {
-    return { workingDay: 0, overtime: 0 };
+    return { workingDay: 0, isAbsent: true, overtime: 0 };
   }
   if (hours < FULL_DAY_HOURS) {
-    return { workingDay: 0.5, overtime: 0 };
+    return { workingDay: 0.5, isAbsent: false, overtime: 0 };
   }
+  const diff = round2(hours - FULL_DAY_HOURS);
+  const overtime = diff >= 1 ? diff : 0;
   return {
     workingDay: 1,
-    overtime: round2(hours - FULL_DAY_HOURS),
+    isAbsent: false,
+    overtime,
   };
 }
 
@@ -59,21 +65,7 @@ async function handleMonthlySummary(req: NextRequest) {
     !!cronSecret && cronSecret === process.env.CRON_SECRET;
 
   if (!isCronCall) {
-    const { user: decoded, errorResponse } = await getAuthenticatedUser(req);
-    if (errorResponse) return errorResponse;
-    if (!decoded)
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-    const canRun = await checkPermission(
-      decoded,
-      PERMISSION_KEYS.CALENDAR_MANAGE
-    );
-    if (!canRun) {
-      return NextResponse.json(
-        { message: "Forbidden: insufficient permissions" },
-        { status: 403 }
-      );
-    }
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
   // ===== END CRON SECRET BYPASS =====
 
@@ -174,30 +166,54 @@ async function handleMonthlySummary(req: NextRequest) {
         continue;
       }
 
-      // Fetch user profile info (e.g. email for holiday matching)
+      // Fetch user profile info
       const employees = await prisma.users.findMany({
         where: { empid: { in: empIds } },
-        select: { empid: true, email: true },
+        select: {
+          empid: true,
+          email: true,
+          role: true,
+          roleId: true,
+          rbacRole: {
+            select: { id: true, name: true, type: true },
+          },
+        },
       });
       const employeeMap = new Map(employees.map((e) => [e.empid, e]));
+
+      const eligibleEmpIds = empIds.filter((id) => {
+        const emp = employeeMap.get(id);
+        return emp;
+      });
+
+      if (eligibleEmpIds.length === 0) {
+        continue;
+      }
 
       let processed = 0;
       const monthErrors: { empid: string; error: string }[] = [];
 
-      // ---- Holidays in this month ----
-      const holidayEvents = await prisma.calendar_events.findMany({
+      // ---- Calendar Events in this month ----
+      const calendarEvents = await prisma.calendar_events.findMany({
         where: {
-          event_type: "holiday",
           event_date: { gte: monthStart, lt: monthEnd },
         },
-        select: { event_date: true, visible_to: true },
+        select: { event_date: true, event_type: true },
       });
 
-      for (const empId of empIds) {
+      const calendarEventsByDate = new Map<string, string>();
+      for (const ev of calendarEvents) {
+        const key = toDateKey(ev.event_date);
+        const type = ev.event_type ? ev.event_type.trim().toLowerCase() : "";
+        // If there are multiple events on the same day, prioritize holiday
+        if (!calendarEventsByDate.has(key) || type === "holiday") {
+          calendarEventsByDate.set(key, type);
+        }
+      }
+
+      for (const empId of eligibleEmpIds) {
         let rowsToProcess: { id: number }[] = [];
         try {
-          const emp = employeeMap.get(empId) ?? { empid: empId, email: "" };
-
           // ---- Attendance rows for this employee in this month ----
           const attendanceRows = await prisma.attendance.findMany({
             where: {
@@ -213,13 +229,17 @@ async function handleMonthlySummary(req: NextRequest) {
               check_in: true,
               check_out: true,
               total_hours: true,
+              attendance_status: true,
               status: true,
             },
           });
 
-          // If there is no checkout, leave that data for pending and do not count
+          // Reset incomplete present checkins (no checkout) to PENDING
           const pendingNoCheckoutRows = attendanceRows.filter(
-            (row) => row.check_out === null
+            (row) =>
+              (row.attendance_status === "Present" ||
+                row.attendance_status === "AutoCheckout") &&
+              row.check_out === null
           );
           const pendingToReset = pendingNoCheckoutRows.filter(
             (row) => row.status !== "PENDING"
@@ -231,12 +251,12 @@ async function handleMonthlySummary(req: NextRequest) {
             });
           }
 
-          // Valid rows that have checkout
+          // Processable rows (rows with checkout OR absent rows)
           const validAttendanceRows = attendanceRows.filter(
-            (row) => row.check_out !== null
+            (row) =>
+              row.check_out !== null || row.attendance_status === "Absent"
           );
 
-          // If there are no valid attendance records with checkout, do not create an empty summary
           if (validAttendanceRows.length === 0) {
             continue;
           }
@@ -254,118 +274,158 @@ async function handleMonthlySummary(req: NextRequest) {
             });
           }
 
-          // Build attendance hours directly from attendance table
-          const attendanceByDate = new Map<string, number>();
-          for (const row of validAttendanceRows) {
+          // Group attendance rows by date
+          const attendanceByDateMap = new Map<string, typeof attendanceRows>();
+          for (const row of attendanceRows) {
             const recordDate = row.date ?? row.check_in;
             if (recordDate) {
-              const key = toUTCDateOnly(recordDate).toISOString().slice(0, 10);
-              let hours = 0;
-              if (row.total_hours !== null && row.total_hours !== undefined) {
-                hours = Number(row.total_hours);
-              } else if (row.check_in && row.check_out) {
-                hours =
-                  (row.check_out.getTime() - row.check_in.getTime()) /
-                  (1000 * 60 * 60);
-              }
-              const current = attendanceByDate.get(key) ?? 0;
-              attendanceByDate.set(key, round2(current + hours));
+              const key = toDateKey(recordDate);
+              const list = attendanceByDateMap.get(key) ?? [];
+              list.push(row);
+              attendanceByDateMap.set(key, list);
             }
           }
 
-          // ---- Holidays for this employee ----
-          const holidayDatesForEmp = new Set<string>();
-          for (const ev of holidayEvents) {
-            if (!ev.visible_to) continue;
-            const matches =
-              ev.visible_to === "all" ||
-              (emp.email &&
-                ev.visible_to
-                  .split(",")
-                  .map((s) => s.trim())
-                  .includes(emp.email));
-            if (matches) {
-              holidayDatesForEmp.add(
-                toUTCDateOnly(ev.event_date).toISOString().slice(0, 10)
-              );
-            }
-          }
-
-          // ===== Approved paid leaves for this employee in this month =====
-          const approvedLeaves = await prisma.leave_requests.findMany({
+          // ===== Leave requests for this employee in this month =====
+          const empLeaveRequests = await prisma.leave_requests.findMany({
             where: {
               empid: empId,
-              status: "Approved",
               from_date: { lt: monthEnd },
               to_date: { gte: monthStart },
             },
             select: {
+              id: true,
               from_date: true,
               to_date: true,
+              status: true,
               leave_types: { select: { paid: true } },
             },
           });
 
-          const paidLeaveDates = new Set<string>();
-          for (const lv of approvedLeaves) {
-            if (!lv.leave_types?.paid) continue;
-            const start = toUTCDateOnly(lv.from_date);
-            const end = toUTCDateOnly(lv.to_date);
-            for (
-              let d = new Date(start);
-              d.getTime() <= end.getTime();
-              d.setUTCDate(d.getUTCDate() + 1)
-            ) {
-              if (d < monthStart || d >= monthEnd) continue;
-              paidLeaveDates.add(d.toISOString().slice(0, 10));
-            }
-          }
-          // ===== END LEAVE BLOCK =====
-
-          let daysWorked = new Prisma.Decimal(0);
-          let overtimeHours = new Prisma.Decimal(0);
+          let daysWorked = 0;
+          let daysAbsent = 0;
+          let dailyOvertimeHours = 0;
 
           // ---- Day loop ----
           for (const day of daysToEvaluate) {
-            const dayKey = day.toISOString().slice(0, 10);
-
-            // Calculated solely from attendance table
-            const hours = attendanceByDate.get(dayKey) ?? 0;
-            const worked = hours > 0;
+            const dayKey = toDateKey(day);
+            const rowsForDay = attendanceByDateMap.get(dayKey) ?? [];
             const weekendDay = isWeekend(day);
-            const holiday = holidayDatesForEmp.has(dayKey);
-            const onPaidLeave = paidLeaveDates.has(dayKey);
 
-            // 1. Weekend: if worked, add to overtime_hours
-            if (weekendDay) {
-              if (worked) {
-                overtimeHours = overtimeHours.add(
-                  new Prisma.Decimal(round2(hours))
-                );
+            // Check if there is any Present / AutoCheckout session for this day
+            const presentRows = rowsForDay.filter(
+              (r) =>
+                r.attendance_status === "Present" ||
+                r.attendance_status === "AutoCheckout"
+            );
+
+            if (presentRows.length > 0) {
+              // "If it not found check_out or as null it do not count that day."
+              const hasNullCheckout = presentRows.some(
+                (r) => r.check_out === null
+              );
+              if (hasNullCheckout) {
+                continue;
+              }
+
+              let dayHours = 0;
+              for (const row of presentRows) {
+                if (row.total_hours !== null && row.total_hours !== undefined) {
+                  dayHours += Number(row.total_hours);
+                } else if (row.check_in && row.check_out) {
+                  dayHours +=
+                    (row.check_out.getTime() - row.check_in.getTime()) /
+                    (1000 * 60 * 60);
+                }
+              }
+              dayHours = round2(dayHours);
+
+              // "now if the day is a weekend then also its count as weekdays logic."
+              const { workingDay, isAbsent, overtime } = classifyByHours(dayHours);
+              if (isAbsent) {
+                daysAbsent = round2(daysAbsent + 1);
+              } else {
+                daysWorked = round2(daysWorked + workingDay);
+                dailyOvertimeHours = round2(dailyOvertimeHours + overtime);
               }
               continue;
             }
 
-            // 2. Holiday: counts as 1 working day; if worked, also adds to overtime_hours
-            if (holiday) {
-              daysWorked = daysWorked.add(new Prisma.Decimal(1));
-              if (worked) {
-                overtimeHours = overtimeHours.add(
-                  new Prisma.Decimal(round2(hours))
+            // Either attendance record explicitly has Absent, or there's no attendance record on this day
+            const hasExplicitAbsent = rowsForDay.some(
+              (r) => r.attendance_status === "Absent"
+            );
+
+            // If it's a weekend and no explicit attendance record exists, it's a regular weekend day off
+            if (weekendDay && !hasExplicitAbsent) {
+              continue;
+            }
+
+            // Employee is absent on this day (either explicit Absent or weekday without attendance)
+            // "Now if the attendance_status is Absent then it checks for leave_requests table..."
+            const leavesForDay = empLeaveRequests.filter((lv) => {
+              const start = toUTCDateOnly(lv.from_date);
+              const end = toUTCDateOnly(lv.to_date);
+              return day >= start && day <= end;
+            });
+
+            if (leavesForDay.length > 0) {
+              // Prioritize Approved, then Pending, then Rejected/Cancelled
+              const approvedLeave = leavesForDay.find(
+                (lv) => lv.status === "Approved"
+              );
+              if (approvedLeave) {
+                // "if its found Approved then it checks the leave_types table, on paid column if it found 0 then that day count as absent and if it found 1 then it count as present."
+                const isPaid = !!approvedLeave.leave_types?.paid;
+                if (isPaid) {
+                  daysWorked = round2(daysWorked + 1);
+                } else {
+                  daysAbsent = round2(daysAbsent + 1);
+                }
+              } else {
+                const pendingLeave = leavesForDay.find(
+                  (lv) => lv.status === "Pending"
                 );
+                if (pendingLeave) {
+                  // "if it found Pending then it do not count that day"
+                  // Do not count that day
+                } else {
+                  // All leaves on this day are Rejected or Cancelled
+                  // "if its found Rejected or Cancelled it count that day as absent"
+                  daysAbsent = round2(daysAbsent + 1);
+                }
               }
               continue;
             }
 
-            // 3. Paid leave — always counts as 1.0 working day.
-            if (onPaidLeave) {
-              daysWorked = daysWorked.add(new Prisma.Decimal(1));
+            // If no leave found:
+            // "If it do not found any leave then it checks the calender_events for that day..."
+            if (calendarEventsByDate.has(dayKey)) {
+              const eventType = calendarEventsByDate.get(dayKey) ?? "";
+              if (eventType === "holiday") {
+                // "if it found holiday or Holiday on that column then it count that day as normal whole day"
+                daysWorked = round2(daysWorked + 1);
+              } else {
+                // "if it found event for now count that day as absent (latter I will fix the calender_events table to support individual employee support but for now just do this)"
+                daysAbsent = round2(daysAbsent + 1);
+              }
+              continue;
             }
 
-            // 4. Attendance contribution — runs even when on paid leave
-            const { workingDay: wd, overtime: ot } = classifyByHours(hours);
-            daysWorked = daysWorked.add(new Prisma.Decimal(wd));
-            overtimeHours = overtimeHours.add(new Prisma.Decimal(ot));
+            // If no calendar event either:
+            // Weekday unexcused absence
+            if (!weekendDay) {
+              daysAbsent = round2(daysAbsent + 1);
+            }
+          }
+
+          // "Then its check if the days_worked if grater than 22 then its count that as overtime, like if its half day then 4 added to overtime, if full day 8 added to overtime (eg: 22.5 marked as half day, 23 marked as full day)."
+          let totalOvertimeHours = dailyOvertimeHours;
+          if (daysWorked > STANDARD_MONTHLY_WORKING_DAYS) {
+            const extraDays = round2(daysWorked - STANDARD_MONTHLY_WORKING_DAYS);
+            const extraOvertime = round2(extraDays * FULL_DAY_HOURS);
+            totalOvertimeHours = round2(totalOvertimeHours + extraOvertime);
+            daysWorked = STANDARD_MONTHLY_WORKING_DAYS;
           }
 
           // Upsert monthly_summary (single month record per employee, updates data as attendance changes)
@@ -379,8 +439,9 @@ async function handleMonthlySummary(req: NextRequest) {
             update: {
               year,
               total_working_days: totalWorkingDays,
-              days_worked: daysWorked,
-              overtime_hours: overtimeHours,
+              days_worked: new Prisma.Decimal(round2(daysWorked)),
+              days_absent: new Prisma.Decimal(round2(daysAbsent)),
+              overtime_hours: new Prisma.Decimal(round2(totalOvertimeHours)),
               weekend: totalWeekends,
             },
             create: {
@@ -388,8 +449,9 @@ async function handleMonthlySummary(req: NextRequest) {
               month,
               year,
               total_working_days: totalWorkingDays,
-              days_worked: daysWorked,
-              overtime_hours: overtimeHours,
+              days_worked: new Prisma.Decimal(round2(daysWorked)),
+              days_absent: new Prisma.Decimal(round2(daysAbsent)),
+              overtime_hours: new Prisma.Decimal(round2(totalOvertimeHours)),
               weekend: totalWeekends,
             },
           });
@@ -437,7 +499,7 @@ async function handleMonthlySummary(req: NextRequest) {
         daysProcessed: daysToEvaluate.length,
         totalWorkingDays,
         totalWeekends,
-        employeesWithAttendance: empIds.length,
+        employeesWithAttendance: eligibleEmpIds.length,
         processed,
         failed: monthErrors.length,
         errors: monthErrors.length > 0 ? monthErrors : undefined,

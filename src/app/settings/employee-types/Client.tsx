@@ -381,7 +381,7 @@ function EmployeeTypes() {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      {['Name', 'Description', 'Status', 'Employees', 'Permissions', 'Created', 'Actions'].map((h) => (
+                      {['Name', 'Description', 'Status','Parent Role','Employees', 'Permissions', 'Created', 'Actions'].map((h) => (
                         <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           {h}
                         </th>
@@ -419,6 +419,9 @@ function EmployeeTypes() {
                                 : <XCircle size={12} />}
                               {String(role.status).toUpperCase() === 'ACTIVE' ? 'Active' : 'Inactive'}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-500">
+                            <span>{role.parent?.name || '—'}</span>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-700">
                             <div className="flex items-center gap-1">

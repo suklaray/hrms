@@ -58,7 +58,7 @@ function EmployeeStatusBadge({ status }: { status: string }) {
                 }`}
         >
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-red-500"}`} />
-            <span>{isActive ? "Active" : (status || "Inactive")}</span>
+            <span>{status}</span>
         </span>
     );
 }
@@ -160,7 +160,9 @@ function EmployeeListPage({
 
             // Status filter
             if (statusFilter !== "ALL") {
-                if (emp.status?.toLowerCase() !== statusFilter.toLowerCase()) return false;
+                const empStatus = (emp.is_active || "").toLowerCase();       
+                const target = statusFilter.toLowerCase();                     
+                if (empStatus !== target) return false;
             }
 
             // Search filter
@@ -180,8 +182,8 @@ function EmployeeListPage({
 
     // Metrics for summary cards
     const totalEmployeesCount = employees.length;
-    const activeCount = employees.filter((e) => e.status?.toLowerCase() === "active").length;
-    const inactiveCount = employees.filter((e) => e.status?.toLowerCase() === "inactive").length;
+    const activeCount = employees.filter((e) => e.is_active?.toLowerCase() === "active").length;
+    const inactiveCount = employees.filter((e) => e.is_active?.toLowerCase() === "inactive").length;
 
     // Pagination logic
     const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
@@ -204,7 +206,7 @@ function EmployeeListPage({
             Position: emp.position || "",
             "Date of Joining": emp.date_of_joining ? formatDisplayDate(emp.date_of_joining) : "",
             Experience: emp.experience ? `${emp.experience}y` : "",
-            Status: emp.status || "Inactive",
+            Status: emp.is_active || "Inactive",
         }));
 
         import("xlsx")
@@ -591,7 +593,7 @@ function EmployeeListPage({
 
                                                     {/* Status (Read-only Badge) */}
                                                     <td className="px-6 py-3.5 whitespace-nowrap text-[12px]">
-                                                        <EmployeeStatusBadge status={emp.status} />
+                                                        <EmployeeStatusBadge status={emp.is_active} />
                                                     </td>
 
                                                     {/* Actions */}

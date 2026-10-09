@@ -206,7 +206,7 @@ export async function generatePayrollPeriods({
                 pStart.getUTCDate() === 1 && pEnd.getUTCDate() === endOfMonth.getUTCDate();
             const period_name = isFullMonth
                 ? `${monthName} ${curYear}`
-                : `${monthName} ${curYear} (${formatShortDate(pStart)} → ${formatShortDate(pEnd)})`;
+                : `${monthName} ${curYear}`;
 
             const salary_payment_date = getMonthlyPaymentDate(pEnd, paymentDayConfig);
 
@@ -245,7 +245,7 @@ export async function generatePayrollPeriods({
             ));
             const pEnd = tentativeEnd > endDate ? new Date(endDate) : tentativeEnd;
 
-            const period_name = `Week ${weekNumber} (${formatShortDate(curStart)} → ${formatShortDate(pEnd)})`;
+            const period_name = `Week ${weekNumber}`;
             const salary_payment_date = getWeeklyPaymentDate(pEnd, paymentDayConfig);
 
             generatedPeriods.push({
@@ -280,7 +280,7 @@ export async function generatePayrollPeriods({
             ));
             const pEnd = tentativeEnd > endDate ? new Date(endDate) : tentativeEnd;
 
-            const period_name = `Bi-Weekly ${biWeekNumber} (${formatShortDate(curStart)} → ${formatShortDate(pEnd)})`;
+            const period_name = `Bi-Weekly ${biWeekNumber}`;
             const salary_payment_date = getWeeklyPaymentDate(pEnd, paymentDayConfig);
 
             generatedPeriods.push({

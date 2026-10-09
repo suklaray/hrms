@@ -2,9 +2,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import ClientPage from "./Client";
-import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission, getUserPermissions, isSuperAdmin } from "@/lib/rbac";
+import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";

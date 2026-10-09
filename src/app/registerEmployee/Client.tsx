@@ -323,6 +323,7 @@ function RegisterEmployee({
       "dateOfJoining",
       "experience",
       "employeeType",
+      "rbacRoleId",
     ];
 
     if (formData.employeeType === "Intern" || formData.employeeType === "Contractor") {
@@ -336,7 +337,14 @@ function RegisterEmployee({
         isValid = false;
       }
     });
+    if (!formData.rbacRoleId) {
+      setErrors((prev) => ({
+        ...prev,
+        rbacRoleId: "RBAC role is required",
+      }));
 
+      isValid = false;
+    }
     return isValid && Object.keys(errors).length === 0;
   };
 
@@ -831,6 +839,7 @@ function RegisterEmployee({
                     <div className="relative">
                       <label className="block text-[11px] font-semibold text-[#4b5563] mb-1.5">
                         User Role / RBAC Role
+                        <span className="text-red-500 ml-0.5">*</span>
                       </label>
                       <div className="relative">
                         <button

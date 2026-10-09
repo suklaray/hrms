@@ -4,11 +4,8 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import Head from "@/lib/compatHead";
 import { useRouter } from "@/lib/compatRouter";
-import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
-import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-import { Users, CheckCircle, Clock, DollarSign, Calendar, Eye, ChevronLeft, ChevronRight, Search,  } from "lucide-react";
-import {toast} from 'react-toastify';
+import { Users, CheckCircle, Clock, DollarSign, Calendar, ChevronLeft, ChevronRight, Search, } from "lucide-react";
+import { toast } from 'react-toastify';
 import { formatDateTime, formatMonthName, formatMonthYear, formatShortMonthYear } from "@/utils/dateTime";
 
 
@@ -50,8 +47,8 @@ function GeneratePayrollPage() {
       const generated = employees.filter(emp => {
         if (!emp.lastPaymentDate) return false;
         const lastPayment = new Date(emp.lastPaymentDate);
-        return lastPayment.getMonth() + 1 === selectedMonth && 
-               lastPayment.getFullYear() === selectedYear;
+        return lastPayment.getMonth() + 1 === selectedMonth &&
+          lastPayment.getFullYear() === selectedYear;
       }).length;
       const pending = total - generated;
       setStats({ total, generated, pending });
@@ -84,30 +81,30 @@ function GeneratePayrollPage() {
       emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.empid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Simple logic: assume all employees are pending for current month by default
     // In a real app, this would check against actual payroll records for the selected month/year
     let isPending = true;
-    
+
     // If employee has lastPaymentDate, check if it matches selected month/year
     if (emp.lastPaymentDate) {
       const lastPayment = new Date(emp.lastPaymentDate);
-      const hasPayrollForSelectedMonth = 
-        lastPayment.getMonth() + 1 === selectedMonth && 
+      const hasPayrollForSelectedMonth =
+        lastPayment.getMonth() + 1 === selectedMonth &&
         lastPayment.getFullYear() === selectedYear;
       isPending = !hasPayrollForSelectedMonth;
     }
-    
+
     // Apply status filter
-    const matchesStatus = statusFilter === 'all' || 
+    const matchesStatus = statusFilter === 'all' ||
       (statusFilter === 'pending' && isPending) ||
       (statusFilter === 'generated' && !isPending);
-    
+
     return matchesSearch && matchesStatus;
   });
 
   const StatCard = ({ title, value, icon: Icon, color, bgColor, onClick, isActive }) => (
-    <div 
+    <div
       className={`${bgColor} rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 cursor-pointer transition-all duration-200 ${isActive ? 'ring-2 ring-blue-500' : 'hover:shadow-md'}`}
       onClick={onClick}
     >
@@ -140,7 +137,7 @@ function GeneratePayrollPage() {
               <span>/</span>
               <span className="text-gray-900 font-medium">Generate Payroll</span>
             </nav>
-            
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Payroll Generation</h1>
@@ -202,7 +199,7 @@ function GeneratePayrollPage() {
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
-              
+
               {/* Status Filter */}
               <div className="flex items-center space-x-2">
                 <select
@@ -215,7 +212,7 @@ function GeneratePayrollPage() {
                   <option value="generated">Generated</option>
                 </select>
               </div>
-              
+
               {/* Month and Year Filters */}
               <div className="flex items-center space-x-2">
                 <Calendar className="h-5 w-5 text-gray-400" />
@@ -258,7 +255,7 @@ function GeneratePayrollPage() {
                   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
                   const startIndex = (currentPage - 1) * itemsPerPage;
                   const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
-                  
+
                   return (
                     <p className="text-sm text-gray-600 mt-2">
                       Showing {paginatedEmployees.length} of {filteredEmployees.length} employees
@@ -293,7 +290,7 @@ function GeneratePayrollPage() {
                         const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
                         const startIndex = (currentPage - 1) * itemsPerPage;
                         const paginatedEmployees = filteredEmployees.slice(startIndex, startIndex + itemsPerPage);
-                        
+
                         return paginatedEmployees.map((emp) => (
                           <tr key={emp.empid} className="hover:bg-gray-50">
                             <td className="px-4 sm:px-6 py-4">
@@ -334,8 +331,8 @@ function GeneratePayrollPage() {
                                 let isGenerated = false;
                                 if (emp.lastPaymentDate) {
                                   const lastPayment = new Date(emp.lastPaymentDate);
-                                  isGenerated = lastPayment.getMonth() + 1 === selectedMonth && 
-                                               lastPayment.getFullYear() === selectedYear;
+                                  isGenerated = lastPayment.getMonth() + 1 === selectedMonth &&
+                                    lastPayment.getFullYear() === selectedYear;
                                 }
                                 return isGenerated ? (
                                   <span className="inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
@@ -369,15 +366,15 @@ function GeneratePayrollPage() {
                   </table>
                 </div>
               )}
-              
+
               {/* Pagination */}
               {!isLoading && (() => {
                 const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
-                
+
                 const handlePageChange = (page) => {
                   setCurrentPage(page);
                 };
-                
+
                 return totalPages > 1 ? (
                   <div className="px-4 sm:px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="text-sm text-gray-700">
@@ -387,37 +384,34 @@ function GeneratePayrollPage() {
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === 1
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === 1
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
-                      
+
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                         <button
                           key={page}
                           onClick={() => handlePageChange(page)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            page === currentPage
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${page === currentPage
                               ? 'bg-blue-600 text-white'
                               : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           {page}
                         </button>
                       ))}
-                      
+
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          currentPage === totalPages
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === totalPages
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                        }`}
+                          }`}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>

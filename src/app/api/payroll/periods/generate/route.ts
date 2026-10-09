@@ -1,30 +1,16 @@
-import { checkPermission } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import prisma from "@/lib/prisma";
 import { generatePayrollPeriods } from "@/lib/payroll/generatePayrollPeriods";
+import { checkAuth } from "@/lib/apiAuth";
 
-async function checkAuth(req: NextRequest) {
-    const token = req.cookies.get("token")?.value;
-    if (!token) return { error: NextResponse.json({ message: "Unauthorized" }, { status: 401 }) };
-    let decoded: any;
-    try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch {
-        return { error: NextResponse.json({ message: "Invalid token" }, { status: 401 }) };
-    }
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE);
-    if (!hasAccess) {
-        return { error: NextResponse.json({ message: "Forbidden: insufficient permissions" }, { status: 403 }) };
-    }
-    return { decoded };
-}
 
 // ─── POST (Generate Payroll Periods) ──────────────────────────────────────────
 export async function POST(req: NextRequest) {
-    const auth = await checkAuth(req);
-    if (auth.error) return auth.error;
+    const auth = await checkAuth(req, [
+        PERMISSION_KEYS.PAYROLL_GENERATE
+    ]);
+    if ("error" in auth) return auth.error;
 
     try {
         const body = await req.json().catch(() => ({}));

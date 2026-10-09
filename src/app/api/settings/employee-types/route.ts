@@ -27,6 +27,9 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     include: {
       permissions: { include: { permission: true } },
       _count: { select: { users: true } },
+      parent: {
+        select: { id: true, name: true },
+      },
     },
   });
 
@@ -57,6 +60,18 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
   if (!name?.trim()) {
     return NextResponse.json({ error: "Employee type name is required" }, { status: 400 });
   }
+ const company = await prisma.company.findFirst({
+  select: {
+    uid: true,
+  },
+});
+
+if (!company) {
+  return NextResponse.json(
+    { error: "Company not found" },
+    { status: 404 }
+  );
+}
 
   const existing = await prisma.role.findUnique({ where: { name: name.trim() } });
   if (existing) {
@@ -84,6 +99,7 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
       description: description?.trim() || null,
       status: normalizedStatus as any,
       type: "CUSTOM",
+      companyId: company.uid,
       parentId: resolvedParentId,
       permissions: {
         create: permissionIds.map((id: number) => ({ permissionId: id })),

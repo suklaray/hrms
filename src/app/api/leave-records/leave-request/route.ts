@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     }, { status: 200 });
   } catch (error) {
     console.error("Leave request API error:", error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       message: "Internal server error"
     }, { status: 500 });
@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { from_date, to_date, reason, leave_type, attachment } = body;
+    const { from_date, to_date, reason, leave_type, leave_type_id, attachment } = body;
 
-    if (!from_date || !to_date || !reason || !leave_type) {
+    if (!from_date || !to_date || !reason || !leave_type || !leave_type_id) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 
@@ -92,19 +92,16 @@ export async function POST(req: NextRequest) {
         to_date: new Date(to_date),
         reason,
         leave_type,
+        leave_type_id: Number(leave_type_id),
         attachment: attachment || null,
         status: "Pending"
       }
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Leave request submitted successfully",
-      leaveRequest
-    }, { status: 201 });
+    return NextResponse.json({ success: true, message: "Leave request submitted successfully", leaveRequest }, { status: 201 });
   } catch (error) {
     console.error("Leave request API error:", error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
       message: "Internal server error"
     }, { status: 500 });

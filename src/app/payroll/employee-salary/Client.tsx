@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Head from "@/lib/compatHead";
 import { toast } from "react-toastify";
 import Link from "next/link";
@@ -11,7 +11,9 @@ import {
   Banknote,
   Calendar,
   CalendarDays,
+  Check,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Eye,
   FileSpreadsheet,
@@ -36,7 +38,7 @@ import {
 } from "lucide-react";
 import {
   calculateSalaryBreakdown,
-  findApplicableSalaryVersion,
+  findApplicableSalaryStructureForFinancialYear,
   type ComponentRuleInput,
 } from "@/lib/salaryCalculation";
 
@@ -45,6 +47,8 @@ interface EmployeeOption {
   empid: string;
   name: string;
   email: string;
+  role?: string | null;
+  rbacRole?: { id?: number; name?: string; type?: string } | null;
   contact_number?: string | null;
   position?: string | null;
   employee_type?: string | null;
@@ -55,11 +59,21 @@ interface EmployeeOption {
     uid: string;
     salary_structure_name: string;
     salary_structure_code: string;
-    effective_from: string;
-    effective_to: string | null;
+    financial_year_id: string;
+    financial_year_name: string;
     grossSalary: number;
     netSalary: number;
   } | null;
+}
+
+interface FinancialYearOption {
+  id: number;
+  uid: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: "DRAFT" | "ACTIVE" | "CLOSED";
+  lock: boolean;
 }
 
 interface StructureOption {
@@ -105,12 +119,19 @@ interface SalaryVersionHistoryItem {
   id: number;
   uid: string;
   employee_id: string;
-  salary_structure_id: number | null;
-  effective_from: string;
-  effective_to: string | null;
+  salary_structure_id: string;
+  financial_year_id: string;
   status: "ACTIVE" | "INACTIVE" | "CLOSED";
   remarks?: string | null;
   createdAt: string;
+  financialYear?: {
+    id?: number;
+    uid: string;
+    name: string;
+    start_date: string;
+    end_date: string;
+    status: string;
+  } | null;
   salaryStructure?: {
     name: string;
     code: string;
@@ -131,19 +152,46 @@ interface SalaryVersionHistoryItem {
   };
 }
 
+function isUserSuperAdmin(emp: any): boolean {
+  if (!emp) return false;
+  if (emp.role && String(emp.role).toLowerCase() === "superadmin") return true;
+  if (emp.rbacRole?.type === "SUPER_ADMIN" || emp.rbacRole?.type === 1) return true;
+  const roleName = emp.rbacRole?.name || emp.position || "";
+  if (["super admin", "superadmin"].includes(String(roleName).toLowerCase())) return true;
+  return false;
+}
+
 export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
-  const [activeTab, setActiveTab] = useState<"assign" | "directory" | "simulator">("assign");
+  const [activeTab, setActiveTab] = useState<"assign" | "directory" | "lookup">("assign");
 
   // Master lists
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [structures, setStructures] = useState<StructureOption[]>([]);
+  const [financialYears, setFinancialYears] = useState<FinancialYearOption[]>([]);
   const [loadingInitial, setLoadingInitial] = useState(true);
+
+  // Searchable Employee Dropdown State
+  const [employeeDropdownOpen, setEmployeeDropdownOpen] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const employeeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        employeeDropdownRef.current &&
+        !employeeDropdownRef.current.contains(event.target as Node)
+      ) {
+        setEmployeeDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Selected Employee & Assignment State
   const [selectedEmpid, setSelectedEmpid] = useState<string>("");
   const [selectedStructureId, setSelectedStructureId] = useState<string>("");
-  const [effectiveFrom, setEffectiveFrom] = useState<string>("");
-  const [effectiveTo, setEffectiveTo] = useState<string>("");
+  const [selectedFinancialYearId, setSelectedFinancialYearId] = useState<string>("");
   const [status, setStatus] = useState<"ACTIVE" | "INACTIVE" | "CLOSED">("ACTIVE");
   const [remarks, setRemarks] = useState<string>("Annual salary revision");
   const [autoClosePrevious, setAutoClosePrevious] = useState<boolean>(true);
@@ -166,26 +214,27 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
   // Directory search & filter
   const [directorySearch, setDirectorySearch] = useState("");
   const [directoryStatusFilter, setDirectoryStatusFilter] = useState("ALL");
+  const [directoryFyFilter, setDirectoryFyFilter] = useState("ALL");
 
-  // Section 25: Effective-Date Lookup Simulator State
-  const [simPeriodStart, setSimPeriodStart] = useState<string>("2026-09-01");
-  const [simPeriodEnd, setSimPeriodEnd] = useState<string>("2026-09-30");
+  // Lookup Simulator State
+  const [simFinancialYearId, setSimFinancialYearId] = useState<string>("");
   const [simResult, setSimResult] = useState<any | null>(null);
 
   // 1. Load initial data
   const loadInitialData = async () => {
     setLoadingInitial(true);
     try {
-      const [empRes, structRes] = await Promise.all([
+      const [empRes, structRes, fyRes] = await Promise.all([
         fetch("/api/payroll/employee-salary-structures/employees"),
         fetch("/api/payroll/salary-structures?status=ACTIVE"),
+        fetch("/api/payroll/financial-year"),
       ]);
 
       if (empRes.ok) {
         const empData = await empRes.json();
-        const list = empData.data || [];
+        const list = (empData.data || []).filter((e: any) => !isUserSuperAdmin(e));
         setEmployees(list);
-        if (list.length > 0 && !selectedEmpid) {
+        if (list.length > 0 && (!selectedEmpid || isUserSuperAdmin(list.find((e: any) => e.empid === selectedEmpid)))) {
           setSelectedEmpid(list[0].empid);
         }
       }
@@ -195,11 +244,22 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
         const list = structData.data || [];
         setStructures(list);
         if (list.length > 0 && !selectedStructureId) {
-          setSelectedStructureId(String(list[0].id));
+          setSelectedStructureId(list[0].uid);
+        }
+      }
+
+      if (fyRes.ok) {
+        const fyData = await fyRes.json();
+        const list = fyData.data || [];
+        setFinancialYears(list);
+        const activeFy = list.find((f: FinancialYearOption) => f.status === "ACTIVE") || list[0];
+        if (activeFy && !selectedFinancialYearId) {
+          setSelectedFinancialYearId(activeFy.uid);
+          setSimFinancialYearId(activeFy.uid);
         }
       }
     } catch (err) {
-      console.error("Error loading employees/structures:", err);
+      console.error("Error loading employees/structures/financial years:", err);
       toast.error("Failed to load initial data.");
     } finally {
       setLoadingInitial(false);
@@ -208,14 +268,6 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
 
   useEffect(() => {
     loadInitialData();
-  }, []);
-
-  // Set default effective date to the 1st of current month
-  useEffect(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    setEffectiveFrom(`${year}-${month}-01`);
   }, []);
 
   // 2. Fetch history whenever selected employee changes
@@ -256,10 +308,74 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
     return employees.find((e) => e.empid === selectedEmpid) || null;
   }, [employees, selectedEmpid]);
 
-  // Current active structure for this employee
+  // Filtered employees for the searchable dropdown (excludes superadmin)
+  const filteredDropdownEmployees = useMemo(() => {
+    return employees
+      .filter((emp) => !isUserSuperAdmin(emp))
+      .filter((emp) => {
+        if (!employeeSearch.trim()) return true;
+        const q = employeeSearch.toLowerCase().trim();
+        return (
+          emp.name.toLowerCase().includes(q) ||
+          emp.empid.toLowerCase().includes(q) ||
+          (emp.position || "").toLowerCase().includes(q)
+        );
+      });
+  }, [employees, employeeSearch]);
+
+  // Selected financial year object
+  const currentFinancialYear = useMemo(() => {
+    return financialYears.find((fy) => fy.uid === selectedFinancialYearId) || null;
+  }, [financialYears, selectedFinancialYearId]);
+
+  // Current active structure for this employee in selected financial year (or overall)
   const currentActiveSalary = useMemo(() => {
+    if (selectedFinancialYearId) {
+      const activeInFy = employeeHistory.find(
+        (v) => v.financial_year_id === selectedFinancialYearId && v.status === "ACTIVE"
+      );
+      if (activeInFy) return activeInFy;
+    }
     return employeeHistory.find((v) => v.status === "ACTIVE") || null;
-  }, [employeeHistory]);
+  }, [employeeHistory, selectedFinancialYearId]);
+
+  // Check if a salary structure has already been created against this financial year and this employee
+  const existingSalaryForSelectedFy = useMemo(() => {
+    if (!selectedFinancialYearId) return null;
+    const inHistory = employeeHistory.find(
+      (v) =>
+        v.financial_year_id === selectedFinancialYearId ||
+        v.financialYear?.uid === selectedFinancialYearId ||
+        String(v.financialYear?.id) === selectedFinancialYearId
+    );
+    if (inHistory) return inHistory;
+    if (
+      currentEmployee?.currentSalary &&
+      (currentEmployee.currentSalary.financial_year_id === selectedFinancialYearId ||
+        currentEmployee.currentSalary.financial_year_name === currentFinancialYear?.name)
+    ) {
+      return {
+        uid: currentEmployee.currentSalary.uid,
+        employee_id: selectedEmpid,
+        financial_year_id: currentEmployee.currentSalary.financial_year_id,
+        status: "ACTIVE" as const,
+        salaryStructure: {
+          name: currentEmployee.currentSalary.salary_structure_name,
+          code: currentEmployee.currentSalary.salary_structure_code,
+        },
+        financialYear: {
+          uid: currentEmployee.currentSalary.financial_year_id,
+          name: currentEmployee.currentSalary.financial_year_name,
+        },
+      } as any;
+    }
+    return null;
+  }, [employeeHistory, selectedFinancialYearId, currentEmployee, currentFinancialYear]);
+
+  const hasDuplicateFySalary = Boolean(
+    existingSalaryForSelectedFy &&
+    (!editingVersion || editingVersion.uid !== existingSalaryForSelectedFy.uid)
+  );
 
   // 3. Populate component rows when selected structure changes
   useEffect(() => {
@@ -274,7 +390,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
     }
 
     const structure = structures.find(
-      (s) => String(s.id) === selectedStructureId || s.uid === selectedStructureId
+      (s) => s.uid === selectedStructureId || String(s.id) === selectedStructureId
     );
     if (!structure || !structure.components) {
       setComponentRows([]);
@@ -357,26 +473,6 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
     return { grossEarnings, totalDeductions, netSalary };
   }, [componentRows]);
 
-  // Validate if effective_to is before effective_from
-  const isDateRangeInvalid = useMemo(() => {
-    if (!effectiveFrom || !effectiveTo) return false;
-    const fTime = new Date(effectiveFrom).getTime();
-    const tTime = new Date(effectiveTo).getTime();
-    return !isNaN(fTime) && !isNaN(tTime) && tTime < fTime;
-  }, [effectiveFrom, effectiveTo]);
-
-  // Calculated duration helper
-  const dateRangeSummary = useMemo(() => {
-    if (!effectiveFrom) return null;
-    if (!effectiveTo) return "Open-ended (Present)";
-    const f = new Date(effectiveFrom);
-    const t = new Date(effectiveTo);
-    if (isNaN(f.getTime()) || isNaN(t.getTime()) || t.getTime() < f.getTime()) return null;
-    const diffDays = Math.round((t.getTime() - f.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    if (diffDays >= 365 && diffDays <= 366) return "1 Year cycle";
-    return `${diffDays} days`;
-  }, [effectiveFrom, effectiveTo]);
-
   // Quick toggle version status in revision table
   const handleToggleStatus = async (
     item: SalaryVersionHistoryItem,
@@ -394,7 +490,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
       const result = await res.json();
       if (res.ok && result.success) {
         if (newStatus === "ACTIVE") {
-          toast.success("Salary version activated! Previous active version has been set to INACTIVE.");
+          toast.success("Salary version activated! Any previous active version for this financial year is now INACTIVE.");
         } else {
           toast.success(`Salary version status changed to ${newStatus}.`);
         }
@@ -423,17 +519,18 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
     setEditingVersion(version);
     setSelectedEmpid(version.employee_id);
     if (version.salary_structure_id) {
-      setSelectedStructureId(String(version.salary_structure_id));
+      setSelectedStructureId(version.salary_structure_id);
+    }
+    if (version.financial_year_id) {
+      setSelectedFinancialYearId(version.financial_year_id);
     }
 
-    setEffectiveFrom(toDateInputValue(version.effective_from));
-    setEffectiveTo(toDateInputValue(version.effective_to));
     setStatus(version.status);
     setRemarks(version.remarks || "");
 
     // Populate component rows from the version's saved components
     const structure = structures.find(
-      (s) => String(s.id) === String(version.salary_structure_id) || s.uid === String(version.salary_structure_id)
+      (s) => s.uid === version.salary_structure_id || String(s.id) === version.salary_structure_id
     );
 
     if (version.components && version.components.length > 0) {
@@ -469,24 +566,19 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
 
     setActiveTab("assign");
     window.scrollTo({ top: 0, behavior: "smooth" });
-    toast.info(`Editing salary record (${formatDateDisplay(version.effective_from)} → ${formatDateDisplay(version.effective_to)})`);
+    toast.info(`Editing salary structure for ${version.financialYear?.name || "Financial Year"}`);
   };
 
   // Cancel editing mode and revert to create revision mode
   const handleCancelEdit = () => {
     setEditingVersion(null);
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    setEffectiveFrom(`${year}-${month}-01`);
-    setEffectiveTo("");
     setStatus("ACTIVE");
     setRemarks("Annual salary revision");
     setAutoClosePrevious(true);
 
     if (selectedStructureId) {
       const structure = structures.find(
-        (s) => String(s.id) === selectedStructureId || s.uid === selectedStructureId
+        (s) => s.uid === selectedStructureId || String(s.id) === selectedStructureId
       );
       if (structure && structure.components) {
         const rules: ComponentRuleInput[] = structure.components.map((c) => ({
@@ -534,33 +626,55 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
       toast.error("Please select an employee.");
       return;
     }
-    if (!effectiveFrom) {
-      toast.error("Effective From date is required.");
+    if (!selectedFinancialYearId) {
+      toast.error("Please select a Financial Year.");
       return;
     }
-    if (effectiveFrom && effectiveTo) {
-      const fromTime = new Date(effectiveFrom).getTime();
-      const toTime = new Date(effectiveTo).getTime();
-      if (toTime < fromTime) {
-        toast.error("Effective To date cannot be earlier than Effective From date.");
+    const selectedFy = financialYears.find((fy) => fy.uid === selectedFinancialYearId);
+    if (selectedFy && selectedFy.status !== "ACTIVE") {
+      toast.error("Please select an active financial year");
+      return;
+    }
+    if (hasDuplicateFySalary) {
+      toast.error("A salary structure has already been created against this financial year and this employee.");
+      return;
+    }
+    if (editingVersion && selectedFinancialYearId !== editingVersion.financial_year_id) {
+      const otherForFy = employeeHistory.find(
+        (v) =>
+          (v.financial_year_id === selectedFinancialYearId ||
+            v.financialYear?.uid === selectedFinancialYearId ||
+            String(v.financialYear?.id) === selectedFinancialYearId) &&
+          v.uid !== editingVersion.uid
+      );
+      if (otherForFy) {
+        toast.error("A salary structure has already been created against this financial year and this employee.");
         return;
       }
+    }
+    if (!selectedStructureId) {
+      toast.error("Please select a Salary Structure template.");
+      return;
     }
     if (componentRows.length === 0) {
       toast.error("At least one salary component amount is required.");
       return;
     }
 
+    const structure = structures.find(
+      (s) => s.uid === selectedStructureId || String(s.id) === selectedStructureId
+    );
+    const structureUid = structure ? structure.uid : selectedStructureId;
+
     setSaving(true);
     try {
       let res: Response;
 
       if (editingVersion) {
-        // PATCH existing salary version (excludes itself from overlap check)
+        // PATCH existing salary version
         const patchPayload = {
-          salary_structure_id: selectedStructureId ? Number(selectedStructureId) : null,
-          effective_from: effectiveFrom,
-          effective_to: effectiveTo ? effectiveTo : null,
+          salary_structure_id: structureUid,
+          financial_year_id: selectedFinancialYearId,
           status,
           remarks: remarks.trim() || null,
           components: componentRows.map((c) => ({
@@ -576,12 +690,10 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
         });
       } else {
         // POST new salary revision
-        // When auto_close_previous is false, status is INACTIVE so it creates an inactive structure without closing old active info
         const payload = {
           employee_id: selectedEmpid,
-          salary_structure_id: Number(selectedStructureId),
-          effective_from: effectiveFrom,
-          effective_to: effectiveTo ? effectiveTo : null,
+          salary_structure_id: structureUid,
+          financial_year_id: selectedFinancialYearId,
           status: autoClosePrevious ? "ACTIVE" : "INACTIVE",
           remarks: remarks.trim() || null,
           auto_close_previous: autoClosePrevious,
@@ -602,9 +714,9 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
       if (res.ok && result.success) {
         toast.success(
           result.message ||
-            (editingVersion
-              ? "Employee salary version updated successfully!"
-              : "Employee salary version saved successfully!")
+          (editingVersion
+            ? "Employee salary version updated successfully!"
+            : "Employee salary version saved successfully!")
         );
         setEditingVersion(null);
         // Refresh history & employee list
@@ -627,73 +739,29 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
     }
   };
 
-  // Section 25: Run Payroll Period Effective-Date Simulation
-  const runSimulator = () => {
-    if (!simPeriodStart || !simPeriodEnd) {
-      toast.error("Please provide both Period Start and Period End dates.");
-      return;
-    }
-
-    const matchResult = findApplicableSalaryVersion(
-      employeeHistory,
-      simPeriodStart,
-      simPeriodEnd
-    );
-
-    if (matchResult.error) {
-      setSimResult({ error: matchResult.error });
-      return;
-    }
-
-    if (!matchResult.version) {
-      setSimResult({
-        found: false,
-        message: `No salary structure version was active during the period ${simPeriodStart} to ${simPeriodEnd}.`,
-      });
-      return;
-    }
-
-    const matched = matchResult.version;
-    setSimResult({
-      found: true,
-      version: matched,
-      periodStart: simPeriodStart,
-      periodEnd: simPeriodEnd,
-    });
-  };
-
   // Directory filter
   const filteredDirectory = useMemo(() => {
-    return employees.filter((emp) => {
-      if (directoryStatusFilter === "ASSIGNED" && !emp.hasActiveSalary) return false;
-      if (directoryStatusFilter === "UNASSIGNED" && emp.hasActiveSalary) return false;
-      if (directorySearch.trim()) {
-        const q = directorySearch.toLowerCase().trim();
-        const nameMatch = emp.name.toLowerCase().includes(q);
-        const idMatch = emp.empid.toLowerCase().includes(q);
-        const posMatch = (emp.position || "").toLowerCase().includes(q);
-        return nameMatch || idMatch || posMatch;
-      }
-      return true;
-    });
-  }, [employees, directoryStatusFilter, directorySearch]);
-
-  const toDateInputValue = (d: string | Date | null | undefined): string => {
-    if (!d) return "";
-    if (typeof d === "string") {
-      const match = d.match(/^(\d{4}-\d{2}-\d{2})/);
-      if (match) return match[1];
-    }
-    const date = new Date(d);
-    if (isNaN(date.getTime())) return "";
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+    return employees
+      .filter((emp) => !isUserSuperAdmin(emp))
+      .filter((emp) => {
+        if (directoryStatusFilter === "ASSIGNED" && !emp.hasActiveSalary) return false;
+        if (directoryStatusFilter === "UNASSIGNED" && emp.hasActiveSalary) return false;
+        if (directoryFyFilter !== "ALL" && emp.currentSalary?.financial_year_id !== directoryFyFilter) {
+          return false;
+        }
+        if (directorySearch.trim()) {
+          const q = directorySearch.toLowerCase().trim();
+          const nameMatch = emp.name.toLowerCase().includes(q);
+          const idMatch = emp.empid.toLowerCase().includes(q);
+          const posMatch = (emp.position || "").toLowerCase().includes(q);
+          return nameMatch || idMatch || posMatch;
+        }
+        return true;
+      });
+  }, [employees, directoryStatusFilter, directoryFyFilter, directorySearch]);
 
   const formatDateDisplay = (d: string | null | undefined) => {
-    if (!d) return "Present";
+    if (!d) return "-";
     if (typeof d === "string") {
       const match = d.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (match) {
@@ -728,99 +796,100 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                     <Banknote size={22} />
                   </div>
                   <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">
                       Employee Salary Management
                     </h1>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                      Assign salary structures, review component values, manage salary revisions, and preserve historical payroll records.
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Assign salary structures and manage customized package revisions per Financial Year.
                     </p>
                   </div>
                 </div>
               </div>
 
+              {/* Navigation Actions */}
               <div className="flex items-center gap-2">
                 <Link
-                  href="/payroll/payroll-setup/salary-structures"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 text-xs sm:text-sm font-medium rounded-lg shadow-xs transition-colors"
+                  href="/payroll/financial-year-setup/payroll-get-financial-years"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
                 >
-                  <FileSpreadsheet size={15} className="text-indigo-600" />
-                  <span>Salary Structures Master</span>
+                  <Calendar size={13} />
+                  <span>Financial Years</span>
                 </Link>
+                <Link
+                  href="/payroll/payroll-setup/salary-structures"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                >
+                  <Layers size={13} />
+                  <span>Salary Templates</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={loadInitialData}
+                  disabled={loadingInitial}
+                  className="p-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 text-gray-600 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                  title="Refresh Data"
+                >
+                  <RefreshCw size={14} className={loadingInitial ? "animate-spin" : ""} />
+                </button>
               </div>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-2 border-b border-gray-200 mt-6 pt-1">
               <button
                 type="button"
                 onClick={() => setActiveTab("assign")}
-                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${activeTab === "assign"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className={`flex items-center gap-2 py-2.5 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === "assign"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300"
                   }`}
               >
-                <Plus size={15} />
-                <span>Assign / Revise Salary</span>
+                <PenIcon size={14} />
+                <span>Assign & Revise Structure</span>
+                {editingVersion && (
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                )}
               </button>
 
               <button
                 type="button"
                 onClick={() => setActiveTab("directory")}
-                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${activeTab === "directory"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                className={`flex items-center gap-2 py-2.5 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer ${activeTab === "directory"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300"
                   }`}
               >
-                <Users size={15} />
+                <Users size={14} />
                 <span>Employee Directory</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${activeTab === "directory" ? "bg-indigo-800 text-white" : "bg-gray-200 text-gray-700"
-                    }`}
-                >
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-gray-100 text-gray-600 font-mono">
                   {employees.length}
                 </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab("simulator");
-                  runSimulator();
-                }}
-                className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${activeTab === "simulator"
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-              >
-                <CalendarDays size={15} />
-                <span>Payroll Period Simulator (Effective-Date Lookup)</span>
-              </button>
             </div>
           </div>
 
           {/* =============================================================== */}
-          {/* TAB 1: ASSIGN / REVISE SALARY STUDIO */}
+          {/* TAB 1: ASSIGN / REVISE EMPLOYEE SALARY */}
           {/* =============================================================== */}
           {activeTab === "assign" && (
-            <div className="space-y-6">
-              {/* Edit Mode Alert Banner */}
+            <form onSubmit={handleSaveSalary} className="space-y-6">
+              {/* Editing Mode Notification Banner */}
               {editingVersion && (
-                <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-amber-100 border border-amber-200 rounded-lg text-amber-800">
-                      <PenIcon size={20} />
-                    </div>
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-gray-900 text-sm">
-                          Editing Salary Version: {editingVersion.salaryStructure?.name || "Custom Salary"}
+                        <span className="text-xs font-bold text-amber-900">
+                          Editing Mode: Revision #{editingVersion.id}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-200 text-amber-900 border border-amber-300">
-                          EDIT MODE
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                          Status: {editingVersion.status}
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 mt-0.5">
-                        Modifying salary for <b>{currentEmployee?.name}</b> ({formatDateDisplay(editingVersion.effective_from)} → {formatDateDisplay(editingVersion.effective_to)}). Updates apply directly without date self-overlap.
+                        Modifying salary for <b>{currentEmployee?.name}</b> in <b>{editingVersion.financialYear?.name || "Financial Year"}</b>. Updates apply directly.
                       </p>
                     </div>
                   </div>
@@ -831,7 +900,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                     className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-900 text-xs font-semibold rounded-lg shadow-xs transition-colors shrink-0 cursor-pointer"
                   >
                     <RotateCcw size={14} />
-                    <span>Cancel Edit (Create New Version Instead)</span>
+                    <span>Cancel Edit (Create New Version)</span>
                   </button>
                 </div>
               )}
@@ -844,7 +913,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                     <div className="text-xs text-indigo-900 flex items-center gap-1.5">
                       <Info size={15} className="text-indigo-600 shrink-0" />
                       <span>
-                        <b>{currentEmployee?.name}</b> has an active salary structure: <b>{currentActiveSalary.salaryStructure?.name}</b> ({formatDateDisplay(currentActiveSalary.effective_from)} → {formatDateDisplay(currentActiveSalary.effective_to)}).
+                        <b>{currentEmployee?.name}</b> has an active salary structure: <b>{currentActiveSalary.salaryStructure?.name}</b> in <b>{currentActiveSalary.financialYear?.name || "Current FY"}</b>.
                       </span>
                     </div>
                     <button
@@ -858,30 +927,177 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Select Employee */}
-                  <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Searchable Select Employee Dropdown */}
+                  <div className="relative" ref={employeeDropdownRef}>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Select Employee <span className="text-red-500">*</span>
                       {editingVersion && (
                         <span className="text-[10px] text-amber-700 ml-1 font-normal">(locked in edit)</span>
                       )}
                     </label>
-                    <select
-                      value={selectedEmpid}
-                      onChange={(e) => setSelectedEmpid(e.target.value)}
+                    <button
+                      type="button"
                       disabled={!!editingVersion}
-                      className="w-full text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-gray-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      onClick={() => setEmployeeDropdownOpen(!employeeDropdownOpen)}
+                      className="w-full h-[38px] border border-[#cfd5db] rounded-md px-3 bg-white text-left text-[12px] text-[#374151] hover:border-[#aeb7c1] focus:outline-none focus:ring-1 focus:ring-indigo-500 flex items-center justify-between transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {employees.map((emp) => (
-                        <option key={emp.empid} value={emp.empid}>
-                          {emp.name} ({emp.empid}) {emp.position ? `• ${emp.position}` : ""}
+                      <span className="truncate flex items-center gap-2">
+                        <User size={13} className="text-gray-400 shrink-0" />
+                        {currentEmployee ? (
+                          <span className="truncate">
+                            <span className="font-semibold text-gray-900">{currentEmployee.name}</span>{" "}
+                            <span className="text-gray-500 font-mono text-[11px]">({currentEmployee.empid})</span>
+                            {currentEmployee.position ? (
+                              <span className="text-gray-400 text-xs"> • {currentEmployee.position}</span>
+                            ) : null}
+                          </span>
+                        ) : loadingInitial ? (
+                          "Loading employees..."
+                        ) : (
+                          "Select Employee"
+                        )}
+                      </span>
+                      <ChevronDown size={14} className="text-gray-400 shrink-0 ml-1" />
+                    </button>
+
+                    {employeeDropdownOpen && !editingVersion && (
+                      <div className="absolute z-30 mt-1 w-full bg-white border border-[#cfd5db] rounded-md shadow-lg py-1 max-h-60 overflow-auto">
+                        <div className="p-2 border-b border-gray-100 sticky top-0 bg-white z-10">
+                          <div className="relative">
+                            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              type="text"
+                              value={employeeSearch}
+                              onChange={(e) => setEmployeeSearch(e.target.value)}
+                              placeholder="Search employee..."
+                              className="w-full pl-7 pr-2 py-1 text-[11px] bg-gray-50 border border-gray-200 rounded focus:outline-none focus:bg-white text-gray-800"
+                              onClick={(e) => e.stopPropagation()}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                        {filteredDropdownEmployees.length === 0 ? (
+                          <div className="px-3 py-2 text-[11px] text-gray-400 text-center">
+                            No employees found
+                          </div>
+                        ) : (
+                          filteredDropdownEmployees.map((emp) => (
+                            <button
+                              type="button"
+                              key={emp.empid}
+                              onClick={() => {
+                                setSelectedEmpid(emp.empid);
+                                setEmployeeDropdownOpen(false);
+                                setEmployeeSearch("");
+                              }}
+                              className={`w-full px-3 py-2 text-left text-[12px] flex items-center justify-between hover:bg-indigo-50 cursor-pointer ${selectedEmpid === emp.empid ? "bg-indigo-50/70 font-semibold text-indigo-700" : "text-gray-700"
+                                }`}
+                            >
+                              <span className="truncate">
+                                {emp.name} <span className="font-mono text-[11px] text-gray-400">({emp.empid})</span>
+                                {emp.position && <span className="text-[11px] text-gray-500"> • {emp.position}</span>}
+                              </span>
+                              {selectedEmpid === emp.empid && (
+                                <Check size={13} className="text-indigo-600 shrink-0 ml-1" />
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Select Financial Year */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Financial Year <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedFinancialYearId}
+                      onChange={(e) => {
+                        const newFyId = e.target.value;
+                        setSelectedFinancialYearId(newFyId);
+                        const alreadyExists = employeeHistory.find(
+                          (v) =>
+                            v.financial_year_id === newFyId ||
+                            v.financialYear?.uid === newFyId ||
+                            String(v.financialYear?.id) === newFyId
+                        );
+                        if (alreadyExists && (!editingVersion || editingVersion.uid !== alreadyExists.uid)) {
+                          toast.warn(
+                            "A salary structure has already been created against this financial year and this employee."
+                          );
+                        }
+                      }}
+                      className="w-full text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-gray-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      {financialYears.map((fy) => (
+                        <option key={fy.uid} value={fy.uid}>
+                          {fy.name} ({formatDateDisplay(fy.start_date)} - {formatDateDisplay(fy.end_date)}) {fy.status === "ACTIVE" ? "★ Active" : ""}
                         </option>
                       ))}
                     </select>
+                    {currentFinancialYear && (
+                      <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-500">
+                        <span>Period: {formatDateDisplay(currentFinancialYear.start_date)} to {formatDateDisplay(currentFinancialYear.end_date)}</span>
+                        <span className={`px-1.5 py-0.2 rounded font-semibold text-[10px] ${currentFinancialYear.status === "ACTIVE"
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-gray-100 text-gray-600"
+                          }`}>
+                          {currentFinancialYear.status}
+                        </span>
+                      </div>
+                    )}
+                    {currentFinancialYear && currentFinancialYear.status !== "ACTIVE" && (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2 font-medium">
+                        <AlertCircle size={14} className="shrink-0 text-amber-600" />
+                        <span>Please select an active financial year. (Status: <b>{currentFinancialYear.status}</b>)</span>
+                      </div>
+                    )}
+                    {hasDuplicateFySalary && (
+                      <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg p-2.5 mt-2 font-medium shadow-xs">
+                        <AlertCircle size={15} className="shrink-0 text-amber-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-amber-900">
+                            A salary structure has already been created against this financial year and this employee.
+                          </p>
+                          {existingSalaryForSelectedFy?.salaryStructure?.name && (
+                            <p className="text-[11px] text-amber-700 mt-0.5">
+                              Assigned Structure: <b>{existingSalaryForSelectedFy.salaryStructure?.name}</b> {existingSalaryForSelectedFy.salaryStructure?.code ? `(${existingSalaryForSelectedFy.salaryStructure?.code})` : ""} • Status: <b>{existingSalaryForSelectedFy.status}</b>
+                            </p>
+                          )}
+                          <div className="mt-2 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const target =
+                                  employeeHistory.find((v) => v.uid === existingSalaryForSelectedFy?.uid) ||
+                                  existingSalaryForSelectedFy;
+                                handleStartEdit(target as SalaryVersionHistoryItem);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[11px] font-semibold transition cursor-pointer"
+                            >
+                              <PenIcon size={11} />
+                              <span>Edit Existing Salary Structure</span>
+                            </button>
+                            {existingSalaryForSelectedFy?.components && (
+                              <button
+                                type="button"
+                                onClick={() => setInspectingVersion(existingSalaryForSelectedFy as SalaryVersionHistoryItem)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded text-[11px] font-semibold transition cursor-pointer"
+                              >
+                                <Eye size={11} />
+                                <span>View Details</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Select Salary Structure */}
+                  {/* Select Salary Structure Template */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Salary Structure Template <span className="text-red-500">*</span>
@@ -892,67 +1108,13 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                       className="w-full text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-lg p-2.5 text-gray-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                     >
                       {structures.map((s) => (
-                        <option key={s.id} value={s.id}>
+                        <option key={s.uid} value={s.uid}>
                           {s.name} ({s.code}) • {s.components.length} components
                         </option>
                       ))}
                     </select>
                   </div>
-
-                  {/* Effective From Date */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Effective From <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      value={effectiveFrom}
-                      max={effectiveTo || undefined}
-                      onChange={(e) => setEffectiveFrom(e.target.value)}
-                      className={`w-full text-xs sm:text-sm bg-gray-50 border rounded-lg p-2 text-gray-800 focus:bg-white focus:outline-none focus:ring-1 ${
-                        isDateRangeInvalid
-                          ? "border-red-400 focus:ring-red-500 bg-red-50/20"
-                          : "border-gray-200 focus:ring-indigo-500"
-                      }`}
-                      required
-                    />
-                  </div>
-
-                  {/* Effective To Date (Optional) */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-semibold text-gray-700">
-                        Effective To <span className="text-gray-400 font-normal">(Leave blank for Present)</span>
-                      </label>
-                      {dateRangeSummary && !isDateRangeInvalid && (
-                        <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100">
-                          {dateRangeSummary}
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="date"
-                      value={effectiveTo}
-                      min={effectiveFrom || undefined}
-                      onChange={(e) => setEffectiveTo(e.target.value)}
-                      className={`w-full text-xs sm:text-sm bg-gray-50 border rounded-lg p-2 text-gray-800 focus:bg-white focus:outline-none focus:ring-1 ${
-                        isDateRangeInvalid
-                          ? "border-red-400 focus:ring-red-500 bg-red-50/20"
-                          : "border-gray-200 focus:ring-indigo-500"
-                      }`}
-                    />
-                  </div>
                 </div>
-
-                {/* Date range error warning if effectiveTo is before effectiveFrom */}
-                {isDateRangeInvalid && (
-                  <div className="mt-3 flex items-center gap-2 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-semibold">
-                    <AlertCircle size={15} className="shrink-0 text-red-600" />
-                    <span>
-                      Date Conflict: Effective To date ({formatDateDisplay(effectiveTo)}) cannot be earlier than Effective From date ({formatDateDisplay(effectiveFrom)}). Please select an end date on or after the start date.
-                    </span>
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
                   <div>
@@ -961,7 +1123,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Annual salary revision, Initial appointment, Promotion..."
+                      placeholder="e.g. Annual salary revision, FY 2025-26 appointment..."
                       value={remarks}
                       onChange={(e) => setRemarks(e.target.value)}
                       className="w-full text-xs sm:text-sm bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -976,8 +1138,8 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                         </span>
                         <span className="text-[11px] text-amber-700">
                           {status === "ACTIVE"
-                            ? "Active version. Activating this will ensure any other versions become INACTIVE."
-                            : `Current status is ${status}. Excluded from overlap check with itself.`}
+                            ? "Active version. Activating this will ensure any other versions in this FY become INACTIVE."
+                            : `Current status is ${status}.`}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -998,12 +1160,12 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                       <div className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-100 rounded-lg">
                         <div>
                           <span className="text-xs font-semibold text-gray-800 block">
-                            Auto-close previous active version
+                            Auto-close previous active version in this Financial Year
                           </span>
                           <span className="text-[11px] text-gray-500">
                             {autoClosePrevious
-                              ? "Automatically closes older active salary records on day before new effective date (Version becomes ACTIVE)."
-                              : "Keeps old salary active. New salary will be created with status INACTIVE."}
+                              ? "Automatically closes older active salary records in this financial year (Version becomes ACTIVE)."
+                              : "Keeps previous salary active. New salary will be created with status INACTIVE."}
                           </span>
                         </div>
                         <input
@@ -1017,7 +1179,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                         <div className="flex items-center gap-1.5 text-[11px] text-indigo-700 bg-indigo-50/70 border border-indigo-100 rounded-lg p-2">
                           <Info size={13} className="shrink-0 text-indigo-600" />
                           <span>
-                            Auto-close unchecked: Existing salary remains <b>ACTIVE</b>. This new version will be created as <b>INACTIVE</b> with your custom amounts and dates without any date overlap conflict.
+                            Auto-close unchecked: Existing salary remains <b>ACTIVE</b>. This new version will be created as <b>INACTIVE</b> with your custom amounts.
                           </span>
                         </div>
                       )}
@@ -1043,8 +1205,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Applicable from <b>{formatDateDisplay(currentActiveSalary.effective_from)}</b> →{" "}
-                        <b>{formatDateDisplay(currentActiveSalary.effective_to)}</b>
+                        Financial Year: <b>{currentActiveSalary.financialYear?.name || "N/A"}</b> ({formatDateDisplay(currentActiveSalary.financialYear?.start_date)} to {formatDateDisplay(currentActiveSalary.financialYear?.end_date)})
                       </p>
                     </div>
                   </div>
@@ -1099,194 +1260,226 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                     <button
                       type="button"
                       onClick={handleResetToDefaults}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-lg transition-colors cursor-pointer"
-                      title="Reset all amounts to structure defaults"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 border border-gray-200 rounded-lg transition-colors cursor-pointer"
+                      title="Reset all customized amounts back to formula defaults"
                     >
                       <RotateCcw size={12} />
-                      <span>Reset to Rules</span>
+                      <span>Reset Calculations</span>
                     </button>
                   </div>
 
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                          <th className="py-2.5 px-3">Component</th>
-                          <th className="py-2.5 px-3 text-center">Type</th>
-                          <th className="py-2.5 px-3">Calculation Rule</th>
-                          <th className="py-2.5 px-3 text-right">Default Amount</th>
-                          <th className="py-2.5 px-3 text-right w-36">Actual Amount (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {componentRows.map((c, idx) => {
-                          const isEarning = c.type === "EARNING";
-                          const isOverridden = Number(c.amount) !== Number(c.defaultAmount);
-
-                          return (
-                            <tr key={c.salary_component_id} className="hover:bg-gray-50/50">
-                              <td className="py-2.5 px-3">
-                                <div className="font-semibold text-gray-900">{c.name}</div>
-                                <span className="text-[10px] font-mono text-gray-400">{c.code}</span>
-                              </td>
-
-                              <td className="py-2.5 px-3 text-center">
-                                {isEarning ? (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    EARNING
-                                  </span>
-                                ) : (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                    DEDUCTION
-                                  </span>
-                                )}
-                              </td>
-
-                              <td className="py-2.5 px-3 text-gray-600">{c.ruleDescription}</td>
-
-                              <td className="py-2.5 px-3 text-right font-mono text-gray-500">
-                                ₹{c.defaultAmount.toLocaleString("en-IN")}
-                              </td>
-
-                              <td className="py-2.5 px-3 text-right">
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-mono">
-                                    ₹
-                                  </span>
-                                  <input
-                                    type="number"
-                                    step="1"
-                                    min="0"
-                                    value={c.amount}
-                                    onChange={(e) => handleAmountChange(idx, e.target.value)}
-                                    className={`w-full pl-6 pr-2 py-1 text-xs text-right font-mono font-semibold rounded border transition-colors ${isOverridden
-                                        ? "bg-amber-50/60 border-amber-300 text-amber-900 focus:bg-white"
-                                        : "bg-gray-50 border-gray-200 text-gray-900 focus:bg-white"
-                                      } focus:outline-none focus:ring-1 focus:ring-indigo-500`}
-                                  />
-                                </div>
-                                {isOverridden && (
-                                  <span className="text-[9px] text-amber-600 block mt-0.5">
-                                    Custom override
-                                  </span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-gray-500 pt-2">
-                    <span className="text-[11px] text-gray-400">
-                      Actual component values will be permanently recorded into <b>employee_salary_component</b>.
-                    </span>
-                  </div>
-                </div>
-
-                {/* Live Take-Home Summary Card (1 col) */}
-                <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-5">
-                  <div className="border-b border-gray-100 pb-3">
-                    <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-                      Salary Summary
-                    </h3>
-                    <p className="text-[11px] text-gray-500 mt-0.5">
-                      Net before dynamic attendance and payroll period cuts.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3 text-xs sm:text-sm">
-                    <div className="flex items-center justify-between text-gray-700">
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <ArrowUpRight size={15} className="text-emerald-600" />
-                        <span>Gross Earnings:</span>
-                      </span>
-                      <span className="font-mono font-bold text-gray-900 text-base">
-                        ₹{totals.grossEarnings.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-gray-700">
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <ArrowDownRight size={15} className="text-amber-600" />
-                        <span>Total Deductions:</span>
-                      </span>
-                      <span className="font-mono font-bold text-amber-700 text-base">
-                        -₹{totals.totalDeductions.toLocaleString("en-IN")}
-                      </span>
-                    </div>
-
-                    <div className="p-4 bg-indigo-50/80 border border-indigo-100 rounded-xl space-y-1">
-                      <span className="text-[11px] font-bold text-indigo-950 uppercase tracking-wider block">
-                        Net Take-Home
-                      </span>
-                      <div className="font-mono font-extrabold text-indigo-700 text-2xl">
-                        ₹{totals.netSalary.toLocaleString("en-IN")}
-                      </div>
-                      <span className="text-[10px] text-indigo-600/80 block mt-1">
-                        Monthly base salary rate
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveSalary}
-                    disabled={saving || componentRows.length === 0 || isDateRangeInvalid}
-                    className={`w-full py-2.5 px-4 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer ${
-                      editingVersion
-                        ? "bg-amber-600 hover:bg-amber-700 shadow-amber-200"
-                        : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200"
-                    }`}
-                  >
-                    {editingVersion ? <PenIcon size={16} /> : <Save size={16} />}
-                    <span>
-                      {saving
-                        ? editingVersion
-                          ? "Updating Salary..."
-                          : "Saving Revision..."
-                        : editingVersion
-                        ? "Update Salary Version"
-                        : "Save Salary Version"}
-                    </span>
-                  </button>
-
-                  {editingVersion ? (
-                    <div className="text-[11px] text-amber-900 bg-amber-50/70 p-2.5 rounded-lg border border-amber-200">
-                      <p className="font-semibold text-amber-950">In-Place Version Update:</p>
-                      <p className="mt-0.5 text-amber-800">
-                        Updates this record directly. Date overlap validation excludes this record so it will not conflict with itself.
-                      </p>
+                  {componentRows.length === 0 ? (
+                    <div className="py-12 text-center text-gray-400 text-xs">
+                      No components found in the selected salary structure.
                     </div>
                   ) : (
-                    <div className="text-[11px] text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                      <p className="font-semibold text-gray-700">
-                        {autoClosePrevious ? "Historical Preservation Mode:" : "Staged Draft Version Mode:"}
-                      </p>
-                      <p className="mt-0.5">
-                        {autoClosePrevious
-                          ? "Creating a new revision automatically closes older active versions without deleting or changing their historical records."
-                          : "New revision will be created as INACTIVE. Current active salary remains untouched and active without date overlap error."}
-                      </p>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                            <th className="py-2.5 px-4">Component</th>
+                            <th className="py-2.5 px-4 text-center">Type</th>
+                            <th className="py-2.5 px-4">Rule / Calculation</th>
+                            <th className="py-2.5 px-4 text-right">Default Value</th>
+                            <th className="py-2.5 px-4 text-right w-36">Assigned Amount (₹)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {componentRows.map((c, idx) => {
+                            const isOverridden = Number(c.amount) !== Number(c.defaultAmount);
+                            return (
+                              <tr key={c.salary_component_id} className="hover:bg-gray-50/50">
+                                <td className="py-2.5 px-4 font-semibold text-gray-900">
+                                  {c.name}
+                                  <span className="text-[10px] font-mono text-gray-400 block font-normal">
+                                    {c.code}
+                                  </span>
+                                </td>
+
+                                <td className="py-2.5 px-4 text-center">
+                                  <span
+                                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${c.type === "EARNING"
+                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                                      }`}
+                                  >
+                                    {c.type}
+                                  </span>
+                                </td>
+
+                                <td className="py-2.5 px-4 text-gray-500 text-[11px]">
+                                  {c.ruleDescription}
+                                </td>
+
+                                <td className="py-2.5 px-4 text-right font-mono text-gray-500">
+                                  ₹{Number(c.defaultAmount).toLocaleString("en-IN")}
+                                </td>
+
+                                <td className="py-2.5 px-4 text-right">
+                                  <div className="relative">
+                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                                      ₹
+                                    </span>
+                                    <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={c.amount}
+                                      onChange={(e) => handleAmountChange(idx, e.target.value)}
+                                      className={`w-full text-right text-xs font-mono font-bold rounded-lg pl-6 pr-2 py-1.5 border transition-colors focus:outline-none focus:ring-1 ${isOverridden
+                                        ? "bg-amber-50/50 border-amber-300 text-amber-900 focus:ring-amber-500"
+                                        : "bg-white border-gray-200 text-gray-900 focus:ring-indigo-500"
+                                        }`}
+                                      required
+                                    />
+                                    {isOverridden && (
+                                      <span
+                                        className="block text-[9px] text-amber-700 font-semibold text-right mt-0.5"
+                                        title="Manually modified from standard structure calculation"
+                                      >
+                                        Overridden
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
+
+                {/* Live Salary Breakdown Summary (1 col) */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs flex flex-col justify-between space-y-6">
+                  <div>
+                    <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                      <div className="p-1.5 bg-indigo-50 rounded-md text-indigo-600">
+                        <Banknote size={16} />
+                      </div>
+                      <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                        Salary Breakdown
+                      </h3>
+                    </div>
+
+                    <div className="space-y-3 mt-4 text-xs">
+                      {/* Financial Year Tag */}
+                      <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                        <span className="text-gray-600 font-medium">Financial Year</span>
+                        <span className="font-bold text-gray-900">
+                          {currentFinancialYear?.name || "Selected FY"}
+                        </span>
+                      </div>
+
+                      {/* Gross Earnings */}
+                      <div className="flex items-center justify-between p-2.5 bg-emerald-50/60 rounded-lg border border-emerald-100">
+                        <div className="flex items-center gap-1.5 text-emerald-800">
+                          <ArrowUpRight size={15} />
+                          <span className="font-semibold">Gross Earnings</span>
+                        </div>
+                        <span className="font-mono font-bold text-emerald-700 text-sm">
+                          ₹{totals.grossEarnings.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+
+                      {/* Deductions */}
+                      <div className="flex items-center justify-between p-2.5 bg-amber-50/60 rounded-lg border border-amber-100">
+                        <div className="flex items-center gap-1.5 text-amber-800">
+                          <ArrowDownRight size={15} />
+                          <span className="font-semibold">Total Deductions</span>
+                        </div>
+                        <span className="font-mono font-bold text-amber-700 text-sm">
+                          -₹{totals.totalDeductions.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+
+                      {/* Net Take-Home */}
+                      <div className="p-3.5 bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200 rounded-xl">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
+                          Net Take-Home Salary
+                        </span>
+                        <div className="text-2xl font-black font-mono text-indigo-900 mt-1">
+                          ₹{totals.netSalary.toLocaleString("en-IN")}
+                        </div>
+                        <span className="text-[10px] text-indigo-600 mt-1 block">
+                          Monthly net payable to employee
+                        </span>
+                      </div>
+
+                      {/* Annualized CTC projection */}
+                      <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100 text-[11px] space-y-1">
+                        <div className="flex justify-between text-gray-500">
+                          <span>Annualized Gross (12m):</span>
+                          <span className="font-mono font-medium text-gray-800">
+                            ₹{(totals.grossEarnings * 12).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-gray-500">
+                          <span>Annualized Net (12m):</span>
+                          <span className="font-mono font-medium text-gray-800">
+                            ₹{(totals.netSalary * 12).toLocaleString("en-IN")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submission CTA Button */}
+                  <div className="space-y-2 pt-4 border-t border-gray-100">
+                    {hasDuplicateFySalary && (
+                      <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2 font-medium">
+                        <AlertCircle size={14} className="shrink-0 text-amber-600" />
+                        <span>A salary structure has already been created against this financial year and this employee.</span>
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={saving || hasDuplicateFySalary}
+                      className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-sm transition-colors text-xs sm:text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Save size={16} />
+                      <span>
+                        {saving
+                          ? "Saving Structure..."
+                          : editingVersion
+                            ? "Update Salary Structure"
+                            : "Save & Assign Salary Structure"}
+                      </span>
+                    </button>
+
+                    {editingVersion && (
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="w-full py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Cancel Editing
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Historical Salary Timeline & Table (Section 24) */}
+              {/* Revision History for Selected Employee */}
               <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                   <div className="flex items-center gap-2">
-                    <History size={18} className="text-indigo-600" />
+                    <div className="p-1.5 bg-indigo-50 rounded-md text-indigo-600">
+                      <History size={16} />
+                    </div>
                     <div>
                       <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-                        Salary Revision History ({employeeHistory.length} versions)
+                        Salary Revision History ({currentEmployee?.name || "Employee"})
                       </h3>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Past and active salary versions for {currentEmployee?.name || "this employee"}.
+                        Track historical assignments, audit trail, and status per Financial Year. Click row to edit.
                       </p>
                     </div>
+                  </div>
+
+                  <div className="text-xs text-gray-500 font-mono">
+                    Total records: <b>{employeeHistory.length}</b>
                   </div>
                 </div>
 
@@ -1302,7 +1495,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                       <thead>
                         <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
                           <th className="py-2.5 px-4">Version & Structure</th>
-                          <th className="py-2.5 px-4">Effective Window</th>
+                          <th className="py-2.5 px-4">Financial Year</th>
                           <th className="py-2.5 px-4 text-center">Status</th>
                           <th className="py-2.5 px-4 text-right">Gross Earnings</th>
                           <th className="py-2.5 px-4 text-right">Deductions</th>
@@ -1314,20 +1507,18 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                       <tbody className="divide-y divide-gray-100">
                         {employeeHistory.map((item, idx) => {
                           const isCurrent = item.status === "ACTIVE";
-
                           const isEditingThis = editingVersion?.id === item.id;
 
                           return (
                             <tr
                               key={item.uid}
                               onClick={() => handleStartEdit(item)}
-                              className={`cursor-pointer transition-colors ${
-                                isEditingThis
-                                  ? "bg-amber-50/80 ring-2 ring-amber-400"
-                                  : isCurrent
+                              className={`cursor-pointer transition-colors ${isEditingThis
+                                ? "bg-amber-50/80 ring-2 ring-amber-400"
+                                : isCurrent
                                   ? "bg-indigo-50/20 hover:bg-indigo-50/40"
                                   : "hover:bg-gray-50/80"
-                              }`}
+                                }`}
                               title="Click row to edit this salary version"
                             >
                               <td className="py-3 px-4">
@@ -1340,8 +1531,11 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                               </td>
 
                               <td className="py-3 px-4">
-                                <div className="font-semibold text-gray-800">
-                                  {formatDateDisplay(item.effective_from)} → {formatDateDisplay(item.effective_to)}
+                                <div className="font-bold text-gray-800">
+                                  {item.financialYear?.name || "N/A"}
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                  {formatDateDisplay(item.financialYear?.start_date)} - {formatDateDisplay(item.financialYear?.end_date)}
                                 </div>
                               </td>
 
@@ -1356,14 +1550,13 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                                         e.target.value as "ACTIVE" | "INACTIVE" | "CLOSED"
                                       )
                                     }
-                                    className={`text-[11px] font-bold rounded-full px-2.5 py-1 border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 shadow-xs ${
-                                      item.status === "ACTIVE"
-                                        ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                                        : item.status === "CLOSED"
+                                    className={`text-[11px] font-bold rounded-full px-2.5 py-1 border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500 shadow-xs ${item.status === "ACTIVE"
+                                      ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                                      : item.status === "CLOSED"
                                         ? "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
                                         : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
-                                    } ${togglingId === item.id ? "opacity-50 cursor-wait" : ""}`}
-                                    title="Click to change status. Activating this will automatically make any other active salary INACTIVE."
+                                      } ${togglingId === item.id ? "opacity-50 cursor-wait" : ""}`}
+                                    title="Click to change status. Activating this will automatically make any other active salary in this FY INACTIVE."
                                   >
                                     <option value="ACTIVE">ACTIVE</option>
                                     <option value="INACTIVE">INACTIVE</option>
@@ -1396,12 +1589,11 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                                       e.stopPropagation();
                                       handleStartEdit(item);
                                     }}
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors shadow-xs cursor-pointer ${
-                                      isEditingThis
-                                        ? "bg-amber-600 text-white"
-                                        : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200"
-                                    }`}
-                                    title="Edit this version's dates and amounts"
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors shadow-xs cursor-pointer ${isEditingThis
+                                      ? "bg-amber-600 text-white"
+                                      : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200"
+                                      }`}
+                                    title="Edit this version's components and settings"
                                   >
                                     <PenIcon size={12} />
                                     <span>{isEditingThis ? "Editing" : "Edit"}</span>
@@ -1428,46 +1620,73 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                   </div>
                 )}
               </div>
-            </div>
+            </form>
           )}
 
           {/* =============================================================== */}
-          {/* TAB 2: EMPLOYEE DIRECTORY */}
+          {/* TAB 2: EMPLOYEE DIRECTORY & STATUS OVERVIEW */}
           {/* =============================================================== */}
           {activeTab === "directory" && (
-            <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
-              <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-gray-50/50">
-                <div className="relative w-full sm:w-80">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search employee by name, empid, title..."
-                    value={directorySearch}
-                    onChange={(e) => setDirectorySearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 text-xs sm:text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 text-gray-800 placeholder-gray-400"
-                  />
+            <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                    Employee Salary Configuration Directory
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Overview of active salary structures assigned to employees across Financial Years.
+                  </p>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Financial Year Filter */}
+                  <select
+                    value={directoryFyFilter}
+                    onChange={(e) => setDirectoryFyFilter(e.target.value)}
+                    className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  >
+                    <option value="ALL">All Financial Years</option>
+                    {financialYears.map((fy) => (
+                      <option key={fy.uid} value={fy.uid}>
+                        {fy.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Status Filter */}
                   <select
                     value={directoryStatusFilter}
                     onChange={(e) => setDirectoryStatusFilter(e.target.value)}
-                    className="text-xs sm:text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
                     <option value="ALL">All Employees</option>
-                    <option value="ASSIGNED">Assigned Salary Only</option>
-                    <option value="UNASSIGNED">Unassigned Only</option>
+                    <option value="ASSIGNED">Configured with Salary</option>
+                    <option value="UNASSIGNED">Missing Salary Configuration</option>
                   </select>
+
+                  {/* Search bar */}
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search employee..."
+                      value={directorySearch}
+                      onChange={(e) => setDirectorySearch(e.target.value)}
+                      className="text-xs bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48 sm:w-60"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
+              {/* Directory Table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
                       <th className="py-3 px-5">Employee</th>
                       <th className="py-3 px-4">Designation</th>
-                      <th className="py-3 px-4">Current Salary Structure</th>
+                      <th className="py-3 px-4">Active Salary Structure</th>
                       <th className="py-3 px-4 text-right">Net Monthly</th>
                       <th className="py-3 px-4 text-center">Versions</th>
                       <th className="py-3 px-4 text-right">Action</th>
@@ -1498,8 +1717,8 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                               <span className="font-semibold text-gray-800 block">
                                 {emp.currentSalary.salary_structure_name}
                               </span>
-                              <span className="text-[10px] text-gray-400">
-                                From {formatDateDisplay(emp.currentSalary.effective_from)}
+                              <span className="text-[10px] text-indigo-600 font-medium">
+                                {emp.currentSalary.financial_year_name}
                               </span>
                             </div>
                           ) : (
@@ -1530,7 +1749,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                               setSelectedEmpid(emp.empid);
                               setActiveTab("assign");
                             }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                           >
                             <span>Manage / Revise</span>
                             <ArrowRight size={12} />
@@ -1544,182 +1763,6 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
             </div>
           )}
 
-          {/* =============================================================== */}
-          {/* TAB 3: EFFECTIVE-DATE LOOKUP SIMULATOR (SECTION 25) */}
-          {/* =============================================================== */}
-          {activeTab === "simulator" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-6">
-              <div className="border-b border-gray-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-indigo-50 border border-indigo-100 rounded-lg text-indigo-600">
-                    <CalendarDays size={20} />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-                      Payroll Period Effective-Date Lookup Simulator
-                    </h2>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Verify which historical or active salary version applies to a specific payroll processing calendar period.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Input Parameters */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Employee
-                  </label>
-                  <select
-                    value={selectedEmpid}
-                    onChange={(e) => {
-                      setSelectedEmpid(e.target.value);
-                      setTimeout(runSimulator, 50);
-                    }}
-                    className="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-lg p-2 text-gray-800"
-                  >
-                    {employees.map((emp) => (
-                      <option key={emp.empid} value={emp.empid}>
-                        {emp.name} ({emp.empid})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Payroll Period Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={simPeriodStart}
-                    onChange={(e) => setSimPeriodStart(e.target.value)}
-                    className="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-lg p-2 text-gray-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Payroll Period End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={simPeriodEnd}
-                    onChange={(e) => setSimPeriodEnd(e.target.value)}
-                    className="w-full text-xs sm:text-sm bg-white border border-gray-200 rounded-lg p-2 text-gray-800"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={runSimulator}
-                  className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold rounded-lg shadow-sm transition-colors"
-                >
-                  <Play size={14} />
-                  <span>Execute Effective-Date Lookup</span>
-                </button>
-
-                <div className="text-[11px] text-gray-500 font-mono">
-                  Rule: effective_from &le; period_end AND (effective_to IS NULL OR effective_to &ge; period_start)
-                </div>
-              </div>
-
-              {/* Simulation Result Box */}
-              {simResult && (
-                <div className="mt-4 p-5 rounded-xl border animate-in fade-in duration-200">
-                  {simResult.error ? (
-                    <div className="flex items-start gap-3 text-red-700 bg-red-50 p-4 rounded-lg border border-red-200">
-                      <ShieldAlert size={20} className="shrink-0" />
-                      <div>
-                        <p className="font-bold text-sm">Data Integrity Conflict</p>
-                        <p className="text-xs mt-0.5">{simResult.error}</p>
-                      </div>
-                    </div>
-                  ) : !simResult.found ? (
-                    <div className="flex items-start gap-3 text-amber-700 bg-amber-50 p-4 rounded-lg border border-amber-200">
-                      <AlertCircle size={20} className="shrink-0" />
-                      <div>
-                        <p className="font-bold text-sm">No Applicable Salary Version Found</p>
-                        <p className="text-xs mt-0.5">{simResult.message}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-900">
-                        <div className="flex items-center gap-2.5">
-                          <CheckCircle2 size={20} className="text-emerald-600" />
-                          <div>
-                            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 block">
-                              Applicable Salary Version Resolved
-                            </span>
-                            <span className="font-bold text-base">
-                              {simResult.version.salaryStructure?.name || "Standard Salary"}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="text-[11px] text-emerald-700 block">Status: {simResult.version.status}</span>
-                          <span className="font-mono text-xs">
-                            Active window: {formatDateDisplay(simResult.version.effective_from)} →{" "}
-                            {formatDateDisplay(simResult.version.effective_to)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Display exact amounts Payroll calculation engine will consume */}
-                      <div className="border border-gray-200 rounded-lg overflow-hidden">
-                        <table className="w-full text-left text-xs border-collapse">
-                          <thead>
-                            <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                              <th className="py-2.5 px-4">Component</th>
-                              <th className="py-2.5 px-4 text-center">Type</th>
-                              <th className="py-2.5 px-4 text-right">Amount Consumed by Payroll</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {simResult.version.components.map((c: any) => (
-                              <tr key={c.salary_component_id}>
-                                <td className="py-2.5 px-4 font-semibold text-gray-900">
-                                  {c.salaryComponent?.name || `Component #${c.salary_component_id}`}
-                                </td>
-                                <td className="py-2.5 px-4 text-center">
-                                  <span
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${c.salaryComponent?.type === "EARNING"
-                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                        : "bg-amber-50 text-amber-700 border border-amber-200"
-                                      }`}
-                                  >
-                                    {c.salaryComponent?.type}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-4 text-right font-mono font-bold text-gray-900">
-                                  ₹{Number(c.amount).toLocaleString("en-IN")}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot>
-                            <tr className="bg-gray-50 font-bold border-t border-gray-200">
-                              <td colSpan={2} className="py-2.5 px-4 text-gray-800">
-                                Net Base Payable:
-                              </td>
-                              <td className="py-2.5 px-4 text-right font-mono text-indigo-700 text-sm">
-                                ₹{simResult.version.summary.netSalary.toLocaleString("en-IN")}
-                              </td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -1735,14 +1778,13 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                   Historical Salary Version Details
                 </h3>
                 <p className="text-[11px] text-gray-500">
-                  {formatDateDisplay(inspectingVersion.effective_from)} to{" "}
-                  {formatDateDisplay(inspectingVersion.effective_to)} • Status: {inspectingVersion.status}
+                  {inspectingVersion.financialYear?.name || "Financial Year"} • Status: {inspectingVersion.status}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setInspectingVersion(null)}
-                className="p-1 text-gray-400 hover:text-gray-700 rounded-lg"
+                className="p-1 text-gray-400 hover:text-gray-700 rounded-lg cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -1767,8 +1809,8 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                         <td className="py-2 px-3 text-center">
                           <span
                             className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${c.salaryComponent?.type === "EARNING"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-amber-50 text-amber-700"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-amber-50 text-amber-700"
                               }`}
                           >
                             {c.salaryComponent?.type}
@@ -1784,6 +1826,12 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
               </div>
 
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs space-y-1">
+                <div className="flex justify-between text-gray-600">
+                  <span>Financial Year:</span>
+                  <span className="font-bold text-gray-900">
+                    {inspectingVersion.financialYear?.name || "N/A"}
+                  </span>
+                </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Gross Earnings:</span>
                   <span className="font-bold text-gray-900 font-mono">

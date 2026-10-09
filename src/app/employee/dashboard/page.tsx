@@ -7,7 +7,7 @@ import Head from "@/lib/compatHead";
 import Image from "next/image";
 import { Clock, Calendar, User, Mail, Briefcase, TrendingUp } from "lucide-react";
 import { toast } from "react-toastify";
-import EmployeeCalenderSection from "@/Components/EmployeeCalenderSection";
+import CalendarSection from "@/Components/CalendarSection";
 import { formatLongDate } from "@/utils/dateTime";
 import RegularizationCard from "@/Components/RegularizationCard";
 import RegularizationModal from "@/Components/RegularizationModal";
@@ -64,7 +64,7 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
           setWorkStartTime(null);
         }
         setAttendanceLoading(false);
-        
+
         // Fetch stats — only if user has attendance.my permission
         if (can(PERMISSION_KEYS.ATTENDANCE_MY)) {
           const statsRes = await fetch("/api/employee/stats", { credentials: "include" });
@@ -94,17 +94,17 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
       }
     }
     fetchUser();
-  }, [router]);
+  }, []);
 
   // Timer effect - exact same logic as HR attendance
   useEffect(() => {
     let interval;
-    
+
     if (isWorking && workStartTime) {
       interval = setInterval(() => {
         const now = new Date();
         const checkIn = new Date(workStartTime);
-        
+
         // Validate checkIn time
         if (isNaN(checkIn.getTime())) {
           setElapsedTime('00:00:00');
@@ -114,7 +114,7 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
         const currentSessionSeconds = (now.getTime() - checkIn.getTime()) / 1000;
         const completedTime = Number(stats.todayCompletedSeconds) || 0;
         const totalSecondsToday = completedTime + currentSessionSeconds;
-        
+
         const hours = Math.floor(totalSecondsToday / 3600);
         const minutes = Math.floor((totalSecondsToday % 3600) / 60);
         const seconds = Math.floor(totalSecondsToday % 60);
@@ -129,15 +129,15 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
       const seconds = Math.floor(completedTime % 60);
       setElapsedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
     }
-    
+
     return () => clearInterval(interval);
   }, [isWorking, workStartTime, stats.todayCompletedSeconds]);
 
   const loaderProp = ({ src }) => {
     if (src.startsWith('http://') || src.startsWith('https://')) return src;
-    
+
     if (!src.startsWith('/')) return `/${src}`;
-    
+
     return src;
   };
 
@@ -212,8 +212,8 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
           <div className="text-red-500 text-xl mb-4">⚠️</div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Dashboard</h2>
           <p className="text-gray-600 mb-4">{user.error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Try Again
@@ -407,7 +407,7 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
                             <Briefcase className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
                             <div className="flex-1">
                               <p className="text-sm text-gray-600">Role</p>
-                              <p className="font-medium text-gray-900 capitalize break-words">{user.role}</p>
+                              <p className="font-medium text-gray-900 capitalize break-words">{user.rbacRole.name || 'Employee'}</p>
                             </div>
                           </div>
                         </div>
@@ -453,8 +453,8 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
                 {/* Calendar Section */}
                 {(can(PERMISSION_KEYS.CALENDAR_VIEW) ||
                   can(PERMISSION_KEYS.CALENDAR_MANAGE)) && (
-                  <EmployeeCalenderSection />
-                )}
+                    <CalendarSection />
+                  )}
                 {/* Quick Actions */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100">
                   <div className="p-6 border-b border-gray-100">

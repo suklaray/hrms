@@ -24,10 +24,14 @@ function YearlyCalendar({
   canCreate = false,
   canEdit = false,
   canDelete = false,
+  canDownloadHolidays = false,
+  canDownloadEvents = false,
 }: {
   canCreate?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  canDownloadHolidays?: boolean;
+  canDownloadEvents?: boolean;
 }) {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [events, setEvents] = useState({});
@@ -324,7 +328,7 @@ const downloadHolidaysPDF = () => {
     setEditingEvent(event);
     
     // Get the visible_to data from the event
-    const visibleToString = event.visible_to || '';
+    const visibleToString = event.visibility || event.visible_to || '';
     const visibleToArray = visibleToString ? visibleToString.split(',').map(e => e.trim()) : [];
     const selectedEmps = [];
     
@@ -401,7 +405,7 @@ const downloadHolidaysPDF = () => {
           description: formData.description,
           event_date: formData.date,
           event_type: formData.type,
-          visible_to: formData.visible_to.join(','),
+          visibility: formData.visible_to.join(','),
         }),
       });
       const data = await res.json();
@@ -728,9 +732,11 @@ const downloadHolidaysPDF = () => {
                     <span className="sm:hidden">+</span>
                   </Link>
                   )}
+                  {(canDownloadHolidays || canDownloadEvents) && (
                   <div className="flex items-center space-x-1">
                   
                   {/* Holidays Download Dropdown */}
+                  {canDownloadHolidays && (
                   <div className="relative">
                     <button 
                       onClick={() => setShowDownloadDropdown(showDownloadDropdown === 'holidays' ? null : 'holidays')}
@@ -756,8 +762,10 @@ const downloadHolidaysPDF = () => {
                       </div>
                     )}
                   </div>
+                  )}
                   
                   {/* All Events Download Dropdown */}
+                  {canDownloadEvents && (
                   <div className="relative">
                     <button 
                       onClick={() => setShowDownloadDropdown(showDownloadDropdown === 'events' ? null : 'events')}
@@ -783,7 +791,9 @@ const downloadHolidaysPDF = () => {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
+                  )}
 
                 </div>
               </div>
@@ -958,6 +968,8 @@ export default function ClientPageWrapper(props: {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canDownloadHolidays: boolean;
+  canDownloadEvents: boolean;
 }) {
   return (
     <Suspense fallback={null}>

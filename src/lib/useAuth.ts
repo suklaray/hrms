@@ -56,7 +56,6 @@ export function useAuth() {
   const logout = () => {
     void dispatch(logoutUser());
     setUser(null);
-    router.replace('/login');
   };
 
   return { user, loading, logout, setUser };

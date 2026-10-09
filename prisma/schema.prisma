@@ -126,6 +126,7 @@ model financial_year {
 
   payroll_configurations payroll_configuration[]
   payroll_periods        payroll_period[]
+  employee_salary_structures employee_salary_structure[]
 
   @@index([company_id])
   @@index([company_id, status])
@@ -154,6 +155,8 @@ model payroll_period {
   period_name  String
   period_start DateTime @db.Date
   period_end   DateTime @db.Date
+
+  payrolls payroll[]
 
   salary_payment_date DateTime? @db.Date
 
@@ -212,6 +215,7 @@ model MonthlySummary {
   year               Int      @db.SmallInt
   total_working_days Int      @default(0)
   days_worked        Decimal  @default(0.0) @db.Decimal(5, 2)
+  days_absent        Decimal  @default(0.0) @db.Decimal(5, 2)
   overtime_hours     Decimal  @default(0.0) @db.Decimal(5, 2)
   weekend            Int      @default(0)
   createdAt          DateTime @default(now())
@@ -527,6 +531,8 @@ model users {
   monthlySummaries MonthlySummary[]
   employeeProfile  employees?
   departments                departments[]
+  calendar_event_visibility visible_to[]
+
   audit_logs                 audit_logs[]
   @@index([roleId])
   @@index([company_id])
@@ -547,36 +553,69 @@ model session {
 
 model payroll {
   id                Int             @id @default(autoincrement())
-  empid             String?
-  month             String?
-  year              Int?
-  basic_salary      Decimal?
-  hra               Decimal?
-  bonus             Decimal?        @default(0.00)
-  da                Decimal?
-  allowances        Decimal?
-  deductions        Decimal?
-  net_pay           Decimal?
-  generated_on      DateTime?       @default(now())
-  payslip_pdf       String?
-  payslip_status    payslip_status? @default(pending)
-  pf                Decimal?        @default(0.00)
-  ptax              Decimal?        @default(0.00)
-  esic              Decimal?        @default(0.00)
-  allowance_details String?
-  deduction_details String?
-  company_id        String?
-  company           company?        @relation(fields: [company_id], references: [uid], onDelete: SetNull)
-  users             users?          @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+  uid               String?         @unique @default(cuid())
+  empid             String
+  users             users           @relation(fields: [empid], references: [empid], onDelete: Restrict, onUpdate: Restrict)
+  company_id        String
+  company           company         @relation(fields: [company_id], references: [uid], onDelete: Restrict)
 
+  period_name       String
+  period_id         String
+  period            payroll_period @relation(fields: [period_id], references: [uid], onDelete: Cascade)
+
+  gross_salary      Decimal         @db.Decimal(10, 2)
+  total_deduction   Decimal         @db.Decimal(10, 2)
+  net_salary        Decimal         @db.Decimal(10, 2)
+
+  total_working_days Int @default(0)
+  days_worked Int @default(0)
+  days_absent Int @default(0)
+  overtime_hours Int @default(0)
+  overtime_rate_perhour Decimal @default(0)
+  weekend Int @default(0)
+
+  salary_payment_date DateTime @default(now())
+  total_payable_amount Decimal @default(0)
+  status payslipStatus @default(PENDING)
+  generated_at DateTime @default(now())
+  payslip_url String?
+
+  components payroll_components[]
+  
+  @@unique([period_id, empid])
   @@index([empid])
   @@index([company_id])
 }
 
-enum payslip_status {
-  pending
-  generated
+enum payslipStatus {
+  PENDING
+  DRAFT
+  GENERATED
+  INITIATED
+  DISBURSED
+  REJECTED
 }
+
+model payroll_components {
+  id                  Int             @id @default(autoincrement())
+  payroll_id          String
+  component_name      String
+  component_code      String
+  component_formulla  String
+  component_ammount   Decimal         @db.Decimal(10, 2)
+  component_type      component_type 
+  payroll             payroll         @relation(fields: [payroll_id], references: [uid], onDelete: Cascade)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @default(now())
+  
+  @@index([payroll_id])
+}
+
+enum component_type {
+  EARNING
+  DEDUCTION
+}
+
 /// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
 model employees_backup {
   empid                  Int       @id
@@ -608,8 +647,24 @@ model calendar_events {
   created_by  String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
-}
 
+  visibility visible_to[]
+}
+model visible_to{
+
+  id          Int      @id @default(autoincrement())
+  event_id    Int
+  empid       String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  calendar_event calendar_events @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user  users @relation(fields:[empid], references:[empid], onDelete:Cascade)
+
+  @@unique([event_id, empid])
+  @@index([event_id])
+  @@index([empid])
+}
 model contact_submissions {
   id         Int       @id @default(autoincrement())
   name       String
@@ -934,11 +989,11 @@ model employee_salary_structure {
   employee_id String
   employee    users  @relation(fields: [employee_id], references: [empid], onDelete: Cascade)
 
-  salary_structure_id Int?
-  salaryStructure     salary_structure? @relation(fields: [salary_structure_id], references: [id], onDelete: Restrict)
+  salary_structure_id String
+  salaryStructure     salary_structure @relation(fields: [salary_structure_id], references: [uid], onDelete: Restrict)
 
-  effective_from DateTime  @db.Date
-  effective_to   DateTime? @db.Date
+  financial_year_id String
+  financialYear     financial_year  @relation(fields: [financial_year_id], references: [uid], onDelete: Cascade)
 
   status EmployeeSalaryStatus @default(ACTIVE)
 
@@ -951,8 +1006,8 @@ model employee_salary_structure {
 
   @@index([employee_id])
   @@index([salary_structure_id])
-  @@index([effective_from])
-  @@index([effective_to])
+  @@index([financial_year_id])
+  @@index([status])
 }
 
 model employee_salary_component {

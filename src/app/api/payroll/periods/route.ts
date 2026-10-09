@@ -1,29 +1,19 @@
 import { prisma } from "@/lib/prisma";
-import { checkPermission } from "@/lib/rbac";
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-
-async function checkAuth(req: NextRequest) {
-    const token = req.cookies.get('token')?.value;
-    if (!token) return { error: NextResponse.json({ message: 'Unauthorized' }, { status: 401 }) };
-    let decoded: any;
-    try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch {
-        return { error: NextResponse.json({ message: 'Invalid token' }, { status: 401 }) };
-    }
-    const hasAccess =
-        (await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_VIEW)) ||
-        (await checkPermission(decoded, PERMISSION_KEYS.PAYROLL_GENERATE));
-    if (!hasAccess) return { error: NextResponse.json({ message: 'Forbidden: insufficient permissions' }, { status: 403 }) };
-    return { decoded };
-}
+import { checkAuth } from "@/lib/apiAuth";
 
 // ─── GET (Fetch Existing Payroll Periods) ─────────────────────────────────────
 export async function GET(req: NextRequest) {
-    const auth = await checkAuth(req);
-    if (auth.error) return auth.error;
+    const auth = await checkAuth(req, [
+        PERMISSION_KEYS.PAYROLL_GENERATE,
+        PERMISSION_KEYS.PAYROLL_VIEW,
+        PERMISSION_KEYS.PAYSLIP_GENERATE,
+        PERMISSION_KEYS.PAYSLIP_INITIATE,
+        PERMISSION_KEYS.PAYSLIP_DISBURSED,
+        PERMISSION_KEYS.PAYSLIP_VIEW
+    ]);
+    if ("error" in auth) return auth.error;
 
     try {
         const { searchParams } = new URL(req.url);

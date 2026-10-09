@@ -12,7 +12,8 @@ import { AppShellContext } from "@/contexts/AppShellContext";
 import { activateSharedSidebarShell } from "@/lib/appShell";
 import { useRouter, usePathname } from "next/navigation";
 import { ToastContainer } from "react-toastify";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { clearLogoutRedirectRequest } from "@/store/slices/authSlice";
 
 import "react-toastify/dist/ReactToastify.css";
 import "react-confirm-alert/src/react-confirm-alert.css";

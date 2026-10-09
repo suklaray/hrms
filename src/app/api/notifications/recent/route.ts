@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     let cookieToken: string | undefined;
     try {
       cookieToken = cookie.parse(cookieHeader).token;
-    } catch {}
+    } catch { }
     const nextCookieToken = req.cookies.get("token")?.value;
     const searchToken = req.nextUrl.searchParams.get("token") || undefined;
     const authHeader = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
@@ -130,8 +130,8 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     // Check for recent payroll generation
     const recentPayrolls = await prisma.payroll.findMany({
-      where: { empid: userId, generated_on: { gte: oneHourAgo } },
-      orderBy: { generated_on: "desc" },
+      where: { empid: userId, generated_at: { gte: oneHourAgo } },
+      orderBy: { generated_at: "desc" },
     });
 
     recentPayrolls.forEach((payroll) => {
@@ -139,14 +139,14 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       notifications.push({
         id: `salary-${payroll.id}`,
         type: "payroll",
-        status: payroll.payslip_status?.toLowerCase() || "generated",
+        status: payroll.status?.toLowerCase() || "generated",
         priority: 1,
-        title: "💰 Salary Processed!",
-        message: `💵 Your salary for ${payroll.month} ${payroll.year} has been processed.\n\n📊 Status: ${p.status || payroll.payslip_status}\n\n📍 Check payslip in Payroll section`,
+        title: "💰 Salary Generated!",
+        message: `💵 Your salary for ${payroll.period_name} has been generated.\n\n📊 Status: ${p.status}\n\n📍 Click to check payslip in Payroll section`,
         bgColor: "bg-gradient-to-br from-green-400 via-lime-500 to-emerald-600",
         borderColor: "border-green-300/80",
         autoDismiss: false,
-        timestamp: payroll.generated_on.toISOString(),
+        timestamp: payroll.generated_at.toISOString(),
       });
     });
 

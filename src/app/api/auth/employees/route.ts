@@ -7,11 +7,10 @@ import { checkPermission } from "@/lib/rbac";
 import { getEmployeeDirectoryRoleScope } from "@/lib/roleBasedAccess";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import type { DecodedToken } from "@/lib/jwtTypes";
+import { checkAuth } from "@/lib/apiAuth";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   const query = await getQueryParams(req, context?.params);
-
-  
 
   try {
     // Get user from token
@@ -20,13 +19,16 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     if (!token) return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
-    const hasAccess = await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_VIEW);
-    if (!hasAccess) {
-      return NextResponse.json({
-        success: false,
-        message: "Forbidden: insufficient permissions",
-      }, { status: 403 });
-    }
+
+    const auth = await checkAuth(req, [
+      PERMISSION_KEYS.EMPLOYEE_VIEW,
+      PERMISSION_KEYS.PAYSLIP_GENERATE,
+      PERMISSION_KEYS.PAYSLIP_INITIATE,
+      PERMISSION_KEYS.PAYSLIP_DISBURSED,
+      PERMISSION_KEYS.JD_CREATE
+    ]);
+    if ("error" in auth) return auth.error;
+
 
     const roleScope = await getEmployeeDirectoryRoleScope(decoded);
     const loggedInUser = roleScope.currentUser;
@@ -53,7 +55,6 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     );
     const { role } = query;
     const filters: Record<string, any> = {
-      is_active: "ACTIVE",
       roleId: {
         in: roleScope.visibleRoleIds,
       },
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         employee_type: true,
         date_of_joining: true,
         status: true,
-
+        is_active: true,
         roleId: true,
 
         // Role table relation

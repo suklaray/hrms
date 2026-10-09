@@ -62,10 +62,15 @@ export const PERMISSIONS = {
     VIEW: "payroll.view",
     GENERATE: "payroll.generate",
     EDIT: "payroll.edit",
+    CHANGE_STATUS: "payroll.change_status",
   },
 
   PAYSLIP: {
     VIEW: "payslip.view",
+    GENERATE: "payslip.generate",
+    INITIATE: "payslip.initiate",
+    DISBURSED: "payslip.disbursed",
+    VIEW_OWN: "payslip.view_own",
   },
 
   RECRUITMENT: {
@@ -134,6 +139,8 @@ export const PERMISSIONS = {
     CREATE: "calendar.create",
     EDIT: "calendar.edit",
     DELETE: "calendar.delete",
+    DOWNLOAD_HOLIDAYS: "calendar.download_holidays",
+    DOWNLOAD_EVENTS: "calendar.download_events",
   },
 
   CUSTOMER: {
@@ -421,12 +428,51 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     action: "edit",
   },
   {
+    key: PERMISSIONS.PAYROLL.CHANGE_STATUS,
+    name: "Change Payroll Status",
+    description: "Change payroll status",
+    module: "payroll",
+    action: "change_status",
+  },
+
+  // Payslip
+  {
     key: PERMISSIONS.PAYSLIP.VIEW,
     name: "View Payslips",
     description: "View and download own payslips and compensation summaries",
-    module: "payroll",
-    action: "payslip_view",
+    module: "payslip",
+    action: "view",
   },
+  {
+    key: PERMISSIONS.PAYSLIP.GENERATE,
+    name: "Generate Payslip",
+    description: "Generate payslips",
+    module: "payslip",
+    action: "generate",
+  },
+  {
+    key: PERMISSIONS.PAYSLIP.VIEW_OWN,
+    name: "View Own Payslip",
+    description: "View own payslip",
+    module: "payslip",
+    action: "view_own",
+  },
+  {
+    key: PERMISSIONS.PAYSLIP.INITIATE,
+    name: "Initiate Payslip",
+    description: "Initiate payslip",
+    module: "payslip",
+    action: "initiate",
+  },
+  {
+    key: PERMISSIONS.PAYSLIP.DISBURSED,
+    name: "Disbursed Payslip",
+    description: "Disbursed payslip",
+    module: "payslip",
+    action: "disbursed",
+  },
+
+
 
   // Recruitment
   {
@@ -729,6 +775,20 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     description: "Delete company calendar events and holidays",
     module: "calendar",
     action: "delete",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.DOWNLOAD_HOLIDAYS,
+    name: "Download Calendar Holidays",
+    description: "Download company holidays from the calendar",
+    module: "calendar",
+    action: "download_holidays",
+  },
+  {
+    key: PERMISSIONS.CALENDAR.DOWNLOAD_EVENTS,
+    name: "Download Calendar Events",
+    description: "Download all visible calendar events",
+    module: "calendar",
+    action: "download_events",
   },
 
   // Customer Connect
