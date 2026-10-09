@@ -75,7 +75,11 @@ export async function GET(req: NextRequest) {
 
 // ─── PUT (Update Financial Year Status) ───────────────────────────
 export async function PUT(req: NextRequest) {
-    const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT]);
+    const auth = await checkAuth(req, [
+        PERMISSION_KEYS.PAYROLL_GENERATE,
+        PERMISSION_KEYS.PAYROLL_EDIT,
+        PERMISSION_KEYS.PAYROLL_CHANGE_STATUS
+    ]);
     if ("error" in auth) return auth.error;
 
     try {
