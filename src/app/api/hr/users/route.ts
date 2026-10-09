@@ -27,7 +27,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         rbacRole: { select: { id: true, name: true } },
         payroll: {
           where: {
-            generated_on: {
+            generated_at: {
               gte: startOfMonth,
               lte: endOfMonth,
             },
