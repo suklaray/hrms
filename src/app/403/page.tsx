@@ -19,7 +19,7 @@ function ForbiddenPage() {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     void dispatch(logoutUser());
   };
 

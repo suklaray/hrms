@@ -53,8 +53,8 @@ export function useAuth() {
     fetchUser();
   }, [fetchUser]);
 
-  const logout = async () => {
-    await dispatch(logoutUser());
+  const logout = () => {
+    void dispatch(logoutUser());
     setUser(null);
   };
 

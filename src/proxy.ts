@@ -48,14 +48,26 @@ async function verifyJWT(token: string): Promise<CustomJWTPayload | null> {
   try {
     const { payload } = await jwtVerify(token, secret);
     return payload as CustomJWTPayload;
-  } catch (error: any) {
-    console.error("JWT verification failed:", error?.message);
+  } catch (error: unknown) {
+    console.error(
+      "JWT verification failed:",
+      error instanceof Error ? error.message : error
+    );
     return null;
   }
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Forward trusted request context for centralized API mutation auditing.
+  // This only annotates the request; it does not authenticate or authorize it.
+  if (pathname.startsWith("/api/") || pathname === "/api") {
+    const headers = new Headers(request.headers);
+    headers.set("x-audit-endpoint", pathname);
+    headers.set("x-audit-method", request.method.toUpperCase());
+    return NextResponse.next({ request: { headers } });
+  }
 
   // Allow all public and static paths
   if (
@@ -74,15 +86,15 @@ export async function proxy(request: NextRequest) {
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  // No token for protected routes -> redirect home
+  // No token for protected routes -> redirect to login
   if (!isPublic && !token) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (token) {
     const decoded = await verifyJWT(token);
     if (!decoded) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(new URL("/login", request.url));
     }
 
     const role = decoded.role?.toString().toLowerCase() || "";
@@ -120,5 +132,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/api/:path*",
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  ],
 };

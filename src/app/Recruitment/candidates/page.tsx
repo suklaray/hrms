@@ -6,11 +6,7 @@ import { Users, Plus, Calendar } from "lucide-react";
 
 function RecruitmentDashboard() {
   const router = useRouter();
-
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
+  
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-indigo-200 via-white to-purple-200">
       <div className="flex-1 p-6">

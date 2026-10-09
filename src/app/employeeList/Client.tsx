@@ -114,10 +114,6 @@ function EmployeeListPage({
         fetchEmployees();
     }, []);
 
-    const handleLogout = () => {
-        router.push("/login");
-    };
-
     const handleView = (id: number | string) => {
         router.push(`/employee/view/${id}`);
     };

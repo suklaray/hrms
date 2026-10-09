@@ -22,17 +22,38 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname() || "/";
   const loggingOut = useAppSelector((state) => state.auth.loggingOut);
-  const logoutRedirectRequested = useAppSelector(
-    (state) => state.auth.logoutRedirectRequested
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
+  const initialized = useAppSelector((state) => state.auth.initialized);
+
+  const noLayoutPaths = [
+    "/setup/super-admin",
+    "/Recruitment/form",
+    "/Recruitment/docs_submitted",
+    "/form-already-submitted",
+    "/unauthorized-form-access",
+    "/form-link-expired",
+    "/form-locked-device",
+  ];
+
+  const hideLayout = noLayoutPaths.some(
+    (path) => pathname.startsWith(path) || pathname === path
   );
-  const dispatch = useAppDispatch();
+
+  const publicPaths = ["/login", "/signup", "/forgot-password", "/403", "/", "/setup/super-admin", "/AboutUs", "/Contact", "/privacy-policy", "/terms-of-service",
+            "/Recruitment/form", "/Recruitment/docs_submitted", "/form-already-submitted", "/unauthorized-form-access",
+            "/form-link-expired", "/form-locked-device"];
+  const isPublicPath =
+    publicPaths.includes(pathname) ||
+    noLayoutPaths.some((path) => pathname.startsWith(path));
+  const isLeavingProtectedPage =
+    !isPublicPath && (loggingOut || (initialized && !isAuthenticated));
+  const showAppShell = !hideLayout && !publicPaths.includes(pathname);
 
   useEffect(() => {
-    if (!logoutRedirectRequested) return;
-
-    router.replace("/login");
-    dispatch(clearLogoutRedirectRequest());
-  }, [dispatch, logoutRedirectRequested, router]);
+    if (isLeavingProtectedPage) {
+      router.replace("/login");
+    }
+  }, [isLeavingProtectedPage, router]);
 
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
@@ -64,24 +85,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     };
   }, [router, pathname]);
 
-  const noLayoutPaths = [
-    "/setup/super-admin",
-    "/Recruitment/form",
-    "/Recruitment/docs_submitted",
-    "/form-already-submitted",
-    "/unauthorized-form-access",
-    "/form-link-expired",
-    "/form-locked-device",
-  ];
-
-  const hideLayout = noLayoutPaths.some(
-    (path) => pathname.startsWith(path) || pathname === path
-  );
-
-  const publicPaths = ["/login", "/signup", "/forgot-password", "/403", "/", "/setup/super-admin", "/AboutUs", "/Contact", "/privacy-policy", "/terms-of-service",
-            "/Recruitment/form", "/Recruitment/docs_submitted", "/form-already-submitted", "/unauthorized-form-access", 
-            "/form-link-expired", "/form-locked-device"];
-  const showAppShell = !hideLayout && !publicPaths.includes(pathname);
+  if (isLeavingProtectedPage) {
+    return <div className="min-h-screen w-full bg-slate-50" aria-busy="true" />;
+  }
 
   if (showAppShell && typeof window !== "undefined") {
     activateSharedSidebarShell();

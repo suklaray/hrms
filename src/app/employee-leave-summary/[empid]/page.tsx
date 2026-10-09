@@ -83,10 +83,6 @@ function EmployeeLeaveSummary() {
     }
   };
 
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
   const handleStatusFilter = (status) => {
     setStatusFilter(status === statusFilter ? 'all' : status);
   };
