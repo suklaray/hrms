@@ -255,7 +255,7 @@ export default function JobApplicationsClient({
       }
 
       matchingRequests.current.add(resume.id);
-      void fetch(`/api/recruitment/job-application/${resume.id}/match`, {
+      void fetch(`/api/recruitment/job-application/${resume.matchUrlId}/match`, {
         method: "POST",
       })
         .then(async (response) => {
@@ -272,7 +272,7 @@ export default function JobApplicationsClient({
           void loadResumes();
         });
     }
-  }, [data.resumes]);
+  }, []);
 
   const retryMatching = async (resumeId: number) => {
     matchingRequests.current.add(resumeId);
