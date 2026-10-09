@@ -7,7 +7,50 @@ import { generatePayslipPdf } from "@/lib/payslipPdfGenerator";
 
 export const dynamic = "force-dynamic";
 
-// ─── GET: Fetch single payslip by ID/UID or employee's payslips list ──────────
+const PAYROLL_INCLUDE = {
+  components: true,
+  company: true,
+  period: true,
+  users: {
+    include: {
+      employeeProfile: {
+        include: {
+          bank_details: true,
+        },
+      },
+      rbacRole: {
+        select: {
+          id: true,
+          name: true,
+          type: true,
+        },
+      },
+    },
+  },
+};
+
+/**
+ * Resolves the authenticated user's employee ID (empid)
+ * Checks the JWT payload first, falling back to a DB lookup if needed.
+ */
+async function resolveUserEmpid(currentUser: any): Promise<string | undefined> {
+  if (currentUser?.empid) return String(currentUser.empid);
+  if (currentUser?.id || currentUser?.email) {
+    const dbUser = await prisma.users.findFirst({
+      where: {
+        OR: [
+          ...(currentUser.id ? [{ id: Number(currentUser.id) }] : []),
+          ...(currentUser.email ? [{ email: String(currentUser.email) }] : []),
+        ],
+      },
+      select: { empid: true },
+    });
+    if (dbUser?.empid) return dbUser.empid;
+  }
+  return undefined;
+}
+
+// ─── GET: Fetch single payslip by ID/UID/empid or employee's payslips list ──────────
 export async function GET(req: NextRequest) {
   // 1. Authenticate & Authorize
   const auth = await checkAuth(req, [
@@ -27,6 +70,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id") || searchParams.get("uid") || searchParams.get("payrollId");
+  const periodIdParam = searchParams.get("periodId") || searchParams.get("period_id");
   const isDownload = searchParams.get("download") === "true";
 
   const userPermissions = auth.permissions || new Set<string>();
@@ -36,12 +80,14 @@ export async function GET(req: NextRequest) {
     userPermissions.has(PERMISSION_KEYS.PAYSLIP_VIEW) ||
     userPermissions.has(PERMISSION_KEYS.PAYSLIP_GENERATE);
 
+  const userEmpid = await resolveUserEmpid(currentUser);
+
   try {
     // ── If no specific payslip ID is requested: return user's or target employee's payslips
     if (!id) {
       const targetEmpId = canViewAny
-        ? (searchParams.get("empid") || currentUser.empid)
-        : currentUser.empid;
+        ? (searchParams.get("empid") || userEmpid)
+        : userEmpid;
 
       if (!targetEmpId) {
         return NextResponse.json(
@@ -83,41 +129,53 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ── Fetch specific payroll record by ID or UID
+    // ── Fetch specific payroll record by ID, UID, empid, or self-alias
     const trimmedId = id.trim();
-    const isNumeric = !isNaN(Number(trimmedId)) && /^\d+$/.test(trimmedId);
+    const isSelfAlias = trimmedId === "my-payslip" || trimmedId === "me";
 
-    const payrollRecord = await prisma.payroll.findFirst({
-      where: isNumeric
-        ? {
-            OR: [
-              { id: Number(trimmedId) },
-              { uid: trimmedId },
-            ],
-          }
-        : { uid: trimmedId },
-      include: {
-        components: true,
-        company: true,
-        period: true,
-        users: {
-          include: {
-            employeeProfile: {
-              include: {
-                bank_details: true,
-              },
-            },
-            rbacRole: {
-              select: {
-                id: true,
-                name: true,
-                type: true,
-              },
-            },
-          },
+    let payrollRecord;
+    if (isSelfAlias) {
+      if (!userEmpid) {
+        return NextResponse.json(
+          { success: false, error: "Employee ID could not be resolved for your profile" },
+          { status: 400 }
+        );
+      }
+
+      payrollRecord = await prisma.payroll.findFirst({
+        where: {
+          empid: userEmpid,
+          ...(periodIdParam ? { period_id: String(periodIdParam) } : {}),
         },
-      },
-    });
+        orderBy: {
+          salary_payment_date: "desc",
+        },
+        include: PAYROLL_INCLUDE,
+      });
+    } else {
+      const isNumeric = !isNaN(Number(trimmedId)) && /^\d+$/.test(trimmedId);
+
+      payrollRecord = await prisma.payroll.findFirst({
+        where: isNumeric
+          ? {
+              OR: [
+                { id: Number(trimmedId) },
+                { uid: trimmedId },
+                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+              ],
+            }
+          : {
+              OR: [
+                { uid: trimmedId },
+                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+              ],
+            },
+        orderBy: {
+          salary_payment_date: "desc",
+        },
+        include: PAYROLL_INCLUDE,
+      });
+    }
 
     if (!payrollRecord) {
       return NextResponse.json(
@@ -129,7 +187,7 @@ export async function GET(req: NextRequest) {
     // ── Check Ownership: If user only has PAYSLIP_VIEW_OWN, ensure it's their own payslip
     if (!canViewAny) {
       const isOwner =
-        (currentUser.empid && String(payrollRecord.empid).toLowerCase() === String(currentUser.empid).toLowerCase()) ||
+        (userEmpid && String(payrollRecord.empid).toLowerCase() === String(userEmpid).toLowerCase()) ||
         (currentUser.id && payrollRecord.users?.id === Number(currentUser.id)) ||
         (currentUser.email && payrollRecord.users?.email?.toLowerCase() === currentUser.email.toLowerCase());
 
@@ -143,6 +201,25 @@ export async function GET(req: NextRequest) {
         );
       }
     }
+
+    // Also fetch available payslips for this employee so the user can see/switch periods in the UI
+    const availablePayslips = await prisma.payroll.findMany({
+      where: { empid: payrollRecord.empid },
+      select: {
+        id: true,
+        uid: true,
+        period_id: true,
+        period_name: true,
+        salary_payment_date: true,
+        gross_salary: true,
+        net_salary: true,
+        total_payable_amount: true,
+        status: true,
+      },
+      orderBy: {
+        salary_payment_date: "desc",
+      },
+    });
 
     // ── Handle direct PDF Download
     if (isDownload) {
@@ -182,6 +259,7 @@ export async function GET(req: NextRequest) {
       {
         success: true,
         data: payrollRecord,
+        availablePayslips,
       },
       { status: 200 }
     );
@@ -217,6 +295,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const id = body.id || body.uid || body.payrollId;
+    const periodIdParam = body.periodId || body.period_id;
 
     if (!id) {
       return NextResponse.json(
@@ -225,40 +304,53 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const userEmpid = await resolveUserEmpid(currentUser);
     const trimmedId = String(id).trim();
-    const isNumeric = !isNaN(Number(trimmedId)) && /^\d+$/.test(trimmedId);
+    const isSelfAlias = trimmedId === "my-payslip" || trimmedId === "me";
 
-    const payrollRecord = await prisma.payroll.findFirst({
-      where: isNumeric
-        ? {
-            OR: [
-              { id: Number(trimmedId) },
-              { uid: trimmedId },
-            ],
-          }
-        : { uid: trimmedId },
-      include: {
-        components: true,
-        company: true,
-        period: true,
-        users: {
-          include: {
-            employeeProfile: {
-              include: {
-                bank_details: true,
-              },
-            },
-            rbacRole: {
-              select: {
-                id: true,
-                name: true,
-                type: true,
-              },
-            },
-          },
+    let payrollRecord;
+    if (isSelfAlias) {
+      if (!userEmpid) {
+        return NextResponse.json(
+          { success: false, error: "Employee ID could not be resolved for your profile" },
+          { status: 400 }
+        );
+      }
+
+      payrollRecord = await prisma.payroll.findFirst({
+        where: {
+          empid: userEmpid,
+          ...(periodIdParam ? { period_id: String(periodIdParam) } : {}),
         },
-      },
-    });
+        orderBy: {
+          salary_payment_date: "desc",
+        },
+        include: PAYROLL_INCLUDE,
+      });
+    } else {
+      const isNumeric = !isNaN(Number(trimmedId)) && /^\d+$/.test(trimmedId);
+
+      payrollRecord = await prisma.payroll.findFirst({
+        where: isNumeric
+          ? {
+              OR: [
+                { id: Number(trimmedId) },
+                { uid: trimmedId },
+                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+              ],
+            }
+          : {
+              OR: [
+                { uid: trimmedId },
+                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+              ],
+            },
+        orderBy: {
+          salary_payment_date: "desc",
+        },
+        include: PAYROLL_INCLUDE,
+      });
+    }
 
     if (!payrollRecord) {
       return NextResponse.json(
@@ -276,7 +368,7 @@ export async function POST(req: NextRequest) {
 
     if (!canViewAny) {
       const isOwner =
-        (currentUser.empid && String(payrollRecord.empid).toLowerCase() === String(currentUser.empid).toLowerCase()) ||
+        (userEmpid && String(payrollRecord.empid).toLowerCase() === String(userEmpid).toLowerCase()) ||
         (currentUser.id && payrollRecord.users?.id === Number(currentUser.id)) ||
         (currentUser.email && payrollRecord.users?.email?.toLowerCase() === currentUser.email.toLowerCase());
 
