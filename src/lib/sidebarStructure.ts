@@ -179,7 +179,9 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
         permission: [
           PERMISSIONS.PAYROLL.GENERATE,
           PERMISSIONS.PAYSLIP.GENERATE,
-          PERMISSIONS.PAYSLIP.VIEW
+          PERMISSIONS.PAYSLIP.VIEW,
+          PERMISSIONS.PAYSLIP.INITIATE,
+          PERMISSIONS.PAYSLIP.DISBURSED
         ],
         children: [
           {
@@ -194,9 +196,10 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
           {
             name: "Employee Salary",
             icon: Banknote,
-            permission: [PERMISSIONS.PAYSLIP.GENERATE],
+            permission: [PERMISSIONS.PAYSLIP.GENERATE, PERMISSIONS.PAYSLIP.INITIATE, PERMISSIONS.PAYSLIP.DISBURSED],
             children: [
-              { title: "Manage Employee Salary", route: "/payroll/employee-salary", permission: PERMISSIONS.PAYSLIP.GENERATE },
+              { title: "Generate Employee Salary", route: "/payroll/employee-salary", permission: PERMISSIONS.PAYSLIP.GENERATE },
+              { title: "Manage Employee Salary", route: "/payroll/employee-salary/manage", permission: [PERMISSIONS.PAYSLIP.INITIATE, PERMISSIONS.PAYSLIP.DISBURSED, PERMISSIONS.PAYSLIP.VIEW] },
             ],
           },
         ],

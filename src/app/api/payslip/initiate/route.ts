@@ -378,17 +378,17 @@ export async function POST(req: NextRequest) {
     }
 }
 
-// ─── GET (Fetch Initiated Payrolls by UID, Period, PeriodId, or Empid) ────────
+// ─── GET (Fetch Initiated Payrolls by UID, PeriodId, or Empid) ────────
 export async function GET(req: NextRequest) {
     const auth = await checkAuth(req, [
-        PERMISSION_KEYS.PAYSLIP_VIEW
+        PERMISSION_KEYS.PAYSLIP_INITIATE,
+        PERMISSION_KEYS.PAYSLIP_VIEW,
     ]);
     if ("error" in auth) return auth.error;
 
     try {
         const { searchParams } = new URL(req.url);
         const uid = searchParams.get("uid");
-        const period = searchParams.get("period");
         const periodId = searchParams.get("periodId") || searchParams.get("period_id");
         const empid = searchParams.get("empid");
 
@@ -439,15 +439,12 @@ export async function GET(req: NextRequest) {
         }
 
         const where: any = {};
-        if (periodId && period) {
+        if (periodId) {
             where.OR = [
                 { period_id: periodId },
-                { period_name: period },
             ];
         } else if (periodId) {
             where.period_id = periodId;
-        } else if (period) {
-            where.period_name = period;
         }
         if (empid) where.empid = empid;
 
@@ -467,6 +464,13 @@ export async function GET(req: NextRequest) {
                         name: true,
                         email: true,
                         position: true,
+                        employee_type: true,
+                        date_of_joining: true,
+                        employeeProfile: {
+                            select: {
+                                bank_details: true,
+                            },
+                        },
                     },
                 },
             },
@@ -483,6 +487,59 @@ export async function GET(req: NextRequest) {
             {
                 success: false,
                 message: "Failed to fetch payroll records",
+                error: error instanceof Error ? error.message : String(error),
+            },
+            { status: 500 }
+        );
+    }
+}
+
+// ─── PUT (Change Payroll Status to INITIATED) ────────
+export async function PUT(req: NextRequest) {
+    const auth = await checkAuth(req, [PERMISSION_KEYS.PAYSLIP_INITIATE]);
+    if ("error" in auth) return auth.error;
+
+    try {
+        const { searchParams } = new URL(req.url);
+        const uid = searchParams.get("uid");
+        const status = searchParams.get("status");
+
+        if (!uid) {
+            return NextResponse.json(
+                { success: false, message: "Payroll UID is required" },
+                { status: 400 }
+            );
+        }
+
+        if (status !== "INITIATED") {
+            return NextResponse.json(
+                { success: false, message: "Status must be INITIATED" },
+                { status: 400 }
+            );
+        }
+
+        const updatedPayroll = await prisma.payroll.update({
+            where: { uid },
+            data: {
+                status: "INITIATED",
+                generated_at: new Date(),
+            },
+        });
+
+        return NextResponse.json(
+            {
+                success: true,
+                message: `Payroll for ${updatedPayroll.empid} (${updatedPayroll.uid}) - INITIATED successfully`,
+                data: updatedPayroll,
+            },
+            { status: 200 }
+        );
+    } catch (error: any) {
+        console.error("Error changing payroll status:", error);
+        return NextResponse.json(
+            {
+                success: false,
+                message: "Failed to change payroll status",
                 error: error instanceof Error ? error.message : String(error),
             },
             { status: 500 }

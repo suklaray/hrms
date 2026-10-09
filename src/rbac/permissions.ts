@@ -68,6 +68,9 @@ export const PERMISSIONS = {
   PAYSLIP: {
     VIEW: "payslip.view",
     GENERATE: "payslip.generate",
+    INITIATE: "payslip.initiate",
+    DISBURSED: "payslip.disbursed",
+    VIEW_OWN: "payslip.view_own",
   },
 
   RECRUITMENT: {
@@ -429,6 +432,29 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     module: "payslip",
     action: "generate",
   },
+  {
+    key: PERMISSIONS.PAYSLIP.VIEW_OWN,
+    name: "View Own Payslip",
+    description: "View own payslip",
+    module: "payslip",
+    action: "view_own",
+  },
+  {
+    key: PERMISSIONS.PAYSLIP.INITIATE,
+    name: "Initiate Payslip",
+    description: "Initiate payslip",
+    module: "payslip",
+    action: "initiate",
+  },
+  {
+    key: PERMISSIONS.PAYSLIP.DISBURSED,
+    name: "Disbursed Payslip",
+    description: "Disbursed payslip",
+    module: "payslip",
+    action: "disbursed",
+  },
+
+
 
   // Recruitment
   {

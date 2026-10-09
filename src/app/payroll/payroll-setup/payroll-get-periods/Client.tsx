@@ -494,7 +494,7 @@ function PayrollGetPeriods(
                                                                     className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
                                                                 >
                                                                     <Banknote size={14} />
-                                                                    <span>Initiate Salary</span>
+                                                                    <span>Generate Slip</span>
                                                                 </Link>
                                                             </td>
                                                         )

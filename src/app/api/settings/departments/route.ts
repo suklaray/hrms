@@ -15,7 +15,7 @@ async function verifyDepartmentAccess(request: NextRequest, permission: string) 
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await checkAuth(request, PERMISSIONS.SETTINGS.DEPARTMENT_VIEW);
+  const auth = await checkAuth(request, [PERMISSIONS.SETTINGS.DEPARTMENT_VIEW, PERMISSIONS.JD.CREATE]);
   if (auth.error) return auth.error;
 
   try {

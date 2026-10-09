@@ -20,7 +20,13 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as DecodedToken;
 
-    const auth = await checkAuth(req, [PERMISSION_KEYS.EMPLOYEE_VIEW, PERMISSION_KEYS.PAYSLIP_GENERATE]);
+    const auth = await checkAuth(req, [
+      PERMISSION_KEYS.EMPLOYEE_VIEW,
+      PERMISSION_KEYS.PAYSLIP_GENERATE,
+      PERMISSION_KEYS.PAYSLIP_INITIATE,
+      PERMISSION_KEYS.PAYSLIP_DISBURSED,
+      PERMISSION_KEYS.JD_CREATE
+    ]);
     if ("error" in auth) return auth.error;
 
 

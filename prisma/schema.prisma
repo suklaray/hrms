@@ -546,6 +546,7 @@ model payroll {
   total_payable_amount Decimal @default(0)
   status payslipStatus @default(PENDING)
   generated_at DateTime @default(now())
+  payslip_url String?
 
   components payroll_components[]
   
