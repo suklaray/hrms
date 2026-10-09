@@ -13,6 +13,7 @@ interface Department {
 }
 
 interface HRUser {
+  rbacRole: any;
   empid: string;
   name: string;
   role?: string;
@@ -274,12 +275,9 @@ export default function AddJobDescription({
         const users = Array.isArray(data?.users)
           ? data.users
           : [];
-
+        const isHrRole = (role?: string) => !!role && /\bhr\b/i.test(role);
         setHrUsers(
-          users.filter(
-            (user: HRUser) =>
-              user.role?.toLowerCase() === "hr"
-          )
+          users.filter((user: HRUser) => isHrRole(user.rbacRole?.name))
         );
       })
       .catch(() => setHrUsers([]));

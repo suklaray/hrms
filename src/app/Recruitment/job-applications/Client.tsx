@@ -272,7 +272,7 @@ export default function JobApplicationsClient({
           void loadResumes();
         });
     }
-  }, [data.resumes]);
+  }, []);
 
   const retryMatching = async (resumeId: number) => {
     const resume = data.resumes.find((r) => r.id === resumeId);

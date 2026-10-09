@@ -24,9 +24,10 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         email: true,
         contact_number: true,
         role: true,
+        rbacRole: { select: { id: true, name: true } },
         payroll: {
           where: {
-            generated_at: {
+            generated_on: {
               gte: startOfMonth,
               lte: endOfMonth,
             },
@@ -44,6 +45,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       email: u.email,
       phone: u.contact_number,
       role: u.role,
+      rbacRole: u.rbacRole,
       payrollStatus: u.payroll.length > 0 ? "Generated" : "Pending",
     }));
 
