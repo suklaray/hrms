@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "rbac:sync": "node scripts/rbac-sync.js",
-    "rbac:test": "node scripts/test-rbac.js"
+    "rbac:test": "node scripts/test-rbac.js",
+    "db:seed-company": "tsx scripts/seed-company.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1136.0",
@@ -25,7 +26,7 @@
     "compromise": "^14.17.0",
     "cookie": "0.7.2",
     "date-fns": "^4.4.0",
-    "dotenv": "^18.0.1",
+    "dotenv": "^18.0.6",
     "formidable": "^3.5.4",
     "groq-sdk": "^1.6.0",
     "html2canvas": "^1.4.1",
@@ -55,7 +56,8 @@
     "sweetalert2": "^11.26.25",
     "tesseract.js": "^7.0.0",
     "uuid": "^14.0.2",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "yaml": "^2.9.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -72,6 +74,7 @@
     "eslint-config-next": "16.3.5",
     "prisma": "6.10.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
