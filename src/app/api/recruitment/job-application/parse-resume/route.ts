@@ -96,19 +96,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Save file to public/uploads/
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-  const fileName = `${Date.now()}-${file.originalFilename}`;
-  const finalPath = path.join(uploadsDir, fileName);
-  fs.copyFileSync(file.filepath, finalPath);
-  fs.unlinkSync(file.filepath);
-  const resumePath = `/uploads/${fileName}`;
-
+  // Extract text from temp file (before saving to uploads)
   let resumeText: string;
   try {
-    resumeText = await extractResumeText({ ...file, filepath: finalPath });
+    resumeText = await extractResumeText(file);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json(
@@ -123,6 +114,33 @@ export async function POST(req: NextRequest) {
       { status: 422 }
     );
   }
+
+  // Check duplicate email BEFORE saving file or calling Gemini
+  const emailMatch = resumeText.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/i);
+  if (emailMatch) {
+    const extractedEmail = emailMatch[0].toLowerCase();
+    const duplicate = await prisma.parsed_resumes.findFirst({
+      where: { email: extractedEmail },
+      select: { id: true },
+    });
+    if (duplicate) {
+      fs.unlink(file.filepath, () => {});
+      return NextResponse.json(
+        { success: false, error: `A resume with email ${extractedEmail} already exists for job application.` },
+        { status: 409 }
+      );
+    }
+  }
+
+  // Only now save file to public/uploads/
+  const uploadsDir = path.join(process.cwd(), "public", "uploads");
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+  const fileName = `${Date.now()}-${file.originalFilename}`;
+  const finalPath = path.join(uploadsDir, fileName);
+  fs.copyFileSync(file.filepath, finalPath);
+  fs.unlinkSync(file.filepath);
+  const resumePath = `/uploads/${fileName}`;
 
   let parsed: any;
   try {
