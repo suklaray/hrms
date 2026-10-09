@@ -2,9 +2,10 @@ import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
+  auditedPrisma?: PrismaClient;
 };
 
-export const prisma =
+const basePrisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: ['error'],
@@ -16,11 +17,27 @@ export const prisma =
     },
   });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+export const prisma = new Proxy(basePrisma, {
+  get(_target, property) {
+    const activeClient =
+      typeof window === "undefined"
+        ? globalForPrisma.auditedPrisma ?? basePrisma
+        : basePrisma;
+    const value = Reflect.get(activeClient, property, activeClient);
+    return typeof value === "function" ? value.bind(activeClient) : value;
+  },
+}) as PrismaClient;
+
+export function installAuditExtension<T>(extend: (client: PrismaClient) => T) {
+  if (typeof window !== "undefined" || globalForPrisma.auditedPrisma) return;
+  globalForPrisma.auditedPrisma = extend(basePrisma) as PrismaClient;
+}
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = basePrisma;
 
 // Ensure connection on first use
 if (process.env.NODE_ENV === 'production') {
-  prisma.$connect().catch((err) => {
+  basePrisma.$connect().catch((err) => {
     console.error('Failed to connect to database:', err);
   });
 }
@@ -28,8 +45,8 @@ if (process.env.NODE_ENV === 'production') {
 // Handle cleanup on process termination
 if (typeof window === 'undefined') {
   process.on('beforeExit', async () => {
-    await prisma.$disconnect();
+    await basePrisma.$disconnect();
   });
 }
 
-export default prisma;
+export { prisma as default };

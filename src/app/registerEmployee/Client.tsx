@@ -534,10 +534,6 @@ function RegisterEmployee({
     }
   };
 
-    const handleLogout = async () => {
-        await dispatch(logoutUser());
-    };
-
     const InputField = ({ icon: Icon, label, type = "text", field, placeholder, error }) => (
         <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 flex items-center gap-2">

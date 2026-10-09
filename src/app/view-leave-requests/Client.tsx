@@ -95,10 +95,6 @@ function ViewLeaveRequests({
     }
   };
 
-  const handleLogout = () => {
-    router.push("/login");
-  };
-
   const handleStatusChange = async (leaveId, newStatus) => {
     try {
       const res = await fetch("/api/hr/update-leave-status", {

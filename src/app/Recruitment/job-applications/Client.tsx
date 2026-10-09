@@ -255,7 +255,7 @@ export default function JobApplicationsClient({
       }
 
       matchingRequests.current.add(resume.id);
-      void fetch(`/api/recruitment/job-application/${resume.id}/match`, {
+      void fetch(`/api/recruitment/job-application/${resume.matchUrlId}/match`, {
         method: "POST",
       })
         .then(async (response) => {
@@ -275,18 +275,19 @@ export default function JobApplicationsClient({
   }, []);
 
   const retryMatching = async (resumeId: number) => {
+    const resume = data.resumes.find((r) => r.id === resumeId);
     matchingRequests.current.add(resumeId);
     setRetryingResumeId(resumeId);
     setData((current) => ({
       ...current,
-      resumes: current.resumes.map((resume) =>
-        resume.id === resumeId
-          ? { ...resume, matchingStatus: "PROCESSING", matchingError: null }
-          : resume
+      resumes: current.resumes.map((r) =>
+        r.id === resumeId
+          ? { ...r, matchingStatus: "PROCESSING", matchingError: null }
+          : r
       ),
     }));
     try {
-      const response = await fetch(`/api/recruitment/job-application/${resumeId}/match`, {
+      const response = await fetch(`/api/recruitment/job-application/${resume?.matchUrlId}/match`, {
         method: "POST",
       });
       const result = await response.json();
@@ -338,6 +339,10 @@ export default function JobApplicationsClient({
     try {
       const response = await fetch("/api/recruitment/job-application/parse-resume", { method: "POST", body });
       const result = await response.json();
+      if (response.status === 409) {
+        toast.error(result.error || "A resume with this email already exists for the selected job.", { autoClose: 6000 });
+        return;
+      }
       if (!response.ok || !result.success) throw new Error(result.error || "Resume parsing failed");
       toast.success("Resume parsed successfully");
       setUploadOpen(false);

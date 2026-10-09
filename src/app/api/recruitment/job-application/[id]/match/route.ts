@@ -104,12 +104,10 @@ export async function GET(_request: Request, { params }: RouteContext) {
       );
     }
 
-    const comparison = await prisma.candidate_job_matches.findUnique({
+    const comparison = await prisma.candidate_job_matches.findFirst({
       where: {
-        job_description_id_parsed_resume_id: {
-          job_description_id: resume.job_description.id,
-          parsed_resume_id: resume.id,
-        },
+        job_description_id: resume.job_description.id,
+        parsed_resume_id: resume.id,
       },
     });
 
@@ -185,19 +183,18 @@ export async function POST(_request: Request, { params }: RouteContext) {
       );
     }
 
-    const existing = await prisma.candidate_job_matches.upsert({
+    const existing = await prisma.candidate_job_matches.findFirst({
       where: {
-        job_description_id_parsed_resume_id: {
-          job_description_id: resume.job_description.id,
-          parsed_resume_id: resume.id,
-        },
+        job_description_id: resume.job_description.id,
+        parsed_resume_id: resume.id,
       },
-      create: {
+      select: { id: true, processing_status: true },
+    }) ?? await prisma.candidate_job_matches.create({
+      data: {
         job_description_id: resume.job_description.id,
         parsed_resume_id: resume.id,
         processing_status: "PENDING",
       },
-      update: {},
       select: { id: true, processing_status: true },
     });
     comparisonId = existing.id;
@@ -334,12 +331,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
-    const comparison = await prisma.candidate_job_matches.findUnique({
+    const comparison = await prisma.candidate_job_matches.findFirst({
       where: {
-        job_description_id_parsed_resume_id: {
-          job_description_id: resume.job_description_id,
-          parsed_resume_id: resume.id,
-        },
+        job_description_id: resume.job_description_id,
+        parsed_resume_id: resume.id,
       },
     });
 
