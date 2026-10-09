@@ -162,7 +162,7 @@ export default function ProfileSection({ user }: any) {
               {user?.name || "N/A"}
             </h3>
             <p className="text-sm text-gray-600 capitalize truncate" title={user?.role || "Employee"}>
-              {user?.role || "Employee"}
+              {user?.rbacRole.name || "Employee"}
             </p>
             {user?.position && (
               <p className="text-sm text-gray-500 truncate" title={user.position}>
