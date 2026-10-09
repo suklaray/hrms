@@ -691,7 +691,7 @@ export default function AddJobDescription({
                 {loading ? "Saving..." : "Save Draft"}
               </button>
 
-              {canPublish && (
+              {/* {canPublish && (
                 <button
                   type="button"
                   onClick={() => submit("Published")}
@@ -700,7 +700,7 @@ export default function AddJobDescription({
                 >
                   {loading ? "Publishing..." : "Publish Job"}
                 </button>
-              )}
+              )} */}
             </div>
           </form>
         </main>
