@@ -1,0 +1,15 @@
+company:
+  name: "Example Private Limited"
+  address: "123 Example Road"
+  city: "Kolkata"
+  state: "West Bengal"
+  pinCode: "700001"
+  phone: "+91-9000000000"
+  email: "payroll@example.com"
+  website: "https://example.com"
+
+  cin: "REPLACE_WITH_REAL_CIN"
+  pan: "REPLACE_WITH_REAL_PAN"
+  gstin: "REPLACE_WITH_REAL_GSTIN"
+  epfoEstablishmentId: "REPLACE_WITH_EPFO_ID"
+  esicEmployerCode: "REPLACE_WITH_ESIC_CODE"

@@ -20,11 +20,11 @@ model company {
   phone               String
   email               String
   website             String?
-  cin                 String
-  pan                 String
-  gstin               String
-  epfoEstablishmentId String
-  esicEmployerCode    String
+  cin                 String  @unique
+  pan                 String  @db.VarChar(50)
+  gstin               String  @db.VarChar(50)
+  epfoEstablishmentId String  @db.VarChar(50)
+  esicEmployerCode    String  @db.VarChar(50)
 
   payroll_configurations payroll_configuration[]
   financial_years        financial_year[]
