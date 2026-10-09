@@ -109,11 +109,6 @@ export default function Sidebar({
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const handleLogout = () => {
-    window.location.href = "/login";
-    dispatch(logoutUser());
-  };
-
   if (
     !mounted ||
     (showAppShell && !isSharedShell) ||
