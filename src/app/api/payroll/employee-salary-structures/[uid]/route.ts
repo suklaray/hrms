@@ -71,7 +71,7 @@ export async function GET(
   req: NextRequest,
   context: { params: Promise<{ uid: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYROLL_GENERATE]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYSLIP_GENERATE, PERMISSION_KEYS.PAYSLIP_VIEW]);
   if ("error" in auth) return auth.error;
 
   try {
@@ -188,7 +188,7 @@ export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ uid: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT, PERMISSION_KEYS.PAYSLIP_GENERATE]);
   if ("error" in auth) return auth.error;
 
   try {
@@ -313,6 +313,31 @@ export async function PATCH(
 
     const targetFinancialYearId = updateData.financial_year_id || record.financial_year_id;
 
+    if (updateData.status === "ACTIVE") {
+      const fyToCheck = updateData.financial_year_id
+        ? await prisma.financial_year.findFirst({
+          where: {
+            OR: [
+              { uid: String(updateData.financial_year_id) },
+              ...(!isNaN(Number(updateData.financial_year_id)) ? [{ id: Number(updateData.financial_year_id) }] : []),
+            ],
+          },
+        })
+        : record.financialYear;
+
+      if (!fyToCheck || fyToCheck.status !== "ACTIVE") {
+        const fyName = fyToCheck?.name ? `"${fyToCheck.name}"` : "the attached financial year";
+        const currentFyStatus = fyToCheck?.status || "INACTIVE";
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Cannot activate salary structure. The attached financial year (${fyName}) is currently ${currentFyStatus}. Please activate the financial year first.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Atomic Prisma Transaction
     const updated = await prisma.$transaction(async (tx) => {
       // If setting this version to ACTIVE, set any other currently active version in the same financial year to INACTIVE
@@ -391,7 +416,7 @@ export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ uid: string }> }
 ) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT]);
+  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_GENERATE, PERMISSION_KEYS.PAYROLL_EDIT, PERMISSION_KEYS.PAYSLIP_GENERATE]);
   if ("error" in auth) return auth.error;
 
   try {

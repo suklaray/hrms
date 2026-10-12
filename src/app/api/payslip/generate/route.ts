@@ -499,6 +499,7 @@ export async function GET(req: NextRequest) {
                         total_payable_amount: true,
                         overtime_hours: true,
                         overtime_rate_perhour: true,
+                        bonus_amount: true,
                         days_worked: true,
                         days_absent: true,
                         total_working_days: true,

@@ -18,6 +18,7 @@ import {
     ArrowDownRight,
     Wallet,
     Clock,
+    Gift,
     CheckCircle2,
     Code,
     Copy,
@@ -63,6 +64,7 @@ export default function GeneratePayslipPage({
     const [loadingEmployees, setLoadingEmployees] = useState<Record<string, boolean>>({});
     const [salaryPaymentDate, setSalaryPaymentDate] = useState<string>("");
     const [otHourlyRates, setOtHourlyRates] = useState<Record<string, number | string>>({});
+    const [bonusAmounts, setBonusAmounts] = useState<Record<string, number | string>>({});
     const [submittingEmployees, setSubmittingEmployees] = useState<Record<string, boolean>>({});
     const [submittedPayrolls, setSubmittedPayrolls] = useState<Record<string, any>>({});
     const [showJsonModal, setShowJsonModal] = useState<boolean>(false);
@@ -100,6 +102,12 @@ export default function GeneratePayslipPage({
                                 [p.empid]: Number(p.overtime_rate_perhour),
                             }));
                         }
+                        if (p.bonus_amount !== undefined && p.bonus_amount !== null) {
+                            setBonusAmounts((prev) => ({
+                                ...prev,
+                                [p.empid]: Number(p.bonus_amount),
+                            }));
+                        }
                     }
                 });
                 setSubmittedPayrolls((prev) => ({ ...prev, ...initialMap }));
@@ -124,6 +132,12 @@ export default function GeneratePayslipPage({
                                     setOtHourlyRates((prev) => ({
                                         ...prev,
                                         [p.empid]: Number(p.overtime_rate_perhour),
+                                    }));
+                                }
+                                if (p.bonus_amount !== undefined && p.bonus_amount !== null) {
+                                    setBonusAmounts((prev) => ({
+                                        ...prev,
+                                        [p.empid]: Number(p.bonus_amount),
                                     }));
                                 }
                             }
@@ -232,9 +246,10 @@ export default function GeneratePayslipPage({
         const otRate = parseFloat(String(otHourlyRates[empid] ?? (existing?.overtime_rate_perhour ?? 0))) || 0;
         const otTotalPayable = Math.round(otHours * otRate * 100) / 100;
         const basePayableAmount = Number(calc.totalPayableAmount || 0);
-        const finalTotalPayableAmount = Math.round((basePayableAmount + otTotalPayable) * 100) / 100;
+        const bonus = parseFloat(String(bonusAmounts[empid] ?? (existing?.bonus_amount ?? 0))) || 0;
+        const finalTotalPayableAmount = Math.round((basePayableAmount + otTotalPayable + bonus) * 100) / 100;
 
-        const bankDetails = calc.employee?.employeeProfile?.bank_details?.[0] || null;
+        const bankDetails = calc.employee?.employeeProfile?.bank_details?.[0] || emp?.employeeProfile?.bank_details?.[0] || null;
 
         return {
             uid: existing?.uid || undefined,
@@ -292,8 +307,12 @@ export default function GeneratePayslipPage({
                     ratePerHour: otRate,
                     amount: otTotalPayable,
                 },
+                bonusAmount: bonus,
+                bonus_amount: bonus,
                 basePayableAmount: basePayableAmount,
             },
+            bonusAmount: bonus,
+            bonus_amount: bonus,
             salaryPaymentDate:
                 salaryPaymentDate ||
                 (payrollData?.data?.salary_payment_date
@@ -724,13 +743,12 @@ export default function GeneratePayslipPage({
 
                                                         return (
                                                             <Fragment key={employee.empid}>
-                                                                <tr className={`border-b border-slate-200 transition-colors ${
-                                                                    isExpanded
-                                                                        ? "bg-slate-50/80"
-                                                                        : isLocked
-                                                                            ? "bg-slate-50/40 hover:bg-slate-50/70"
-                                                                            : "hover:bg-slate-50"
-                                                                }`}>
+                                                                <tr className={`border-b border-slate-200 transition-colors ${isExpanded
+                                                                    ? "bg-slate-50/80"
+                                                                    : isLocked
+                                                                        ? "bg-slate-50/40 hover:bg-slate-50/70"
+                                                                        : "hover:bg-slate-50"
+                                                                    }`}>
 
                                                                     <td className="px-4 py-2.5 font-mono text-slate-400 border-r border-slate-100">
                                                                         {index + 1}
@@ -803,11 +821,10 @@ export default function GeneratePayslipPage({
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => handleCalculateSalary(employee.empid)}
-                                                                                className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-medium rounded transition-colors ${
-                                                                                    isExpanded
-                                                                                        ? "bg-slate-800 text-white hover:bg-slate-700 shadow-xs"
-                                                                                        : "bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
-                                                                                }`}
+                                                                                className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-medium rounded transition-colors ${isExpanded
+                                                                                    ? "bg-slate-800 text-white hover:bg-slate-700 shadow-xs"
+                                                                                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
+                                                                                    }`}
                                                                                 title="Update generated payroll for this employee"
                                                                             >
                                                                                 <span className="flex items-center justify-center gap-1.5">
@@ -819,11 +836,10 @@ export default function GeneratePayslipPage({
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() => handleCalculateSalary(employee.empid)}
-                                                                                className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-medium rounded transition-colors ${
-                                                                                    isExpanded
-                                                                                        ? "bg-slate-800 text-white hover:bg-slate-700 shadow-xs"
-                                                                                        : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                                                                                }`}
+                                                                                className={`px-3 py-1.5 text-[10px] uppercase tracking-[0.16em] font-medium rounded transition-colors ${isExpanded
+                                                                                    ? "bg-slate-800 text-white hover:bg-slate-700 shadow-xs"
+                                                                                    : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                                                                    }`}
                                                                             >
                                                                                 <span className="flex items-center justify-center gap-1.5">
                                                                                     <Calculator size={13} />
@@ -838,12 +854,14 @@ export default function GeneratePayslipPage({
                                                                 {isExpanded && (() => {
                                                                     const data = calculatedSalary[employee.empid];
                                                                     const isLoading = !!loadingEmployees[employee.empid];
-                                                                    const bankDetails = data?.employee?.employeeProfile?.bank_details?.[0];
+                                                                    const bankDetails = data?.employee?.employeeProfile?.bank_details?.[0] || employee?.employeeProfile?.bank_details?.[0];
+                                                                    const existing = submittedPayrolls[employee.empid];
                                                                     const otHours = Number(data?.attendance?.overtimeHours || 0);
-                                                                    const otRate = parseFloat(String(otHourlyRates[employee.empid] ?? 0)) || 0;
+                                                                    const otRate = parseFloat(String(otHourlyRates[employee.empid] ?? (existing?.overtime_rate_perhour ?? 0))) || 0;
                                                                     const otTotalPayable = Math.round(otHours * otRate * 100) / 100;
                                                                     const basePayableAmount = Number(data?.totalPayableAmount || 0);
-                                                                    const finalTotalPayableAmount = Math.round((basePayableAmount + otTotalPayable) * 100) / 100;
+                                                                    const bonusAmount = parseFloat(String(bonusAmounts[employee.empid] ?? (existing?.bonus_amount ?? 0))) || 0;
+                                                                    const finalTotalPayableAmount = Math.round((basePayableAmount + otTotalPayable + bonusAmount) * 100) / 100;
 
                                                                     return (
                                                                         <tr className="border-b-2 border-slate-300 bg-slate-50/60 transition-all">
@@ -1022,75 +1040,133 @@ export default function GeneratePayslipPage({
                                                                                                     <div className="mt-1 font-mono text-[16px] font-black text-emerald-700 tracking-tight">
                                                                                                         {formatCurrency(finalTotalPayableAmount)}
                                                                                                     </div>
-                                                                                                    <div className="mt-2 pt-1.5 border-t border-dashed border-emerald-200/80 flex items-center justify-between text-[9px] font-mono text-emerald-800">
+                                                                                                    <div className="mt-2 pt-1.5 border-t border-dashed border-emerald-200/80 flex flex-wrap items-center justify-between text-[9px] font-mono text-emerald-800 gap-1">
                                                                                                         <span>Base: {formatCurrency(basePayableAmount)}</span>
                                                                                                         <span>{otTotalPayable > 0 ? `+ OT: ${formatCurrency(otTotalPayable)}` : "No OT added"}</span>
+                                                                                                        <span>{bonusAmount > 0 ? `+ Bonus: ${formatCurrency(bonusAmount)}` : "No Bonus"}</span>
                                                                                                     </div>
                                                                                                 </div>
                                                                                             </div>
 
-                                                                                            {/* Overtime (OT) Pay Adjustment Section */}
-                                                                                            <div className="mx-4 mb-4 p-3.5 rounded-sm border border-amber-200 bg-amber-50/50 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
-                                                                                                <div className="flex items-start sm:items-center gap-3">
-                                                                                                    <div className="w-8 h-8 rounded bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0 mt-0.5 sm:mt-0">
-                                                                                                        <Clock size={16} />
-                                                                                                    </div>
-                                                                                                    <div>
-                                                                                                        <div className="flex flex-wrap items-center gap-2">
-                                                                                                            <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
-                                                                                                                Overtime Pay Adjustment (OT)
-                                                                                                            </span>
-                                                                                                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                                                                                                                OT: {otHours} hrs
-                                                                                                            </span>
-                                                                                                            {otRate > 0 && (
-                                                                                                                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold">
-                                                                                                                    {otHours} hrs &times; ₹{otRate}/hr = +{formatCurrency(otTotalPayable)}
-                                                                                                                </span>
-                                                                                                            )}
+                                                                                            {/* Adjustments: Overtime (OT) & Bonus Pay */}
+                                                                                            <div className="mx-4 mb-4 grid grid-cols-1 xl:grid-cols-2 gap-3.5">
+                                                                                                {/* Left: Overtime Pay Adjustment (OT) */}
+                                                                                                <div className="p-3.5 rounded-sm border border-amber-200 bg-amber-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                                                    <div className="flex items-start sm:items-center gap-3">
+                                                                                                        <div className="w-8 h-8 rounded bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0 mt-0.5 sm:mt-0">
+                                                                                                            <Clock size={16} />
                                                                                                         </div>
-                                                                                                        <p className="text-[10px] text-slate-600 mt-0.5">
-                                                                                                            Enter employee&apos;s hourly OT rate to compute compensation and dynamically add it to the Total Payable Amount.
-                                                                                                        </p>
+                                                                                                        <div>
+                                                                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                                                                <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                                                                                                                    Overtime Pay Adjustment (OT)
+                                                                                                                </span>
+                                                                                                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                                                                                                    OT: {otHours} hrs
+                                                                                                                </span>
+                                                                                                                {otRate > 0 && (
+                                                                                                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold">
+                                                                                                                        {otHours} hrs &times; ₹{otRate}/hr = +{formatCurrency(otTotalPayable)}
+                                                                                                                    </span>
+                                                                                                                )}
+                                                                                                            </div>
+                                                                                                            <p className="text-[10px] text-slate-600 mt-0.5">
+                                                                                                                Enter employee&apos;s hourly OT rate to compute compensation and dynamically add it to the Total Payable Amount.
+                                                                                                            </p>
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                                                                                                        <div className={`flex items-center gap-1.5 bg-white border border-slate-300 rounded px-2.5 py-1.5 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-400 shadow-2xs ${isLocked ? "bg-slate-100 opacity-60" : ""}`}>
+                                                                                                            <span className="text-[11px] font-mono text-slate-400 font-semibold">₹</span>
+                                                                                                            <input
+                                                                                                                type="number"
+                                                                                                                min="0"
+                                                                                                                step="any"
+                                                                                                                disabled={isLocked}
+                                                                                                                placeholder="Rate / hr"
+                                                                                                                value={otHourlyRates[employee.empid] ?? ""}
+                                                                                                                onChange={(e) => {
+                                                                                                                    const val = e.target.value;
+                                                                                                                    setOtHourlyRates(prev => ({
+                                                                                                                        ...prev,
+                                                                                                                        [employee.empid]: val
+                                                                                                                    }));
+                                                                                                                }}
+                                                                                                                className="w-24 text-[12px] font-mono font-semibold text-slate-800 bg-transparent focus:outline-none placeholder:text-slate-300 disabled:cursor-not-allowed"
+                                                                                                            />
+                                                                                                            <span className="text-[10px] font-mono text-slate-500">/ hr</span>
+                                                                                                        </div>
+
+                                                                                                        <div className="text-right pl-3 border-l border-amber-200">
+                                                                                                            <div className="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Total OT Pay</div>
+                                                                                                            <div className="font-mono text-[13px] font-bold text-amber-900">
+                                                                                                                +{formatCurrency(otTotalPayable)}
+                                                                                                            </div>
+                                                                                                        </div>
                                                                                                     </div>
                                                                                                 </div>
 
-                                                                                                <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                                                                                                    <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded px-2.5 py-1.5 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-400 shadow-2xs">
-                                                                                                        <span className="text-[11px] font-mono text-slate-400 font-semibold">₹</span>
-                                                                                                        <input
-                                                                                                            type="number"
-                                                                                                            min="0"
-                                                                                                            step="any"
-                                                                                                            placeholder="Rate / hr"
-                                                                                                            value={otHourlyRates[employee.empid] ?? ""}
-                                                                                                            onChange={(e) => {
-                                                                                                                const val = e.target.value;
-                                                                                                                setOtHourlyRates(prev => ({
-                                                                                                                    ...prev,
-                                                                                                                    [employee.empid]: val
-                                                                                                                }));
-                                                                                                            }}
-                                                                                                            className="w-24 text-[12px] font-mono font-semibold text-slate-800 bg-transparent focus:outline-none placeholder:text-slate-300"
-                                                                                                        />
-                                                                                                        <span className="text-[10px] font-mono text-slate-500">/ hr</span>
+                                                                                                {/* Right: Bonus Pay Adjustment */}
+                                                                                                <div className="p-3.5 rounded-sm border border-indigo-200 bg-indigo-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                                                    <div className="flex items-start sm:items-center gap-3">
+                                                                                                        <div className="w-8 h-8 rounded bg-indigo-100 border border-indigo-300 flex items-center justify-center text-indigo-800 shrink-0 mt-0.5 sm:mt-0">
+                                                                                                            <Gift size={16} />
+                                                                                                        </div>
+                                                                                                        <div>
+                                                                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                                                                <span className="text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                                                                                                                    Bonus Pay Adjustment
+                                                                                                                </span>
+                                                                                                                {bonusAmount > 0 && (
+                                                                                                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300 font-semibold">
+                                                                                                                        +{formatCurrency(bonusAmount)}
+                                                                                                                    </span>
+                                                                                                                )}
+                                                                                                            </div>
+                                                                                                            <p className="text-[10px] text-slate-600 mt-0.5">
+                                                                                                                Enter performance, festival, or ad-hoc bonus amount to dynamically add it to the Total Payable Amount.
+                                                                                                            </p>
+                                                                                                        </div>
                                                                                                     </div>
 
-                                                                                                    <div className="text-right pl-3 border-l border-amber-200">
-                                                                                                        <div className="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Total OT Pay</div>
-                                                                                                        <div className="font-mono text-[13px] font-bold text-amber-900">
-                                                                                                            +{formatCurrency(otTotalPayable)}
+                                                                                                    <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                                                                                                        <div className={`flex items-center gap-1.5 bg-white border border-slate-300 rounded px-2.5 py-1.5 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-400 shadow-2xs ${isLocked ? "bg-slate-100 opacity-60" : ""}`}>
+                                                                                                            <span className="text-[11px] font-mono text-slate-400 font-semibold">₹</span>
+                                                                                                            <input
+                                                                                                                type="number"
+                                                                                                                min="0"
+                                                                                                                step="any"
+                                                                                                                disabled={isLocked}
+                                                                                                                placeholder="Bonus amount"
+                                                                                                                value={bonusAmounts[employee.empid] ?? ""}
+                                                                                                                onChange={(e) => {
+                                                                                                                    const val = e.target.value;
+                                                                                                                    setBonusAmounts(prev => ({
+                                                                                                                        ...prev,
+                                                                                                                        [employee.empid]: val
+                                                                                                                    }));
+                                                                                                                }}
+                                                                                                                className="w-28 text-[12px] font-mono font-semibold text-slate-800 bg-transparent focus:outline-none placeholder:text-slate-300 disabled:cursor-not-allowed"
+                                                                                                            />
+                                                                                                        </div>
+
+                                                                                                        <div className="text-right pl-3 border-l border-indigo-200">
+                                                                                                            <div className="text-[9px] uppercase tracking-wider font-semibold text-slate-400">Total Bonus</div>
+                                                                                                            <div className="font-mono text-[13px] font-bold text-indigo-900">
+                                                                                                                +{formatCurrency(bonusAmount)}
+                                                                                                            </div>
                                                                                                         </div>
                                                                                                     </div>
                                                                                                 </div>
                                                                                             </div>
 
                                                                                             {/* 2-Column Ledger Details */}
-                                                                                            <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4 border-t border-slate-200 bg-slate-50/20">
+                                                                                            <div className="p-4 border-t border-slate-200 bg-slate-50/20">
                                                                                                 {/* LEFT: EARNINGS & DEDUCTIONS TABLES */}
-                                                                                                <div className="space-y-4">
+                                                                                                <div className="space-y-4 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start mb-4">
                                                                                                     {/* Earnings Table */}
-                                                                                                    <div className="border border-slate-200 bg-white rounded-sm overflow-hidden">
+                                                                                                    <div className="h-full border border-slate-200 bg-white rounded-sm overflow-hidden">
                                                                                                         <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                                                                                                             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-700 flex items-center gap-1.5">
                                                                                                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -1146,7 +1222,7 @@ export default function GeneratePayslipPage({
                                                                                                     </div>
 
                                                                                                     {/* Deductions Table */}
-                                                                                                    <div className="border border-slate-200 bg-white rounded-sm overflow-hidden">
+                                                                                                    <div className="h-full border border-slate-200 bg-white rounded-sm overflow-hidden">
                                                                                                         <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                                                                                                             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-700 flex items-center gap-1.5">
                                                                                                                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
@@ -1204,96 +1280,98 @@ export default function GeneratePayslipPage({
 
                                                                                                 {/* RIGHT: LEAVES, BANK ACCOUNT, METADATA */}
                                                                                                 <div className="space-y-4">
-                                                                                                    {/* Leaves Section */}
-                                                                                                    <div className="border border-slate-200 bg-white rounded-sm overflow-hidden">
-                                                                                                        <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                                                                                                            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-700 flex items-center gap-1.5">
-                                                                                                                <FileText size={13} className="text-slate-500" />
-                                                                                                                Leave Records ({data.leaves?.length || 0})
-                                                                                                            </span>
-                                                                                                            <span className="text-[9px] text-slate-400 uppercase tracking-wider">In this cycle</span>
-                                                                                                        </div>
-                                                                                                        <div className="p-3">
-                                                                                                            {data.leaves && data.leaves.length > 0 ? (
-                                                                                                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                                                                                                    {data.leaves.map((leave: any, i: number) => {
-                                                                                                                        const isApproved = leave.status === "Approved";
-                                                                                                                        const isRejected = leave.status === "Rejected";
-                                                                                                                        return (
-                                                                                                                            <div key={leave.uid || i} className="p-2 border border-slate-200 rounded bg-slate-50/50 text-[11px]">
-                                                                                                                                <div className="flex items-center justify-between">
-                                                                                                                                    <span className="font-semibold text-slate-800 flex items-center gap-1.5">
-                                                                                                                                        {leave.leave_types?.type_name || leave.leave_type || "Leave"}
-                                                                                                                                        <span className={`text-[9px] px-1 py-0.5 rounded font-mono ${leave.leave_types?.paid ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
-                                                                                                                                            {leave.leave_types?.paid ? "PAID" : "UNPAID"}
+                                                                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                                                                                                        {/* Leaves Section */}
+                                                                                                        <div className="border border-slate-200 bg-white rounded-sm overflow-hidden">
+                                                                                                            <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                                                                                                                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-700 flex items-center gap-1.5">
+                                                                                                                    <FileText size={13} className="text-slate-500" />
+                                                                                                                    Leave Records ({data.leaves?.length || 0})
+                                                                                                                </span>
+                                                                                                                <span className="text-[9px] text-slate-400 uppercase tracking-wider">In this cycle</span>
+                                                                                                            </div>
+                                                                                                            <div className="p-3">
+                                                                                                                {data.leaves && data.leaves.length > 0 ? (
+                                                                                                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                                                                                                        {data.leaves.map((leave: any, i: number) => {
+                                                                                                                            const isApproved = leave.status === "Approved";
+                                                                                                                            const isRejected = leave.status === "Rejected";
+                                                                                                                            return (
+                                                                                                                                <div key={leave.uid || i} className="p-2 border border-slate-200 rounded bg-slate-50/50 text-[11px]">
+                                                                                                                                    <div className="flex items-center justify-between">
+                                                                                                                                        <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                                                                                                                                            {leave.leave_types?.type_name || leave.leave_type || "Leave"}
+                                                                                                                                            <span className={`text-[9px] px-1 py-0.5 rounded font-mono ${leave.leave_types?.paid ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600"}`}>
+                                                                                                                                                {leave.leave_types?.paid ? "PAID" : "UNPAID"}
+                                                                                                                                            </span>
                                                                                                                                         </span>
-                                                                                                                                    </span>
-                                                                                                                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isApproved ? "bg-emerald-100 text-emerald-800" :
-                                                                                                                                        isRejected ? "bg-rose-100 text-rose-800" :
-                                                                                                                                            "bg-amber-100 text-amber-800"
-                                                                                                                                        }`}>
-                                                                                                                                        {leave.status}
-                                                                                                                                    </span>
-                                                                                                                                </div>
-                                                                                                                                <div className="text-[10px] font-mono text-slate-500 mt-1 flex items-center gap-2">
-                                                                                                                                    <span>{formatDate(leave.from_date)} &rarr; {formatDate(leave.to_date)}</span>
-                                                                                                                                </div>
-                                                                                                                                {leave.reason && (
-                                                                                                                                    <div className="text-[10px] text-slate-600 mt-1 italic">
-                                                                                                                                        &ldquo;{leave.reason}&rdquo;
+                                                                                                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isApproved ? "bg-emerald-100 text-emerald-800" :
+                                                                                                                                            isRejected ? "bg-rose-100 text-rose-800" :
+                                                                                                                                                "bg-amber-100 text-amber-800"
+                                                                                                                                            }`}>
+                                                                                                                                            {leave.status}
+                                                                                                                                        </span>
                                                                                                                                     </div>
-                                                                                                                                )}
-                                                                                                                                {leave.resoan_to_reject && (
-                                                                                                                                    <div className="text-[9px] text-rose-600 mt-0.5 font-medium">
-                                                                                                                                        Reject Reason: {leave.resoan_to_reject}
+                                                                                                                                    <div className="text-[10px] font-mono text-slate-500 mt-1 flex items-center gap-2">
+                                                                                                                                        <span>{formatDate(leave.from_date)} &rarr; {formatDate(leave.to_date)}</span>
                                                                                                                                     </div>
-                                                                                                                                )}
-                                                                                                                            </div>
-                                                                                                                        );
-                                                                                                                    })}
-                                                                                                                </div>
-                                                                                                            ) : (
-                                                                                                                <div className="text-center py-4 text-slate-400 text-[11px]">
-                                                                                                                    No leave requests recorded for this period.
-                                                                                                                </div>
-                                                                                                            )}
+                                                                                                                                    {leave.reason && (
+                                                                                                                                        <div className="text-[10px] text-slate-600 mt-1 italic">
+                                                                                                                                            &ldquo;{leave.reason}&rdquo;
+                                                                                                                                        </div>
+                                                                                                                                    )}
+                                                                                                                                    {leave.resoan_to_reject && (
+                                                                                                                                        <div className="text-[9px] text-rose-600 mt-0.5 font-medium">
+                                                                                                                                            Reject Reason: {leave.resoan_to_reject}
+                                                                                                                                        </div>
+                                                                                                                                    )}
+                                                                                                                                </div>
+                                                                                                                            );
+                                                                                                                        })}
+                                                                                                                    </div>
+                                                                                                                ) : (
+                                                                                                                    <div className="text-center py-4 text-slate-400 text-[11px]">
+                                                                                                                        No leave requests recorded for this period.
+                                                                                                                    </div>
+                                                                                                                )}
+                                                                                                            </div>
                                                                                                         </div>
-                                                                                                    </div>
 
-                                                                                                    {/* Bank & Payout Details */}
-                                                                                                    <div className="border border-slate-200 bg-white rounded-sm overflow-hidden">
-                                                                                                        <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                                                                                                            <span className="text-[10px] uppercase tracking-wider font-bold text-slate-700 flex items-center gap-1.5">
-                                                                                                                <CreditCard size={13} className="text-slate-500" />
-                                                                                                                Bank &amp; Disbursal Account
-                                                                                                            </span>
-                                                                                                            <span className="text-[9px] font-mono text-slate-400 uppercase">Direct Credit</span>
-                                                                                                        </div>
-                                                                                                        <div className="p-3 text-[11px]">
-                                                                                                            {bankDetails ? (
-                                                                                                                <div className="grid grid-cols-2 gap-3">
-                                                                                                                    <div>
-                                                                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400">Bank Name</div>
-                                                                                                                        <div className="font-semibold text-slate-800 mt-0.5">{bankDetails.bank_name || "—"}</div>
+                                                                                                        {/* Bank & Payout Details */}
+                                                                                                        <div className="border border-slate-200 bg-white rounded-sm overflow-hidden">
+                                                                                                            <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                                                                                                                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-700 flex items-center gap-1.5">
+                                                                                                                    <CreditCard size={13} className="text-slate-500" />
+                                                                                                                    Bank &amp; Disbursal Account
+                                                                                                                </span>
+                                                                                                                <span className="text-[9px] font-mono text-slate-400 uppercase">Direct Credit</span>
+                                                                                                            </div>
+                                                                                                            <div className="p-3 text-[11px]">
+                                                                                                                {bankDetails ? (
+                                                                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                                                                        <div>
+                                                                                                                            <div className="text-[9px] uppercase tracking-wider text-slate-400">Bank Name</div>
+                                                                                                                            <div className="font-semibold text-slate-800 mt-0.5">{bankDetails.bank_name || "—"}</div>
+                                                                                                                        </div>
+                                                                                                                        <div>
+                                                                                                                            <div className="text-[9px] uppercase tracking-wider text-slate-400">Account Number</div>
+                                                                                                                            <div className="font-mono font-semibold text-slate-800 mt-0.5">{bankDetails.account_number || "—"}</div>
+                                                                                                                        </div>
+                                                                                                                        <div>
+                                                                                                                            <div className="text-[9px] uppercase tracking-wider text-slate-400">IFSC Code</div>
+                                                                                                                            <div className="font-mono font-semibold text-slate-800 mt-0.5">{bankDetails.ifsc_code || "—"}</div>
+                                                                                                                        </div>
+                                                                                                                        <div>
+                                                                                                                            <div className="text-[9px] uppercase tracking-wider text-slate-400">Branch</div>
+                                                                                                                            <div className="text-slate-700 mt-0.5">{bankDetails.branch_name || "—"}</div>
+                                                                                                                        </div>
                                                                                                                     </div>
-                                                                                                                    <div>
-                                                                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400">Account Number</div>
-                                                                                                                        <div className="font-mono font-semibold text-slate-800 mt-0.5">{bankDetails.account_number || "—"}</div>
+                                                                                                                ) : (
+                                                                                                                    <div className="text-slate-400 text-[11px] text-center py-2">
+                                                                                                                        No bank details found for this employee profile.
                                                                                                                     </div>
-                                                                                                                    <div>
-                                                                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400">IFSC Code</div>
-                                                                                                                        <div className="font-mono font-semibold text-slate-800 mt-0.5">{bankDetails.ifsc_code || "—"}</div>
-                                                                                                                    </div>
-                                                                                                                    <div>
-                                                                                                                        <div className="text-[9px] uppercase tracking-wider text-slate-400">Branch</div>
-                                                                                                                        <div className="text-slate-700 mt-0.5">{bankDetails.branch_name || "—"}</div>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                            ) : (
-                                                                                                                <div className="text-slate-400 text-[11px] text-center py-2">
-                                                                                                                    No bank details found for this employee profile.
-                                                                                                                </div>
-                                                                                                            )}
+                                                                                                                )}
+                                                                                                            </div>
                                                                                                         </div>
                                                                                                     </div>
 
@@ -1351,13 +1429,12 @@ export default function GeneratePayslipPage({
                                                                                                         type="button"
                                                                                                         onClick={() => handleSubmitIndividualPayroll(employee.empid)}
                                                                                                         disabled={isLocked || loadingEmployees[employee.empid] || submittingEmployees[employee.empid] || data.attendance === null || data.salary === null}
-                                                                                                        className={`flex items-center gap-1.5 px-4 py-1.5 ${
-                                                                                                            isLocked
-                                                                                                                ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                                                                                                                : isGenerated
+                                                                                                        className={`flex items-center gap-1.5 px-4 py-1.5 ${isLocked
+                                                                                                            ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                                                                                                            : isGenerated
                                                                                                                 ? "bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white cursor-pointer"
                                                                                                                 : "bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white cursor-pointer"
-                                                                                                        } text-[11px] font-semibold rounded transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                                                                            } text-[11px] font-semibold rounded transition shadow-xs disabled:opacity-50 disabled:cursor-not-allowed`}
                                                                                                     >
                                                                                                         {isLocked ? (
                                                                                                             <Lock size={13} className="text-slate-500" />
@@ -1368,12 +1445,12 @@ export default function GeneratePayslipPage({
                                                                                                             {isLocked
                                                                                                                 ? `Locked (${rawStatus})`
                                                                                                                 : submittingEmployees[employee.empid]
-                                                                                                                ? "Saving..."
-                                                                                                                : isGenerated
-                                                                                                                ? `Update ${employee.name}'s Payroll`
-                                                                                                                : submittedPayrolls[employee.empid]
-                                                                                                                ? `Update ${employee.name}'s Payroll`
-                                                                                                                : `Submit ${employee.name}'s Payroll`}
+                                                                                                                    ? "Saving..."
+                                                                                                                    : isGenerated
+                                                                                                                        ? `Update ${employee.name}'s Payroll`
+                                                                                                                        : submittedPayrolls[employee.empid]
+                                                                                                                            ? `Update ${employee.name}'s Payroll`
+                                                                                                                            : `Submit ${employee.name}'s Payroll`}
                                                                                                         </span>
                                                                                                     </button>
                                                                                                 </div>

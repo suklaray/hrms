@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
       where: { email: body.email },
       update: {
         main_employee_id: user.empid, 
+        user_empid: user.empid,
         candidate_id: user.candidate_id,
         name: body.name,
         contact_no: body.contact_no,
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
       },
       create: {
         main_employee_id: user.empid,  
+        user_empid: user.empid,
         candidate_id: user.candidate_id,
         name: body.name,
         email: body.email,

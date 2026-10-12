@@ -159,9 +159,42 @@ export async function PUT(req: NextRequest) {
                         status: 'UNPROCESSED',
                     },
                 });
+
+                if (normalizedStatus === 'DRAFT') {
+                    // Change active salary structures for this financial year to INACTIVE
+                    await tx.employee_salary_structure.updateMany({
+                        where: {
+                            financial_year_id: { in: fyIdentifiers },
+                            status: 'ACTIVE',
+                        },
+                        data: {
+                            status: 'INACTIVE',
+                        },
+                    });
+                } else if (normalizedStatus === 'CLOSED') {
+                    // Change salary structures for this financial year to CLOSED
+                    await tx.employee_salary_structure.updateMany({
+                        where: {
+                            financial_year_id: { in: fyIdentifiers },
+                        },
+                        data: {
+                            status: 'CLOSED',
+                        },
+                    });
+                }
             } else if (normalizedStatus === 'ACTIVE') {
                 // Change status of payroll configurations for this financial year to ACTIVE
                 await tx.payroll_configuration.updateMany({
+                    where: {
+                        financial_year_id: { in: fyIdentifiers },
+                    },
+                    data: {
+                        status: 'ACTIVE',
+                    },
+                });
+
+                // Change status of employee salary structures for this financial year to ACTIVE
+                await tx.employee_salary_structure.updateMany({
                     where: {
                         financial_year_id: { in: fyIdentifiers },
                     },

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Head from "@/lib/compatHead";
 import { toast } from "react-toastify";
 import Link from "next/link";
+import { swalInfo } from "@/utils/confirmDialog";
 import {
   ArrowDownRight,
   ArrowRight,
@@ -35,6 +36,7 @@ import {
   X,
   AlertCircle,
   HelpCircle,
+  MinusCircle,
 } from "lucide-react";
 import {
   calculateSalaryBreakdown,
@@ -437,20 +439,7 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
     setComponentRows(rows);
   }, [selectedStructureId, structures, editingVersion]);
 
-  // Handle manual override of component amount
-  const handleAmountChange = (index: number, newAmountStr: string) => {
-    const val = Number(newAmountStr);
-    const updated = [...componentRows];
-    updated[index].amount = isNaN(val) ? 0 : Math.max(0, val);
-    setComponentRows(updated);
-  };
 
-  // Reset to default structure amounts
-  const handleResetToDefaults = () => {
-    const reset = componentRows.map((c) => ({ ...c, amount: c.defaultAmount }));
-    setComponentRows(reset);
-    toast.info("Salary components reset to structure default calculations.");
-  };
 
   // Computed totals for employee salary
   const totals = useMemo(() => {
@@ -480,6 +469,27 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
   ) => {
     if (item.status === newStatus) return;
 
+    if (newStatus === "ACTIVE") {
+      const targetFy =
+        financialYears.find(
+          (f) =>
+            f.uid === item.financial_year_id ||
+            String(f.id) === String(item.financial_year_id)
+        ) || item.financialYear;
+
+      if (!targetFy || targetFy.status !== "ACTIVE") {
+        const fyName = targetFy?.name ? `"${targetFy.name}"` : "the attached financial year";
+        const currentFyStatus = targetFy?.status || "INACTIVE";
+        // Force state sync to reset dropdown in DOM
+        setEmployeeHistory((prev) => [...prev]);
+        await swalInfo(
+          `Cannot activate this salary structure because ${fyName} is currently ${currentFyStatus}. Please activate the financial year first.`,
+          "Financial Year Not Active"
+        );
+        return;
+      }
+    }
+
     setTogglingId(item.id);
     try {
       const res = await fetch(`/api/payroll/employee-salary-structures/${item.uid}`, {
@@ -505,7 +515,11 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
           setEmployeeHistory(histData.data || []);
         }
       } else {
-        toast.error(result.message || "Failed to update status.");
+        if (result.message && (result.message.includes("financial year") || result.message.includes("Financial Year"))) {
+          await swalInfo(result.message, "Financial Year Not Active");
+        } else {
+          toast.error(result.message || "Failed to update status.");
+        }
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to update status.");
@@ -630,8 +644,15 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
       toast.error("Please select a Financial Year.");
       return;
     }
-    const selectedFy = financialYears.find((fy) => fy.uid === selectedFinancialYearId);
+    const selectedFy = financialYears.find((fy) => fy.uid === selectedFinancialYearId || String(fy.id) === String(selectedFinancialYearId));
     if (selectedFy && selectedFy.status !== "ACTIVE") {
+      if (editingVersion ? status === "ACTIVE" : autoClosePrevious) {
+        await swalInfo(
+          `Cannot activate this salary structure because "${selectedFy.name}" is currently ${selectedFy.status}. Please activate the financial year first.`,
+          "Financial Year Not Active"
+        );
+        return;
+      }
       toast.error("Please select an active financial year");
       return;
     }
@@ -729,7 +750,11 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
           setEmployeeHistory(histData.data || []);
         }
       } else {
-        toast.error(result.message || "Failed to save employee salary.");
+        if (result.message && (result.message.includes("financial year") || result.message.includes("Financial Year"))) {
+          await swalInfo(result.message, "Financial Year Not Active");
+        } else {
+          toast.error(result.message || "Failed to save employee salary.");
+        }
       }
     } catch (err: any) {
       console.error("Error saving salary:", err);
@@ -1146,7 +1171,22 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                         <label className="text-xs font-semibold text-amber-950">Status:</label>
                         <select
                           value={status}
-                          onChange={(e) => setStatus(e.target.value as "ACTIVE" | "INACTIVE" | "CLOSED")}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value as "ACTIVE" | "INACTIVE" | "CLOSED";
+                            if (newStatus === "ACTIVE") {
+                              const selectedFy = financialYears.find(
+                                (fy) => fy.uid === selectedFinancialYearId || String(fy.id) === String(selectedFinancialYearId)
+                              );
+                              if (selectedFy && selectedFy.status !== "ACTIVE") {
+                                await swalInfo(
+                                  `Cannot activate this salary structure because "${selectedFy.name}" is currently ${selectedFy.status}. Please activate the financial year first.`,
+                                  "Financial Year Not Active"
+                                );
+                                return;
+                              }
+                            }
+                            setStatus(newStatus);
+                          }}
                           className="text-xs font-bold rounded-lg px-2.5 py-1 bg-white border border-amber-300 text-amber-900 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                         >
                           <option value="ACTIVE">ACTIVE</option>
@@ -1253,19 +1293,9 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                         Salary Components & Amounts
                       </h3>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        Amounts computed from structure rules. You can review or manually override values.
+                        Amounts computed automatically based on salary structure rules.
                       </p>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={handleResetToDefaults}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 border border-gray-200 rounded-lg transition-colors cursor-pointer"
-                      title="Reset all customized amounts back to formula defaults"
-                    >
-                      <RotateCcw size={12} />
-                      <span>Reset Calculations</span>
-                    </button>
                   </div>
 
                   {componentRows.length === 0 ? (
@@ -1273,80 +1303,129 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                       No components found in the selected salary structure.
                     </div>
                   ) : (
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-xs border-collapse">
-                        <thead>
-                          <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                            <th className="py-2.5 px-4">Component</th>
-                            <th className="py-2.5 px-4 text-center">Type</th>
-                            <th className="py-2.5 px-4">Rule / Calculation</th>
-                            <th className="py-2.5 px-4 text-right">Default Value</th>
-                            <th className="py-2.5 px-4 text-right w-36">Assigned Amount (₹)</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {componentRows.map((c, idx) => {
-                            const isOverridden = Number(c.amount) !== Number(c.defaultAmount);
-                            return (
-                              <tr key={c.salary_component_id} className="hover:bg-gray-50/50">
-                                <td className="py-2.5 px-4 font-semibold text-gray-900">
-                                  {c.name}
-                                  <span className="text-[10px] font-mono text-gray-400 block font-normal">
-                                    {c.code}
-                                  </span>
-                                </td>
+                    <div className="space-y-6">
+                      {(["EARNING", "DEDUCTION"] as const).map((type) => {
+                        const rows = componentRows.filter((c) => c.type === type);
 
-                                <td className="py-2.5 px-4 text-center">
-                                  <span
-                                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${c.type === "EARNING"
-                                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                        if (rows.length === 0) return null;
+
+                        const isEarning = type === "EARNING";
+
+                        return (
+                          <section
+                            key={type}
+                            className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+                          >
+                            {/* Section Header */}
+                            <div
+                              className={`flex items-center justify-between gap-3 border-b px-5 py-4 ${isEarning
+                                ? "border-emerald-100 bg-emerald-50/70"
+                                : "border-amber-100 bg-amber-50/70"
+                                }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className={`flex h-9 w-9 items-center justify-center rounded-lg ${isEarning
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-amber-100 text-amber-700"
+                                    }`}
+                                >
+                                  {isEarning ? (
+                                    <Banknote size={18} />
+                                  ) : (
+                                    <MinusCircle size={18} />
+                                  )}
+                                </div>
+
+                                <div>
+                                  <h3
+                                    className={`text-sm font-bold ${isEarning ? "text-emerald-900" : "text-amber-900"
                                       }`}
                                   >
-                                    {c.type}
-                                  </span>
-                                </td>
+                                    {isEarning ? "Earnings" : "Deductions"}
+                                  </h3>
 
-                                <td className="py-2.5 px-4 text-gray-500 text-[11px]">
-                                  {c.ruleDescription}
-                                </td>
+                                  <p className="mt-0.5 text-[11px] text-gray-500">
+                                    {isEarning
+                                      ? "Salary components added to gross salary"
+                                      : "Salary components deducted from gross salary"}
+                                  </p>
+                                </div>
+                              </div>
 
-                                <td className="py-2.5 px-4 text-right font-mono text-gray-500">
-                                  ₹{Number(c.defaultAmount).toLocaleString("en-IN")}
-                                </td>
+                              <span
+                                className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-bold ${isEarning
+                                  ? "border-emerald-200 bg-white text-emerald-700"
+                                  : "border-amber-200 bg-white text-amber-700"
+                                  }`}
+                              >
+                                {rows.length} {rows.length === 1 ? "Component" : "Components"}
+                              </span>
+                            </div>
 
-                                <td className="py-2.5 px-4 text-right">
-                                  <div className="relative">
-                                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
-                                      ₹
-                                    </span>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={c.amount}
-                                      onChange={(e) => handleAmountChange(idx, e.target.value)}
-                                      className={`w-full text-right text-xs font-mono font-bold rounded-lg pl-6 pr-2 py-1.5 border transition-colors focus:outline-none focus:ring-1 ${isOverridden
-                                        ? "bg-amber-50/50 border-amber-300 text-amber-900 focus:ring-amber-500"
-                                        : "bg-white border-gray-200 text-gray-900 focus:ring-indigo-500"
-                                        }`}
-                                      required
-                                    />
-                                    {isOverridden && (
-                                      <span
-                                        className="block text-[9px] text-amber-700 font-semibold text-right mt-0.5"
-                                        title="Manually modified from standard structure calculation"
-                                      >
-                                        Overridden
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                            {/* Components Table */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[750px] border-collapse text-left text-xs">
+                                <thead>
+                                  <tr className="border-b border-gray-100 bg-gray-50/80 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                                    <th className="px-5 py-3">Component</th>
+                                    <th className="px-4 py-3 text-center">Type</th>
+                                    <th className="px-4 py-3">Rule / Calculation</th>
+                                    <th className="px-4 py-3 text-right">Default Value</th>
+                                    <th className="px-5 py-3 text-right">Assigned Amount (₹)</th>
+                                  </tr>
+                                </thead>
+
+                                <tbody className="divide-y divide-gray-100">
+                                  {rows.map((c) => (
+                                    <tr
+                                      key={c.salary_component_id}
+                                      className="transition-colors hover:bg-gray-50/70"
+                                    >
+                                      <td className="px-5 py-3.5">
+                                        <div className="font-semibold text-gray-900">
+                                          {c.name}
+                                        </div>
+                                        <span className="mt-1 block font-mono text-[10px] text-gray-400">
+                                          {c.code}
+                                        </span>
+                                      </td>
+
+                                      <td className="px-4 py-3.5 text-center">
+                                        <span
+                                          className={`inline-flex items-center rounded-md border px-2 py-1 text-[10px] font-bold ${isEarning
+                                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                            : "border-amber-200 bg-amber-50 text-amber-700"
+                                            }`}
+                                        >
+                                          {c.type}
+                                        </span>
+                                      </td>
+
+                                      <td className="max-w-xs px-4 py-3.5 text-[11px] leading-relaxed text-gray-500">
+                                        {c.ruleDescription || "—"}
+                                      </td>
+
+                                      <td className="whitespace-nowrap px-4 py-3.5 text-right font-mono text-gray-500">
+                                        ₹{Number(c.defaultAmount).toLocaleString("en-IN")}
+                                      </td>
+
+                                      <td className="whitespace-nowrap px-5 py-3.5 text-right">
+                                        <span
+                                          className={`font-mono text-sm font-bold ${isEarning ? "text-emerald-700" : "text-amber-700"
+                                            }`}
+                                        >
+                                          ₹{Number(c.amount).toLocaleString("en-IN")}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </section>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1371,29 +1450,29 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                           {currentFinancialYear?.name || "Selected FY"}
                         </span>
                       </div>
-
-                      {/* Gross Earnings */}
-                      <div className="flex items-center justify-between p-2.5 bg-emerald-50/60 rounded-lg border border-emerald-100">
-                        <div className="flex items-center gap-1.5 text-emerald-800">
-                          <ArrowUpRight size={15} />
-                          <span className="font-semibold">Gross Earnings</span>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                        {/* Gross Earnings */}
+                        <div className="flex items-center justify-between p-2.5 bg-emerald-50/60 rounded-lg border border-emerald-100">
+                          <div className="flex items-center gap-1.5 text-emerald-800">
+                            <ArrowUpRight size={15} />
+                            <span className="font-semibold">Gross Earnings</span>
+                          </div>
+                          <span className="font-mono font-bold text-emerald-700 text-sm">
+                            ₹{totals.grossEarnings.toLocaleString("en-IN")}
+                          </span>
                         </div>
-                        <span className="font-mono font-bold text-emerald-700 text-sm">
-                          ₹{totals.grossEarnings.toLocaleString("en-IN")}
-                        </span>
-                      </div>
 
-                      {/* Deductions */}
-                      <div className="flex items-center justify-between p-2.5 bg-amber-50/60 rounded-lg border border-amber-100">
-                        <div className="flex items-center gap-1.5 text-amber-800">
-                          <ArrowDownRight size={15} />
-                          <span className="font-semibold">Total Deductions</span>
+                        {/* Deductions */}
+                        <div className="flex items-center justify-between p-2.5 bg-amber-50/60 rounded-lg border border-amber-100">
+                          <div className="flex items-center gap-1.5 text-amber-800">
+                            <ArrowDownRight size={15} />
+                            <span className="font-semibold">Total Deductions</span>
+                          </div>
+                          <span className="font-mono font-bold text-amber-700 text-sm">
+                            -₹{totals.totalDeductions.toLocaleString("en-IN")}
+                          </span>
                         </div>
-                        <span className="font-mono font-bold text-amber-700 text-sm">
-                          -₹{totals.totalDeductions.toLocaleString("en-IN")}
-                        </span>
                       </div>
-
                       {/* Net Take-Home */}
                       <div className="p-3.5 bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200 rounded-xl">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">
@@ -1501,7 +1580,6 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                           <th className="py-2.5 px-4 text-right">Deductions</th>
                           <th className="py-2.5 px-4 text-right">Net Pay</th>
                           <th className="py-2.5 px-4">Remarks</th>
-                          <th className="py-2.5 px-4 text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1512,14 +1590,21 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                           return (
                             <tr
                               key={item.uid}
-                              onClick={() => handleStartEdit(item)}
+                              onClick={(e) => {
+                                if (item.status === "ACTIVE") {
+                                  handleStartEdit(item);
+                                } else {
+                                  e.stopPropagation();
+                                  setInspectingVersion(item);
+                                }
+                              }}
                               className={`cursor-pointer transition-colors ${isEditingThis
                                 ? "bg-amber-50/80 ring-2 ring-amber-400"
                                 : isCurrent
                                   ? "bg-indigo-50/20 hover:bg-indigo-50/40"
                                   : "hover:bg-gray-50/80"
                                 }`}
-                              title="Click row to edit this salary version"
+                              title={`Click row to ${item.status === "ACTIVE" ? "edit this salary version" : "view this salary version"}`}
                             >
                               <td className="py-3 px-4">
                                 <span className="font-bold text-gray-900 block">
@@ -1580,311 +1665,271 @@ export default function EmployeeSalaryClient({ user }: { user?: any } = {}) {
                               <td className="py-3 px-4 text-gray-500 text-[11px] max-w-xs truncate">
                                 {item.remarks || <span className="italic text-gray-300">-</span>}
                               </td>
-
-                              <td className="py-3 px-4 text-right">
-                                <div className="inline-flex items-center gap-1.5 justify-end">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStartEdit(item);
-                                    }}
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold transition-colors shadow-xs cursor-pointer ${isEditingThis
-                                      ? "bg-amber-600 text-white"
-                                      : "bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200"
-                                      }`}
-                                    title="Edit this version's components and settings"
-                                  >
-                                    <PenIcon size={12} />
-                                    <span>{isEditingThis ? "Editing" : "Edit"}</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setInspectingVersion(item);
-                                    }}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-gray-100 border border-gray-200 rounded text-xs text-gray-700 font-medium transition-colors cursor-pointer"
-                                  >
-                                    <Eye size={12} />
-                                    <span>Inspect</span>
-                                  </button>
-                                </div>
-                              </td>
                             </tr>
                           );
                         })}
                       </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </form>
+                    </table >
+                  </div >
+                )
+                }
+              </div >
+            </form >
           )}
 
           {/* =============================================================== */}
           {/* TAB 2: EMPLOYEE DIRECTORY & STATUS OVERVIEW */}
           {/* =============================================================== */}
-          {activeTab === "directory" && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-                <div>
-                  <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-                    Employee Salary Configuration Directory
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Overview of active salary structures assigned to employees across Financial Years.
-                  </p>
-                </div>
+          {
+            activeTab === "directory" && (
+              <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                  <div>
+                    <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                      Employee Salary Configuration Directory
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Overview of active salary structures assigned to employees across Financial Years.
+                    </p>
+                  </div>
 
-                {/* Filters */}
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {/* Financial Year Filter */}
-                  <select
-                    value={directoryFyFilter}
-                    onChange={(e) => setDirectoryFyFilter(e.target.value)}
-                    className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="ALL">All Financial Years</option>
-                    {financialYears.map((fy) => (
-                      <option key={fy.uid} value={fy.uid}>
-                        {fy.name}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Filters */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Financial Year Filter */}
+                    <select
+                      value={directoryFyFilter}
+                      onChange={(e) => setDirectoryFyFilter(e.target.value)}
+                      className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="ALL">All Financial Years</option>
+                      {financialYears.map((fy) => (
+                        <option key={fy.uid} value={fy.uid}>
+                          {fy.name}
+                        </option>
+                      ))}
+                    </select>
 
-                  {/* Status Filter */}
-                  <select
-                    value={directoryStatusFilter}
-                    onChange={(e) => setDirectoryStatusFilter(e.target.value)}
-                    className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  >
-                    <option value="ALL">All Employees</option>
-                    <option value="ASSIGNED">Configured with Salary</option>
-                    <option value="UNASSIGNED">Missing Salary Configuration</option>
-                  </select>
+                    {/* Status Filter */}
+                    <select
+                      value={directoryStatusFilter}
+                      onChange={(e) => setDirectoryStatusFilter(e.target.value)}
+                      className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    >
+                      <option value="ALL">All Employees</option>
+                      <option value="ASSIGNED">Configured with Salary</option>
+                      <option value="UNASSIGNED">Missing Salary Configuration</option>
+                    </select>
 
-                  {/* Search bar */}
-                  <div className="relative">
-                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search employee..."
-                      value={directorySearch}
-                      onChange={(e) => setDirectorySearch(e.target.value)}
-                      className="text-xs bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48 sm:w-60"
-                    />
+                    {/* Search bar */}
+                    <div className="relative">
+                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search employee..."
+                        value={directorySearch}
+                        onChange={(e) => setDirectorySearch(e.target.value)}
+                        className="text-xs bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-gray-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-48 sm:w-60"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Directory Table */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                      <th className="py-3 px-5">Employee</th>
-                      <th className="py-3 px-4">Designation</th>
-                      <th className="py-3 px-4">Active Salary Structure</th>
-                      <th className="py-3 px-4 text-right">Net Monthly</th>
-                      <th className="py-3 px-4 text-center">Versions</th>
-                      <th className="py-3 px-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredDirectory.map((emp) => (
-                      <tr key={emp.empid} className="hover:bg-gray-50/50">
-                        <td className="py-3 px-5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
-                              {emp.name.slice(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                              <span className="font-semibold text-gray-900 block">{emp.name}</span>
-                              <span className="text-[10px] font-mono text-gray-400">{emp.empid}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="py-3 px-4 text-gray-600">
-                          {emp.position || <span className="italic text-gray-300">-</span>}
-                        </td>
-
-                        <td className="py-3 px-4">
-                          {emp.currentSalary ? (
-                            <div>
-                              <span className="font-semibold text-gray-800 block">
-                                {emp.currentSalary.salary_structure_name}
-                              </span>
-                              <span className="text-[10px] text-indigo-600 font-medium">
-                                {emp.currentSalary.financial_year_name}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">
-                              Not Configured
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-4 text-right font-mono font-bold text-gray-900">
-                          {emp.currentSalary ? (
-                            `₹${emp.currentSalary.netSalary.toLocaleString("en-IN")}`
-                          ) : (
-                            <span className="text-gray-300">-</span>
-                          )}
-                        </td>
-
-                        <td className="py-3 px-4 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">
-                            {emp.totalSalaryVersions}
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedEmpid(emp.empid);
-                              setActiveTab("assign");
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                          >
-                            <span>Manage / Revise</span>
-                            <ArrowRight size={12} />
-                          </button>
-                        </td>
+                {/* Directory Table */}
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                        <th className="py-3 px-5">Employee</th>
+                        <th className="py-3 px-4">Designation</th>
+                        <th className="py-3 px-4">Active Salary Structure</th>
+                        <th className="py-3 px-4 text-right">Net Monthly</th>
+                        <th className="py-3 px-4 text-center">Versions</th>
+                        <th className="py-3 px-4 text-right">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredDirectory.map((emp) => (
+                        <tr key={emp.empid} className="hover:bg-gray-50/50">
+                          <td className="py-3 px-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                                {emp.name.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-gray-900 block">{emp.name}</span>
+                                <span className="text-[10px] font-mono text-gray-400">{emp.empid}</span>
+                              </div>
+                            </div>
+                          </td>
 
-        </div>
-      </div>
+                          <td className="py-3 px-4 text-gray-600">
+                            {emp.position || <span className="italic text-gray-300">-</span>}
+                          </td>
+
+                          <td className="py-3 px-4">
+                            {emp.currentSalary ? (
+                              <div>
+                                <span className="font-semibold text-gray-800 block">
+                                  {emp.currentSalary.salary_structure_name}
+                                </span>
+                                <span className="text-[10px] text-indigo-600 font-medium">
+                                  {emp.currentSalary.financial_year_name}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500">
+                                Not Configured
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-right font-mono font-bold text-gray-900">
+                            {emp.currentSalary ? (
+                              `₹${emp.currentSalary.netSalary.toLocaleString("en-IN")}`
+                            ) : (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">
+                              {emp.totalSalaryVersions}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedEmpid(emp.empid);
+                                setActiveTab("assign");
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                            >
+                              <span>Manage / Revise</span>
+                              <ArrowRight size={12} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          }
+
+        </div >
+      </div >
 
       {/* =================================================================== */}
       {/* INSPECT HISTORICAL VERSION MODAL */}
       {/* =================================================================== */}
-      {inspectingVersion && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900">
-                  Historical Salary Version Details
-                </h3>
-                <p className="text-[11px] text-gray-500">
-                  {inspectingVersion.financialYear?.name || "Financial Year"} • Status: {inspectingVersion.status}
-                </p>
+      {
+        inspectingVersion && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-xl border border-gray-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">
+                    Historical Salary Version Details
+                  </h3>
+                  <p className="text-[11px] text-gray-500">
+                    {inspectingVersion.financialYear?.name || "Financial Year"} • Status: {inspectingVersion.status}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInspectingVersion(null)}
+                  className="p-1 text-gray-400 hover:text-gray-700 rounded-lg cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setInspectingVersion(null)}
-                className="p-1 text-gray-400 hover:text-gray-700 rounded-lg cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
 
-            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                      <th className="py-2 px-3">Component</th>
-                      <th className="py-2 px-3 text-center">Type</th>
-                      <th className="py-2 px-3 text-right">Actual Amount Recorded</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {inspectingVersion.components.map((c) => (
-                      <tr key={c.salary_component_id}>
-                        <td className="py-2 px-3 font-semibold text-gray-900">
-                          {c.salaryComponent?.name || `Component #${c.salary_component_id}`}
-                        </td>
-                        <td className="py-2 px-3 text-center">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${c.salaryComponent?.type === "EARNING"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
-                              }`}
-                          >
-                            {c.salaryComponent?.type}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-gray-900">
-                          ₹{Number(c.amount).toLocaleString("en-IN")}
-                        </td>
+              <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                        <th className="py-2 px-3">Component</th>
+                        <th className="py-2 px-3 text-center">Type</th>
+                        <th className="py-2 px-3 text-right">Actual Amount Recorded</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {inspectingVersion.components.map((c) => (
+                        <tr key={c.salary_component_id}>
+                          <td className="py-2 px-3 font-semibold text-gray-900">
+                            {c.salaryComponent?.name || `Component #${c.salary_component_id}`}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${c.salaryComponent?.type === "EARNING"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-amber-50 text-amber-700"
+                                }`}
+                            >
+                              {c.salaryComponent?.type}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono font-bold text-gray-900">
+                            ₹{Number(c.amount).toLocaleString("en-IN")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs space-y-1">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Financial Year:</span>
+                    <span className="font-bold text-gray-900">
+                      {inspectingVersion.financialYear?.name || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Gross Earnings:</span>
+                    <span className="font-bold text-gray-900 font-mono">
+                      ₹{inspectingVersion.summary.grossEarnings.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-gray-600">
+                    <span>Total Deductions:</span>
+                    <span className="font-bold text-amber-700 font-mono">
+                      -₹{inspectingVersion.summary.totalDeductions.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  <div className="pt-1.5 border-t border-gray-200 flex justify-between font-bold text-indigo-700 text-sm">
+                    <span>Net Take-Home:</span>
+                    <span className="font-mono">
+                      ₹{inspectingVersion.summary.netSalary.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+
+                {inspectingVersion.remarks && (
+                  <div className="text-xs text-gray-500">
+                    <span className="font-semibold text-gray-700">Remarks: </span>
+                    {inspectingVersion.remarks}
+                  </div>
+                )}
               </div>
 
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs space-y-1">
-                <div className="flex justify-between text-gray-600">
-                  <span>Financial Year:</span>
-                  <span className="font-bold text-gray-900">
-                    {inspectingVersion.financialYear?.name || "N/A"}
-                  </span>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Gross Earnings:</span>
-                  <span className="font-bold text-gray-900 font-mono">
-                    ₹{inspectingVersion.summary.grossEarnings.toLocaleString("en-IN")}
-                  </span>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Total Deductions:</span>
-                  <span className="font-bold text-amber-700 font-mono">
-                    -₹{inspectingVersion.summary.totalDeductions.toLocaleString("en-IN")}
-                  </span>
-                </div>
-                <div className="pt-1.5 border-t border-gray-200 flex justify-between font-bold text-indigo-700 text-sm">
-                  <span>Net Take-Home:</span>
-                  <span className="font-mono">
-                    ₹{inspectingVersion.summary.netSalary.toLocaleString("en-IN")}
-                  </span>
-                </div>
+              <div className="p-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setInspectingVersion(null)}
+                  className="px-4 py-1.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
-
-              {inspectingVersion.remarks && (
-                <div className="text-xs text-gray-500">
-                  <span className="font-semibold text-gray-700">Remarks: </span>
-                  {inspectingVersion.remarks}
-                </div>
-              )}
-            </div>
-
-            <div className="p-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  const v = inspectingVersion;
-                  setInspectingVersion(null);
-                  handleStartEdit(v);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-              >
-                <PenIcon size={13} />
-                <span>Edit this Version</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setInspectingVersion(null)}
-                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-xs font-semibold cursor-pointer"
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
     </>
   );
 }

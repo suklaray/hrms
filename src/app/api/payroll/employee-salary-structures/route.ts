@@ -69,7 +69,12 @@ async function resolveFinancialYear(fyInput: string | number | undefined | null)
 
 // ─── GET /api/payroll/employee-salary-structures ────────────────────────────────
 export async function GET(req: NextRequest) {
-  const auth = await checkAuth(req, [PERMISSION_KEYS.PAYROLL_VIEW, PERMISSION_KEYS.PAYROLL_GENERATE]);
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.PAYROLL_VIEW,
+    PERMISSION_KEYS.PAYROLL_GENERATE,
+    PERMISSION_KEYS.PAYSLIP_GENERATE,
+    PERMISSION_KEYS.PAYSLIP_VIEW
+  ]);
   if ("error" in auth) return auth.error;
 
   try {

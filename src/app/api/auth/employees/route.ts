@@ -98,8 +98,6 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         status: true,
         is_active: true,
         roleId: true,
-
-        // Role table relation
         rbacRole: {
           select: {
             id: true,
@@ -107,6 +105,21 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
             parentId: true,
           },
         },
+        employeeProfile: {
+          select: {
+            bank_details: {
+              select: {
+                id: true,
+                account_number: true,
+                account_holder_name: true,
+                bank_name: true,
+                branch_name: true,
+                ifsc_code: true,
+                checkbook_document: true,
+              }
+            }
+          }
+        }
       },
 
       orderBy: {

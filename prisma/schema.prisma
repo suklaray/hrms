@@ -573,6 +573,8 @@ model payroll {
   days_absent Int @default(0)
   overtime_hours Int @default(0)
   overtime_rate_perhour Decimal @default(0)
+  bonus_amount Decimal @default(0)
+  
   weekend Int @default(0)
 
   salary_payment_date DateTime @default(now())

@@ -123,6 +123,13 @@ export async function POST(req: NextRequest) {
             Number(salaryDetails?.overtime?.hours ?? salaryDetails?.attendance?.overtimeHours ?? 0)
         );
         const overtimeRatePerHour = Number(salaryDetails?.overtime?.ratePerHour || 0);
+        const bonusAmount = Number(
+            salaryDetails?.bonusAmount ??
+            salaryDetails?.bonus_amount ??
+            payload?.bonus_amount ??
+            payload?.bonusAmount ??
+            0
+        );
         const weekend = Math.round(Number(salaryDetails?.attendance?.weekend || 0));
 
         let paymentDate: Date;
@@ -253,6 +260,7 @@ export async function POST(req: NextRequest) {
                         days_absent: daysAbsent,
                         overtime_hours: overtimeHours,
                         overtime_rate_perhour: overtimeRatePerHour,
+                        bonus_amount: bonusAmount,
                         weekend: weekend,
                         salary_payment_date: paymentDate,
                         total_payable_amount: finalTotalPayable,
@@ -306,6 +314,7 @@ export async function POST(req: NextRequest) {
                             days_absent: daysAbsent,
                             overtime_hours: overtimeHours,
                             overtime_rate_perhour: overtimeRatePerHour,
+                            bonus_amount: bonusAmount,
                             weekend: weekend,
                             salary_payment_date: paymentDate,
                             total_payable_amount: finalTotalPayable,
@@ -339,6 +348,7 @@ export async function POST(req: NextRequest) {
                         days_absent: daysAbsent,
                         overtime_hours: overtimeHours,
                         overtime_rate_perhour: overtimeRatePerHour,
+                        bonus_amount: bonusAmount,
                         weekend: weekend,
                         salary_payment_date: paymentDate,
                         total_payable_amount: finalTotalPayable,
