@@ -17,9 +17,15 @@ export async function POST(req: NextRequest) {
 
     const currentMonthIndex = now.getMonth();
     const currentYear = now.getFullYear();
+    const currentDay = now.getDate();
+
+    const lastAvailableMonthIndex =
+        currentMonthIndex - (currentDay > 10 ? 1 : 2);
+
+    const monthCount = Math.max(0, lastAvailableMonthIndex + 1);
 
     const monthNames = Array.from(
-        { length: currentMonthIndex + 1 },
+        { length: monthCount },
         (_, index) =>
             new Intl.DateTimeFormat("en-US", {
                 month: "long",
@@ -29,6 +35,8 @@ export async function POST(req: NextRequest) {
     const periodNames = monthNames.map(
         month => `${month} ${currentYear}`
     );
+
+    console.log("\n\n periodNames", periodNames)
 
 
     try {

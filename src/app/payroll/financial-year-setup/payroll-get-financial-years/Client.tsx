@@ -93,18 +93,25 @@ const GetFinancialYears = (
     const handleStatusUpdate = async (fy: any, newStatus: string) => {
         if (!fy || fy.status === newStatus) return;
 
+        if (fy.lock) {
+            toast.error("This financial year is locked and its status cannot be changed");
+            return;
+        }
+
         setUpdatingId(fy.uid);
         try {
-            const fyres = await fetch(`/api/payroll/periods?financial_year_id=${encodeURIComponent(fy.uid)}&status=OPEN`);
-            const fyresJson = await fyres.json();
-
             let confirmed = true;
-            if (fyresJson.success && fyresJson.count > 0) {
-                console.log("fyresJson", fyresJson);
-                confirmed = await swalConfirm(
-                    `Are you sure you want to continue? There are ${fyresJson.count} OPEN periods already exist under this financial year.`,
-                    "Change Status"
-                );
+            if (newStatus === "CLOSED" || newStatus === "DRAFT") {
+                const fyres = await fetch(`/api/payroll/periods?financial_year_id=${encodeURIComponent(fy.uid)}&status=OPEN`);
+                const fyresJson = await fyres.json();
+
+                if (fyresJson.success && fyresJson.count > 0) {
+                    console.log("fyresJson", fyresJson);
+                    confirmed = await swalConfirm(
+                        `Are you sure you want to continue? There are ${fyresJson.count} OPEN periods already exist under this financial year. These open periods will be unprocessed.`,
+                        "Change Status"
+                    );
+                }
             }
 
             if (!confirmed) return;
@@ -130,7 +137,9 @@ const GetFinancialYears = (
             toast.success(result.message || "Financial year status updated successfully");
             setData((prev: any[]) =>
                 prev.map((item: any) =>
-                    item.uid === fy.uid ? { ...item, status: newStatus } : item
+                    item.uid === fy.uid
+                        ? { ...item, status: newStatus }
+                        : item
                 )
             );
         } catch (err: any) {
@@ -439,7 +448,8 @@ const GetFinancialYears = (
                                                         canUpdateStatus ? (
                                                             <StatusSelector
                                                                 value={fy.status}
-                                                                disabled={updatingId === fy.uid}
+                                                                disabled={Boolean(fy.lock)}
+                                                                loading={updatingId === fy.uid}
                                                                 onChange={(newVal: string) => {
                                                                     handleStatusUpdate(fy, newVal);
                                                                 }}

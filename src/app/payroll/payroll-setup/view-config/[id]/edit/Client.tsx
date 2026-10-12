@@ -12,7 +12,7 @@ import { ChevronDown, Search, Check, RotateCcw, Save } from "lucide-react";
 import { toast } from "react-toastify";
 import Pageheader from '@/Components/PageHeader';
 import { PayrollDetailsSkeleton } from '@/Components/Skeletons';
-import { swalConfirm } from '@/utils/confirmDialog';
+import { swalConfirm, swalInfo } from '@/utils/confirmDialog';
 
 const formatDateForInput = (val) => {
     if (!val) return "";
@@ -66,10 +66,11 @@ const PayrollEditConfig = () => {
     const [submitting, setSubmitting] = useState(false);
     const [currencyLoading, setCurrencyLoading] = useState(false);
 
-    const [configMeta, setConfigMeta] = useState({
+    const [configMeta, setConfigMeta] = useState<any>({
         id: null,
         uid: null,
         company: null,
+        financial_year: null,
     });
 
     const [form, setForm] = useState({
@@ -169,6 +170,7 @@ const PayrollEditConfig = () => {
                         id: c.id,
                         uid: c.uid,
                         company: c.company,
+                        financial_year: c.financial_year,
                     });
 
                     const loadedForm = {
@@ -327,6 +329,19 @@ const PayrollEditConfig = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (form.status === "ACTIVE") {
+            const fy = configMeta.financial_year;
+            if (fy && fy.status !== "ACTIVE") {
+                const fyName = fy?.name ? `"${fy.name}"` : "the attached financial year";
+                const fyStatus = fy?.status || "INACTIVE";
+                await swalInfo(
+                    `Cannot activate this configuration because ${fyName} is currently ${fyStatus}. Please activate the financial year first.`,
+                    "Financial Year Not Active"
+                );
+                return;
+            }
+        }
+
         const confirmed = await swalConfirm(`Are you sure you want to update this payroll configuration?`, `Update`);
         if (!confirmed) return;
 
@@ -365,7 +380,11 @@ const PayrollEditConfig = () => {
                     router.push("/payroll/payroll-setup/payroll-get-configs");
                 }, 1000);
             } else {
-                toast.error(result.message || "Failed to update payroll configuration");
+                if (result.message && result.message.includes("financial year")) {
+                    await swalInfo(result.message, "Financial Year Not Active");
+                } else {
+                    toast.error(result.message || "Failed to update payroll configuration");
+                }
             }
         } catch (err) {
             console.error("Error updating payroll configuration:", err);

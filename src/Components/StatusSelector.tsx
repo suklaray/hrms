@@ -32,15 +32,19 @@ interface StatusSelectorProps {
     value?: string;
     onChange?: (value: string) => void;
     disabled?: boolean;
+    loading?: boolean;
 }
 
 export default function StatusPill({
     value = "DRAFT",
     onChange,
     disabled = false,
+    loading = false,
 }: StatusSelectorProps) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    const isInteractionDisabled = disabled || loading;
 
     const selected =
         statusOptions.find((status) => status.value === value) ||
@@ -75,9 +79,9 @@ export default function StatusPill({
             {/* Status Pill */}
             <button
                 type="button"
-                disabled={disabled}
+                disabled={isInteractionDisabled}
                 onClick={() => {
-                    if (!disabled) {
+                    if (!isInteractionDisabled) {
                         setOpen((prev) => !prev);
                     }
                 }}
@@ -90,11 +94,11 @@ export default function StatusPill({
                     ${selected.bg}
                     ${selected.text}
                     ${selected.border}
-                    ${disabled ? "opacity-60 cursor-not-allowed" : "hover:shadow-sm cursor-pointer"}
+                    ${isInteractionDisabled ? "opacity-60 cursor-not-allowed" : "hover:shadow-sm cursor-pointer"}
                 `}
             >
                 {/* Dot / Loader */}
-                {disabled ? (
+                {loading ? (
                     <Loader2 size={10} className="animate-spin" />
                 ) : (
                     <span

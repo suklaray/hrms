@@ -9,6 +9,7 @@ import { ChevronDown, Search, Check, RotateCcw, Send } from "lucide-react";
 import { toast } from "react-toastify";
 import Pageheader from '@/Components/PageHeader';
 import getMonthName from "@/lib/monthPicker";
+import { swalInfo } from '@/utils/confirmDialog';
 
 interface FinancialYear {
     status: string;
@@ -159,6 +160,20 @@ const PayrollCreateConfig = () => {
     // Submit the form
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (form.status === "ACTIVE") {
+            const selectedFy = financialYears.find(
+                (f) => f.uid === form.financial_year_id || String(f.id) === String(form.financial_year_id)
+            );
+            if (selectedFy && selectedFy.status !== "ACTIVE") {
+                await swalInfo(
+                    `Cannot create an active configuration because the selected financial year (${selectedFy.name}) is currently ${selectedFy.status}. Please activate the financial year first.`,
+                    "Financial Year Not Active"
+                );
+                return;
+            }
+        }
+
         setLoading(true);
         fetch("/api/payroll/configuration", {
             method: "POST",
@@ -177,7 +192,11 @@ const PayrollCreateConfig = () => {
                         router.push("/payroll/payroll-setup/payroll-get-configs");
                     }, 1000);
                 } else {
-                    toast.error(data.message || "Failed to create payroll configuration");
+                    if (data.message && data.message.includes("financial year")) {
+                        await swalInfo(data.message, "Financial Year Not Active");
+                    } else {
+                        toast.error(data.message || "Failed to create payroll configuration");
+                    }
                 }
             })
             .catch((err) => {
@@ -1254,7 +1273,7 @@ const PayrollCreateConfig = () => {
                                                                                 setIsFinancialYearDropdownOpen(false);
                                                                                 setSearchFinancialYearTerm("");
                                                                             }}
-                                                                            disabled={f.status === 'DRAFT'}
+                                                                            disabled={f.status === 'DRAFT' || f.status === 'CLOSED'}
                                                                             className={`
                                                                                 w-full
                                                                                 px-3

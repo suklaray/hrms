@@ -42,6 +42,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Payroll configuration already exists for this company and financial year' }, { status: 400 });
     }
 
+    if (status === 'ACTIVE') {
+      const fy = await prisma.financial_year.findFirst({
+        where: {
+          OR: [
+            { uid: String(financial_year_id) },
+            ...(!isNaN(Number(financial_year_id)) ? [{ id: Number(financial_year_id) }] : [])
+          ]
+        }
+      });
+
+      if (!fy || fy.status !== 'ACTIVE') {
+        const fyName = fy?.name ? `"${fy.name}"` : "the attached financial year";
+        const currentFyStatus = fy?.status || "INACTIVE";
+        return NextResponse.json({
+          success: false,
+          message: `Cannot activate configuration. The attached financial year (${fyName}) is currently ${currentFyStatus}. Please activate the financial year first.`
+        }, { status: 400 });
+      }
+    }
+
     await prisma.payroll_configuration.create({
       data: {
         company_id,
@@ -84,6 +104,17 @@ export async function PUT(req: NextRequest) {
     const isNumericId = !isNaN(Number(configId)) && /^\d+$/.test(String(configId).trim());
     const whereClause = isNumericId ? { id: Number(configId) } : { uid: String(configId) };
 
+    const existingConfig = await prisma.payroll_configuration.findFirst({
+      where: whereClause,
+      include: {
+        financial_year: true,
+      },
+    });
+
+    if (!existingConfig) {
+      return NextResponse.json({ success: false, message: 'Configuration not found' }, { status: 404 });
+    }
+
     const safeUpdateData: any = { ...body };
     delete safeUpdateData.company;
     delete safeUpdateData.financial_year;
@@ -91,6 +122,27 @@ export async function PUT(req: NextRequest) {
     delete safeUpdateData.updatedAt;
     delete safeUpdateData.id;
     delete safeUpdateData.uid;
+
+    if (safeUpdateData.status === 'ACTIVE') {
+      const targetFyId = safeUpdateData.financial_year_id || existingConfig.financial_year_id;
+      const fy = await prisma.financial_year.findFirst({
+        where: {
+          OR: [
+            { uid: String(targetFyId) },
+            ...(!isNaN(Number(targetFyId)) ? [{ id: Number(targetFyId) }] : [])
+          ]
+        }
+      });
+
+      if (!fy || fy.status !== 'ACTIVE') {
+        const fyName = fy?.name ? `"${fy.name}"` : "the attached financial year";
+        const currentFyStatus = fy?.status || "INACTIVE";
+        return NextResponse.json({
+          success: false,
+          message: `Cannot activate configuration. The attached financial year (${fyName}) is currently ${currentFyStatus}. Please activate the financial year first.`
+        }, { status: 400 });
+      }
+    }
 
     if (safeUpdateData.company_id !== undefined && safeUpdateData.company_id !== null && safeUpdateData.company_id !== '') {
       safeUpdateData.company_id = String(safeUpdateData.company_id);

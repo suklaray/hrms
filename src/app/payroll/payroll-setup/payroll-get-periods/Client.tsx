@@ -27,6 +27,7 @@ import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 const PERIOD_STATUSES = [
     { value: "OPEN", label: "Open", dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
     { value: "PROCESSING", label: "Processing", dot: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+    { value: "UNPROCESSED", label: "Unprocessed", dot: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
     { value: "COMPLETED", label: "Completed", dot: "bg-purple-500", bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
     { value: "CLOSED", label: "Closed", dot: "bg-slate-500", bg: "bg-slate-100", text: "text-slate-700", border: "border-slate-200" },
 ];
@@ -339,6 +340,7 @@ function PayrollGetPeriods(
                                 <option value="ALL">All Statuses</option>
                                 <option value="OPEN">Open</option>
                                 <option value="PROCESSING">Processing</option>
+                                <option value="UNPROCESSED">Unprocessed</option>
                                 <option value="COMPLETED">Completed</option>
                                 <option value="CLOSED">Closed</option>
                             </select>
@@ -489,13 +491,28 @@ function PayrollGetPeriods(
                                                     {
                                                         canInitiate && (
                                                             <td>
-                                                                <Link
-                                                                    href={`/payroll/salary/initiate-salary/${period.uid}`}
-                                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
-                                                                >
-                                                                    <Banknote size={14} />
-                                                                    <span>Generate Slip</span>
-                                                                </Link>
+                                                                {period.status === "CLOSED" ?
+                                                                    (
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled
+                                                                            title={`Period is ${period.status}. Slip generation is disabled.`}
+                                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 text-[12px] font-semibold rounded-md shadow-sm cursor-not-allowed opacity-70"
+                                                                        >
+                                                                            <Banknote size={14} />
+                                                                            <span>Generate Slip</span>
+                                                                        </button>
+                                                                    )
+                                                                    :
+                                                                    (
+                                                                        <Link
+                                                                            href={`/payroll/salary/initiate-salary/${period.uid}`}
+                                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
+                                                                        >
+                                                                            <Banknote size={14} />
+                                                                            <span>Generate Slip</span>
+                                                                        </Link>
+                                                                    )}
                                                             </td>
                                                         )
                                                     }

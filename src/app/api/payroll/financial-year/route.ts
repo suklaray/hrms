@@ -90,12 +90,33 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
         }
 
-        if (status === 'ACTIVE') {
+        const normalizedStatus = String(status).toUpperCase();
+
+        const isNumeric = !isNaN(Number(id)) && /^\d+$/.test(String(id).trim());
+        const existingFy = await prisma.financial_year.findFirst({
+            where: isNumeric
+                ? { OR: [{ id: Number(id) }, { uid: String(id) }] }
+                : { uid: String(id) },
+        });
+
+        if (!existingFy) {
+            return NextResponse.json({ success: false, message: 'Financial year not found' }, { status: 404 });
+        }
+
+        // Check if financial year is locked
+        if (existingFy.lock) {
+            return NextResponse.json({
+                success: false,
+                message: 'This financial year is locked. Its status cannot be changed.'
+            }, { status: 400 });
+        }
+
+        if (normalizedStatus === 'ACTIVE') {
             const existingActive = await prisma.financial_year.findFirst({
                 where: {
-                    company_id,
+                    company_id: existingFy.company_id || company_id,
                     status: 'ACTIVE',
-                    uid: { not: id }
+                    uid: { not: existingFy.uid }
                 }
             });
 
@@ -107,14 +128,64 @@ export async function PUT(req: NextRequest) {
             }
         }
 
-        const financialYear = await prisma.financial_year.update({
-            where: { uid: id },
-            data: {
-                status
-            },
+        const updatedFinancialYear = await prisma.$transaction(async (tx) => {
+            const financialYear = await tx.financial_year.update({
+                where: { uid: existingFy.uid },
+                data: {
+                    status: normalizedStatus as any,
+                },
+            });
+
+            const fyIdentifiers = [existingFy.uid, String(existingFy.id)];
+
+            if (normalizedStatus === 'CLOSED' || normalizedStatus === 'DRAFT') {
+                // Change status of payroll configurations for this financial year to INACTIVE
+                await tx.payroll_configuration.updateMany({
+                    where: {
+                        financial_year_id: { in: fyIdentifiers },
+                    },
+                    data: {
+                        status: 'INACTIVE',
+                    },
+                });
+
+                // Change status of open payroll periods for this financial year to UNPROCESSED
+                await tx.payroll_period.updateMany({
+                    where: {
+                        financial_year_id: { in: fyIdentifiers },
+                        status: 'OPEN',
+                    },
+                    data: {
+                        status: 'UNPROCESSED',
+                    },
+                });
+            } else if (normalizedStatus === 'ACTIVE') {
+                // Change status of payroll configurations for this financial year to ACTIVE
+                await tx.payroll_configuration.updateMany({
+                    where: {
+                        financial_year_id: { in: fyIdentifiers },
+                    },
+                    data: {
+                        status: 'ACTIVE',
+                    },
+                });
+
+                // Change status of unprocessed payroll periods for this financial year to OPEN
+                await tx.payroll_period.updateMany({
+                    where: {
+                        financial_year_id: { in: fyIdentifiers },
+                        status: 'UNPROCESSED',
+                    },
+                    data: {
+                        status: 'OPEN',
+                    },
+                });
+            }
+
+            return financialYear;
         });
 
-        return NextResponse.json({ success: true, message: 'Financial year updated successfully', data: financialYear }, { status: 200 });
+        return NextResponse.json({ success: true, message: 'Financial year updated successfully', data: updatedFinancialYear }, { status: 200 });
     } catch (error: any) {
         console.error('Error updating financial year:', error);
         return NextResponse.json({ success: false, message: error?.message }, { status: 500 });

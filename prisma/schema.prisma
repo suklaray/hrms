@@ -135,6 +135,7 @@ model financial_year {
 enum PayrollPeriodStatus {
   OPEN
   PROCESSING
+  UNPROCESSED
   COMPLETED
   CLOSED
 }

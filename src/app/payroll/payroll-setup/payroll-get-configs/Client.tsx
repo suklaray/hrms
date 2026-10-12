@@ -5,7 +5,7 @@ import Head from "@/lib/compatHead";
 import Pageheader from "@/Components/PageHeader";
 import { TableSkeleton } from "@/Components/Skeletons";
 import { getOrdinal } from "@/lib/getNumberordinal";
-import { swalConfirm } from "@/utils/confirmDialog";
+import { swalConfirm, swalInfo } from "@/utils/confirmDialog";
 import { useRouter } from "@/lib/compatRouter";
 import { toast } from "react-toastify";
 import Link from "next/link";
@@ -91,18 +91,36 @@ const PayrollGetConfigs = (
     }, []);
 
     // Handle status toggle with confirmation
-    const handleStatusToggle = async (uid: string, currentStatus: string) => {
-        const newStatus = currentStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+    const handleStatusToggle = async (configOrUid: any, currentStatus?: string) => {
+        const config = typeof configOrUid === "object"
+            ? configOrUid
+            : data.find((c) => c.uid === configOrUid || c.id === configOrUid);
+
+        const uid = config?.uid || configOrUid;
+        const curStatus = currentStatus || config?.status;
+        const newStatus = curStatus === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+
+        // When trying to activate an INACTIVE configuration, check if the attached financial year is active
+        if (newStatus === "ACTIVE") {
+            const fy = config?.financial_year;
+            if (!fy || fy.status !== "ACTIVE") {
+                const fyName = fy?.name ? `"${fy.name}"` : "the attached financial year";
+                const fyStatus = fy?.status || "INACTIVE";
+                await swalInfo(
+                    `Cannot activate this configuration because ${fyName} is currently ${fyStatus}. Please activate the financial year first.`,
+                    "Financial Year Not Active"
+                );
+                return;
+            }
+        }
 
         const res = await fetch(`/api/payroll/periods?payroll_configuration_id=${encodeURIComponent(uid)}&status=OPEN`);
-        const data = await res.json();
-
-        console.log("Data:", data)
+        const periodData = await res.json();
 
         let confirmed = true;
-        if (newStatus === "INACTIVE" && data.success && data.count > 0) {
+        if (newStatus === "INACTIVE" && periodData.success && periodData.count > 0) {
             confirmed = await swalConfirm(
-                `Are you sure you want to deactivate this payroll configuration? There are ${data.count} OPEN periods already exist under this configuration.`,
+                `Are you sure you want to deactivate this payroll configuration? There are ${periodData.count} OPEN periods already exist under this configuration.`,
                 "Deactivate"
             );
         }
@@ -123,7 +141,11 @@ const PayrollGetConfigs = (
                     prev.map((c) => (c.uid === uid || c.id === uid ? { ...c, status: newStatus } : c))
                 );
             } else {
-                toast.error(result.message || "Failed to update status");
+                if (result.message && result.message.includes("financial year")) {
+                    await swalInfo(result.message, "Financial Year Not Active");
+                } else {
+                    toast.error(result.message || "Failed to update status");
+                }
             }
         } catch (err) {
             toast.error("An error occurred while updating status");
@@ -464,7 +486,7 @@ const PayrollGetConfigs = (
                                                                 <button
                                                                     type="button"
                                                                     disabled={togglingId === config.uid}
-                                                                    onClick={() => handleStatusToggle(config.uid, config.status)}
+                                                                    onClick={() => handleStatusToggle(config, config.status)}
                                                                     className={`
                                                                         relative w-[50px] h-[25px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner
                                                                         ${config.status === "ACTIVE" ? "bg-[#78c267]" : "bg-[#ef3519]"}
