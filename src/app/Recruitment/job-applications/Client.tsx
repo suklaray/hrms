@@ -83,6 +83,7 @@ interface Resume {
   preferredLocation?: string;
   aiModel?: string;
   parsingStatus?: string;
+  rejectionReason?: string | null;
 }
 
 interface Data {
@@ -120,6 +121,44 @@ export default function JobApplicationsClient({
   const [interviewTimeFrom, setInterviewTimeFrom] = useState("");
   const [interviewTimeTo, setInterviewTimeTo] = useState("");
   const [scheduling, setScheduling] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [rejectResume, setRejectResume] = useState<Resume | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectReasonError, setRejectReasonError] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+  const [viewReasonOpen, setViewReasonOpen] = useState(false);
+  const [viewReasonText, setViewReasonText] = useState("");
+  const [viewReasonName, setViewReasonName] = useState("");
+  const openRejectModal = (resume: Resume) => {
+    setRejectResume(resume);
+    setRejectReason("");
+    setRejectReasonError("");
+    setRejectOpen(true);
+  };
+
+  const closeRejectModal = () => {
+    setRejectOpen(false);
+    setRejectResume(null);
+    setRejectReason("");
+    setRejectReasonError("");
+  };
+
+  const confirmReject = async () => {
+    if (!rejectResume) return;
+    if (!rejectReason.trim()) {
+      setRejectReasonError("Rejection reason is required.");
+      return;
+    }
+    if (rejectReason.trim().length > 500) {
+      setRejectReasonError("Reason cannot exceed 500 characters.");
+      return;
+    }
+    setRejectReasonError("");
+    setRejecting(true);
+    await updateApplicationStatus(rejectResume.id, "Rejected", rejectReason.trim());
+    setRejecting(false);
+    closeRejectModal();
+  };
 
   const loadResumes = async () => {
     try {
@@ -134,7 +173,7 @@ export default function JobApplicationsClient({
     }
   };
 
-  const updateApplicationStatus = async (resumeId: number, status: string) => {
+  const updateApplicationStatus = async (resumeId: number, status: string, reason?: string) => {
     if (status === "Rejected" && !canReject) {
       toast.error("Permission denied: You cannot reject applications");
       return;
@@ -143,19 +182,30 @@ export default function JobApplicationsClient({
       toast.error("Permission denied: You cannot shortlist applications");
       return;
     }
+    if (status === "Rejected" && !reason?.trim()) {
+      toast.error("Rejection reason is required");
+      return;
+    }
 
     try {
       const response = await fetch("/api/recruitment/job-application/application-status", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeId, status }),
+        body: JSON.stringify({ resumeId, status, reason: reason?.trim() || undefined }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to update application status");
       setData((prev) => ({
         ...prev,
-        resumes: prev.resumes.map((r) => r.id === resumeId ? { ...r, applicationStatus: status } : r),
+        resumes: prev.resumes.map((r) =>
+          r.id === resumeId
+            ? { ...r, applicationStatus: status, rejectionReason: status === "Rejected" ? reason : null }
+            : r
+        ),
       }));
+      if (status === "Rejected") {
+        toast.success(result.mailSent ? "Application rejected & notification email sent" : "Application rejected (email could not be sent)");
+      }
     } catch (error) {
       toast.error((error as Error).message || "Failed to update application status");
     }
@@ -179,7 +229,7 @@ export default function JobApplicationsClient({
         ...prev,
         resumes: prev.resumes.map((r) => r.id === resume.id ? { ...r, applicationStatus: "Shortlisted" } : r),
       }));
-      toast.success("Resume shortlisted");
+      toast.success(result.mailSent ? "Candidate shortlisted & notification email sent" : "Candidate shortlisted (email could not be sent)");
     } catch (error) {
       toast.error((error as Error).message || "Failed to shortlist candidate");
     }
@@ -233,7 +283,7 @@ export default function JobApplicationsClient({
             : r
         ),
       }));
-      toast.success("Interview scheduled successfully");
+      toast.success(result.mailSent ? "Interview scheduled & notification email sent" : "Interview scheduled (email could not be sent)");
       closeSchedule();
     } catch (error) {
       toast.error((error as Error).message || "Failed to schedule interview");
@@ -575,11 +625,28 @@ export default function JobApplicationsClient({
                                 ) : null}
                               </>
                             ) : resume.applicationStatus === "Rejected" ? (
-                              <span className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg">Rejected</span>
+                              <div className="flex flex-col gap-1">
+                                <span className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg w-fit">Rejected</span>
+                                {resume.rejectionReason && (
+                                  <button
+                                    onClick={() => { setViewReasonText(resume.rejectionReason!); setViewReasonName(resume.name); setViewReasonOpen(true); }}
+                                    className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2 text-left px-1"
+                                  >
+                                    View reason
+                                  </button>
+                                )}
+                              </div>
                             ) : (
                               <>
                                 {canShortlist && <button onClick={() => shortlistCandidate(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg">Shortlist</button>}
-                                {canReject && <button onClick={() => updateApplicationStatus(resume.id, "Rejected")} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg">Reject</button>}
+                                    {canReject && (
+                                      <button
+                                        onClick={() => openRejectModal(resume)}
+                                        className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg"
+                                      >
+                                        Reject
+                                      </button>
+                                    )}
                               </>
                             )}
                           </div>
@@ -687,6 +754,88 @@ export default function JobApplicationsClient({
               <button onClick={closeSchedule} disabled={scheduling} className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={scheduleInterview} disabled={scheduling || !interviewDate || !interviewTimeFrom || !interviewTimeTo} className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-gray-300">
                 {scheduling ? "Scheduling..." : "Schedule Interview"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {rejectOpen && rejectResume && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-red-600">Reject application</p>
+                <h2 className="text-xl font-bold text-gray-900 mt-1">Reject Candidate</h2>
+                <p className="text-sm text-gray-600 mt-2">{rejectResume.name}</p>
+                <p className="text-xs text-gray-400">{rejectResume.email}</p>
+              </div>
+              <button onClick={closeRejectModal} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Reason for rejection <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => { setRejectReason(e.target.value); if (rejectReasonError) setRejectReasonError(""); }}
+                rows={4}
+                maxLength={500}
+                placeholder="e.g. Does not meet the required experience for this role."
+                className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm focus:outline-none focus:ring-2 resize-none ${
+                  rejectReasonError ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-red-200"
+                }`}
+              />
+              <div className="flex justify-between items-center mt-1">
+                {rejectReasonError
+                  ? <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{rejectReasonError}</p>
+                  : <span />}
+                <p className={`text-xs ml-auto ${rejectReason.length >= 450 ? rejectReason.length >= 500 ? "text-red-500 font-semibold" : "text-orange-500" : "text-gray-400"}`}>
+                  {rejectReason.length}/500
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={closeRejectModal}
+                disabled={rejecting}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReject}
+                disabled={rejecting || !rejectReason.trim()}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-gray-300"
+              >
+                {rejecting ? "Rejecting..." : "Confirm Rejection"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {viewReasonOpen && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-red-600">Rejection reason</p>
+                <h2 className="text-lg font-bold text-gray-900 mt-1">{viewReasonName}</h2>
+              </div>
+              <button onClick={() => setViewReasonOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-700 bg-red-50 border border-red-100 rounded-xl p-4 leading-relaxed whitespace-pre-wrap">
+              {viewReasonText}
+            </p>
+            <div className="flex justify-end mt-5">
+              <button
+                onClick={() => setViewReasonOpen(false)}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"
+              >
+                Close
               </button>
             </div>
           </div>

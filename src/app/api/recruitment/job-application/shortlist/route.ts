@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { sendShortlistMail } from "@/lib/recruitmentMail";
 
 export async function POST(req: NextRequest) {
   const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST]);
@@ -65,9 +66,13 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      let mailSent = false;
+      try { await sendShortlistMail(resume.email || "", resume.full_name || "Applicant"); mailSent = true; } catch {}
+
       return NextResponse.json({
         success: true,
         message: "Candidate is already shortlisted",
+        mailSent,
         candidate: existingCandidate,
       });
     }
@@ -117,9 +122,13 @@ export async function POST(req: NextRequest) {
       };
     });
 
+    let mailSent = false;
+    try { await sendShortlistMail(resume.email || "", resume.full_name || "Applicant"); mailSent = true; } catch {}
+
     return NextResponse.json({
       success: true,
       message: "Candidate shortlisted successfully",
+      mailSent,
       candidate: result.candidate,
       resume: result.updatedResume,
     });

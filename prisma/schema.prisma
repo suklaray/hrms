@@ -1077,6 +1077,7 @@ model parsed_resumes {
   parser_version     String?
   ai_model           String?
   application_status String   @default("Waiting")
+  rejection_reason   String?  @db.VarChar(500)
   approval_status    String   @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
   approved_by        String?
   approved_at        DateTime?

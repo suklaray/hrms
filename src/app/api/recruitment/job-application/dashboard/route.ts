@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSIONS } from "@/rbac/permissions";
@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
         id: resume.id,
         name: resume.full_name || "Unnamed applicant",
         email: resume.email || "No email",
+        application_status: true,
         mobileNumber: resume.mobile_number,
         alternatePhone: resume.alternate_phone,
         currentAddress: resume.current_address,
@@ -104,6 +105,7 @@ export async function GET(req: NextRequest) {
         },
         // APPLICATION STATUS
         applicationStatus: resume.application_status,
+        rejectionReason: resume.rejection_reason ?? null,
 
         // INTERVIEW DETAILS
         interviewScheduled: !!resume.candidate?.interview_date,
