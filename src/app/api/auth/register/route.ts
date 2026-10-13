@@ -128,7 +128,18 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
     if (existingCandidate || existingEmployee) {
       return NextResponse.json({ error: "ID generation conflict. Please try again." }, { status: 500 });
     }
+    const company = await prisma.company.findFirst({
+      select: {
+        uid: true,
+      },
+    });
 
+    if (!company) {
+      return NextResponse.json(
+        { error: "Company not found" },
+        { status: 404 }
+      );
+    }
     await prisma.users.create({
       data: {
         empid,
@@ -145,6 +156,7 @@ export async function POST(req: NextRequest, context?: { params?: Promise<any> }
         employee_type,
         candidate_id: candidateId,
         roleId: parsedRbacRoleId,
+        company_id:company.uid,
       },
     });
 

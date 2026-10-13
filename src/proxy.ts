@@ -75,6 +75,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico") ||
     pathname.startsWith("/images") ||
+    pathname.startsWith("/uploads") ||
     pathname.startsWith("/public") ||
     pathname.startsWith("/api")
   ) {

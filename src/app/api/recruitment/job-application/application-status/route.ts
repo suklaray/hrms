@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { sendRejectionMail } from "@/lib/recruitmentMail";
 
 type ResumeResponse = {
   id: number;
@@ -50,10 +51,14 @@ export async function PATCH(
   req: NextRequest
 ): Promise<NextResponse<ResumeResponse | ErrorResponse>> {
   try {
-    const { resumeId, status } = await req.json();
+    const { resumeId, status, reason } = await req.json();
 
     if (!resumeId || !status) {
       return NextResponse.json({ error: "resumeId and status required" }, { status: 400 });
+    }
+
+    if (status === "Rejected" && !reason?.trim()) {
+      return NextResponse.json({ error: "Rejection reason is required" }, { status: 400 });
     }
 
     const permission =
@@ -71,11 +76,19 @@ export async function PATCH(
 
     const updated = await prisma.parsed_resumes.update({
       where: { id: Number(resumeId) },
-      data: { application_status: status },
-      select: { id: true, full_name: true, email: true, application_status: true },
+      data: {
+        application_status: status,
+        ...(status === "Rejected" ? { rejection_reason: reason.trim() } : { rejection_reason: null }),
+      },
+      select: { id: true, full_name: true, email: true, application_status: true, rejection_reason: true },
     });
 
-    return NextResponse.json(updated, { status: 200 });
+    let mailSent = false;
+    if (status === "Rejected") {
+      try { await sendRejectionMail(updated.email || "", updated.full_name || "Applicant", reason.trim()); mailSent = true; } catch {}
+    }
+
+    return NextResponse.json({ ...updated, mailSent }, { status: 200 });
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 });

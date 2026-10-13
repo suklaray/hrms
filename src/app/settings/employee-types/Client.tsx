@@ -120,8 +120,8 @@ function EmployeeTypes() {
     }
   };
 
-  const handleDelete = async (id, name) => {
-    const confirmed = await swalConfirm(`Delete "${name}"? This will unlink all assigned users.`, "Delete");
+  const handleDelete = async (id, name,employeCount) => {
+    const confirmed = await swalConfirm(`Delete "${name}"? This will unlink ${employeCount} users.`, "Delete");
     if (!confirmed) return;
 
     try {
@@ -146,7 +146,7 @@ function EmployeeTypes() {
 
   return (
     <>
-      <Head><title>Employee Types - HRMS</title></Head>
+      <Head><title>Employee Role - HRMS</title></Head>
       <div className="flex min-h-screen bg-gray-50">
         <div className="flex-1 overflow-auto p-6">
           <div className="mx-auto">
@@ -154,58 +154,66 @@ function EmployeeTypes() {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Employee Types</h1>
-                <p className="text-gray-500 text-sm mt-1">Manage roles and their permissions</p>
+                <h1 className="text-2xl font-bold text-gray-900">Role Management</h1>
+                <p className="text-gray-500 text-sm mt-1">Define roles and control exactly what each user can access across the system.</p>
               </div>
               {canCreateRole && <button
                 onClick={() => setShowForm(!showForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition cursor-pointer"
               >
                 <Plus size={16} />
-                New Employee Type
+                Create Role
               </button>}
             </div>
 
             {/* Create Form */}
             {showForm && (
               <div className="bg-white shadow-sm border border-gray-200 p-6 mb-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Employee Type</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Employee Role</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                      <input
-                        type="text"
-                        value={form.name}
-                        onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                        placeholder="e.g. Senior Developer"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        required
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Role Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={form.name}
+                          onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                          placeholder="e.g. Senior Developer"
+                          className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Status
+                        </label>
+                        <select
+                          value={form.status}
+                          onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                          className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer"
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <input
-                        type="text"
+                    <div className="flex flex-col">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Description <span className="text-gray-400 font-normal">(optional)</span>
+                      </label>
+                      <textarea
                         value={form.description}
                         onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                        placeholder="Optional description"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Optional description of this role..."
+                        className="w-full flex-1 border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition resize-none min-h-[120px]"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      <select
-                        value={form.status}
-                        onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="md:col-span-3 relative">
+                  </div> 
+                    <div className="md:col-span-3 relative">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Parent Role <span className="text-gray-400 font-normal">(optional — for hierarchy)</span>
                     </label>
@@ -375,13 +383,13 @@ function EmployeeTypes() {
             {/* Roles Table */}
             <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900">Existing Employee Types</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Existing Employee Role</h2>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      {['Name', 'Description', 'Status','Parent Role','Employees', 'Permissions', 'Created', 'Actions'].map((h) => (
+                      {['Name', 'Description', 'Status', 'Parent Role', 'Employees', 'Permissions', 'Created', 'Actions'].map((h) => (
                         <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           {h}
                         </th>
@@ -459,7 +467,7 @@ function EmployeeTypes() {
                               )}
                               {canDeleteRole && role.type !== 'SUPER_ADMIN' && (
                                 <button
-                                  onClick={() => handleDelete(role.id, role.name)}
+                                  onClick={() => handleDelete(role.id, role.name,role._count?.users)}
                                   className="p-1.5 text-red-600 hover:bg-red-50 rounded transition cursor-pointer"
                                   title="Delete"
                                 >

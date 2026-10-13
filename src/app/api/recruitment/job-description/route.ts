@@ -22,6 +22,7 @@ interface JobDescriptionBody {
   benefits?: string;
   deadline?: string;
   hiring_manager?: string;
+  hiring_manager_id?: string;
   interview_process?: string;
   keywords?: string;
   status?: string;
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
   const {
     title, department, employment_type, work_mode, location, openings,
     experience, education, required_skills, preferred_skills, responsibilities,
-    summary, salary_min, salary_max, benefits, deadline, hiring_manager,
+    summary, salary_min, salary_max, benefits, deadline, hiring_manager_id,
     interview_process, keywords, status, auditUid,
   } = body;
 
@@ -78,6 +79,16 @@ export async function POST(request: NextRequest) {
 
   if (!deadline)
     return NextResponse.json({ message: "Application deadline is required" }, { status: 400 });
+
+  const hiringManagerUser = hiring_manager_id
+    ? await prisma.users.findUnique({
+        where: { empid: hiring_manager_id },
+        select: { empid: true, name: true },
+      })
+    : null;
+  if (!hiringManagerUser) {
+    return NextResponse.json({ message: "Select a valid hiring manager" }, { status: 400 });
+  }
 
   if (new Date(deadline) <= new Date())
     return NextResponse.json({ message: "Deadline must be a future date" }, { status: 400 });
@@ -127,7 +138,8 @@ export async function POST(request: NextRequest) {
         salary_max: salary_max || null,
         benefits: benefits || null,
         deadline: new Date(deadline),
-        hiring_manager,
+        hiring_manager: hiringManagerUser.name,
+        hiring_manager_id: hiringManagerUser.empid,
         interview_process: interview_process || null,
         keywords: keywords || null,
         status: status || "Draft",

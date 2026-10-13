@@ -11,6 +11,7 @@ interface HRUser {
   empid: string;
   name: string;
   role?: string;
+  rbacRole?: { name?: string | null } | null;
 }
 
 interface JobDescription {
@@ -32,6 +33,7 @@ interface JobDescription {
   benefits?: string;
   deadline: string;
   hiring_manager?: string;
+  hiring_manager_id?: string | null;
   interview_process?: string;
   keywords?: string;
   status: string;
@@ -153,6 +155,7 @@ export default function EditJobDescriptionClient({
       .then((data: JobDescription) => {
         setForm({
           ...data,
+          hiring_manager_id: data.hiring_manager_id || "",
           deadline: data.deadline
             ? new Date(data.deadline).toISOString().split("T")[0]
             : "",
@@ -174,7 +177,9 @@ export default function EditJobDescriptionClient({
 
         setHrUsers(
           users.filter(
-            (user) => user.role?.toLowerCase() === "hr"
+            (user) =>
+              user.role?.toLowerCase() === "hr" ||
+              /\bhr\b/i.test(user.rbacRole?.name || "")
           )
         );
       });
@@ -211,7 +216,11 @@ export default function EditJobDescriptionClient({
       const response = await fetch(`/api/recruitment/job-description/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, ...(auditUid ? { auditUid } : {}) }),
+        body: JSON.stringify({
+          ...form,
+          hiring_manager_id: form.hiring_manager_id,
+          ...(auditUid ? { auditUid } : {}),
+        }),
       });
 
       const data = await response.json();
@@ -639,17 +648,34 @@ export default function EditJobDescriptionClient({
                   <Label required>Hiring Manager</Label>
 
                   <Select
-                    value={form.hiring_manager || ""}
-                    onChange={set("hiring_manager")}
+                    value={
+                      form.hiring_manager_id ||
+                      hrUsers.find((user) => user.name === form.hiring_manager)?.empid ||
+                      ""
+                    }
+                    onChange={(event) => {
+                      const hiringManagerId = event.target.value;
+                      const selectedManager = hrUsers.find((user) => user.empid === hiringManagerId);
+                      setForm((current) =>
+                        current
+                          ? {
+                              ...current,
+                              hiring_manager_id: hiringManagerId,
+                              hiring_manager: selectedManager?.name || current.hiring_manager,
+                            }
+                          : current
+                      );
+                      setSaved(false);
+                    }}
                   >
                     <option value="">
                       Select HR hiring manager
                     </option>
 
                     {form.hiring_manager &&
+                      !form.hiring_manager_id &&
                       !hrUsers.some(
-                        (user) =>
-                          user.name === form.hiring_manager
+                        (user) => user.name === form.hiring_manager
                       ) && (
                         <option value={form.hiring_manager}>
                           {form.hiring_manager}
@@ -659,7 +685,7 @@ export default function EditJobDescriptionClient({
                     {hrUsers.map((user) => (
                       <option
                         key={user.empid}
-                        value={user.name}
+                        value={user.empid}
                       >
                         {user.name}
                       </option>

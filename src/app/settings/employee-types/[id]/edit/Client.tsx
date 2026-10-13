@@ -133,7 +133,7 @@ function EditEmployeeType() {
 
   return (
     <>
-      <Head><title>Edit {form.name} - Employee Type</title></Head>
+      <Head><title>Edit {form.name} - Employee Role</title></Head>
       <div className="flex min-h-screen bg-gray-50">
         <div className="flex-1 overflow-auto p-6">
           <div className="mx-auto">
@@ -143,7 +143,7 @@ function EditEmployeeType() {
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 leading-tight">
-                    Edit {form.name} - Employee Type
+                    Edit {form.name} - Employee Role
                   </h1>
                   <p className="text-sm text-gray-600 mt-1">
                     Update role details and permissions
@@ -162,38 +162,48 @@ function EditEmployeeType() {
               {/* Basic Info */}
               <div className="bg-white shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                    <input
-                      type="text"
-                      value={form.name}
-                      onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      required
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Role Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={form.name}
+                        onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                        placeholder="e.g. Senior Developer"
+                        className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Status
+                      </label>
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                        className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition cursor-pointer"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <input
-                      type="text"
+                  <div className="flex flex-col">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <textarea
                       value={form.description}
                       onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Optional description of this role..."
+                      className="w-full flex-1 border border-gray-300 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition resize-none min-h-[120px]"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select
-                      value={form.status}
-                      onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-                </div>
+                </div> 
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1 mt-3">
                     Parent Role <span className="text-gray-400 font-normal">(optional — for hierarchy)</span>

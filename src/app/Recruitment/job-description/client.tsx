@@ -306,43 +306,37 @@ export default function JobDescriptions({
   // job id -> pending for update approvals (existing jobs being published via edit)
   const [pendingUpdateIds, setPendingUpdateIds] = useState<Set<string>>(new Set());
 
-  const executeClose = async (jobId: number, auditUid: string) => {
-    try {
-      const response = await fetch(
-        `/api/recruitment/job-description/${jobId}`,
-        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ auditUid }) }
-      );
-      const data = await response.json();
-      if (response.ok) {
-        setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status: "Closed" } : j));
-        setPendingCloseAudits((prev) => { const next = { ...prev }; delete next[jobId]; return next; });
-        toast.success("Job description closed successfully.");
-      } else {
-        toast.error(data.message || "Failed to close job description.");
-        setPendingCloseAudits((prev) => { const next = { ...prev }; delete next[jobId]; return next; });
-      }
-    } catch {
-      toast.error("Failed to close job description.");
-    }
-  };
-
   const pollCloseApproval = (jobId: number, auditUid: string) => {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/audit/logs?page=1&limit=10&action=jd.close`);
+        const res = await fetch(`/api/audit/logs/${auditUid}/status`);
         if (!res.ok) return;
-        const data = await res.json();
-        const log = data.data?.find((l: any) => l.uid === auditUid);
-        if (!log) return;
-        if (log.currentStatus === "APPROVED") {
+        const { currentStatus } = await res.json();
+        if (currentStatus === "APPROVED") {
           clearInterval(interval);
-          executeClose(jobId, auditUid);
-        } else if (log.currentStatus === "REJECTED") {
+          setJobs((prev) => prev.map((job) => job.id === jobId ? { ...job, status: "Closed" } : job));
+          setPendingCloseAudits((prev) => {
+            const next = { ...prev };
+            delete next[jobId];
+            return next;
+          });
+          fetch("/api/recruitment/job-description")
+            .then(async (response) => {
+              if (!response.ok) throw new Error("Failed to refresh job descriptions");
+              const jobs = await response.json();
+              if (!Array.isArray(jobs)) throw new Error("Invalid job description response");
+              setJobs(jobs);
+            })
+            .catch(() => toast.error("Job was closed, but the job list could not be refreshed."));
+          toast.success("Job description closed successfully.");
+        } else if (currentStatus === "REJECTED") {
           clearInterval(interval);
           setPendingCloseAudits((prev) => { const next = { ...prev }; delete next[jobId]; return next; });
           toast.error("Close request was rejected by the auditor.");
         }
-      } catch {}
+      } catch (error) {
+        console.error("Failed to check job close approval status:", error);
+      }
     }, 5000);
   };
 

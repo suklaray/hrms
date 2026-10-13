@@ -3,8 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/prisma';
 import { sendNotificationToUser } from '@/lib/notificationEmitter';
-
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 export async function POST(req: NextRequest) {
+   const { error } = await checkAuth(req, [
+    PERMISSIONS.DOCUMENT.SUBMIT,
+    PERMISSIONS.DOCUMENT.VIEW_OWN,
+  ]);
+  if (error) return error;
   try {
     const formData = await req.formData();
     const getValue = (key: string) => (formData.get(key) as string) || '';

@@ -13,7 +13,7 @@ interface Department {
 }
 
 interface HRUser {
-  rbacRole: any;
+  rbacRole?: { name?: string | null } | null;
   empid: string;
   name: string;
   role?: string;
@@ -37,6 +37,7 @@ interface JobForm {
   benefits: string;
   deadline: string;
   hiring_manager: string;
+  hiring_manager_id: string;
   interview_process: string;
   keywords: string;
 }
@@ -161,6 +162,7 @@ export default function AddJobDescription({
     benefits: "",
     deadline: "",
     hiring_manager: "",
+    hiring_manager_id: "",
     interview_process: "",
     keywords: "",
   });
@@ -277,7 +279,7 @@ export default function AddJobDescription({
           : [];
         const isHrRole = (role?: string) => !!role && /\bhr\b/i.test(role);
         setHrUsers(
-          users.filter((user: HRUser) => isHrRole(user.rbacRole?.name))
+          users.filter((user: HRUser) => isHrRole(user.rbacRole?.name || user.role))
         );
       })
       .catch(() => setHrUsers([]));
@@ -625,8 +627,16 @@ export default function AddJobDescription({
                   </Label>
 
                   <Select
-                    value={form.hiring_manager}
-                    onChange={set("hiring_manager")}
+                    value={form.hiring_manager_id}
+                    onChange={(event) => {
+                      const hiringManagerId = event.target.value;
+                      const selectedManager = hrUsers.find((user) => user.empid === hiringManagerId);
+                      setForm((current) => ({
+                        ...current,
+                        hiring_manager_id: hiringManagerId,
+                        hiring_manager: selectedManager?.name || "",
+                      }));
+                    }}
                   >
                     <option value="">
                       Select HR hiring manager
@@ -635,7 +645,7 @@ export default function AddJobDescription({
                     {hrUsers.map((user) => (
                       <option
                         key={user.empid}
-                        value={user.name}
+                        value={user.empid}
                       >
                         {user.name}
                       </option>

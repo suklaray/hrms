@@ -10,7 +10,9 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
 
   const canViewRoles = await checkPermission(user, PERMISSION_KEYS.SETTINGS_ROLE_VIEW);
   const canAssignRoles = await checkPermission(user, PERMISSION_KEYS.RBAC_ROLE_ASSIGN);
-  if (!canViewRoles && !canAssignRoles) {
+  const canCreateEmployee = await checkPermission(user, PERMISSION_KEYS.EMPLOYEE_CREATE);
+
+  if (!canViewRoles && !canAssignRoles && !canCreateEmployee) {
     return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
   }
 
