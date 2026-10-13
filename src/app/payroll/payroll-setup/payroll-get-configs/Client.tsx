@@ -342,7 +342,7 @@ const PayrollGetConfigs = (
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50/80">
                                     <tr>
-                                        {["#", "Company", "Region & Currency", "Payroll Cycle", "Salary Payment", "Financial Year", "Status", "Approval", "Actions"].map((h) => (
+                                        {["#", "Company", "Region & Currency", "Payroll Cycle", "Salary Payment", "Financial Year", "Status", "Actions"].map((h) => (
                                             <th
                                                 key={h}
                                                 className="px-6 py-3 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider"
@@ -500,12 +500,12 @@ const PayrollGetConfigs = (
                                                     </td>
 
                                                     {/* Approval */}
-                                                    <td className="px-6 py-3.5 whitespace-nowrap">
+                                                    {/* <td className="px-6 py-3.5 whitespace-nowrap">
                                                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${config.approval === "APPROVED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : config.approval === "PENDING" ? "bg-yellow-50 text-yellow-700 border border-yellow-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
                                                             <span className={`w-1.5 h-1.5 rounded-full ${config.approval === "APPROVED" ? "bg-emerald-500" : config.approval === "PENDING" ? "bg-yellow-500" : "bg-red-500"}`} />
                                                             {config.approval}
                                                         </span>
-                                                    </td>
+                                                    </td> */}
 
                                                     {/* Actions */}
                                                     <td className="px-6 py-3.5 whitespace-nowrap">

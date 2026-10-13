@@ -1,30 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import jwt from "jsonwebtoken";
-import { checkPermission } from "@/lib/rbac";
+import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  const token = req.cookies.get("token")?.value;
-  if (!token) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  let decoded: any;
-  try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-  } catch {
-    return NextResponse.json({ message: "Invalid token" }, { status: 401 });
-  }
-
-  if (!(await checkPermission(decoded, PERMISSION_KEYS.EMPLOYEE_EDIT))) {
-    return NextResponse.json(
-      { message: "Forbidden: insufficient permissions" },
-      { status: 403 }
-    );
-  }
 
   const { id } = await context.params;
+
+  const auth = await checkAuth(req, [
+    PERMISSION_KEYS.EMPLOYEE_VIEW,
+    PERMISSION_KEYS.EMPLOYEE_EDIT,
+    PERMISSION_KEYS.COMPLIANCE_REQUEST_RESUBMISSION
+  ]);
+  if ("error" in auth) return auth.error;
 
   try {
     const user = await prisma.users.findUnique({

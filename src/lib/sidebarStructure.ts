@@ -220,7 +220,7 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
       { title: "Document Center", route: "/compliance/documentCenter", permission: PERMISSIONS.COMPLIANCE.VIEW_DOCUMENTS },
     ],
   },
-        
+
   {
     name: "Audit Logs",
     icon: Logs,
@@ -286,12 +286,13 @@ export const SIDEBAR_STRUCTURE: SidebarItem[] = [
       PERMISSIONS.TASK.MY,
       PERMISSIONS.REPORT.SUBMIT,
       PERMISSIONS.REPORT.VIEW_OWN,
+      PERMISSIONS.PAYSLIP.VIEW_OWN,
     ],
     children: [
       { title: "My profile", route: "/settings/profile", permission: PERMISSIONS.SETTINGS.PROFILE },
       { title: "My Attendance", route: "/attendance/my-attendance", permission: PERMISSIONS.ATTENDANCE.MY },
       { title: "Leave Request", route: "/leave-request/leave-request", permission: [PERMISSIONS.LEAVE.REQUEST, PERMISSIONS.LEAVE.VIEW_OWN] },
-      { title: "Payslip & Documents", route: "/payslip/payslip-lists", permission: PERMISSIONS.PAYSLIP.VIEW },
+      { title: "Payslip & Documents", route: "/payslip/my-payslip", permission: PERMISSIONS.PAYSLIP.VIEW_OWN },
       {
         title: "My Tasks",
         route: "/task-management/user-task",
