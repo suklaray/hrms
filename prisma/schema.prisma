@@ -583,6 +583,14 @@ model payroll {
   generated_at DateTime @default(now())
   payslip_url String?
 
+  callback_status String? @default("NONE")
+  callback_reason String? @db.Text
+  callback_rejection_note String? @db.Text
+  callback_requested_by String?
+  callback_requested_at DateTime?
+  callback_reviewed_by String?
+  callback_reviewed_at DateTime?
+
   components payroll_components[]
   
   @@unique([period_id, empid])

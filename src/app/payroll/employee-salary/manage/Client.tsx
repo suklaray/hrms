@@ -43,6 +43,9 @@ import {
     Building2,
     Hash,
     Briefcase,
+    Lock,
+    MessageSquare,
+    Send,
 } from "lucide-react";
 
 interface EmployeeSalaryManageProps {
@@ -105,11 +108,19 @@ interface PayrollRecord {
     days_absent: number;
     overtime_hours: number;
     overtime_rate_perhour: number | string;
+    bonus_amount?: number | string;
     weekend: number;
     salary_payment_date: string;
     total_payable_amount: number | string;
     status: "PENDING" | "DRAFT" | "GENERATED" | "INITIATED" | "DISBURSED" | "REJECTED";
     generated_at: string;
+    callback_status?: string | null;
+    callback_reason?: string | null;
+    callback_rejection_note?: string | null;
+    callback_requested_by?: string | null;
+    callback_requested_at?: string | null;
+    callback_reviewed_by?: string | null;
+    callback_reviewed_at?: string | null;
     payslip_url?: string | null;
     components?: PayrollComponent[];
     company?: {
@@ -212,7 +223,7 @@ const PAYROLL_STATUS_MAP: Record<
     },
 };
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, callbackStatus }: { status: string; callbackStatus?: string | null }) {
     const config = PAYROLL_STATUS_MAP[status] || {
         label: status || "Unknown",
         dot: "bg-gray-400",
@@ -222,30 +233,281 @@ function StatusBadge({ status }: { status: string }) {
     };
 
     return (
-        <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border select-none ${config.bg} ${config.text} ${config.border}`}
-        >
-            <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-            <span>{config.label}</span>
-        </span>
+        <div className="flex flex-col items-center justify-center gap-1">
+            <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border select-none ${config.bg} ${config.text} ${config.border}`}
+            >
+                <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+                <span>{config.label}</span>
+            </span>
+            {callbackStatus === "REQUESTED" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                    <span>Call Back Requested</span>
+                </span>
+            )}
+            {callbackStatus === "APPROVED" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                    <span>Call Back Approved</span>
+                </span>
+            )}
+            {callbackStatus === "REJECTED" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                    <span>Call Back Rejected</span>
+                </span>
+            )}
+        </div>
     );
 }
 
 export default function EmployeeSalaryManage({ user, permissions }: EmployeeSalaryManageProps) {
     // RBAC Permission Checks
-    const userPerms = useMemo(() => new Set(Array.isArray(permissions) ? permissions : []), [permissions]);
-    const can = useCallback(
-        (permKey: string): boolean => {
-            if (!user) return false;
-            if (isSuperAdmin(user)) return true;
-            return userPerms.has(permKey);
-        },
-        [user, userPerms]
+    const [currentUser, setCurrentUser] = useState(user);
+    const [userPerms, setUserPerms] = useState<Set<string>>(
+        new Set(Array.isArray(permissions) ? permissions : [])
     );
 
+    useEffect(() => {
+        fetch("/api/auth/me")
+            .then((res) => res.json())
+            .then((d) => {
+                if (d?.user) {
+                    setCurrentUser({
+                        ...d.user,
+                        isSuperAdmin: Boolean(d.isSuperAdmin || d.user?.isSuperAdmin),
+                    });
+                }
+                if (Array.isArray(d?.permissions)) {
+                    setUserPerms(new Set(d.permissions));
+                }
+            })
+            .catch(() => { });
+    }, []);
+
+    const isUserSuperAdmin = useMemo(() => {
+        if (!currentUser) return false;
+        if ((currentUser as any).isSuperAdmin === true) return true;
+        const roleStr = String(currentUser.role || "").toLowerCase();
+        if (roleStr === "superadmin" || roleStr === "super_admin") return true;
+        if (currentUser.rbacRole?.type === "SUPER_ADMIN" || currentUser.rbacRole?.type === "super_admin") return true;
+        const rbacName = String(currentUser.rbacRole?.name || "").toLowerCase();
+        if (rbacName === "super admin" || rbacName === "superadmin") return true;
+        return isSuperAdmin(currentUser);
+    }, [currentUser]);
+
+    const can = useCallback(
+        (permKey: string): boolean => {
+            if (!currentUser) return false;
+            if (isUserSuperAdmin) return true;
+            if (userPerms.has(permKey)) return true;
+            if (userPerms.has(permKey.toLowerCase())) return true;
+            if (userPerms.has(permKey.toUpperCase())) return true;
+            const extraPerms = (currentUser as any).permissions;
+            if (Array.isArray(extraPerms)) {
+                if (
+                    extraPerms.includes(permKey) ||
+                    extraPerms.includes(permKey.toLowerCase())
+                ) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        [currentUser, isUserSuperAdmin, userPerms]
+    );
+
+    const canGenerate = can(PERMISSION_KEYS.PAYSLIP_GENERATE);
     const canInitiate = can(PERMISSION_KEYS.PAYSLIP_INITIATE);
     const canView = can(PERMISSION_KEYS.PAYSLIP_VIEW);
     const canDispatch = can(PERMISSION_KEYS.PAYSLIP_DISBURSED);
+
+    // Call Back Modal States
+    const [callbackModal, setCallbackModal] = useState<{
+        isOpen: boolean;
+        action: "REQUEST" | "RE_REQUEST";
+        payrollUid: string;
+        empid: string;
+        employeeName: string;
+        previousRejectNote?: string | null;
+    } | null>(null);
+    const [callbackReasonInput, setCallbackReasonInput] = useState<string>("");
+    const [submittingCallback, setSubmittingCallback] = useState<boolean>(false);
+
+    const [rejectModal, setRejectModal] = useState<{
+        isOpen: boolean;
+        payrollUid: string;
+        empid: string;
+        employeeName: string;
+        requestReason?: string | null;
+    } | null>(null);
+    const [rejectionNoteInput, setRejectionNoteInput] = useState<string>("");
+    const [submittingReject, setSubmittingReject] = useState<boolean>(false);
+
+    const [approvingUids, setApprovingUids] = useState<Record<string, boolean>>({});
+
+    // 1. Approve Call Back (Person 2 - Checker / Initiator)
+    const handleApproveCallback = async (payrollUid: string, empid: string, employeeName: string) => {
+        try {
+            setApprovingUids((prev) => ({ ...prev, [payrollUid]: true }));
+            const res = await fetch("/api/payslip/callback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "APPROVE",
+                    uid: payrollUid,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                toast.success(data.message || `Call back approved for ${employeeName}`);
+                setPayrolls((prev) =>
+                    prev.map((p) =>
+                        p.uid === payrollUid
+                            ? { ...p, callback_status: "APPROVED" }
+                            : p
+                    )
+                );
+                setDetailedRecords((prev) => ({
+                    ...prev,
+                    [payrollUid]: prev[payrollUid]
+                        ? { ...prev[payrollUid], callback_status: "APPROVED" }
+                        : prev[payrollUid],
+                }));
+            } else {
+                toast.error(data.message || "Failed to approve call back");
+            }
+        } catch (err: unknown) {
+            console.error("Error approving call back:", err);
+            toast.error("An error occurred while approving call back");
+        } finally {
+            setApprovingUids((prev) => ({ ...prev, [payrollUid]: false }));
+        }
+    };
+
+    // 2. Reject Call Back Modal & Action (Person 2 - Checker / Initiator)
+    const handleOpenRejectModal = (
+        payrollUid: string,
+        empid: string,
+        employeeName: string,
+        requestReason?: string | null
+    ) => {
+        setRejectModal({
+            isOpen: true,
+            payrollUid,
+            empid,
+            employeeName,
+            requestReason,
+        });
+        setRejectionNoteInput("");
+    };
+
+    const submitCallbackRejection = async () => {
+        if (!rejectModal) return;
+        const { payrollUid, employeeName } = rejectModal;
+        if (!rejectionNoteInput.trim()) {
+            toast.error("Please provide a reason note for rejecting the call back request.");
+            return;
+        }
+        try {
+            setSubmittingReject(true);
+            const res = await fetch("/api/payslip/callback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "REJECT",
+                    uid: payrollUid,
+                    rejection_note: rejectionNoteInput.trim(),
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                toast.success(data.message || `Call back rejected for ${employeeName}`);
+                const note = rejectionNoteInput.trim();
+                setPayrolls((prev) =>
+                    prev.map((p) =>
+                        p.uid === payrollUid
+                            ? { ...p, callback_status: "REJECTED", callback_rejection_note: note }
+                            : p
+                    )
+                );
+                setDetailedRecords((prev) => ({
+                    ...prev,
+                    [payrollUid]: prev[payrollUid]
+                        ? { ...prev[payrollUid], callback_status: "REJECTED", callback_rejection_note: note }
+                        : prev[payrollUid],
+                }));
+                setRejectModal(null);
+            } else {
+                toast.error(data.message || "Failed to reject call back");
+            }
+        } catch (err: unknown) {
+            console.error("Error rejecting call back:", err);
+            toast.error("An error occurred while rejecting call back");
+        } finally {
+            setSubmittingReject(false);
+        }
+    };
+
+    // 3. Request Call Back Modal & Action (Person 1 - Maker / Generator)
+    const handleOpenCallbackModal = (
+        action: "REQUEST" | "RE_REQUEST",
+        payrollUid: string,
+        empid: string,
+        employeeName: string,
+        previousRejectNote?: string | null
+    ) => {
+        setCallbackModal({
+            isOpen: true,
+            action,
+            payrollUid,
+            empid,
+            employeeName,
+            previousRejectNote,
+        });
+        setCallbackReasonInput("");
+    };
+
+    const submitCallbackRequest = async () => {
+        if (!callbackModal) return;
+        const { action, payrollUid, employeeName } = callbackModal;
+        try {
+            setSubmittingCallback(true);
+            const res = await fetch("/api/payslip/callback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action,
+                    uid: payrollUid,
+                    reason: callbackReasonInput.trim() || undefined,
+                }),
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                toast.success(data.message || `Call back requested for ${employeeName}`);
+                const reasonText = callbackReasonInput.trim() || null;
+                setPayrolls((prev) =>
+                    prev.map((p) =>
+                        p.uid === payrollUid
+                            ? { ...p, callback_status: "REQUESTED", callback_reason: reasonText, callback_rejection_note: null }
+                            : p
+                    )
+                );
+                setDetailedRecords((prev) => ({
+                    ...prev,
+                    [payrollUid]: prev[payrollUid]
+                        ? { ...prev[payrollUid], callback_status: "REQUESTED", callback_reason: reasonText, callback_rejection_note: null }
+                        : prev[payrollUid],
+                }));
+                setCallbackModal(null);
+            } else {
+                toast.error(data.message || "Failed to request call back");
+            }
+        } catch (err: unknown) {
+            console.error("Error requesting call back:", err);
+            toast.error("An error occurred while requesting call back");
+        } finally {
+            setSubmittingCallback(false);
+        }
+    };
 
     // Filter states
     const [periods, setPeriods] = useState<PayrollPeriod[]>([]);
@@ -368,20 +630,18 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
         if (isCurrentlyOpen) return;
 
-        // Fetch fresh detailed record (including bank details & components) if not cached
-        if (!detailedRecords[uid]) {
-            try {
-                setLoadingDetails((prev) => ({ ...prev, [uid]: true }));
-                const res = await fetch(`/api/payslip/initiate?uid=${uid}`);
-                const data = await res.json();
-                if (data.success && data.data) {
-                    setDetailedRecords((prev) => ({ ...prev, [uid]: data.data }));
-                }
-            } catch (err) {
-                console.error("Error fetching detailed payroll:", err);
-            } finally {
-                setLoadingDetails((prev) => ({ ...prev, [uid]: false }));
+        // Fetch fresh detailed record (including bank details & components)
+        try {
+            setLoadingDetails((prev) => ({ ...prev, [uid]: true }));
+            const res = await fetch(`/api/payslip/initiate?uid=${uid}`);
+            const data = await res.json();
+            if (data.success && data.data) {
+                setDetailedRecords((prev) => ({ ...prev, [uid]: data.data }));
             }
+        } catch (err) {
+            console.error("Error fetching detailed payroll:", err);
+        } finally {
+            setLoadingDetails((prev) => ({ ...prev, [uid]: false }));
         }
     };
 
@@ -481,7 +741,12 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
     }, [payrolls, selectedUids]);
 
     const eligibleForInitiate = useMemo(() => {
-        return selectedRecords.filter((p) => p.status === "GENERATED" || p.status === "PENDING");
+        return selectedRecords.filter(
+            (p) =>
+                (p.status === "GENERATED" || p.status === "PENDING") &&
+                p.callback_status !== "REQUESTED" &&
+                p.callback_status !== "APPROVED"
+        );
     }, [selectedRecords]);
 
     const eligibleForDisburseOrReject = useMemo(() => {
@@ -490,6 +755,15 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
     // Action Execution: Initiate (Single)
     const executeInitiate = async (uid: string) => {
+        const target = payrolls.find((p) => p.uid === uid);
+        if (target?.callback_status === "REQUESTED") {
+            toast.error("Cannot initiate: A call back request is currently pending approval.");
+            return;
+        }
+        if (target?.callback_status === "APPROVED") {
+            toast.error("Cannot initiate: A call back request has been approved and generator is revising the record.");
+            return;
+        }
         setActionLoading(true);
         try {
             const res = await fetch(`/api/payslip/initiate?uid=${uid}&status=INITIATED`, {
@@ -1084,8 +1358,16 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                         const gross = Number(record.gross_salary || 0);
                                         const deduction = Number(record.total_deduction || 0);
 
-                                        // Detailed item if loaded from single endpoint or record fallback
-                                        const detailRecord = detailedRecords[record.uid] || record;
+                                        // Detailed item if loaded from single endpoint or record fallback, preserving latest callback status
+                                        const baseDetail: Partial<PayrollRecord> = detailedRecords[record.uid] || {};
+                                        const detailRecord: PayrollRecord = {
+                                            ...record,
+                                            ...baseDetail,
+                                            callback_status: record.callback_status || baseDetail.callback_status,
+                                            callback_reason: record.callback_reason !== undefined ? record.callback_reason : baseDetail.callback_reason,
+                                            callback_rejection_note: record.callback_rejection_note !== undefined ? record.callback_rejection_note : baseDetail.callback_rejection_note,
+                                            status: record.status || (baseDetail.status as any),
+                                        };
                                         const rawBank = detailRecord.users?.employeeProfile?.bank_details;
                                         const bank = Array.isArray(rawBank) ? rawBank[0] : rawBank;
                                         const loadingDetailItem = !!loadingDetails[record.uid];
@@ -1179,12 +1461,83 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
                                                     {/* Status Badge */}
                                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
-                                                        <StatusBadge status={record.status} />
+                                                        <StatusBadge status={record.status} callbackStatus={record.callback_status} />
                                                     </td>
 
                                                     {/* Combined Action Column */}
                                                     <td className="px-4 py-3.5 whitespace-nowrap text-right">
-                                                        <div className="inline-flex items-center gap-1.5">
+                                                        <div className="inline-flex items-center gap-1.5 flex-wrap justify-end">
+                                                            {/* Call Back Actions for Checker / Initiator (canInitiate) */}
+                                                            {canInitiate && (record.status === "GENERATED" || record.status === "PENDING") && record.callback_status === "REQUESTED" && (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleApproveCallback(record.uid, record.empid, record.users?.name || record.empid)}
+                                                                        disabled={approvingUids[record.uid]}
+                                                                        className="px-2.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1 shadow-xs transition cursor-pointer disabled:opacity-50"
+                                                                        title={`Approve call back request${record.callback_reason ? `: "${record.callback_reason}"` : ""}`}
+                                                                    >
+                                                                        <Check className="w-3.5 h-3.5" />
+                                                                        <span>{approvingUids[record.uid] ? "Approving..." : "Approve"}</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleOpenRejectModal(record.uid, record.empid, record.users?.name || record.empid, record.callback_reason)}
+                                                                        className="px-2.5 py-1.5 text-xs font-semibold rounded-md bg-rose-600 hover:bg-rose-700 text-white inline-flex items-center gap-1 shadow-xs transition cursor-pointer"
+                                                                        title="Reject call back request with a reason note"
+                                                                    >
+                                                                        <X className="w-3.5 h-3.5" />
+                                                                        <span>Reject</span>
+                                                                    </button>
+                                                                </>
+                                                            )}
+
+                                                            {!canInitiate && record.callback_status === "REQUESTED" && (
+                                                                <span
+                                                                    className="px-2 py-1 text-[10px] font-medium rounded bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1"
+                                                                    title="Call back requested. Awaiting approval by Finance Manager / Checker."
+                                                                >
+                                                                    <Clock className="w-3 h-3 text-amber-600 animate-spin" />
+                                                                    <span>Awaiting Checker</span>
+                                                                </span>
+                                                            )}
+
+                                                            {/* Notice if Call Back is Approved for Initiator */}
+                                                            {canInitiate && (record.status === "GENERATED" || record.status === "PENDING") && record.callback_status === "APPROVED" && (
+                                                                <span
+                                                                    className="px-2 py-1 text-[9px] uppercase tracking-wider font-semibold rounded bg-amber-50 text-amber-800 border border-amber-300 inline-flex items-center gap-1"
+                                                                    title="Call back approved. Waiting for generator to update and re-generate."
+                                                                >
+                                                                    <Lock className="w-3 h-3 text-amber-600" />
+                                                                    <span>Generator Editing</span>
+                                                                </span>
+                                                            )}
+
+                                                            {/* Call Back Actions for Maker / Generator (canGenerate) */}
+                                                            {canGenerate && (record.status === "GENERATED" || record.status === "PENDING") && (!record.callback_status || record.callback_status === "NONE") && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleOpenCallbackModal("REQUEST", record.uid, record.empid, record.users?.name || record.empid)}
+                                                                    className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                                                                    title="Request call back from initiator to edit payroll"
+                                                                >
+                                                                    <RotateCcw className="w-3 h-3 text-amber-700" />
+                                                                    <span>Call Back</span>
+                                                                </button>
+                                                            )}
+
+                                                            {canGenerate && (record.status === "GENERATED" || record.status === "PENDING") && record.callback_status === "REJECTED" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleOpenCallbackModal("RE_REQUEST", record.uid, record.empid, record.users?.name || record.empid, record.callback_rejection_note)}
+                                                                    className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                                                                    title={`Rejection note: "${record.callback_rejection_note || 'No note'}". Click to re-request call back.`}
+                                                                >
+                                                                    <RotateCcw className="w-3 h-3 text-rose-700" />
+                                                                    <span>Re-request</span>
+                                                                </button>
+                                                            )}
+
                                                             <button
                                                                 type="button"
                                                                 onClick={() => toggleExpand(record.uid)}
@@ -1276,7 +1629,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                                 <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium border border-slate-200">
                                                                                     {detailRecord.empid}
                                                                                 </span>
-                                                                                <StatusBadge status={detailRecord.status} />
+                                                                                <StatusBadge status={detailRecord.status} callbackStatus={detailRecord.callback_status} />
                                                                             </div>
                                                                             <div className="text-[11px] text-slate-500 mt-0.5">
                                                                                 Period: {detailRecord.period_name} • Payment Date: {formatDate(detailRecord.salary_payment_date)}
@@ -1304,6 +1657,133 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
                                                                 {/* Main Content inside the section (Card layout) */}
                                                                 <div className="p-6 space-y-6 text-xs">
+                                                                    {/* Call Back Notice Banner */}
+                                                                    {detailRecord.callback_status === "REQUESTED" && (
+                                                                        <div className="p-4 bg-amber-50/90 border border-amber-300 rounded-xl text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                            <div className="flex items-start gap-3">
+                                                                                <div className="w-9 h-9 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0">
+                                                                                    <Clock className="w-5 h-5 animate-spin" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                        <span className="text-sm font-bold text-amber-900">
+                                                                                            Call Back Requested &bull; Awaiting Initiator Approval
+                                                                                        </span>
+                                                                                        <span className="text-[10px] px-2.5 py-0.5 rounded-full font-mono font-semibold bg-amber-200 text-amber-900 border border-amber-300">
+                                                                                            Checker Action Required
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <p className="text-xs text-amber-800 mt-1">
+                                                                                        {detailRecord.callback_reason
+                                                                                            ? `Request Reason: "${detailRecord.callback_reason}"`
+                                                                                            : "The generator requested a call back to update payroll data. Initiation is locked until this request is approved or rejected."}
+                                                                                    </p>
+                                                                                    {detailRecord.callback_requested_by && (
+                                                                                        <div className="text-[11px] text-amber-700 font-mono mt-1">
+                                                                                            Requested by: {detailRecord.callback_requested_by} {detailRecord.callback_requested_at ? `• ${formatDate(detailRecord.callback_requested_at)}` : ""}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {canInitiate ? (
+                                                                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleApproveCallback(detailRecord.uid, detailRecord.empid, detailRecord.users?.name || detailRecord.empid)}
+                                                                                        disabled={approvingUids[detailRecord.uid]}
+                                                                                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer disabled:opacity-50"
+                                                                                    >
+                                                                                        <Check className="w-4 h-4" />
+                                                                                        <span>{approvingUids[detailRecord.uid] ? "Approving..." : "Approve"}</span>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleOpenRejectModal(detailRecord.uid, detailRecord.empid, detailRecord.users?.name || detailRecord.empid, detailRecord.callback_reason)}
+                                                                                        className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                                                                                    >
+                                                                                        <X className="w-4 h-4" />
+                                                                                        <span>Reject</span>
+                                                                                    </button>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <div className="text-[11px] font-medium text-amber-800 bg-amber-100/70 px-3 py-1.5 rounded-lg border border-amber-300 self-end sm:self-center">
+                                                                                    Awaiting review by Initiator / Checker ({PERMISSION_KEYS.PAYSLIP_INITIATE})
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {detailRecord.callback_status === "APPROVED" && (
+                                                                        <div className="p-4 bg-emerald-50/90 border border-emerald-300 rounded-xl text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                            <div className="flex items-start gap-3">
+                                                                                <div className="w-9 h-9 rounded-lg bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-800 shrink-0">
+                                                                                    <CheckCircle2 className="w-5 h-5" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                        <span className="text-sm font-bold text-emerald-900">
+                                                                                            Call Back Approved &bull; Generator Revision in Progress
+                                                                                        </span>
+                                                                                        <span className="text-[10px] px-2.5 py-0.5 rounded-full font-mono font-semibold bg-emerald-200 text-emerald-900 border border-emerald-300">
+                                                                                            Maker Edit Mode
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <p className="text-xs text-emerald-800 mt-1">
+                                                                                        The call back request was approved. The generator is currently updating the payroll data. As initiator, you cannot initiate this payroll until the generator re-generates it.
+                                                                                    </p>
+                                                                                    {detailRecord.callback_reviewed_by && (
+                                                                                        <div className="text-[11px] text-emerald-700 font-mono mt-1">
+                                                                                            Approved by: {detailRecord.callback_reviewed_by} {detailRecord.callback_reviewed_at ? `• ${formatDate(detailRecord.callback_reviewed_at)}` : ""}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {detailRecord.callback_status === "REJECTED" && (
+                                                                        <div className="p-4 bg-rose-50/90 border border-rose-300 rounded-xl text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                            <div className="flex items-start gap-3">
+                                                                                <div className="w-9 h-9 rounded-lg bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-800 shrink-0">
+                                                                                    <XCircle className="w-5 h-5" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                        <span className="text-sm font-bold text-rose-900">
+                                                                                            Call Back Request Rejected
+                                                                                        </span>
+                                                                                        <span className="text-[10px] px-2.5 py-0.5 rounded-full font-mono font-semibold bg-rose-200 text-rose-900 border border-rose-300">
+                                                                                            Denied by Checker
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div className="mt-1.5 p-2.5 rounded-lg bg-white/80 border border-rose-200 text-xs text-rose-900">
+                                                                                        <strong className="text-rose-950">Checker Rejection Reason:</strong>{" "}
+                                                                                        {detailRecord.callback_rejection_note || "No explanation provided."}
+                                                                                    </div>
+                                                                                    {detailRecord.callback_reviewed_by && (
+                                                                                        <div className="text-[11px] text-rose-700 font-mono mt-1">
+                                                                                            Reviewed by: {detailRecord.callback_reviewed_by} {detailRecord.callback_reviewed_at ? `• ${formatDate(detailRecord.callback_reviewed_at)}` : ""}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {canGenerate && (
+                                                                                <div className="shrink-0 self-end sm:self-center">
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleOpenCallbackModal("RE_REQUEST", detailRecord.uid, detailRecord.empid, detailRecord.users?.name || detailRecord.empid, detailRecord.callback_rejection_note)}
+                                                                                        className="px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                                                                                    >
+                                                                                        <RotateCcw className="w-4 h-4" />
+                                                                                        <span>Re-request Call Back</span>
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
                                                                     {/* 1. Employee & Organization Dark Banner */}
                                                                     <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-xl p-5 shadow-sm">
                                                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1312,7 +1792,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                                     <h3 className="text-lg font-bold text-white">
                                                                                         {detailRecord.users?.name || "Employee"}
                                                                                     </h3>
-                                                                                    <StatusBadge status={detailRecord.status} />
+                                                                                    <StatusBadge status={detailRecord.status} callbackStatus={detailRecord.callback_status} />
                                                                                 </div>
                                                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 mt-2 text-xs text-slate-300">
                                                                                     <div>
@@ -1515,9 +1995,113 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                     </button>
 
                                                                     <div className="flex items-center gap-2">
+                                                                        {/* Call Back Actions for Checker / Initiator inside footer bar */}
+                                                                        {canInitiate &&
+                                                                            (detailRecord.status === "GENERATED" || detailRecord.status === "PENDING") &&
+                                                                            detailRecord.callback_status === "REQUESTED" && (
+                                                                                <>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() =>
+                                                                                            handleApproveCallback(
+                                                                                                detailRecord.uid,
+                                                                                                detailRecord.empid,
+                                                                                                detailRecord.users?.name || detailRecord.empid
+                                                                                            )
+                                                                                        }
+                                                                                        disabled={approvingUids[detailRecord.uid]}
+                                                                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                                                                                    >
+                                                                                        <Check className="w-4 h-4" />
+                                                                                        <span>{approvingUids[detailRecord.uid] ? "Approving..." : "Approve"}</span>
+                                                                                    </button>
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() =>
+                                                                                            handleOpenRejectModal(
+                                                                                                detailRecord.uid,
+                                                                                                detailRecord.empid,
+                                                                                                detailRecord.users?.name || detailRecord.empid,
+                                                                                                detailRecord.callback_reason
+                                                                                            )
+                                                                                        }
+                                                                                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-xs shadow-xs transition-colors cursor-pointer"
+                                                                                    >
+                                                                                        <X className="w-4 h-4" />
+                                                                                        <span>Reject</span>
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+
+                                                                        {!canInitiate &&
+                                                                            (detailRecord.status === "GENERATED" || detailRecord.status === "PENDING") &&
+                                                                            detailRecord.callback_status === "REQUESTED" && (
+                                                                                <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+                                                                                    <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                                                                                    <span>Awaiting Checker Approval ({PERMISSION_KEYS.PAYSLIP_INITIATE})</span>
+                                                                                </span>
+                                                                            )}
+
+                                                                        {/* Notice if Call Back is Approved for Initiator */}
+                                                                        {canInitiate &&
+                                                                            (detailRecord.status === "GENERATED" || detailRecord.status === "PENDING") &&
+                                                                            detailRecord.callback_status === "APPROVED" && (
+                                                                                <span
+                                                                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300"
+                                                                                    title="Call back approved. Waiting for generator to update and re-generate."
+                                                                                >
+                                                                                    <Lock className="w-3.5 h-3.5 text-amber-600" />
+                                                                                    <span>Call Back Approved &bull; Generator Editing</span>
+                                                                                </span>
+                                                                            )}
+
+                                                                        {/* If Generator is viewing: allow requesting / re-requesting call back */}
+                                                                        {canGenerate &&
+                                                                            (detailRecord.status === "GENERATED" || detailRecord.status === "PENDING") &&
+                                                                            (!detailRecord.callback_status || detailRecord.callback_status === "NONE") && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        handleOpenCallbackModal(
+                                                                                            "REQUEST",
+                                                                                            detailRecord.uid,
+                                                                                            detailRecord.empid,
+                                                                                            detailRecord.users?.name || detailRecord.empid
+                                                                                        )
+                                                                                    }
+                                                                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-semibold rounded-lg text-xs shadow-2xs transition-colors cursor-pointer"
+                                                                                >
+                                                                                    <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                                                                                    <span>Request Call Back</span>
+                                                                                </button>
+                                                                            )}
+
+                                                                        {canGenerate &&
+                                                                            (detailRecord.status === "GENERATED" || detailRecord.status === "PENDING") &&
+                                                                            detailRecord.callback_status === "REJECTED" && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        handleOpenCallbackModal(
+                                                                                            "RE_REQUEST",
+                                                                                            detailRecord.uid,
+                                                                                            detailRecord.empid,
+                                                                                            detailRecord.users?.name || detailRecord.empid,
+                                                                                            detailRecord.callback_rejection_note
+                                                                                        )
+                                                                                    }
+                                                                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-semibold rounded-lg text-xs shadow-2xs transition-colors cursor-pointer"
+                                                                                >
+                                                                                    <RotateCcw className="w-3.5 h-3.5 text-rose-700" />
+                                                                                    <span>Re-request Call Back</span>
+                                                                                </button>
+                                                                            )}
+
                                                                         {/* Initiate Button inside section for GENERATED / PENDING */}
                                                                         {canInitiate &&
-                                                                            (detailRecord.status === "GENERATED" || detailRecord.status === "PENDING") && (
+                                                                            (detailRecord.status === "GENERATED" || detailRecord.status === "PENDING") &&
+                                                                            detailRecord.callback_status !== "REQUESTED" &&
+                                                                            detailRecord.callback_status !== "APPROVED" && (
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() =>
@@ -1746,6 +2330,187 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                 ? "Confirm Rejection"
                                                 : "Confirm Initiation"}
                                     </span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* CALL BACK REQUEST / RE-REQUEST MODAL */}
+            {callbackModal && callbackModal.isOpen && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+                    <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800">
+                                    <RotateCcw className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-sm">
+                                        {callbackModal.action === "RE_REQUEST" ? "Re-request Call Back" : "Request Payroll Call Back"}
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500">
+                                        {callbackModal.employeeName} ({callbackModal.empid})
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setCallbackModal(null)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer font-bold"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-5 space-y-3.5">
+                            {callbackModal.previousRejectNote && (
+                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-900 text-xs">
+                                    <div className="font-bold text-rose-950 flex items-center gap-1.5 mb-1">
+                                        <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                        <span>Previous Checker Rejection Note:</span>
+                                    </div>
+                                    <p className="pl-5 whitespace-pre-wrap">{callbackModal.previousRejectNote}</p>
+                                </div>
+                            )}
+
+                            <p className="text-xs text-slate-600">
+                                Request a call back from the person who can initiate payroll (Checker). Once approved, you will be unlocked to adjust payroll details and re-generate.
+                            </p>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Reason / Notes for Call Back <span className="text-slate-400 font-normal">(Optional)</span>
+                                </label>
+                                <textarea
+                                    value={callbackReasonInput}
+                                    onChange={(e) => setCallbackReasonInput(e.target.value)}
+                                    placeholder="e.g., Need to adjust overtime rate or bonus after client approval..."
+                                    rows={3}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 placeholder:text-slate-400 resize-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setCallbackModal(null)}
+                                disabled={submittingCallback}
+                                className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg transition cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={submitCallbackRequest}
+                                disabled={submittingCallback}
+                                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50"
+                            >
+                                {submittingCallback ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span>Submitting...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send className="w-3.5 h-3.5" />
+                                        <span>{callbackModal.action === "RE_REQUEST" ? "Submit Re-request" : "Send Call Back Request"}</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* REJECT CALL BACK MODAL */}
+            {rejectModal && rejectModal.isOpen && (
+                <div className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+                    <div className="bg-white border border-slate-300 rounded-2xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                        {/* Header */}
+                        <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-800">
+                                    <ShieldAlert className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-sm">
+                                        Reject Call Back Request
+                                    </h3>
+                                    <p className="text-[11px] text-slate-500">
+                                        {rejectModal.employeeName} ({rejectModal.empid})
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setRejectModal(null)}
+                                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition cursor-pointer font-bold"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-5 space-y-3.5">
+                            {rejectModal.requestReason && (
+                                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-xs">
+                                    <div className="font-bold text-slate-700 flex items-center gap-1.5 mb-1">
+                                        <MessageSquare className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                        <span>Generator&apos;s Request Reason:</span>
+                                    </div>
+                                    <p className="pl-4 whitespace-pre-wrap text-slate-600">&ldquo;{rejectModal.requestReason}&rdquo;</p>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-800 mb-1">
+                                    Rejection Reason Note <span className="text-rose-600">*</span>
+                                </label>
+                                <p className="text-[11px] text-slate-500 mb-2">
+                                    Please provide a clear note explaining why this call back request is rejected. The generator will see this note and may re-request.
+                                </p>
+                                <textarea
+                                    value={rejectionNoteInput}
+                                    onChange={(e) => setRejectionNoteInput(e.target.value)}
+                                    placeholder="Enter rejection reason note (required)..."
+                                    rows={3}
+                                    className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 placeholder:text-slate-400 resize-none"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setRejectModal(null)}
+                                disabled={submittingReject}
+                                className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg transition cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={submitCallbackRejection}
+                                disabled={submittingReject || !rejectionNoteInput.trim()}
+                                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg transition cursor-pointer flex items-center gap-1.5 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {submittingReject ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span>Rejecting...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <XCircle className="w-3.5 h-3.5" />
+                                        <span>Reject Call Back</span>
+                                    </>
                                 )}
                             </button>
                         </div>

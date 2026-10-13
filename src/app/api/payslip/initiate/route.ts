@@ -223,6 +223,21 @@ export async function POST(req: NextRequest) {
                     { status: 400 }
                 );
             }
+
+            // Check Call Back requirement for already GENERATED payrolls
+            if (existingPayroll.status === "GENERATED") {
+                if (existingPayroll.callback_status !== "APPROVED") {
+                    return NextResponse.json(
+                        {
+                            success: false,
+                            message: existingPayroll.callback_status === "REQUESTED"
+                                ? `Call back request for ${employeeUser.name} (${employeeUser.empid}) is currently pending approval. Please wait for the initiator to approve before updating.`
+                                : `Payroll for ${employeeUser.name} (${employeeUser.empid}) is already GENERATED. You must request a call back and have it approved before updating.`,
+                        },
+                        { status: 400 }
+                    );
+                }
+            }
         }
 
         let savedPayroll: Payroll;
@@ -266,6 +281,9 @@ export async function POST(req: NextRequest) {
                         total_payable_amount: finalTotalPayable,
                         status: "GENERATED",
                         generated_at: new Date(),
+                        callback_status: "NONE",
+                        callback_reason: null,
+                        callback_rejection_note: null,
                         components: {
                             create: componentsToCreate,
                         },
@@ -320,6 +338,9 @@ export async function POST(req: NextRequest) {
                             total_payable_amount: finalTotalPayable,
                             status: "GENERATED",
                             generated_at: new Date(),
+                            callback_status: "NONE",
+                            callback_reason: null,
+                            callback_rejection_note: null,
                             components: {
                                 create: componentsToCreate,
                             },
@@ -528,11 +549,43 @@ export async function PUT(req: NextRequest) {
             );
         }
 
+        const currentPayroll = await prisma.payroll.findUnique({
+            where: { uid },
+        });
+
+        if (!currentPayroll) {
+            return NextResponse.json(
+                { success: false, message: "Payroll record not found" },
+                { status: 404 }
+            );
+        }
+
+        if (currentPayroll.callback_status === "REQUESTED") {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Cannot initiate payroll: A call back request is currently pending approval. Please approve or reject the call back request first.",
+                },
+                { status: 400 }
+            );
+        }
+
+        if (currentPayroll.callback_status === "APPROVED") {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Cannot initiate payroll: A call back request has been approved and the generator is currently updating the payroll. Please wait for the generator to re-generate the payroll.",
+                },
+                { status: 400 }
+            );
+        }
+
         const updatedPayroll = await prisma.payroll.update({
             where: { uid },
             data: {
                 status: "INITIATED",
                 generated_at: new Date(),
+                callback_status: "NONE",
             },
         });
 

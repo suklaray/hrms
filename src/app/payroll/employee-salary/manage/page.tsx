@@ -26,7 +26,12 @@ async function getServerSideProps(context: any) {
         };
     }
 
-    const hasAccess = await checkAnyPermission(user, [PERMISSION_KEYS.PAYSLIP_VIEW, PERMISSION_KEYS.PAYSLIP_INITIATE, PERMISSION_KEYS.PAYSLIP_DISBURSED]);
+    const hasAccess = await checkAnyPermission(user, [
+        PERMISSION_KEYS.PAYSLIP_VIEW,
+        PERMISSION_KEYS.PAYSLIP_INITIATE,
+        PERMISSION_KEYS.PAYSLIP_DISBURSED,
+        PERMISSION_KEYS.PAYSLIP_GENERATE,
+    ]);
     if (!hasAccess) {
         return {
             redirect: {

@@ -3,18 +3,36 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import ClientPage from "./Client";
 import { getUserFromToken } from "@/lib/getUserFromToken";
-import { checkPermission } from "@/lib/rbac";
+import { checkAnyPermission, getUserPermissions } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
 
-async function getServerSideProps({ req }) {
+async function getServerSideProps({ req }: any) {
     const token = req?.cookies?.token || '';
     const user = getUserFromToken(token);
     if (!user) return { redirect: { destination: '/login', permanent: false } };
-    const hasAccess = await checkPermission(user, PERMISSION_KEYS.PAYSLIP_GENERATE);
+    const hasAccess = await checkAnyPermission(user, [
+        PERMISSION_KEYS.PAYSLIP_GENERATE,
+        PERMISSION_KEYS.PAYSLIP_INITIATE,
+        PERMISSION_KEYS.PAYSLIP_VIEW,
+    ]);
     if (!hasAccess) return { redirect: { destination: '/403', permanent: false } };
-    return { props: {} };
+
+    const permissions = await getUserPermissions(user);
+
+    return {
+        props: {
+            user: {
+                id: user.id,
+                empid: user.empid,
+                name: user.name,
+                role: user.role,
+                email: user.email,
+            },
+            permissions: Array.from(permissions),
+        }
+    };
 }
 
 export default async function Page(props: {
