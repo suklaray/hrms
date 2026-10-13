@@ -586,6 +586,7 @@ model payroll {
   callback_status String? @default("NONE")
   callback_reason String? @db.Text
   callback_rejection_note String? @db.Text
+  rejection_note String? @db.Text
   callback_requested_by String?
   callback_requested_at DateTime?
   callback_reviewed_by String?

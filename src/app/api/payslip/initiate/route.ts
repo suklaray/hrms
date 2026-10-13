@@ -338,6 +338,7 @@ export async function POST(req: NextRequest) {
                             total_payable_amount: finalTotalPayable,
                             status: "GENERATED",
                             generated_at: new Date(),
+                            rejection_note: null,
                             callback_status: "NONE",
                             callback_reason: null,
                             callback_rejection_note: null,
@@ -585,6 +586,7 @@ export async function PUT(req: NextRequest) {
             data: {
                 status: "INITIATED",
                 generated_at: new Date(),
+                rejection_note: null,
                 callback_status: "NONE",
                 callback_reason: null,
                 callback_rejection_note: null,

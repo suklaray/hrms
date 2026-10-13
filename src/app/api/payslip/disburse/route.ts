@@ -55,6 +55,19 @@ export async function PUT(req: NextRequest) {
             );
         }
 
+        let body: any = {};
+        try {
+            body = await req.json();
+        } catch {
+            body = {};
+        }
+
+        const rejection_note =
+            body.rejection_note ||
+            searchParams.get("rejection_note") ||
+            body.note ||
+            searchParams.get("note");
+
         // Block disbursement or payout rejection while a callback is pending approval
         if (payrollRecord.callback_status === "REQUESTED") {
             return NextResponse.json(
@@ -68,10 +81,21 @@ export async function PUT(req: NextRequest) {
 
         // Handle REJECTED status
         if (status === "REJECTED") {
+            if (!rejection_note || !String(rejection_note).trim()) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: "A rejection reason/note is required when rejecting a payroll payout.",
+                    },
+                    { status: 400 }
+                );
+            }
+
             const updatedPayroll = await prisma.payroll.update({
                 where: { uid },
                 data: {
                     status: "REJECTED",
+                    rejection_note: String(rejection_note).trim(),
                     generated_at: new Date(),
                     callback_status: "NONE",
                 },
@@ -116,6 +140,7 @@ export async function PUT(req: NextRequest) {
                 status: "DISBURSED",
                 generated_at: new Date(),
                 payslip_url: relativeUrl,
+                rejection_note: null,
             },
             include: {
                 components: true,

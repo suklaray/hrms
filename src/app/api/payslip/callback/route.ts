@@ -129,6 +129,7 @@ export async function POST(req: NextRequest) {
                     data: {
                         status: "GENERATED", // Status returns back to GENERATED
                         callback_status: "NONE", // Ready for initiator to review and re-initiate
+                        rejection_note: null,
                         callback_reason: null,
                         callback_rejection_note: null,
                         callback_reviewed_by: auth.user?.empid || null,

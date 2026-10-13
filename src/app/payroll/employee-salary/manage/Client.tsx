@@ -118,6 +118,7 @@ interface PayrollRecord {
     callback_status?: string | null;
     callback_reason?: string | null;
     callback_rejection_note?: string | null;
+    rejection_note?: string | null;
     callback_requested_by?: string | null;
     callback_requested_at?: string | null;
     callback_reviewed_by?: string | null;
@@ -224,7 +225,15 @@ const PAYROLL_STATUS_MAP: Record<
     },
 };
 
-function StatusBadge({ status, callbackStatus }: { status: string; callbackStatus?: string | null }) {
+function StatusBadge({
+    status,
+    callbackStatus,
+    rejectionNote,
+}: {
+    status: string;
+    callbackStatus?: string | null;
+    rejectionNote?: string | null;
+}) {
     const config = PAYROLL_STATUS_MAP[status] || {
         label: status || "Unknown",
         dot: "bg-gray-400",
@@ -241,6 +250,20 @@ function StatusBadge({ status, callbackStatus }: { status: string; callbackStatu
                 <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
                 <span>{config.label}</span>
             </span>
+            {status === "REJECTED" && rejectionNote && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        toast.info(`Disburser Payout Rejection Note: "${rejectionNote}"`, { autoClose: 7000 });
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300 transition cursor-pointer"
+                    title={`View Payout Rejection Note: "${rejectionNote}"`}
+                >
+                    <MessageSquare className="w-2.5 h-2.5 text-rose-700" />
+                    <span>View Note</span>
+                </button>
+            )}
             {callbackStatus === "REQUESTED" && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
                     <span>Call Back Requested</span>
@@ -546,6 +569,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
         targetUids?: string[];
     } | null>(null);
     const [actionLoading, setActionLoading] = useState(false);
+    const [disburseRejectionNote, setDisburseRejectionNote] = useState<string>("");
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -798,16 +822,22 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
     };
 
     // Action Execution: Disburse or Reject (Single)
-    const executeDisburseOrReject = async (uid: string, targetStatus: "DISBURSED" | "REJECTED") => {
+    const executeDisburseOrReject = async (uid: string, targetStatus: "DISBURSED" | "REJECTED", rejectionNote?: string) => {
         const target = payrolls.find((p) => p.uid === uid);
         if (target?.callback_status === "REQUESTED") {
             toast.error("Cannot process salary: A call back request is currently pending approval.");
+            return;
+        }
+        if (targetStatus === "REJECTED" && (!rejectionNote || !rejectionNote.trim())) {
+            toast.error("Please provide a rejection note explaining why this payout is rejected.");
             return;
         }
         setActionLoading(true);
         try {
             const res = await fetch(`/api/payslip/disburse?uid=${uid}&status=${targetStatus}`, {
                 method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rejection_note: rejectionNote?.trim() }),
             });
             const data = await res.json();
             if (res.ok && data.success) {
@@ -817,6 +847,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                         ? "Salary marked as DISBURSED successfully!"
                         : "Salary marked as REJECTED successfully!")
                 );
+                const finalRejectionNote = targetStatus === "REJECTED" ? (rejectionNote?.trim() || null) : null;
                 // Update local list state
                 setPayrolls((prev) =>
                     prev.map((p) =>
@@ -824,6 +855,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                             ? {
                                 ...p,
                                 status: targetStatus,
+                                rejection_note: finalRejectionNote,
                                 payslip_url: data.payslip_url || p.payslip_url,
                                 generated_at: new Date().toISOString(),
                             }
@@ -839,12 +871,14 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                         [uid]: {
                             ...currentDetail,
                             status: targetStatus,
+                            rejection_note: finalRejectionNote,
                             payslip_url: data.payslip_url || currentDetail.payslip_url,
                             generated_at: new Date().toISOString(),
                         },
                     };
                 });
                 setConfirmModal(null);
+                setDisburseRejectionNote("");
             } else {
                 toast.error(data.message || `Failed to mark salary as ${targetStatus}`);
             }
@@ -859,11 +893,17 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
     // Action Execution: Batch operations
     const executeBatch = async (
         uids: string[],
-        action: "INITIATE" | "DISBURSED" | "REJECTED"
+        action: "INITIATE" | "DISBURSED" | "REJECTED",
+        rejectionNote?: string
     ) => {
+        if (action === "REJECTED" && (!rejectionNote || !rejectionNote.trim())) {
+            toast.error("Please provide a rejection note explaining why payout is rejected.");
+            return;
+        }
         setActionLoading(true);
         let successCount = 0;
         let failCount = 0;
+        const finalRejectionNote = action === "REJECTED" ? (rejectionNote?.trim() || null) : null;
 
         for (const uid of uids) {
             try {
@@ -875,16 +915,18 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                 } else {
                     res = await fetch(`/api/payslip/disburse?uid=${uid}&status=${action}`, {
                         method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ rejection_note: rejectionNote?.trim() }),
                     });
                 }
                 const data = await res.json();
                 if (res.ok && data.success) {
                     successCount++;
                     setPayrolls((prev) =>
-                        prev.map((p) => (p.uid === uid ? { ...p, status: action as any } : p))
+                        prev.map((p) => (p.uid === uid ? { ...p, status: action as any, rejection_note: finalRejectionNote } : p))
                     );
                     setDetailedRecords((prev) =>
-                        prev[uid] ? { ...prev, [uid]: { ...prev[uid], status: action as any } } : prev
+                        prev[uid] ? { ...prev, [uid]: { ...prev[uid], status: action as any, rejection_note: finalRejectionNote } } : prev
                     );
                 } else {
                     failCount++;
@@ -896,6 +938,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
         setActionLoading(false);
         setConfirmModal(null);
+        setDisburseRejectionNote("");
         setSelectedUids(new Set());
 
         if (successCount > 0) {
@@ -1274,15 +1317,16 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
                                     <button
                                         type="button"
-                                        onClick={() =>
+                                        onClick={() => {
+                                            setDisburseRejectionNote("");
                                             setConfirmModal({
                                                 isOpen: true,
                                                 action: "BATCH_REJECT",
                                                 title: `Batch Reject Payouts (${eligibleForDisburseOrReject.length})`,
-                                                description: `Are you sure you want to REJECT ${eligibleForDisburseOrReject.length} initiated salary record(s)?`,
+                                                description: `Are you sure you want to REJECT ${eligibleForDisburseOrReject.length} initiated salary record(s)? Please provide a rejection note below.`,
                                                 targetUids: eligibleForDisburseOrReject.map((p) => p.uid),
-                                            })
-                                        }
+                                            });
+                                        }}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
                                     >
                                         <XCircle className="w-3.5 h-3.5" />
@@ -1376,6 +1420,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                             callback_status: record.callback_status !== undefined ? record.callback_status : baseDetail.callback_status,
                                             callback_reason: record.callback_reason !== undefined ? record.callback_reason : baseDetail.callback_reason,
                                             callback_rejection_note: record.callback_rejection_note !== undefined ? record.callback_rejection_note : baseDetail.callback_rejection_note,
+                                            rejection_note: record.rejection_note !== undefined ? record.rejection_note : baseDetail.rejection_note,
                                             status: record.status || (baseDetail.status as any),
                                         };
                                         const rawBank = detailRecord.users?.employeeProfile?.bank_details;
@@ -1471,7 +1516,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
                                                     {/* Status Badge */}
                                                     <td className="px-4 py-3.5 whitespace-nowrap text-center">
-                                                        <StatusBadge status={record.status} callbackStatus={record.callback_status} />
+                                                        <StatusBadge status={record.status} callbackStatus={record.callback_status} rejectionNote={record.rejection_note} />
                                                     </td>
 
                                                     {/* Combined Action Column */}
@@ -1713,7 +1758,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                                 <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium border border-slate-200">
                                                                                     {detailRecord.empid}
                                                                                 </span>
-                                                                                <StatusBadge status={detailRecord.status} callbackStatus={detailRecord.callback_status} />
+                                                                                <StatusBadge status={detailRecord.status} callbackStatus={detailRecord.callback_status} rejectionNote={detailRecord.rejection_note} />
                                                                             </div>
                                                                             <div className="text-[11px] text-slate-500 mt-0.5">
                                                                                 Period: {detailRecord.period_name} • Payment Date: {formatDate(detailRecord.salary_payment_date)}
@@ -1874,6 +1919,36 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                         </div>
                                                                     )}
 
+                                                                    {detailRecord.status === "REJECTED" && (
+                                                                        <div className="p-4 bg-rose-50/90 border border-rose-300 rounded-xl text-rose-950 flex flex-col sm:flex-row sm:items-start justify-between gap-3 shadow-xs">
+                                                                            <div className="flex items-start gap-3">
+                                                                                <div className="w-9 h-9 rounded-lg bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-800 shrink-0 mt-0.5">
+                                                                                    <AlertCircle className="w-5 h-5 text-rose-600" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                        <span className="text-sm font-bold text-rose-900">
+                                                                                            Payout Rejected by Disburser
+                                                                                        </span>
+                                                                                        <span className="text-[10px] px-2.5 py-0.5 rounded-full font-mono font-semibold bg-rose-200 text-rose-900 border border-rose-300">
+                                                                                            Status: REJECTED
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    {detailRecord.rejection_note ? (
+                                                                                        <div className="mt-2 p-2.5 rounded-lg bg-white/90 border border-rose-200 text-xs text-rose-950">
+                                                                                            <strong className="text-rose-950">Rejection Note:</strong>{" "}
+                                                                                            <span className="whitespace-pre-wrap">{detailRecord.rejection_note}</span>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <p className="text-xs text-rose-800 mt-1">
+                                                                                            This payout was rejected during the disbursement review.
+                                                                                        </p>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
                                                                     {/* 1. Employee & Organization Dark Banner */}
                                                                     <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-xl p-5 shadow-sm">
                                                                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1882,7 +1957,7 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                                     <h3 className="text-lg font-bold text-white">
                                                                                         {detailRecord.users?.name || "Employee"}
                                                                                     </h3>
-                                                                                    <StatusBadge status={detailRecord.status} callbackStatus={detailRecord.callback_status} />
+                                                                                    <StatusBadge status={detailRecord.status} callbackStatus={detailRecord.callback_status} rejectionNote={detailRecord.rejection_note} />
                                                                                 </div>
                                                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 mt-2 text-xs text-slate-300">
                                                                                     <div>
@@ -2360,17 +2435,18 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                             <>
                                                                                 <button
                                                                                     type="button"
-                                                                                    onClick={() =>
+                                                                                    onClick={() => {
+                                                                                        setDisburseRejectionNote("");
                                                                                         setConfirmModal({
                                                                                             isOpen: true,
                                                                                             action: "REJECT",
                                                                                             title: `Reject Salary for ${detailRecord.users?.name || detailRecord.empid}`,
                                                                                             description: `Are you sure you want to REJECT this initiated payout of ${formatCurrency(
                                                                                                 detailRecord.total_payable_amount || detailRecord.net_salary
-                                                                                            )}?`,
+                                                                                            )}? Please provide a rejection note explaining the reason below.`,
                                                                                             targetRecord: detailRecord,
-                                                                                        })
-                                                                                    }
+                                                                                        });
+                                                                                    }}
                                                                                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold rounded-lg text-xs transition-colors cursor-pointer"
                                                                                 >
                                                                                     <XCircle className="w-3.5 h-3.5" />
@@ -2515,11 +2591,35 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                             </div>
                         </div>
 
+                        {/* Rejection Note textarea for disburser payout rejection */}
+                        {(confirmModal.action === "REJECT" || confirmModal.action === "BATCH_REJECT") && (
+                            <div className="mt-4">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                    Rejection Note <span className="text-rose-500">*</span>
+                                </label>
+                                <textarea
+                                    value={disburseRejectionNote}
+                                    onChange={(e) => setDisburseRejectionNote(e.target.value)}
+                                    placeholder="Enter reason for rejecting this payout (required)..."
+                                    rows={3}
+                                    className="w-full text-xs rounded-lg border border-slate-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 p-2.5 outline-none transition resize-none placeholder:text-slate-400"
+                                />
+                                {!disburseRejectionNote.trim() && (
+                                    <p className="text-[11px] text-rose-500 mt-1">
+                                        Please provide a rejection note explaining why this payout cannot be disbursed.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                             <button
                                 type="button"
                                 disabled={actionLoading}
-                                onClick={() => setConfirmModal(null)}
+                                onClick={() => {
+                                    setConfirmModal(null);
+                                    setDisburseRejectionNote("");
+                                }}
                                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer disabled:opacity-50"
                             >
                                 Cancel
@@ -2527,20 +2627,24 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
                             <button
                                 type="button"
-                                disabled={actionLoading}
+                                disabled={
+                                    actionLoading ||
+                                    ((confirmModal.action === "REJECT" || confirmModal.action === "BATCH_REJECT") &&
+                                        !disburseRejectionNote.trim())
+                                }
                                 onClick={() => {
                                     if (confirmModal.action === "INITIATE" && confirmModal.targetRecord) {
                                         executeInitiate(confirmModal.targetRecord.uid);
                                     } else if (confirmModal.action === "DISBURSE" && confirmModal.targetRecord) {
                                         executeDisburseOrReject(confirmModal.targetRecord.uid, "DISBURSED");
                                     } else if (confirmModal.action === "REJECT" && confirmModal.targetRecord) {
-                                        executeDisburseOrReject(confirmModal.targetRecord.uid, "REJECTED");
+                                        executeDisburseOrReject(confirmModal.targetRecord.uid, "REJECTED", disburseRejectionNote);
                                     } else if (confirmModal.action === "BATCH_INITIATE" && confirmModal.targetUids) {
                                         executeBatch(confirmModal.targetUids, "INITIATE");
                                     } else if (confirmModal.action === "BATCH_DISBURSE" && confirmModal.targetUids) {
                                         executeBatch(confirmModal.targetUids, "DISBURSED");
                                     } else if (confirmModal.action === "BATCH_REJECT" && confirmModal.targetUids) {
-                                        executeBatch(confirmModal.targetUids, "REJECTED");
+                                        executeBatch(confirmModal.targetUids, "REJECTED", disburseRejectionNote);
                                     }
                                 }}
                                 className={`inline-flex items-center gap-1.5 px-4 py-2 text-white font-semibold rounded-lg text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50 ${confirmModal.action === "DISBURSE" || confirmModal.action === "BATCH_DISBURSE"

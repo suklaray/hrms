@@ -14,6 +14,7 @@ import {
     CalendarDays,
     Check,
     CheckCircle2,
+    Circle,
     Clock,
     Eye,
     Filter,
@@ -460,11 +461,13 @@ const GetFinancialYears = (
                                                                     inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium border
                                                                     ${fy.status === "ACTIVE"
                                                                         ? "bg-green-50 text-green-700 border-green-200"
-                                                                        : "bg-red-50 text-red-700 border-red-200"
+                                                                        : fy.status === "DRAFT"
+                                                                            ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                                                            : "bg-red-50 text-red-700 border-red-200"
                                                                     }
                                                                 `}
                                                             >
-                                                                {fy.status === "ACTIVE" ? <Check size={11} className="text-green-500" /> : <X size={11} className="text-red-500" />}
+                                                                {fy.status === "ACTIVE" ? <Check size={11} className="text-green-500" /> : fy.status === "DRAFT" ? <Circle size={11} className="text-yellow-500" /> : <X size={11} className="text-red-500" />}
                                                                 <span>{fy.status}</span>
                                                             </span>
                                                         )

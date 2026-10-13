@@ -1083,10 +1083,29 @@ export default function GeneratePayslipPage({
                                                                                     <span>Disbursed</span>
                                                                                 </span>
                                                                             ) : isRejected ? (
-                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-rose-100 text-rose-800 border border-rose-300">
-                                                                                    <AlertCircle size={10} className="text-rose-600" />
-                                                                                    <span>Rejected</span>
-                                                                                </span>
+                                                                                <div className="flex flex-col items-center gap-1">
+                                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-rose-100 text-rose-800 border border-rose-300">
+                                                                                        <AlertCircle size={10} className="text-rose-600" />
+                                                                                        <span>Rejected</span>
+                                                                                    </span>
+                                                                                    {existingPayroll?.rejection_note && (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                toast.info(
+                                                                                                    `Disburser Payout Rejection Note: "${existingPayroll.rejection_note}"`,
+                                                                                                    { autoClose: 7000 }
+                                                                                                );
+                                                                                            }}
+                                                                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8.5px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 transition cursor-pointer"
+                                                                                            title={`Disburser rejection note: "${existingPayroll.rejection_note}"`}
+                                                                                        >
+                                                                                            <MessageSquare size={9} className="text-rose-700" />
+                                                                                            <span>Note</span>
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
                                                                             ) : (
                                                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
                                                                                     <span>Pending</span>
@@ -1836,7 +1855,7 @@ export default function GeneratePayslipPage({
                                                                                                     </div>
 
                                                                                                     {canInitiate && (
-                                                                                                        <button
+                                                                                                         <button
                                                                                                             type="button"
                                                                                                             onClick={() => handleOpenCallbackModal("REQUEST", existingPayroll.uid, employee.empid, employee.name)}
                                                                                                             className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded text-[11px] flex items-center gap-1.5 shrink-0 self-end sm:self-center shadow-xs cursor-pointer"
@@ -1845,6 +1864,37 @@ export default function GeneratePayslipPage({
                                                                                                             <span>Request Call Back</span>
                                                                                                         </button>
                                                                                                     )}
+                                                                                                </div>
+                                                                                            )}
+
+                                                                                            {/* Disburser Payout Rejection Banner */}
+                                                                                            {isRejected && (
+                                                                                                <div className="mx-5 mt-4 p-3.5 bg-rose-50/90 border border-rose-300 rounded-sm text-rose-950 flex flex-col sm:flex-row sm:items-start justify-between gap-3 shadow-xs">
+                                                                                                    <div className="flex items-start gap-3">
+                                                                                                        <div className="w-8 h-8 rounded bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-800 shrink-0 mt-0.5">
+                                                                                                            <AlertCircle size={16} className="text-rose-600" />
+                                                                                                        </div>
+                                                                                                        <div>
+                                                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                                                <span className="text-[12px] font-bold text-rose-900">
+                                                                                                                    Payout Rejected by Disburser
+                                                                                                                </span>
+                                                                                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold bg-rose-200/80 text-rose-900 border border-rose-300">
+                                                                                                                    Status: REJECTED
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                            {existingPayroll?.rejection_note ? (
+                                                                                                                <div className="mt-2 p-2.5 rounded bg-white/90 border border-rose-200 text-[11px] text-rose-950">
+                                                                                                                    <strong className="text-rose-950">Rejection Note:</strong>{" "}
+                                                                                                                    <span className="whitespace-pre-wrap">{existingPayroll.rejection_note}</span>
+                                                                                                                </div>
+                                                                                                            ) : (
+                                                                                                                <p className="text-[11px] text-rose-800 mt-0.5">
+                                                                                                                    This payout was rejected during the disbursement review.
+                                                                                                                </p>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    </div>
                                                                                                 </div>
                                                                                             )}
 

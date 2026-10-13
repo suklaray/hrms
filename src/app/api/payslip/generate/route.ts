@@ -506,6 +506,7 @@ export async function GET(req: NextRequest) {
                         weekend: true,
                         salary_payment_date: true,
                         generated_at: true,
+                        rejection_note: true,
                         callback_status: true,
                         callback_reason: true,
                         callback_rejection_note: true,
