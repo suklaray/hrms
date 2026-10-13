@@ -46,6 +46,7 @@ import {
     Lock,
     MessageSquare,
     Send,
+    ExternalLink,
 } from "lucide-react";
 
 interface EmployeeSalaryManageProps {
@@ -1836,44 +1837,96 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                                                     {/* 2. Bank Details & Attendance Grid */}
                                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                         {/* Bank Details */}
-                                                                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4">
-                                                                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5 mb-2.5">
-                                                                                <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                                                                        <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 sm:p-5">
+                                                                            {/* Header */}
+                                                                            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5 mb-4">
+                                                                                <CreditCard className="w-4 h-4 text-indigo-600 shrink-0" />
                                                                                 <span>Disbursement Bank Account</span>
                                                                             </h4>
-                                                                            <div className="space-y-1.5 text-xs text-slate-600">
+
+                                                                            {/* Bank Information */}
+                                                                            <div className="space-y-3 text-xs">
                                                                                 {bank?.account_holder_name && (
-                                                                                    <div className="flex justify-between">
-                                                                                        <span className="text-slate-400">Account Holder:</span>
-                                                                                        <span className="font-semibold text-slate-800">
+                                                                                    <div className="flex items-start justify-between gap-4">
+                                                                                        <span className="text-slate-500 shrink-0">
+                                                                                            Account Holder:
+                                                                                        </span>
+                                                                                        <span className="font-semibold text-slate-800 text-right break-words">
                                                                                             {bank.account_holder_name.trim()}
                                                                                         </span>
                                                                                     </div>
                                                                                 )}
-                                                                                <div className="flex justify-between">
-                                                                                    <span className="text-slate-400">Bank Name:</span>
-                                                                                    <span className="font-semibold text-slate-800">
-                                                                                        {bank?.bank_name ? bank.bank_name.trim() : "N/A"}
+
+                                                                                <div className="flex items-start justify-between gap-4">
+                                                                                    <span className="text-slate-500 shrink-0">Bank Name:</span>
+                                                                                    <span className="font-semibold text-slate-800 text-right break-words">
+                                                                                        {bank?.bank_name?.trim() || "N/A"}
                                                                                     </span>
                                                                                 </div>
-                                                                                <div className="flex justify-between">
-                                                                                    <span className="text-slate-400">Account Number:</span>
-                                                                                    <span className="font-mono font-semibold text-slate-800">
+
+                                                                                <div className="flex items-start justify-between gap-4">
+                                                                                    <span className="text-slate-500 shrink-0">Account Number:</span>
+                                                                                    <span className="font-mono font-semibold text-slate-800 text-right break-all">
                                                                                         {bank?.account_number || "N/A"}
                                                                                     </span>
                                                                                 </div>
-                                                                                <div className="flex justify-between">
-                                                                                    <span className="text-slate-400">IFSC Code:</span>
-                                                                                    <span className="font-mono font-semibold text-slate-800">
+
+                                                                                <div className="flex items-start justify-between gap-4">
+                                                                                    <span className="text-slate-500 shrink-0">IFSC Code:</span>
+                                                                                    <span className="font-mono font-semibold text-slate-800 text-right break-all">
                                                                                         {bank?.ifsc_code || "N/A"}
                                                                                     </span>
                                                                                 </div>
-                                                                                <div className="flex justify-between">
-                                                                                    <span className="text-slate-400">Branch:</span>
-                                                                                    <span className="font-semibold text-slate-800">
-                                                                                        {bank?.branch_name ? bank.branch_name.trim() : "N/A"}
+
+                                                                                <div className="flex items-start justify-between gap-4">
+                                                                                    <span className="text-slate-500 shrink-0">Branch:</span>
+                                                                                    <span className="font-semibold text-slate-800 text-right break-words">
+                                                                                        {bank?.branch_name?.trim() || "N/A"}
                                                                                     </span>
                                                                                 </div>
+                                                                            </div>
+
+                                                                            {/* Checkbook Document */}
+                                                                            <div className="mt-5 pt-4 border-t border-slate-200">
+                                                                                <div className="flex items-center justify-between gap-3 mb-3">
+                                                                                    <h5 className="text-xs font-bold text-slate-700 flex items-center gap-2">
+                                                                                        <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                                                                                        Checkbook Document
+                                                                                    </h5>
+
+                                                                                    {bank?.checkbook_document && (
+                                                                                        <a
+                                                                                            href={bank.checkbook_document}
+                                                                                            target="_blank"
+                                                                                            rel="noopener noreferrer"
+                                                                                            className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors shrink-0"
+                                                                                        >
+                                                                                            Open in New Tab
+                                                                                            <ExternalLink className="w-3 h-3" />
+                                                                                        </a>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                {bank?.checkbook_document ? (
+                                                                                    <div className="w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                                                                                        <iframe
+                                                                                            src={bank.checkbook_document}
+                                                                                            title="Checkbook Bank Document"
+                                                                                            className="block w-full h-[260px] sm:h-[360px] lg:h-[420px]"
+                                                                                            loading="lazy"
+                                                                                        />
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="flex flex-col items-center justify-center min-h-[160px] rounded-lg border border-dashed border-slate-300 bg-white px-4 py-8 text-center">
+                                                                                        <FileText className="w-8 h-8 text-slate-300 mb-2" />
+                                                                                        <p className="text-xs font-semibold text-slate-600">
+                                                                                            No Checkbook Document
+                                                                                        </p>
+                                                                                        <p className="text-[11px] text-slate-400 mt-1">
+                                                                                            No document has been uploaded for this bank account.
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         </div>
 

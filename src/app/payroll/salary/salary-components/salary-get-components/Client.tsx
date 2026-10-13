@@ -219,11 +219,11 @@ export default function SalaryGetComponentsClient() {
                     prev.map((c) =>
                         c.uid === editForm.uid
                             ? {
-                                  ...c,
-                                  ...payload,
-                                  company: c.company,
-                                  updatedAt: new Date().toISOString(),
-                              }
+                                ...c,
+                                ...payload,
+                                company: c.company,
+                                updatedAt: new Date().toISOString(),
+                            }
                             : c
                     )
                 );
@@ -231,11 +231,11 @@ export default function SalaryGetComponentsClient() {
                     setViewingComponent((prev) =>
                         prev
                             ? {
-                                  ...prev,
-                                  ...payload,
-                                  company: prev.company,
-                                  updatedAt: new Date().toISOString(),
-                              }
+                                ...prev,
+                                ...payload,
+                                company: prev.company,
+                                updatedAt: new Date().toISOString(),
+                            }
                             : null
                     );
                 }
@@ -400,19 +400,17 @@ export default function SalaryGetComponentsClient() {
                                         key={tab.key}
                                         type="button"
                                         onClick={() => setTypeFilter(tab.key)}
-                                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all shrink-0 cursor-pointer border ${
-                                            isSelected
-                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                                                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                                        }`}
+                                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all shrink-0 cursor-pointer border ${isSelected
+                                            ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                                            }`}
                                     >
                                         <span>{tab.label}</span>
                                         <span
-                                            className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${
-                                                isSelected
-                                                    ? "bg-indigo-800 text-indigo-100"
-                                                    : "bg-gray-100 text-gray-600 border border-gray-200"
-                                            }`}
+                                            className={`px-1.5 py-0.2 rounded-full text-[10px] font-medium ${isSelected
+                                                ? "bg-indigo-800 text-indigo-100"
+                                                : "bg-gray-100 text-gray-600 border border-gray-200"
+                                                }`}
                                         >
                                             {tab.count}
                                         </span>
@@ -533,185 +531,264 @@ export default function SalaryGetComponentsClient() {
                                         </tr>
                                     </tbody>
                                 ) : (
-                                    <tbody className="bg-white divide-y divide-gray-100">
-                                        {filteredData.map((comp, index) => {
-                                            const isEarning = comp.type === "EARNING";
+                                    <>
+                                        {[
+                                            {
+                                                type: "EARNING",
+                                                title: "Earnings",
+                                                items: filteredData.filter(
+                                                    (comp) => comp.type === "EARNING"
+                                                ),
+                                            },
+                                            {
+                                                type: "DEDUCTION",
+                                                title: "Deductions",
+                                                items: filteredData.filter(
+                                                    (comp) => comp.type === "DEDUCTION"
+                                                ),
+                                            },
+                                        ]
+                                            .filter((section) => section.items.length > 0)
+                                            .map((section) => {
+                                                const isEarning = section.type === "EARNING";
 
-                                            return (
-                                                <tr
-                                                    key={comp.uid || index}
-                                                    className="hover:bg-slate-50/70 transition-colors"
-                                                >
-                                                    {/* Index */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap text-[12px] text-gray-400 font-mono">
-                                                        {String(index + 1).padStart(2, "0")}
-                                                    </td>
-
-                                                    {/* Component Name */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2">
-                                                            <div
-                                                                className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${
-                                                                    isEarning
-                                                                        ? "bg-emerald-50 border-emerald-100 text-emerald-600"
-                                                                        : "bg-amber-50 border-amber-100 text-amber-600"
-                                                                }`}
-                                                            >
-                                                                {isEarning ? (
-                                                                    <ArrowUpRight size={14} />
-                                                                ) : (
-                                                                    <ArrowDownRight size={14} />
-                                                                )}
-                                                            </div>
-                                                            <div>
-                                                                <div className="text-[12px] font-semibold text-gray-900">
-                                                                    {comp.name}
-                                                                </div>
-                                                                <span className="text-[10px] font-mono text-gray-400">
-                                                                    {comp.uid}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-
-                                                    {/* Code */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <span className="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                                                            {comp.code}
-                                                        </span>
-                                                    </td>
-
-                                                    {/* Company */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <div className="flex items-center gap-1.5 text-[12px] text-gray-700">
-                                                            <Building2 size={13} className="text-gray-400 shrink-0" />
-                                                            <span className="truncate max-w-[150px]">
-                                                                {comp.company?.name || comp.company_id || "-"}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-
-                                                    {/* Type */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <span
-                                                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                                                return (
+                                                    <tbody
+                                                        key={section.type}
+                                                        className="bg-white divide-y divide-gray-100"
+                                                    >
+                                                        {/* Section Header */}
+                                                        <tr
+                                                            className={
                                                                 isEarning
-                                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                                    : "bg-amber-50 text-amber-700 border-amber-200"
-                                                            }`}
+                                                                    ? "bg-emerald-50/80 border-y border-emerald-100"
+                                                                    : "bg-amber-50/80 border-y border-amber-100"
+                                                            }
                                                         >
-                                                            {comp.type}
-                                                        </span>
-                                                    </td>
+                                                            <td colSpan={10} className="px-5 py-3">
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        <div
+                                                                            className={`w-7 h-7 rounded-lg border flex items-center justify-center ${isEarning
+                                                                                ? "bg-emerald-100 border-emerald-200 text-emerald-700"
+                                                                                : "bg-amber-100 border-amber-200 text-amber-700"
+                                                                                }`}
+                                                                        >
+                                                                            {isEarning ? (
+                                                                                <ArrowUpRight size={15} />
+                                                                            ) : (
+                                                                                <ArrowDownRight size={15} />
+                                                                            )}
+                                                                        </div>
 
-                                                    {/* Calculation */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <div className="flex flex-col">
-                                                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-700">
-                                                                {comp.calculation_type === "PERCENTAGE" ? (
-                                                                    <Percent size={11} className="text-indigo-500" />
-                                                                ) : comp.calculation_type === "FORMULA" ? (
-                                                                    <Calculator size={11} className="text-purple-500" />
-                                                                ) : (
-                                                                    <FileText size={11} className="text-gray-400" />
-                                                                )}
-                                                                {comp.calculation_type}
-                                                            </span>
-                                                            {comp.formula && (
-                                                                <span
-                                                                    title={comp.formula}
-                                                                    className="text-[10px] font-mono text-gray-500 truncate max-w-[120px]"
+                                                                        <div className="flex flex-col">
+                                                                            <span
+                                                                                className={`text-xs font-bold uppercase tracking-wider ${isEarning
+                                                                                    ? "text-emerald-800"
+                                                                                    : "text-amber-800"
+                                                                                    }`}
+                                                                            >
+                                                                                {section.title}
+                                                                            </span>
+
+                                                                            <span className="text-[10px] text-gray-500">
+                                                                                {isEarning
+                                                                                    ? "Salary additions and employee benefits"
+                                                                                    : "Salary deductions and statutory contributions"}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <span
+                                                                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${isEarning
+                                                                            ? "bg-white text-emerald-700 border-emerald-200"
+                                                                            : "bg-white text-amber-700 border-amber-200"
+                                                                            }`}
+                                                                    >
+                                                                        {section.items.length}{" "}
+                                                                        {section.items.length === 1
+                                                                            ? "Component"
+                                                                            : "Components"}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+
+                                                        {/* Components belonging to this section */}
+                                                        {section.items.map((comp, index) => {
+                                                            const isEarning = comp.type === "EARNING";
+
+                                                            return (
+                                                                <tr
+                                                                    key={comp.uid || index}
+                                                                    className="hover:bg-slate-50/70 transition-colors"
                                                                 >
-                                                                    {comp.formula}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </td>
+                                                                    {/* Index */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap text-[12px] text-gray-400 font-mono">
+                                                                        {String(index + 1).padStart(2, "0")}
+                                                                    </td>
 
-                                                    {/* Taxable */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <span
-                                                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                                                comp.taxable
-                                                                    ? "bg-blue-50 text-blue-700 border-blue-200"
-                                                                    : "bg-gray-50 text-gray-500 border-gray-200"
-                                                            }`}
-                                                        >
-                                                            {comp.taxable ? "Yes" : "No"}
-                                                        </span>
-                                                    </td>
+                                                                    {/* Component Name */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div
+                                                                                className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${isEarning
+                                                                                    ? "bg-emerald-50 border-emerald-100 text-emerald-600"
+                                                                                    : "bg-amber-50 border-amber-100 text-amber-600"
+                                                                                    }`}
+                                                                            >
+                                                                                {isEarning ? (
+                                                                                    <ArrowUpRight size={14} />
+                                                                                ) : (
+                                                                                    <ArrowDownRight size={14} />
+                                                                                )}
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="text-[12px] font-semibold text-gray-900">
+                                                                                    {comp.name}
+                                                                                </div>
+                                                                                <span className="text-[10px] font-mono text-gray-400">
+                                                                                    {comp.uid}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
 
-                                                    {/* Statutory */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <span
-                                                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${
-                                                                comp.statutory
-                                                                    ? "bg-purple-50 text-purple-700 border-purple-200"
-                                                                    : "bg-gray-50 text-gray-500 border-gray-200"
-                                                            }`}
-                                                        >
-                                                            {comp.statutory ? "Yes" : "No"}
-                                                        </span>
-                                                    </td>
+                                                                    {/* Code */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <span className="px-2 py-0.5 rounded font-mono text-[11px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                                                                            {comp.code}
+                                                                        </span>
+                                                                    </td>
 
-                                                    {/* Status Toggle Switch */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <button
-                                                            type="button"
-                                                            title={comp.active ? "Click to deactivate" : "Click to activate"}
-                                                            disabled={togglingUid === comp.uid}
-                                                            onClick={() => handleStatusToggle(comp)}
-                                                            className={`relative w-[50px] h-[25px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner ${
-                                                                comp.active ? "bg-[#78c267]" : "bg-[#ef3519]"
-                                                            } ${togglingUid === comp.uid ? "opacity-50 cursor-wait" : ""}`}
-                                                        >
-                                                            {/* Status Icon */}
-                                                            <span
-                                                                className={`absolute top-1/2 -translate-y-1/2 text-white transition-all duration-200 ${
-                                                                    comp.active ? "left-2" : "right-2"
-                                                                }`}
-                                                            >
-                                                                {comp.active ? (
-                                                                    <Check size={12} strokeWidth={3} />
-                                                                ) : (
-                                                                    <X size={12} strokeWidth={3} />
-                                                                )}
-                                                            </span>
+                                                                    {/* Company */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <div className="flex items-center gap-1.5 text-[12px] text-gray-700">
+                                                                            <Building2 size={13} className="text-gray-400 shrink-0" />
+                                                                            <span className="truncate max-w-[150px]">
+                                                                                {comp.company?.name || comp.company_id || "-"}
+                                                                            </span>
+                                                                        </div>
+                                                                    </td>
 
-                                                            {/* White Toggle Knob */}
-                                                            <span
-                                                                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${
-                                                                    comp.active ? "right-1" : "left-1"
-                                                                }`}
-                                                            />
-                                                        </button>
-                                                    </td>
+                                                                    {/* Type */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <span
+                                                                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isEarning
+                                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                                                : "bg-amber-50 text-amber-700 border-amber-200"
+                                                                                }`}
+                                                                        >
+                                                                            {comp.type}
+                                                                        </span>
+                                                                    </td>
 
-                                                    {/* Actions */}
-                                                    <td className="px-5 py-3.5 whitespace-nowrap">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setViewingComponent(comp)}
-                                                                title="View Details"
-                                                                className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
-                                                            >
-                                                                <Eye size={13} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleOpenEdit(comp)}
-                                                                title="Edit Component"
-                                                                className="p-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 transition-colors cursor-pointer"
-                                                            >
-                                                                <PenIcon size={13} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
+                                                                    {/* Calculation */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <div className="flex flex-col">
+                                                                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-700">
+                                                                                {comp.calculation_type === "PERCENTAGE" ? (
+                                                                                    <Percent size={11} className="text-indigo-500" />
+                                                                                ) : comp.calculation_type === "FORMULA" ? (
+                                                                                    <Calculator size={11} className="text-purple-500" />
+                                                                                ) : (
+                                                                                    <FileText size={11} className="text-gray-400" />
+                                                                                )}
+                                                                                {comp.calculation_type}
+                                                                            </span>
+                                                                            {comp.formula && (
+                                                                                <span
+                                                                                    title={comp.formula}
+                                                                                    className="text-[10px] font-mono text-gray-500 truncate max-w-[120px]"
+                                                                                >
+                                                                                    {comp.formula}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+
+                                                                    {/* Taxable */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <span
+                                                                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${comp.taxable
+                                                                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                                                                : "bg-gray-50 text-gray-500 border-gray-200"
+                                                                                }`}
+                                                                        >
+                                                                            {comp.taxable ? "Yes" : "No"}
+                                                                        </span>
+                                                                    </td>
+
+                                                                    {/* Statutory */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <span
+                                                                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${comp.statutory
+                                                                                ? "bg-purple-50 text-purple-700 border-purple-200"
+                                                                                : "bg-gray-50 text-gray-500 border-gray-200"
+                                                                                }`}
+                                                                        >
+                                                                            {comp.statutory ? "Yes" : "No"}
+                                                                        </span>
+                                                                    </td>
+
+                                                                    {/* Status Toggle Switch */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <button
+                                                                            type="button"
+                                                                            title={comp.active ? "Click to deactivate" : "Click to activate"}
+                                                                            disabled={togglingUid === comp.uid}
+                                                                            onClick={() => handleStatusToggle(comp)}
+                                                                            className={`relative w-[50px] h-[25px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner ${comp.active ? "bg-[#78c267]" : "bg-[#ef3519]"
+                                                                                } ${togglingUid === comp.uid ? "opacity-50 cursor-wait" : ""}`}
+                                                                        >
+                                                                            {/* Status Icon */}
+                                                                            <span
+                                                                                className={`absolute top-1/2 -translate-y-1/2 text-white transition-all duration-200 ${comp.active ? "left-2" : "right-2"
+                                                                                    }`}
+                                                                            >
+                                                                                {comp.active ? (
+                                                                                    <Check size={12} strokeWidth={3} />
+                                                                                ) : (
+                                                                                    <X size={12} strokeWidth={3} />
+                                                                                )}
+                                                                            </span>
+
+                                                                            {/* White Toggle Knob */}
+                                                                            <span
+                                                                                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${comp.active ? "right-1" : "left-1"
+                                                                                    }`}
+                                                                            />
+                                                                        </button>
+                                                                    </td>
+
+                                                                    {/* Actions */}
+                                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setViewingComponent(comp)}
+                                                                                title="View Details"
+                                                                                className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
+                                                                            >
+                                                                                <Eye size={13} />
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleOpenEdit(comp)}
+                                                                                title="Edit Component"
+                                                                                className="p-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 transition-colors cursor-pointer"
+                                                                            >
+                                                                                <PenIcon size={13} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                );
+                                            })}
+                                    </>
                                 )}
                             </table>
                         </div>
@@ -727,11 +804,10 @@ export default function SalaryGetComponentsClient() {
                                 <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/70">
                                     <div className="flex items-center gap-2.5">
                                         <div
-                                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                                viewingComponent.type === "EARNING"
-                                                    ? "bg-emerald-500 text-white"
-                                                    : "bg-amber-500 text-white"
-                                            }`}
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${viewingComponent.type === "EARNING"
+                                                ? "bg-emerald-500 text-white"
+                                                : "bg-amber-500 text-white"
+                                                }`}
                                         >
                                             {viewingComponent.type === "EARNING" ? (
                                                 <ArrowUpRight size={16} />
@@ -783,11 +859,10 @@ export default function SalaryGetComponentsClient() {
                                                 Type
                                             </span>
                                             <span
-                                                className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[11px] font-bold ${
-                                                    viewingComponent.type === "EARNING"
-                                                        ? "bg-emerald-100 text-emerald-800"
-                                                        : "bg-amber-100 text-amber-800"
-                                                }`}
+                                                className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[11px] font-bold ${viewingComponent.type === "EARNING"
+                                                    ? "bg-emerald-100 text-emerald-800"
+                                                    : "bg-amber-100 text-amber-800"
+                                                    }`}
                                             >
                                                 {viewingComponent.type}
                                             </span>
@@ -818,9 +893,8 @@ export default function SalaryGetComponentsClient() {
                                         <div className="p-3 border border-gray-200 rounded-lg text-center">
                                             <span className="text-[10px] text-gray-500 block">Taxable</span>
                                             <span
-                                                className={`text-[12px] font-bold ${
-                                                    viewingComponent.taxable ? "text-blue-600" : "text-gray-400"
-                                                }`}
+                                                className={`text-[12px] font-bold ${viewingComponent.taxable ? "text-blue-600" : "text-gray-400"
+                                                    }`}
                                             >
                                                 {viewingComponent.taxable ? "Yes" : "No"}
                                             </span>
@@ -829,9 +903,8 @@ export default function SalaryGetComponentsClient() {
                                         <div className="p-3 border border-gray-200 rounded-lg text-center">
                                             <span className="text-[10px] text-gray-500 block">Statutory</span>
                                             <span
-                                                className={`text-[12px] font-bold ${
-                                                    viewingComponent.statutory ? "text-purple-600" : "text-gray-400"
-                                                }`}
+                                                className={`text-[12px] font-bold ${viewingComponent.statutory ? "text-purple-600" : "text-gray-400"
+                                                    }`}
                                             >
                                                 {viewingComponent.statutory ? "Yes" : "No"}
                                             </span>
@@ -840,9 +913,8 @@ export default function SalaryGetComponentsClient() {
                                         <div className="p-3 border border-gray-200 rounded-lg text-center">
                                             <span className="text-[10px] text-gray-500 block">Status</span>
                                             <span
-                                                className={`text-[12px] font-bold ${
-                                                    viewingComponent.active ? "text-emerald-600" : "text-red-500"
-                                                }`}
+                                                className={`text-[12px] font-bold ${viewingComponent.active ? "text-emerald-600" : "text-red-500"
+                                                    }`}
                                             >
                                                 {viewingComponent.active ? "Active" : "Inactive"}
                                             </span>
@@ -958,11 +1030,10 @@ export default function SalaryGetComponentsClient() {
                                                 <button
                                                     type="button"
                                                     onClick={() => setEditForm((p) => ({ ...p, type: "EARNING" }))}
-                                                    className={`py-2 px-3 rounded-md border text-[12px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer ${
-                                                        editForm.type === "EARNING"
-                                                            ? "bg-emerald-50 text-emerald-700 border-emerald-500"
-                                                            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                                                    }`}
+                                                    className={`py-2 px-3 rounded-md border text-[12px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer ${editForm.type === "EARNING"
+                                                        ? "bg-emerald-50 text-emerald-700 border-emerald-500"
+                                                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                                                        }`}
                                                 >
                                                     <ArrowUpRight size={13} />
                                                     <span>EARNING</span>
@@ -972,11 +1043,10 @@ export default function SalaryGetComponentsClient() {
                                                     onClick={() =>
                                                         setEditForm((p) => ({ ...p, type: "DEDUCTION" }))
                                                     }
-                                                    className={`py-2 px-3 rounded-md border text-[12px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer ${
-                                                        editForm.type === "DEDUCTION"
-                                                            ? "bg-amber-50 text-amber-700 border-amber-500"
-                                                            : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
-                                                    }`}
+                                                    className={`py-2 px-3 rounded-md border text-[12px] font-semibold flex items-center justify-center gap-1.5 cursor-pointer ${editForm.type === "DEDUCTION"
+                                                        ? "bg-amber-50 text-amber-700 border-amber-500"
+                                                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                                                        }`}
                                                 >
                                                     <ArrowDownRight size={13} />
                                                     <span>DEDUCTION</span>
@@ -1036,14 +1106,12 @@ export default function SalaryGetComponentsClient() {
                                                     onClick={() =>
                                                         setEditForm((p) => ({ ...p, taxable: !p.taxable }))
                                                     }
-                                                    className={`relative w-[44px] h-[22px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner shrink-0 ${
-                                                        editForm.taxable ? "bg-[#78c267]" : "bg-gray-300"
-                                                    }`}
+                                                    className={`relative w-[44px] h-[22px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner shrink-0 ${editForm.taxable ? "bg-[#78c267]" : "bg-gray-300"
+                                                        }`}
                                                 >
                                                     <span
-                                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${
-                                                            editForm.taxable ? "right-1" : "left-1"
-                                                        }`}
+                                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${editForm.taxable ? "right-1" : "left-1"
+                                                            }`}
                                                     />
                                                 </button>
                                             </div>
@@ -1058,14 +1126,12 @@ export default function SalaryGetComponentsClient() {
                                                     onClick={() =>
                                                         setEditForm((p) => ({ ...p, statutory: !p.statutory }))
                                                     }
-                                                    className={`relative w-[44px] h-[22px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner shrink-0 ${
-                                                        editForm.statutory ? "bg-purple-600" : "bg-gray-300"
-                                                    }`}
+                                                    className={`relative w-[44px] h-[22px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner shrink-0 ${editForm.statutory ? "bg-purple-600" : "bg-gray-300"
+                                                        }`}
                                                 >
                                                     <span
-                                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${
-                                                            editForm.statutory ? "right-1" : "left-1"
-                                                        }`}
+                                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${editForm.statutory ? "right-1" : "left-1"
+                                                            }`}
                                                     />
                                                 </button>
                                             </div>
@@ -1080,14 +1146,12 @@ export default function SalaryGetComponentsClient() {
                                                     onClick={() =>
                                                         setEditForm((p) => ({ ...p, active: !p.active }))
                                                     }
-                                                    className={`relative w-[44px] h-[22px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner shrink-0 ${
-                                                        editForm.active ? "bg-[#78c267]" : "bg-[#ef3519]"
-                                                    }`}
+                                                    className={`relative w-[44px] h-[22px] rounded-full transition-colors duration-200 cursor-pointer shadow-inner shrink-0 ${editForm.active ? "bg-[#78c267]" : "bg-[#ef3519]"
+                                                        }`}
                                                 >
                                                     <span
-                                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${
-                                                            editForm.active ? "right-1" : "left-1"
-                                                        }`}
+                                                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${editForm.active ? "right-1" : "left-1"
+                                                            }`}
                                                     />
                                                 </button>
                                             </div>

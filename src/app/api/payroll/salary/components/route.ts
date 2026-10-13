@@ -13,9 +13,6 @@ export async function GET(req: NextRequest) {
             include: {
                 company: true,
             },
-            orderBy: {
-                createdAt: "desc",
-            },
         });
         return NextResponse.json({ success: true, salaryComponents });
     } catch (error: any) {
