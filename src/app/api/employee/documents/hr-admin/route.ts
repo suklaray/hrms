@@ -2,9 +2,13 @@
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
 import { DecodedToken } from "@/lib/jwtTypes";
-
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
-
+const { error } = await checkAuth(req, [
+    PERMISSIONS.DOCUMENT.VIEW_OWN,
+  ]);
+  if (error) return error;
 
   try {
     const token = req.cookies.get('token')?.value;

@@ -3,6 +3,8 @@ import fs from "fs/promises";
 import path from "path";
 import prisma from "@/lib/prisma";
 import jwt from "jsonwebtoken";
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 const imageTypes: Record<string, string> = {
   ".gif": "image/gif",
@@ -13,7 +15,11 @@ const imageTypes: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
-  const token = req.cookies.get("token")?.value;
+  const { error } = await checkAuth(req, [PERMISSION_KEYS.SETTINGS_PROFILE,PERMISSION_KEYS.DOCUMENT_SUBMIT,
+  PERMISSION_KEYS.DOCUMENT_VIEW_OWN,]);
+  if (error) return error;
+
+  const token = req.cookies.get("token")?.value || req.cookies.get("employeeToken")?.value;
   if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let decoded: any;
@@ -26,13 +32,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
   try {
     const user = await prisma.users.findUnique({
       where: { empid: decoded.empid },
-      select: {
-        empid: true,
-        name: true,
-        email: true,
-        profile_photo: true,
-        role: true,
-      },
+      select: { empid: true, name: true, email: true, profile_photo: true, role: true },
     });
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         : profilePic || null,
     }, { status: 200 });
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+    if (error && typeof error === "object" && "code" in error && (error as any).code === "ENOENT") {
       return NextResponse.json({ error: "Profile photo file not found" }, { status: 404 });
     }
     console.error("Database error:", error);

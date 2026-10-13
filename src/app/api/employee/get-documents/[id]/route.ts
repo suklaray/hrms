@@ -1,11 +1,15 @@
 import { getQueryParams } from "@/lib/routeHelper";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from '@/lib/prisma';
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 
 export async function GET(req: NextRequest, context?: { params?: Promise<any> }) {
   const query = await getQueryParams(req, context?.params);
-
-  
+  const { error } = await checkAuth(req, [
+    PERMISSIONS.DOCUMENT.VIEW_OWN,
+  ]);
+  if (error) return error;
 
   const { id } = query;
 
@@ -25,6 +29,12 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
         resume: true,
         experience_certificate: true,
         profile_photo: true,
+        user: {
+          select: {
+            profile_photo: true,
+            contact_number: true,
+          },
+        },
         addresses: {
           select: {
             address_line1: true,
@@ -49,12 +59,36 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     });
 
     if (!employee) {
-      return NextResponse.json({ exists: false }, { status: 200 });
+      const user = await prisma.users.findFirst({
+        where: { empid: id },   //  change "empid" if your column is named differently
+        select: {
+          contact_number: true,
+          profile_photo: true,
+        },
+      });
+
+      if (!user) {
+        return NextResponse.json({ exists: false }, { status: 200 });
+      }
+
+      return NextResponse.json({
+        exists: true,
+        data: {
+          contact_no: user.contact_number || '',
+          profile_photo: user.profile_photo || null,
+        },
+      }, { status: 200 });
     }
 
-    // Flatten the data structure for the frontend
+    // Apply fallback: employees first, users second
+    const resolvedProfilePhoto =
+      employee.profile_photo || employee.user?.profile_photo || null;
+
+    const resolvedContactNo =
+      employee.contact_no || employee.user?.contact_number || '';
+
     const flattenedData = {
-      contact_no: employee.contact_no || '',
+      contact_no: resolvedContactNo || '',
       dob: employee.dob,
       gender: employee.gender || '',
       highest_qualification: employee.highest_qualification || '',
@@ -65,15 +99,13 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       education_certificates: employee.education_certificates,
       resume: employee.resume,
       experience_certificate: employee.experience_certificate,
-      profile_photo: employee.profile_photo,
-      // Address fields from related table
+      profile_photo: resolvedProfilePhoto,
       address_line_1: employee.addresses?.[0]?.address_line1 || '',
       address_line_2: employee.addresses?.[0]?.address_line2 || '',
       city: employee.addresses?.[0]?.city || '',
       state: employee.addresses?.[0]?.state || '',
       pincode: employee.addresses?.[0]?.pincode || '',
       country: employee.addresses?.[0]?.country || '',
-      // Bank details from related table
       account_holder_name: employee.bank_details?.[0]?.account_holder_name || '',
       bank_name: employee.bank_details?.[0]?.bank_name || '',
       branch_name: employee.bank_details?.[0]?.branch_name || '',
@@ -82,20 +114,9 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
       bank_details: employee.bank_details?.[0]?.checkbook_document || null
     };
 
-    // console.log('Flattened data being sent:', flattenedData);
-
-    // Check if any document fields exist
-    const hasDocuments = flattenedData.contact_no || flattenedData.dob || flattenedData.aadhar_card || 
-                        flattenedData.pan_card || flattenedData.education_certificates || 
-                        flattenedData.resume || flattenedData.profile_photo || flattenedData.bank_details;
-
-    if (!hasDocuments) {
-      return NextResponse.json({ exists: false }, { status: 200 });
-    }
-
-    return NextResponse.json({ 
-      exists: true, 
-      data: flattenedData 
+    return NextResponse.json({
+      exists: true,
+      data: flattenedData
     }, { status: 200 });
 
   } catch (error) {
@@ -105,4 +126,3 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     await prisma.$disconnect();
   }
 }
-

@@ -3,8 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
-
+import { checkAuth } from "@/lib/apiAuth";
+import { PERMISSIONS } from "@/rbac/permissions";
 export async function POST(req: NextRequest) {
+  const { error } = await checkAuth(req, [
+      PERMISSIONS.DOCUMENT.SUBMIT,
+      PERMISSIONS.DOCUMENT.VIEW_OWN,
+    ]);
+    if (error) return error;
   try {
     const token = req.cookies.get('token')?.value;
     if (!token) {

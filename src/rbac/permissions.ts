@@ -194,17 +194,6 @@ export const PERMISSIONS = {
     EXPORT: "audit.export",
   },
 
-  AUDIT: {
-    VIEW: "audit.view",
-    UPDATE_STATUS: "audit.update_status",
-    EXPORT: "audit.export",
-  },
-
-  AUDIT: {
-    VIEW: "audit.view",
-    UPDATE_STATUS: "audit.update_status",
-    EXPORT: "audit.export",
-  },
 } as const;
 
 export type PermissionKey =
