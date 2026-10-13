@@ -312,7 +312,7 @@ export default function JobApplicationsClient({
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || "Failed to review interview schedule");
-      toast.success(action === "APPROVED" ? "Interview scheduled" : "Interview rejected");
+      toast.success(result.message || "Operation completed successfully");
       await loadResumes();
     } catch (error) {
       toast.error((error as Error).message || "Failed to review interview schedule");
