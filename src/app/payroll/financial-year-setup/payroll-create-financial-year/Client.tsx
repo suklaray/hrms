@@ -3,7 +3,7 @@
 import Pageheader from "@/Components/PageHeader";
 import SideBar from "@/Components/SideBar";
 import Head from "@/lib/compatHead";
-import getFinancialYear from "@/lib/financialYearCalculation";
+import getFinancialYear, { getFinancialYearEndMonth } from "@/lib/financialYearCalculation";
 import { Check, ChevronDown, RotateCcw, Search, Send } from "lucide-react";
 import { useRouter } from "@/lib/compatRouter";
 import { Suspense, useEffect, useState } from "react";
@@ -70,11 +70,6 @@ const FinancialYearSetup = () => {
         const start = startYear * 12 + startMonthNumber;
         const end = endYear * 12 + endMonthNumber;
 
-        if (start === end) {
-            toast.error("Financial year start and end month cannot be the same.");
-            return false;
-        }
-
         if (end < start) {
             toast.error("Financial year end cannot be before the start.");
             return false;
@@ -88,8 +83,67 @@ const FinancialYearSetup = () => {
         return true;
     }
 
+    const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (!value) {
+            setForm((prev) => ({
+                ...prev,
+                start_date: "",
+                end_date: "",
+            }));
+            setFy("Select the valid dates to calculate FY");
+            return;
+        }
+
+        try {
+            const calculatedEndMonth = getFinancialYearEndMonth(value);
+            const calculatedFy = getFinancialYear(value, calculatedEndMonth);
+
+            setForm((prev) => ({
+                ...prev,
+                start_date: value,
+                end_date: calculatedEndMonth,
+            }));
+            setFy(calculatedFy);
+        } catch (err: any) {
+            console.error("Error calculating financial year:", err);
+            setForm((prev) => ({
+                ...prev,
+                start_date: value,
+            }));
+        }
+    };
+
+    const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setForm((prev) => ({
+            ...prev,
+            end_date: value,
+        }));
+
+        if (form.start_date && value) {
+            if (validateFinancialYear({ startMonth: form.start_date, endMonth: value })) {
+                try {
+                    setFy(getFinancialYear(form.start_date, value));
+                } catch (err: any) {
+                    console.error("Error calculating FY:", err);
+                }
+            }
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        if (!form.company_id) {
+            toast.error("Please select a company.");
+            return;
+        }
+
+        if (!validateFinancialYear({ startMonth: form.start_date, endMonth: form.end_date })) {
+            return;
+        }
+
         setLoading(true);
         try {
             const res = await fetch("/api/payroll/financial-year", {
@@ -370,39 +424,29 @@ const FinancialYearSetup = () => {
                                                     <input
                                                         type="month"
                                                         value={form.start_date}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value;
-                                                            setForm((prev) => ({
-                                                                ...prev,
-                                                                start_date: value
-                                                            }));
-                                                        }}
-                                                        onFocus={() => { }} // Add focus styles if needed
+                                                        onChange={handleStartDateChange}
                                                         className="block w-full px-3 py-2.5 text-[11px] text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                                         placeholder="Select start date"
                                                     />
                                                 </div>
                                             </div>
                                             <div className="flex-1 w-full">
-                                                <label className="block text-xs font-semibold text-gray-900 mb-2">
-                                                    End Date
-                                                    <span className="text-red-500 ml-0.5">*</span>
-                                                </label>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <label className="block text-xs font-semibold text-gray-900">
+                                                        End Date
+                                                        <span className="text-red-500 ml-0.5">*</span>
+                                                    </label>
+                                                    {form.end_date && (
+                                                        <span className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-medium border border-indigo-100">
+                                                            Auto-selected (FY End)
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="relative">
                                                     <input
                                                         type="month"
                                                         value={form.end_date}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value;
-                                                            if (validateFinancialYear({ startMonth: form.start_date, endMonth: value })) {
-                                                                setFy(getFinancialYear(form.start_date, value));
-                                                                setForm((prev) => ({
-                                                                    ...prev,
-                                                                    end_date: value
-                                                                }));
-                                                            }
-                                                        }}
-                                                        onFocus={() => { }} // Add focus styles if needed
+                                                        onChange={handleEndDateChange}
                                                         className="block w-full px-3 py-2.5 text-[11px] text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
                                                         placeholder="Select end date"
                                                     />
@@ -421,7 +465,11 @@ const FinancialYearSetup = () => {
                                                         type="text"
                                                         value={fy}
                                                         readOnly
-                                                        className="block w-full px-3 py-2.5 text-[11px] text-gray-900 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                                                        className={`block w-full px-3 py-2.5 text-[11px] border rounded-md focus:outline-none ${
+                                                            fy.startsWith("FY")
+                                                                ? "bg-indigo-50/70 text-indigo-900 font-semibold border-indigo-200"
+                                                                : "bg-gray-50 text-gray-500 border-gray-300"
+                                                        }`}
                                                         placeholder="Select financial year"
                                                     />
                                                 </div>

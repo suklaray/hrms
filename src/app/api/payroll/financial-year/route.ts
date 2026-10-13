@@ -35,12 +35,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, message: 'Financial year already exists' }, { status: 400 });
         }
 
+        let parsedStartDate = new Date(start_date);
+        let parsedEndDate = new Date(end_date);
+
+        if (/^\d{4}-(0[1-9]|1[0-2])$/.test(start_date)) {
+            const [sYear, sMonth] = start_date.split("-").map(Number);
+            parsedStartDate = new Date(Date.UTC(sYear, sMonth - 1, 1));
+        }
+
+        if (/^\d{4}-(0[1-9]|1[0-2])$/.test(end_date)) {
+            const [eYear, eMonth] = end_date.split("-").map(Number);
+            const lastDay = new Date(Date.UTC(eYear, eMonth, 0)).getUTCDate();
+            parsedEndDate = new Date(Date.UTC(eYear, eMonth - 1, lastDay));
+        }
+
         const financialYear = await prisma.financial_year.create({
             data: {
                 company_id,
                 name: fyName,
-                start_date: new Date(start_date),
-                end_date: new Date(end_date),
+                start_date: parsedStartDate,
+                end_date: parsedEndDate,
                 status
             }
         });
