@@ -251,8 +251,8 @@ export function EmployeeDashboard({ user: propUser, permissions = [] }: any) {
     {
       label: 'Payslips & Docs',
       description: 'View documents',
-      route: '/payslip/payslip-lists',
-      permission: PERMISSION_KEYS.PAYSLIP_VIEW,
+      route: '/payslip/my-payslip',
+      permission: PERMISSION_KEYS.PAYSLIP_VIEW_OWN,
       icon: Mail,
       color: 'orange',
     },

@@ -301,8 +301,8 @@ export async function generatePayslipPdf(data: PayslipPdfData): Promise<Generate
   const netPay = data.total_payable_amount !== undefined
     ? Number(data.total_payable_amount)
     : data.net_salary !== undefined
-    ? Number(data.net_salary)
-    : totalAllowances - totalDeductions;
+      ? Number(data.net_salary)
+      : totalAllowances - totalDeductions;
 
   const maxRows = Math.max(earnings.length, deductions.length);
   for (let i = 0; i < maxRows; i++) {
@@ -349,7 +349,7 @@ export async function generatePayslipPdf(data: PayslipPdfData): Promise<Generate
   // Generated on & Net Pay
   curY += 22;
   const genDate = data.generated_at ? new Date(data.generated_at) : new Date();
-  const dateFormatted = `${genDate.getDate()}/${genDate.getMonth() + 1}/${genDate.getFullYear()}`;
+  const dateFormatted = `${genDate.getDate()}/${genDate.getMonth() + 1}/${genDate.getFullYear()} ${String(genDate.getHours()).padStart(2, "0")}:${String(genDate.getMinutes()).padStart(2, "0")}:${String(genDate.getSeconds()).padStart(2, "0")}`;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);

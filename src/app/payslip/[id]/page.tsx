@@ -44,10 +44,12 @@ export default async function Page({ params }: PageProps) {
             PERMISSION_KEYS.PAYSLIP_GENERATE,
         ]));
 
-    if (!canViewAny) {
-        const trimmedId = id.trim();
-        const isSelfAlias = trimmedId === "my-payslip" || trimmedId === "me";
+    const trimmedId = id.trim();
+    if (trimmedId === "my-payslip" || trimmedId === "me") {
+        redirect("/payslip/my-payslip");
+    }
 
+    if (!canViewAny) {
         // Resolve user's empid reliably
         let userEmpid = user.empid;
         if (!userEmpid && (user.id || user.email)) {
@@ -65,50 +67,46 @@ export default async function Page({ params }: PageProps) {
             }
         }
 
-        // If accessing self-alias or matching employee's own empid, allow access
-        if (isSelfAlias || (userEmpid && trimmedId.toLowerCase() === userEmpid.toLowerCase())) {
-            // Authorized to view self payslip
-        } else {
-            const isNumeric = !isNaN(Number(trimmedId)) && /^\d+$/.test(trimmedId);
+        const isNumeric = !isNaN(Number(trimmedId)) && /^\d+$/.test(trimmedId);
 
-            const record = await prisma.payroll.findFirst({
-                where: isNumeric
-                    ? {
-                        OR: [
-                            { id: Number(trimmedId) },
-                            { uid: trimmedId },
-                            { empid: trimmedId },
-                        ],
-                    }
-                    : {
-                        OR: [
-                            { uid: trimmedId },
-                            { empid: trimmedId },
-                        ],
-                    },
-                select: {
-                    empid: true,
-                    users: {
-                        select: {
-                            id: true,
-                            email: true,
-                        },
+        const record = await prisma.payroll.findFirst({
+            where: isNumeric
+                ? {
+                    OR: [
+                        { id: Number(trimmedId) },
+                        { uid: trimmedId },
+                        { empid: trimmedId },
+                    ],
+                }
+                : {
+                    OR: [
+                        { uid: trimmedId },
+                        { empid: trimmedId },
+                    ],
+                },
+            select: {
+                empid: true,
+                status: true,
+                users: {
+                    select: {
+                        id: true,
+                        email: true,
                     },
                 },
-            });
+            },
+        });
 
-            if (!record) {
-                redirect("/403");
-            }
+        if (!record) {
+            redirect("/403");
+        }
 
-            const isOwner =
-                (userEmpid && String(record.empid).toLowerCase() === String(userEmpid).toLowerCase()) ||
-                (user.id && record.users?.id === Number(user.id)) ||
-                (user.email && record.users?.email?.toLowerCase() === user.email.toLowerCase());
+        const isOwner =
+            (userEmpid && String(record.empid).toLowerCase() === String(userEmpid).toLowerCase()) ||
+            (user.id && record.users?.id === Number(user.id)) ||
+            (user.email && record.users?.email?.toLowerCase() === user.email.toLowerCase());
 
-            if (!isOwner) {
-                redirect("/403");
-            }
+        if (!isOwner || record.status !== "DISBURSED") {
+            redirect("/403");
         }
     }
 

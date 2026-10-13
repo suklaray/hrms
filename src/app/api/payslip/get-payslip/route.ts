@@ -83,38 +83,35 @@ export async function GET(req: NextRequest) {
   const userEmpid = await resolveUserEmpid(currentUser);
 
   try {
-    // ── If no specific payslip ID is requested: return user's or target employee's payslips
-    if (!id) {
+    const trimmedId = id ? id.trim() : "";
+    const isSelfAlias = trimmedId === "my-payslip" || trimmedId === "me";
+    const isList = (!id || searchParams.get("list") === "true" || (isSelfAlias && searchParams.get("mode") === "list")) && !isDownload;
+
+    // ── If list is requested or no specific payslip ID: return user's or target employee's payslips
+    if (isList) {
       const targetEmpId = canViewAny
         ? (searchParams.get("empid") || userEmpid)
         : userEmpid;
 
       if (!targetEmpId) {
         return NextResponse.json(
-          { success: false, error: "Employee ID or Payslip ID is required" },
+          { success: false, error: "Employee ID could not be resolved for your profile" },
           { status: 400 }
         );
       }
 
+      // If user is not manager/super, or if status=DISBURSED is requested, strictly filter by DISBURSED
+      const statusParam = searchParams.get("status");
+      const statusFilter = (!canViewAny || statusParam === "DISBURSED")
+        ? { status: "DISBURSED" as const }
+        : (statusParam ? { status: statusParam as any } : {});
+
       const payrollList = await prisma.payroll.findMany({
-        where: { empid: String(targetEmpId) },
-        include: {
-          company: {
-            select: {
-              name: true,
-              city: true,
-              state: true,
-            },
-          },
-          period: {
-            select: {
-              period_name: true,
-              period_start: true,
-              period_end: true,
-            },
-          },
-          components: true,
+        where: {
+          empid: String(targetEmpId),
+          ...statusFilter,
         },
+        include: PAYROLL_INCLUDE,
         orderBy: {
           salary_payment_date: "desc",
         },
@@ -130,8 +127,6 @@ export async function GET(req: NextRequest) {
     }
 
     // ── Fetch specific payroll record by ID, UID, empid, or self-alias
-    const trimmedId = id.trim();
-    const isSelfAlias = trimmedId === "my-payslip" || trimmedId === "me";
 
     let payrollRecord;
     if (isSelfAlias) {
@@ -145,6 +140,7 @@ export async function GET(req: NextRequest) {
       payrollRecord = await prisma.payroll.findFirst({
         where: {
           empid: userEmpid,
+          status: "DISBURSED",
           ...(periodIdParam ? { period_id: String(periodIdParam) } : {}),
         },
         orderBy: {
@@ -158,18 +154,18 @@ export async function GET(req: NextRequest) {
       payrollRecord = await prisma.payroll.findFirst({
         where: isNumeric
           ? {
-              OR: [
-                { id: Number(trimmedId) },
-                { uid: trimmedId },
-                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
-              ],
-            }
+            OR: [
+              { id: Number(trimmedId) },
+              { uid: trimmedId },
+              { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+            ],
+          }
           : {
-              OR: [
-                { uid: trimmedId },
-                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
-              ],
-            },
+            OR: [
+              { uid: trimmedId },
+              { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+            ],
+          },
         orderBy: {
           salary_payment_date: "desc",
         },
@@ -200,11 +196,25 @@ export async function GET(req: NextRequest) {
           { status: 403 }
         );
       }
+
+      // Regular employees can only view disbursed payslips
+      if (payrollRecord.status !== "DISBURSED") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "This payslip has not been disbursed yet.",
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Also fetch available payslips for this employee so the user can see/switch periods in the UI
     const availablePayslips = await prisma.payroll.findMany({
-      where: { empid: payrollRecord.empid },
+      where: {
+        empid: payrollRecord.empid,
+        ...((!canViewAny || isSelfAlias) ? { status: "DISBURSED" as const } : {}),
+      },
       select: {
         id: true,
         uid: true,
@@ -308,6 +318,13 @@ export async function POST(req: NextRequest) {
     const trimmedId = String(id).trim();
     const isSelfAlias = trimmedId === "my-payslip" || trimmedId === "me";
 
+    const userPermissions = auth.permissions || new Set<string>();
+    const isSuper = isSuperAdmin(currentUser);
+    const canViewAny =
+      isSuper ||
+      userPermissions.has(PERMISSION_KEYS.PAYSLIP_VIEW) ||
+      userPermissions.has(PERMISSION_KEYS.PAYSLIP_GENERATE);
+
     let payrollRecord;
     if (isSelfAlias) {
       if (!userEmpid) {
@@ -320,6 +337,7 @@ export async function POST(req: NextRequest) {
       payrollRecord = await prisma.payroll.findFirst({
         where: {
           empid: userEmpid,
+          ...((!canViewAny || isSelfAlias) ? { status: "DISBURSED" as const } : {}),
           ...(periodIdParam ? { period_id: String(periodIdParam) } : {}),
         },
         orderBy: {
@@ -333,18 +351,18 @@ export async function POST(req: NextRequest) {
       payrollRecord = await prisma.payroll.findFirst({
         where: isNumeric
           ? {
-              OR: [
-                { id: Number(trimmedId) },
-                { uid: trimmedId },
-                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
-              ],
-            }
+            OR: [
+              { id: Number(trimmedId) },
+              { uid: trimmedId },
+              { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+            ],
+          }
           : {
-              OR: [
-                { uid: trimmedId },
-                { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
-              ],
-            },
+            OR: [
+              { uid: trimmedId },
+              { empid: trimmedId, ...(periodIdParam ? { period_id: String(periodIdParam) } : {}) },
+            ],
+          },
         orderBy: {
           salary_payment_date: "desc",
         },
@@ -359,13 +377,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const userPermissions = auth.permissions || new Set<string>();
-    const isSuper = isSuperAdmin(currentUser);
-    const canViewAny =
-      isSuper ||
-      userPermissions.has(PERMISSION_KEYS.PAYSLIP_VIEW) ||
-      userPermissions.has(PERMISSION_KEYS.PAYSLIP_GENERATE);
-
     if (!canViewAny) {
       const isOwner =
         (userEmpid && String(payrollRecord.empid).toLowerCase() === String(userEmpid).toLowerCase()) ||
@@ -377,6 +388,16 @@ export async function POST(req: NextRequest) {
           {
             success: false,
             error: "Forbidden: You are only permitted to view your own payslip.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (payrollRecord.status !== "DISBURSED") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "This payslip has not been disbursed yet.",
           },
           { status: 403 }
         );
