@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
-import { sendInterviewScheduleMail } from "@/lib/recruitmentMail";
-
 export async function PATCH(req: NextRequest) {
   const { error } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_SCHEDULE]);
   if (error) return error;
@@ -67,18 +65,6 @@ export async function PATCH(req: NextRequest) {
         interview_schedule_status: "PENDING",
       },
     });
-
-    let mailSent = false;
-    try {
-      await sendInterviewScheduleMail(
-        candidate.email,
-        candidate.name,
-        interviewDate,
-        interviewTimeFrom,
-        interviewTimeTo
-      );
-      mailSent = true;
-    } catch {}
 
     return NextResponse.json({
       success: true,

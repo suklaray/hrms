@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
+import { sendInterviewScheduleMail } from "@/lib/recruitmentMail";
 import { canManageInterviewSchedules } from "@/lib/interviewScheduleAccess";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
@@ -106,7 +107,27 @@ export async function PATCH(req: NextRequest) {
         );
       }
 
-      return NextResponse.json({ success: true, message: "Interview scheduled" });
+      try {
+        await sendInterviewScheduleMail(
+          resume.candidate.email,
+          resume.candidate.name,
+          pendingDate.toISOString(),
+          pendingTimeFrom,
+          pendingTimeTo
+        );
+        return NextResponse.json({
+          success: true,
+          message: "Interview scheduled and email sent successfully",
+          emailSent: true,
+        });
+      } catch (mailErr) {
+        console.error("Failed to send interview schedule mail:", mailErr);
+        return NextResponse.json({
+          success: true,
+          message: "Interview scheduled successfully, but email could not be sent",
+          emailSent: false,
+        });
+      }
     } else {
       const result = await prisma.parsed_resumes.updateMany({
         where: { id: parsedResumeId, interview_schedule_status: "PENDING" },
