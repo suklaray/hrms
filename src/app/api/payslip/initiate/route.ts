@@ -586,6 +586,8 @@ export async function PUT(req: NextRequest) {
                 status: "INITIATED",
                 generated_at: new Date(),
                 callback_status: "NONE",
+                callback_reason: null,
+                callback_rejection_note: null,
             },
         });
 

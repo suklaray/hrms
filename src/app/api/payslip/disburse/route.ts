@@ -29,28 +29,7 @@ export async function PUT(req: NextRequest) {
             );
         }
 
-        // Handle REJECTED status
-        if (status === "REJECTED") {
-            const updatedPayroll = await prisma.payroll.update({
-                where: { uid },
-                data: {
-                    status: "REJECTED",
-                    generated_at: new Date(),
-                },
-            });
-
-            return NextResponse.json(
-                {
-                    success: true,
-                    message: `Payroll for ${updatedPayroll.empid} (${updatedPayroll.uid}) - REJECTED successfully`,
-                    data: updatedPayroll,
-                },
-                { status: 200 }
-            );
-        }
-
-        // Handle DISBURSED status
-        // 1. Query full payroll record with company, components, employee profile and bank details
+        // Query payroll record with company, components, employee profile and bank details
         const payrollRecord = await prisma.payroll.findUnique({
             where: { uid },
             include: {
@@ -75,6 +54,40 @@ export async function PUT(req: NextRequest) {
                 { status: 404 }
             );
         }
+
+        // Block disbursement or payout rejection while a callback is pending approval
+        if (payrollRecord.callback_status === "REQUESTED") {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "Cannot process payroll: A call back request is currently pending approval. Please approve or reject the call back request first.",
+                },
+                { status: 400 }
+            );
+        }
+
+        // Handle REJECTED status
+        if (status === "REJECTED") {
+            const updatedPayroll = await prisma.payroll.update({
+                where: { uid },
+                data: {
+                    status: "REJECTED",
+                    generated_at: new Date(),
+                    callback_status: "NONE",
+                },
+            });
+
+            return NextResponse.json(
+                {
+                    success: true,
+                    message: `Payroll for ${updatedPayroll.empid} (${updatedPayroll.uid}) - REJECTED successfully`,
+                    data: updatedPayroll,
+                },
+                { status: 200 }
+            );
+        }
+
+        // Handle DISBURSED status
 
         // 2. Generate Payslip PDF matching official HRMS design and store at public/uploads/payslips/[empid]_[period_id].pdf
         const { relativeUrl, buffer } = await generatePayslipPdf({

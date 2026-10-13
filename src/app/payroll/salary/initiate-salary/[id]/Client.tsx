@@ -114,6 +114,7 @@ export default function GeneratePayslipPage({
     const isSuperAdmin = currentUser?.role === "super_admin";
     const canGenerate = isSuperAdmin || userPermissions.has(PERMISSION_KEYS.PAYSLIP_GENERATE);
     const canInitiate = isSuperAdmin || userPermissions.has(PERMISSION_KEYS.PAYSLIP_INITIATE);
+    const canDisburse = isSuperAdmin || userPermissions.has(PERMISSION_KEYS.PAYSLIP_DISBURSED);
 
     // Call Back Modal (Request / Re-request)
     const [callbackModal, setCallbackModal] = useState<{
@@ -530,12 +531,17 @@ export default function GeneratePayslipPage({
             const data = await res.json();
             if (res.ok && data.success) {
                 toast.success(data.message || `Call back approved for ${employeeName}`);
+                const newStatus = data.data?.status || "GENERATED";
+                const newCallbackStatus = data.data?.callback_status || "NONE";
                 setSubmittedPayrolls((prev) => ({
                     ...prev,
                     [empid]: {
                         ...(prev[empid] || {}),
                         ...data.data,
-                        callback_status: "APPROVED",
+                        status: newStatus,
+                        callback_status: newCallbackStatus,
+                        callback_reason: null,
+                        callback_rejection_note: null,
                     },
                 }));
             } else {
@@ -1014,11 +1020,14 @@ export default function GeneratePayslipPage({
                                                         const isInitiated = rawStatus === "INITIATED";
                                                         const isDisbursed = rawStatus === "DISBURSED";
                                                         const isRejected = rawStatus === "REJECTED";
-                                                        const isLocked = isInitiated || isDisbursed || isRejected;
+                                                        const isLocked = isDisbursed || isRejected;
 
                                                         const isCallbackRequested = isGenerated && callbackStatus === "REQUESTED";
                                                         const isCallbackApproved = isGenerated && callbackStatus === "APPROVED";
                                                         const isCallbackRejected = isGenerated && callbackStatus === "REJECTED";
+
+                                                        const isInitCallbackRequested = isInitiated && callbackStatus === "REQUESTED";
+                                                        const isInitCallbackRejected = isInitiated && callbackStatus === "REJECTED";
 
                                                         return (
                                                             <Fragment key={employee.empid}>
@@ -1118,6 +1127,31 @@ export default function GeneratePayslipPage({
                                                                                     <span>Call Back Rejected</span>
                                                                                 </span>
                                                                             )}
+
+                                                                            {isInitCallbackRequested && (
+                                                                                <span
+                                                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse"
+                                                                                    title={existingPayroll?.callback_reason ? `Reason: ${existingPayroll.callback_reason}` : "Call back requested, awaiting disburser approval"}
+                                                                                >
+                                                                                    <Clock size={9} className="text-amber-700" />
+                                                                                    <span>Call Back Requested</span>
+                                                                                </span>
+                                                                            )}
+                                                                            {isInitCallbackRejected && (
+                                                                                <span
+                                                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-bold bg-rose-100 text-rose-900 border border-rose-300 cursor-pointer"
+                                                                                    onClick={() => {
+                                                                                        toast.info(
+                                                                                            `Disburser Rejection Note: ${existingPayroll?.callback_rejection_note || "No note provided"}`,
+                                                                                            { autoClose: 6000 }
+                                                                                        );
+                                                                                    }}
+                                                                                    title={`Call back rejected by disburser. Note: ${existingPayroll?.callback_rejection_note || "No note provided"}`}
+                                                                                >
+                                                                                    <XCircle size={9} className="text-rose-700" />
+                                                                                    <span>Call Back Rejected</span>
+                                                                                </span>
+                                                                            )}
                                                                         </div>
                                                                     </td>
 
@@ -1134,6 +1168,104 @@ export default function GeneratePayslipPage({
                                                                                     <Lock size={11} className="text-slate-400" />
                                                                                     <span>{rawStatus}</span>
                                                                                 </button>
+                                                                            ) : isInitiated ? (
+                                                                                <>
+                                                                                    {/* 1. Toggle Breakdown */}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleCalculateSalary(employee.empid)}
+                                                                                        className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-semibold rounded transition shadow-2xs inline-flex items-center gap-1 cursor-pointer ${
+                                                                                            isExpanded
+                                                                                                ? "bg-slate-800 text-white hover:bg-slate-700"
+                                                                                                : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300"
+                                                                                        }`}
+                                                                                        title={
+                                                                                            isExpanded
+                                                                                                ? "Close calculation breakdown"
+                                                                                                : "View salary calculation breakdown"
+                                                                                        }
+                                                                                    >
+                                                                                        {isExpanded ? <X size={12} /> : <FileText size={12} />}
+                                                                                        <span>{isExpanded ? "Close" : "View"}</span>
+                                                                                    </button>
+
+                                                                                    {/* 2. Initiator Actions for INITIATED: Request / Re-request Call Back */}
+                                                                                    {canInitiate && (
+                                                                                        <>
+                                                                                            {(!callbackStatus || callbackStatus === "NONE") && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => handleOpenCallbackModal("REQUEST", existingPayroll.uid, employee.empid, employee.name)}
+                                                                                                    className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                                                                                                    title="Request call back from disburser to return payroll to Generated status"
+                                                                                                >
+                                                                                                    <RotateCcw size={11} className="text-amber-700" />
+                                                                                                    <span>Call Back</span>
+                                                                                                </button>
+                                                                                            )}
+                                                                                            {isInitCallbackRejected && (
+                                                                                                <div className="inline-flex items-center gap-1">
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => {
+                                                                                                            toast.info(
+                                                                                                                `Disburser Rejection Note: ${existingPayroll.callback_rejection_note || "No note provided"}`,
+                                                                                                                { autoClose: 6000 }
+                                                                                                            );
+                                                                                                        }}
+                                                                                                        className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-rose-100 hover:bg-rose-200 text-rose-900 border border-rose-300 inline-flex items-center gap-1 transition cursor-pointer"
+                                                                                                        title={`View disburser rejection note: "${existingPayroll.callback_rejection_note || 'No note'}"`}
+                                                                                                    >
+                                                                                                        <span>Note</span>
+                                                                                                    </button>
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => handleOpenCallbackModal("RE_REQUEST", existingPayroll.uid, employee.empid, employee.name, existingPayroll.callback_rejection_note)}
+                                                                                                        className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                                                                                                        title={`Re-request call back from disburser. Note: "${existingPayroll.callback_rejection_note || 'No note'}"`}
+                                                                                                    >
+                                                                                                        <RotateCcw size={11} className="text-rose-700" />
+                                                                                                        <span>Re-request</span>
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </>
+                                                                                    )}
+
+                                                                                    {/* 3. Disburser Actions for INITIATED: Approve / Reject Call Back */}
+                                                                                    {canDisburse && isInitCallbackRequested && (
+                                                                                        <div className="inline-flex items-center gap-1">
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => handleApproveCallback(existingPayroll.uid, employee.empid, employee.name)}
+                                                                                                className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                                                                                                title={`Approve call back for ${employee.name} and return status to GENERATED${existingPayroll.callback_reason ? ` (Reason: ${existingPayroll.callback_reason})` : ''}`}
+                                                                                            >
+                                                                                                <Check size={11} />
+                                                                                                <span>Approve</span>
+                                                                                            </button>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => handleOpenRejectModal(existingPayroll.uid, employee.empid, employee.name, existingPayroll.callback_reason)}
+                                                                                                className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold rounded bg-rose-600 hover:bg-rose-700 text-white inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                                                                                                title="Reject call back request with a reason note"
+                                                                                            >
+                                                                                                <X size={11} />
+                                                                                                <span>Reject</span>
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    {!canDisburse && isInitCallbackRequested && (
+                                                                                        <span
+                                                                                            className="px-2 py-1 text-[9px] font-medium rounded bg-amber-50 text-amber-800 border border-amber-200 inline-flex items-center gap-1"
+                                                                                            title="Call back requested. Awaiting approval by Disburser."
+                                                                                        >
+                                                                                            <Clock size={10} className="text-amber-600 animate-spin" />
+                                                                                            <span>Awaiting Disburser</span>
+                                                                                        </span>
+                                                                                    )}
+                                                                                </>
                                                                             ) : isGenerated ? (
                                                                                 <>
                                                                                     {/* 1. Toggle Breakdown */}
@@ -1319,6 +1451,32 @@ export default function GeneratePayslipPage({
                                                                                                                 <>
                                                                                                                     <Lock size={12} className="text-blue-600" />
                                                                                                                     <span>Generated — Locked</span>
+                                                                                                                </>
+                                                                                                            )}
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                    {isInitiated && (
+                                                                                                        <span className={`text-[10px] px-2 py-0.5 rounded font-semibold flex items-center gap-1 ${
+                                                                                                            isInitCallbackRequested
+                                                                                                                ? "bg-amber-50 text-amber-700 border border-amber-300"
+                                                                                                                : isInitCallbackRejected
+                                                                                                                ? "bg-rose-50 text-rose-700 border border-rose-300"
+                                                                                                                : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                                                                                                        }`}>
+                                                                                                            {isInitCallbackRequested ? (
+                                                                                                                <>
+                                                                                                                    <Clock size={12} className="text-amber-600 animate-spin" />
+                                                                                                                    <span>Call Back Requested — Awaiting Disburser</span>
+                                                                                                                </>
+                                                                                                            ) : isInitCallbackRejected ? (
+                                                                                                                <>
+                                                                                                                    <XCircle size={12} className="text-rose-600" />
+                                                                                                                    <span>Call Back Rejected by Disburser</span>
+                                                                                                                </>
+                                                                                                            ) : (
+                                                                                                                <>
+                                                                                                                    <Clock size={12} className="text-indigo-600" />
+                                                                                                                    <span>Initiated — Awaiting Disbursement</span>
                                                                                                                 </>
                                                                                                             )}
                                                                                                         </span>
@@ -1555,6 +1713,129 @@ export default function GeneratePayslipPage({
                                                                                                     </div>
 
                                                                                                     {canGenerate && (
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            onClick={() => handleOpenCallbackModal("REQUEST", existingPayroll.uid, employee.empid, employee.name)}
+                                                                                                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded text-[11px] flex items-center gap-1.5 shrink-0 self-end sm:self-center shadow-xs cursor-pointer"
+                                                                                                        >
+                                                                                                            <RotateCcw size={13} />
+                                                                                                            <span>Request Call Back</span>
+                                                                                                        </button>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )}
+
+                                                                                            {/* INITIATED Call Back Banners */}
+                                                                                            {isInitCallbackRequested && (
+                                                                                                <div className="mx-5 mt-4 p-3.5 bg-amber-50/90 border border-amber-300 rounded-sm text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                                                    <div className="flex items-start gap-3">
+                                                                                                        <div className="w-8 h-8 rounded bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0">
+                                                                                                            <Clock size={16} className="animate-spin" />
+                                                                                                        </div>
+                                                                                                        <div>
+                                                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                                                <span className="text-[12px] font-bold text-amber-900">
+                                                                                                                    Call Back Requested &bull; Awaiting Disburser Approval
+                                                                                                                </span>
+                                                                                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold bg-amber-200/80 text-amber-900 border border-amber-300">
+                                                                                                                    Disburser Pending
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                            <p className="text-[11px] text-amber-800 mt-0.5">
+                                                                                                                {existingPayroll?.callback_reason
+                                                                                                                    ? `Request Reason: "${existingPayroll.callback_reason}"`
+                                                                                                                    : "A call back has been requested by the initiator. Awaiting disburser authorization."}
+                                                                                                            </p>
+                                                                                                            {existingPayroll?.callback_requested_by && (
+                                                                                                                <div className="text-[10px] text-amber-700/80 font-mono mt-1">
+                                                                                                                    Requested by: {existingPayroll.callback_requested_by} • {formatDate(existingPayroll.callback_requested_at)}
+                                                                                                                </div>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    {canDisburse && (
+                                                                                                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                                                                                            <button
+                                                                                                                type="button"
+                                                                                                                onClick={() => handleApproveCallback(existingPayroll.uid, employee.empid, employee.name)}
+                                                                                                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                                                                                            >
+                                                                                                                <Check size={13} />
+                                                                                                                <span>Approve Call Back</span>
+                                                                                                            </button>
+                                                                                                            <button
+                                                                                                                type="button"
+                                                                                                                onClick={() => handleOpenRejectModal(existingPayroll.uid, employee.empid, employee.name, existingPayroll.callback_reason)}
+                                                                                                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                                                                                            >
+                                                                                                                <X size={13} />
+                                                                                                                <span>Reject with Note</span>
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )}
+
+                                                                                            {isInitCallbackRejected && (
+                                                                                                <div className="mx-5 mt-4 p-3.5 bg-rose-50/90 border border-rose-300 rounded-sm text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                                                    <div className="flex items-start gap-3">
+                                                                                                        <div className="w-8 h-8 rounded bg-rose-100 border border-rose-300 flex items-center justify-center text-rose-800 shrink-0">
+                                                                                                            <XCircle size={16} />
+                                                                                                        </div>
+                                                                                                        <div>
+                                                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                                                <span className="text-[12px] font-bold text-rose-900">
+                                                                                                                    Call Back Request Rejected by Disburser
+                                                                                                                </span>
+                                                                                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold bg-rose-200/80 text-rose-900 border border-rose-300">
+                                                                                                                    Denied by Disburser
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                            <div className="mt-1 p-2 rounded bg-white/80 border border-rose-200 text-[11px] text-rose-900">
+                                                                                                                <strong className="text-rose-950">Disburser Rejection Reason:</strong>{" "}
+                                                                                                                {existingPayroll?.callback_rejection_note || "No explanation provided."}
+                                                                                                            </div>
+                                                                                                            {existingPayroll?.callback_reviewed_by && (
+                                                                                                                <div className="text-[10px] text-rose-700/80 font-mono mt-1">
+                                                                                                                    Reviewed by: {existingPayroll.callback_reviewed_by} • {formatDate(existingPayroll.callback_reviewed_at)}
+                                                                                                                </div>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    {canInitiate && (
+                                                                                                        <div className="shrink-0 self-end sm:self-center">
+                                                                                                            <button
+                                                                                                                type="button"
+                                                                                                                onClick={() => handleOpenCallbackModal("RE_REQUEST", existingPayroll.uid, employee.empid, employee.name, existingPayroll.callback_rejection_note)}
+                                                                                                                className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white font-semibold rounded text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                                                                                            >
+                                                                                                                <RotateCcw size={13} />
+                                                                                                                <span>Re-request Call Back</span>
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )}
+
+                                                                                            {isInitiated && !isInitCallbackRequested && !isInitCallbackRejected && (
+                                                                                                <div className="mx-5 mt-4 p-3 bg-indigo-50/80 border border-indigo-200 rounded-sm text-indigo-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                                                                                    <div className="flex items-start gap-3">
+                                                                                                        <div className="w-7 h-7 rounded bg-indigo-100 border border-indigo-300 flex items-center justify-center text-indigo-800 shrink-0">
+                                                                                                            <Lock size={14} />
+                                                                                                        </div>
+                                                                                                        <div>
+                                                                                                            <div className="text-[11.5px] font-bold text-indigo-900">
+                                                                                                                Payroll Record Initiated &bull; Awaiting Disbursement
+                                                                                                            </div>
+                                                                                                            <p className="text-[10.5px] text-indigo-800 mt-0.5">
+                                                                                                                This payroll has been initiated and is awaiting disbursement authorization. If adjustments are needed, request a call back from the person with disbursement authorization.
+                                                                                                            </p>
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    {canInitiate && (
                                                                                                         <button
                                                                                                             type="button"
                                                                                                             onClick={() => handleOpenCallbackModal("REQUEST", existingPayroll.uid, employee.empid, employee.name)}
@@ -2276,14 +2557,14 @@ export default function GeneratePayslipPage({
                                 <div className="p-3 bg-rose-50 border border-rose-200 rounded text-rose-900 text-[11px]">
                                     <div className="font-bold text-rose-950 flex items-center gap-1.5 mb-1">
                                         <XCircle size={14} className="text-rose-600 shrink-0" />
-                                        <span>Previous Checker Rejection Note:</span>
+                                        <span>Previous Rejection Note:</span>
                                     </div>
                                     <p className="pl-5 whitespace-pre-wrap">{callbackModal.previousRejectNote}</p>
                                 </div>
                             )}
 
                             <p className="text-[11.5px] text-slate-600">
-                                Request a call back from the person who can initiate payroll (Checker). Once approved, you will be unlocked to adjust overtime, bonus, or payroll details and re-generate.
+                                Request a call back to return this payroll record to the previous stage for adjustments. Once approved, the record will be unlocked.
                             </p>
 
                             <div>
@@ -2367,7 +2648,7 @@ export default function GeneratePayslipPage({
                                 <div className="p-3 bg-slate-50 border border-slate-200 rounded text-slate-800 text-[11px]">
                                     <div className="font-bold text-slate-700 flex items-center gap-1.5 mb-1">
                                         <MessageSquare size={13} className="text-slate-500 shrink-0" />
-                                        <span>Generator&apos;s Request Reason:</span>
+                                        <span>Request Reason:</span>
                                     </div>
                                     <p className="pl-4 whitespace-pre-wrap text-slate-600">&ldquo;{rejectModal.requestReason}&rdquo;</p>
                                 </div>
@@ -2378,7 +2659,7 @@ export default function GeneratePayslipPage({
                                     Rejection Reason Note <span className="text-rose-600">*</span>
                                 </label>
                                 <p className="text-[10px] text-slate-500 mb-2">
-                                    Please provide a clear note explaining why this call back request is rejected. The generator will see this note and may re-request.
+                                    Please provide a clear note explaining why this call back request is rejected. The requester will see this note and may re-request.
                                 </p>
                                 <textarea
                                     value={rejectionNoteInput}
