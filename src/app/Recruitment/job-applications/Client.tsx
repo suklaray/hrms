@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AlertCircle, Eye, Loader2, RefreshCw, Search, Upload, X } from "lucide-react";
 import { toast } from "react-toastify";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { formatDate, formatHHMMToAMPM } from "@/utils/dateTime";
 
 const TYPES = [
   "application/pdf",
@@ -677,7 +678,7 @@ export default function JobApplicationsClient({
                                   </span>
                                 )}
                                 <span className="text-xs text-gray-600">
-                                  {resume.pendingInterviewDate?.slice(0, 10)} · {resume.pendingInterviewTimeFrom}–{resume.pendingInterviewTimeTo}
+                                  {formatDate(resume.pendingInterviewDate)} · {formatHHMMToAMPM(resume.pendingInterviewTimeFrom)}–{formatHHMMToAMPM(resume.pendingInterviewTimeTo)}
                                 </span>
                                 {canReviewSchedules && (canManageInterviewSchedules || resume.hiringManager === currentUserEmpid) && (
                                     <>
