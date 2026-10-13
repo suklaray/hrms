@@ -44,10 +44,15 @@ interface Resume {
   } | null;
   applicationStatus?: string;
   interviewScheduled?: boolean;
+  interviewScheduleStatus?: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
   interviewDate?: string;
   interviewTimeFrom?: string;
   interviewTimeTo?: string;
+  pendingInterviewDate?: string;
+  pendingInterviewTimeFrom?: string;
+  pendingInterviewTimeTo?: string;
   jobDescriptionId?: number;
+  hiringManager?: string | null;
   mobileNumber?: string;
   alternatePhone?: string;
   currentAddress?: string;
@@ -92,14 +97,20 @@ interface Data {
 
 export default function JobApplicationsClient({
   permissions = [],
+  currentUserEmpid,
+  canManageInterviewSchedules,
 }: {
   permissions?: string[];
+  currentUserEmpid: string;
+  canManageInterviewSchedules: boolean;
 }) {
   const userPermissions = new Set(permissions);
   const canParse = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_PARSE);
   const canShortlist = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_SHORTLIST);
   const canReject = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_REJECT);
   const canSchedule = userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_SCHEDULE);
+  const canReviewSchedules =
+    userPermissions.has(PERMISSION_KEYS.JOB_APPLICATION_VIEW) || canManageInterviewSchedules;
   const inputRef = useRef<HTMLInputElement>(null);
   const matchingRequests = useRef(new Set<number>());
   const [data, setData] = useState<Data>({ resumes: [], jobs: [] });
@@ -120,6 +131,7 @@ export default function JobApplicationsClient({
   const [interviewTimeFrom, setInterviewTimeFrom] = useState("");
   const [interviewTimeTo, setInterviewTimeTo] = useState("");
   const [scheduling, setScheduling] = useState(false);
+  const [decidingScheduleId, setDecidingScheduleId] = useState<number | null>(null);
 
   const loadResumes = async () => {
     try {
@@ -225,20 +237,37 @@ export default function JobApplicationsClient({
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || "Failed to schedule interview");
-      setData((prev) => ({
-        ...prev,
-        resumes: prev.resumes.map((r) =>
-          r.id === scheduleResume.id
-            ? { ...r, interviewScheduled: true, interviewDate, interviewTimeFrom, interviewTimeTo }
-            : r
-        ),
-      }));
-      toast.success("Interview scheduled successfully");
+      toast.success(result.message || "Interview schedule submitted for hiring manager approval");
       closeSchedule();
+      await loadResumes();
     } catch (error) {
       toast.error((error as Error).message || "Failed to schedule interview");
     } finally {
       setScheduling(false);
+    }
+  };
+
+  const decideInterviewSchedule = async (resumeId: number, action: "APPROVED" | "REJECTED") => {
+    if (!canReviewSchedules) {
+      toast.error("Permission denied: You cannot review interview schedules");
+      return;
+    }
+
+    try {
+      setDecidingScheduleId(resumeId);
+      const response = await fetch("/api/recruitment/job-application/schedule/approve", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resumeId, action }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || "Failed to review interview schedule");
+      toast.success(action === "APPROVED" ? "Interview scheduled" : "Interview rejected");
+      await loadResumes();
+    } catch (error) {
+      toast.error((error as Error).message || "Failed to review interview schedule");
+    } finally {
+      setDecidingScheduleId(null);
     }
   };
 
@@ -542,12 +571,12 @@ export default function JobApplicationsClient({
                           ) : (
                             <span className="inline-flex items-center gap-2 text-xs text-gray-500" title={resume.matchingStatus === "PROCESSING" ? "Matching is running in the background" : "Waiting for matching to start"}>
                               <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
-                              {resume.matchingStatus === "PROCESSING" ? "Comparing..." : "Queued..."}
+                              {resume.matchingStatus === "PROCESSING" ? "Comparing..." : "Preparing..."}
                             </span>
                           )}
                         </td>
                         <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {resume.jobDescriptionId && resume.matchingStatus === "COMPLETED" ? (
                               <Link
                                 title="View candidate and job comparison"
@@ -564,16 +593,7 @@ export default function JobApplicationsClient({
                               <span className="px-2 py-2 text-xs text-gray-400">No linked job</span>
                             )}
                             {resume.applicationStatus === "Shortlisted" ? (
-                              <>
-                                <span className="px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 rounded-lg">Shortlisted</span>
-                                {resume.interviewScheduled ? (
-                                  <span className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-lg">Interview Scheduled</span>
-                                ) : canSchedule ? (
-                                  <button onClick={() => handleScheduleInterview(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">
-                                    Schedule Interview
-                                  </button>
-                                ) : null}
-                              </>
+                              <span className="px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 rounded-lg">Shortlisted</span>
                             ) : resume.applicationStatus === "Rejected" ? (
                               <span className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg">Rejected</span>
                             ) : (
@@ -582,6 +602,55 @@ export default function JobApplicationsClient({
                                 {canReject && <button onClick={() => updateApplicationStatus(resume.id, "Rejected")} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg">Reject</button>}
                               </>
                             )}
+                            {resume.interviewScheduleStatus === "PENDING" ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                {!(canManageInterviewSchedules || resume.hiringManager === currentUserEmpid) && (
+                                  <span className="px-3 py-1.5 text-xs font-semibold text-amber-700 bg-amber-50 rounded-lg">
+                                    Interview awaiting hiring manager approval
+                                  </span>
+                                )}
+                                <span className="text-xs text-gray-600">
+                                  {resume.pendingInterviewDate?.slice(0, 10)} · {resume.pendingInterviewTimeFrom}–{resume.pendingInterviewTimeTo}
+                                </span>
+                                {canReviewSchedules && (canManageInterviewSchedules || resume.hiringManager === currentUserEmpid) && (
+                                    <>
+                                      <button
+                                        onClick={() => decideInterviewSchedule(resume.id, "APPROVED")}
+                                        disabled={decidingScheduleId === resume.id}
+                                        className="px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:bg-gray-300"
+                                      >
+                                        {decidingScheduleId === resume.id ? "Saving..." : "Approve"}
+                                      </button>
+                                      <button
+                                        onClick={() => decideInterviewSchedule(resume.id, "REJECTED")}
+                                        disabled={decidingScheduleId === resume.id}
+                                        className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg disabled:text-gray-400"
+                                      >
+                                        Reject schedule
+                                      </button>
+                                    </>
+                                  )}
+                              </div>
+                            ) : resume.interviewScheduleStatus === "REJECTED" ? (
+                              <>
+                                <span className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg">
+                                  Interview rejected by hiring manager
+                                </span>
+                                {resume.applicationStatus === "Shortlisted" && canSchedule && (
+                                  <button onClick={() => handleScheduleInterview(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">
+                                    Reschedule Interview
+                                  </button>
+                                )}
+                              </>
+                            ) : resume.interviewScheduled ? (
+                              <span className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-lg">
+                                Interview Scheduled · {resume.interviewDate?.slice(0, 10)} · {resume.interviewTimeFrom}–{resume.interviewTimeTo}
+                              </span>
+                            ) : resume.applicationStatus === "Shortlisted" && canSchedule ? (
+                              <button onClick={() => handleScheduleInterview(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">
+                                Schedule Interview
+                              </button>
+                            ) : null}
                           </div>
                         </td>
                       </tr>

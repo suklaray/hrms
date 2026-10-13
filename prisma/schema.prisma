@@ -534,6 +534,7 @@ model users {
   calendar_event_visibility visible_to[]
 
   audit_logs                 audit_logs[]
+  hiring_managed_jobs job_descriptions[] @relation("JobDescriptionHiringManager")
   @@index([roleId])
   @@index([company_id])
 }
@@ -1081,6 +1082,12 @@ model parsed_resumes {
   approved_by        String?
   approved_at        DateTime?
   approval_comment   String?  @db.VarChar(1000)
+
+  // Pending interview schedule (set by recruiter, cleared after HM decision)
+  pending_interview_date      DateTime?
+  pending_interview_time_from String?
+  pending_interview_time_to   String?
+  interview_schedule_status   String?  @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
   parsing_error      String?  @db.Text
   parsed_at          DateTime @default(now())
   updated_at         DateTime @updatedAt
@@ -1116,7 +1123,9 @@ model job_descriptions {
   salary_max        String?
   benefits          String?                   @db.Text
   deadline          DateTime
-  hiring_manager    String
+  hiring_manager    String?
+  hiring_manager_id String?
+  hiring_manager_user users?                     @relation("JobDescriptionHiringManager", fields: [hiring_manager_id], references: [empid], onDelete: SetNull, onUpdate: Cascade)
   interview_process String?                   @db.Text
   keywords          String?
   status            String                    @default("Draft")
@@ -1130,6 +1139,7 @@ model job_descriptions {
   analysis          job_description_analysis?
   parsed_resumes    parsed_resumes[]
   candidate_job_matches candidate_job_matches[]
+  @@index([hiring_manager_id])
 }
 
 model job_description_analysis {
