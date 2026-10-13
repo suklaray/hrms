@@ -518,7 +518,7 @@ export default function CandidateMatchClient() {
                     {comparison.candidate.email} · {comparison.job.title}
                   </p>
                 </div>
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-gray-800 bg-white shadow-sm">
                   <table className="min-w-64 border-collapse text-sm">
                     <tbody>
                       <tr>
@@ -561,10 +561,10 @@ export default function CandidateMatchClient() {
               </header>
 
               <section className="mb-6 grid gap-4 lg:grid-cols-2">
-                <article className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <article className="overflow-hidden rounded-xl border border-black-200 bg-white shadow-sm">
                   <h2 className="border-b border-gray-200 bg-gray-50 px-4 py-3 font-bold text-gray-900">Job description</h2>
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse text-sm">
+                    <table className="min-w-full border-collapse border border-black text-sm">
                       <tbody>
                         {[
                           ["Department", comparison.job.department],
@@ -575,15 +575,15 @@ export default function CandidateMatchClient() {
                           ["Salary range", `${formatValue(comparison.job.salary_min)} - ${formatValue(comparison.job.salary_max)}`],
                         ].map(([label, value]) => (
                           <tr key={label} className="hover:bg-gray-50">
-                            <th className="w-2/5 border border-gray-200 px-4 py-3 text-left font-medium text-gray-600">{label}</th>
-                            <td className="border border-gray-200 px-4 py-3 text-left text-gray-700">{value || "Not provided"}</td>
+                            <th className="w-2/5 border border-gray-300 px-4 py-3 text-left font-medium text-gray-600">{label}</th>
+                            <td className="border border-gray-300 px-4 py-3 text-left text-gray-700">{value || "Not provided"}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 </article>
-                <article className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <article className="overflow-hidden rounded-xl border border-black-200 bg-white shadow-sm">
                   <h2 className="border-b border-gray-200 bg-gray-50 px-4 py-3 font-bold text-gray-900">Parsed candidate profile</h2>
                   <div className="overflow-x-auto">
                     <table className="min-w-full border-collapse text-sm">
@@ -610,8 +610,8 @@ export default function CandidateMatchClient() {
                 </article>
               </section>
 
-              <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                <div className="border-b border-gray-100 px-5 py-4">
+              <section className="overflow-hidden rounded-2xl border-2 border-green-800 bg-white shadow-sm">
+                <div className="border-b border-gray-100 bg-green-50 px-5 py-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                       <h2 className="font-bold text-gray-900">Detailed matching breakdown</h2>
@@ -644,18 +644,18 @@ export default function CandidateMatchClient() {
                   <table className="w-full min-w-[1100px] border-collapse text-left text-sm">
                     <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                       <tr>
-                        <th className="border border-gray-200 px-4 py-3 text-left">Include</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left">Criteria</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left">Job requirement</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left">Candidate evidence</th>
-                        <th className="border border-gray-200 px-4 py-3 text-left">Matching insights</th>
-                        <th className="border border-gray-200 px-4 py-3 text-right">Score</th>
+                        <th className="border border-gray-800 px-4 py-3 text-left">Include</th>
+                        <th className="border border-gray-800 px-4 py-3 text-left">Criteria</th>
+                        <th className="border border-gray-800 px-4 py-3 text-left">Job requirement</th>
+                        <th className="border border-gray-800 px-4 py-3 text-left">Candidate evidence</th>
+                        <th className="border border-gray-800 px-4 py-3 text-left">Matching insights</th>
+                        <th className="border border-gray-800 px-4 py-3 text-right">Score</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
                       {rows.map((row) => (
                         <tr key={row.category} className="align-top hover:bg-gray-50/70">
-                          <td className="border border-gray-200 px-4 py-4 text-center">
+                          <td className="border border-gray-800 px-4 py-4 text-center">
                             <input
                               type="checkbox"
                               checked={selectedCriteria.includes(row.criterion)}
@@ -664,11 +664,11 @@ export default function CandidateMatchClient() {
                               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                             />
                           </td>
-                          <th className="border border-gray-200 px-4 py-4 text-left font-semibold text-gray-800">{row.category}</th>
-                          <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 text-left leading-relaxed text-gray-600">{row.requirements}</td>
-                          <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 text-left leading-relaxed text-gray-600">{row.candidateEvidence}</td>
-                          <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 text-left leading-relaxed text-gray-600">{row.result}</td>
-                          <td className="border border-gray-200 px-4 py-4 text-right">
+                          <th className="border border-gray-800 px-4 py-4 text-left font-semibold text-gray-800">{row.category}</th>
+                          <td className="max-w-sm whitespace-normal break-words border border-gray-800 px-4 py-4 text-left leading-relaxed text-gray-600">{row.requirements}</td>
+                          <td className="max-w-sm whitespace-normal break-words border border-gray-800 px-4 py-4 text-left leading-relaxed text-gray-600">{row.candidateEvidence}</td>
+                          <td className="max-w-sm whitespace-normal break-words border border-gray-800 px-4 py-4 text-left leading-relaxed text-gray-600">{row.result}</td>
+                          <td className="border border-gray-800 px-4 py-4 text-right">
                             <span className="inline-flex min-w-14 justify-center rounded-lg bg-indigo-50 px-2.5 py-1 font-bold text-indigo-700">
                               {row.score}%
                             </span>
@@ -680,20 +680,20 @@ export default function CandidateMatchClient() {
                 </div>
               </section>
 
-              <section className="mt-6 overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm">
+              <section className="mt-6 overflow-hidden rounded-2xl border-2 border-red-900 bg-white shadow-sm">
                 <div className="border-b border-red-100 bg-red-50 px-5 py-4">
                   <h2 className="font-bold text-gray-900">Score deductions breakdown</h2>
                   <p className="mt-1 text-sm text-gray-500">Criteria where marks were deducted — showing what was required, what the candidate provided, and why points were lost.</p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                  <table className="w-full min-w-[900px] border-collapse border border-gray-900 text-left text-sm">
                     <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                       <tr>
-                        <th className="border border-gray-200 px-4 py-3">Criteria</th>
-                        <th className="border border-gray-200 px-4 py-3">Job requirement</th>
-                        <th className="border border-gray-200 px-4 py-3">Candidate evidence</th>
-                        <th className="border border-gray-200 px-4 py-3">Reason for deduction</th>
-                        <th className="border border-gray-200 px-4 py-3 text-right">Score</th>
+                        <th className="border border-gray-800 px-4 py-3">Criteria</th>
+                        <th className="border border-gray-800 px-4 py-3">Job requirement</th>
+                        <th className="border border-gray-800 px-4 py-3">Candidate evidence</th>
+                        <th className="border border-gray-800 px-4 py-3">Reason for deduction</th>
+                        <th className="border border-gray-800 px-4 py-3 text-right">Score</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white">
@@ -702,11 +702,11 @@ export default function CandidateMatchClient() {
                         .sort((a, b) => a.score - b.score)
                         .map((r) => (
                           <tr key={r.criterion} className="align-top hover:bg-red-50/40">
-                            <th className="border border-gray-200 px-4 py-4 text-left font-semibold text-gray-800">{r.category}</th>
-                            <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 leading-relaxed text-gray-600">{r.requirements}</td>
-                            <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 leading-relaxed text-gray-600">{r.candidateEvidence}</td>
-                            <td className="max-w-sm whitespace-normal break-words border border-gray-200 px-4 py-4 leading-relaxed text-gray-600">{r.deductionReason}</td>
-                            <td className="border border-gray-200 px-4 py-4 text-right">
+                            <th className="border border-gray-800 px-4 py-4 text-left font-semibold text-gray-800">{r.category}</th>
+                            <td className="max-w-sm whitespace-normal break-words border border-gray-800 px-4 py-4 leading-relaxed text-gray-600">{r.requirements}</td>
+                            <td className="max-w-sm whitespace-normal break-words border border-gray-800 px-4 py-4 leading-relaxed text-gray-600">{r.candidateEvidence}</td>
+                            <td className="max-w-sm whitespace-normal break-words border border-gray-800 px-4 py-4 leading-relaxed text-gray-600">{r.deductionReason}</td>
+                            <td className="border border-gray-800 px-4 py-4 text-right">
                               <span className="inline-flex min-w-14 justify-center rounded-lg bg-red-50 px-2.5 py-1 font-bold text-red-600">
                                 -{(100 - r.score).toFixed(0)}%
                               </span>

@@ -1,6 +1,6 @@
 "use client";
 //keep sidebar in client component as it uses react hooks and nextjs router
-import { useEffect, Suspense } from "react";
+import { useEffect, Suspense, useState } from "react";
 import axios from "axios";
 import { Toaster } from "react-hot-toast";
 import Footer from "@/Components/Footer";
@@ -24,6 +24,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const loggingOut = useAppSelector((state) => state.auth.loggingOut);
   const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const initialized = useAppSelector((state) => state.auth.initialized);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   const noLayoutPaths = [
     "/setup/super-admin",
@@ -89,7 +92,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return <div className="min-h-screen w-full bg-slate-50" aria-busy="true" />;
   }
 
-  if (showAppShell && typeof window !== "undefined") {
+  if (!mounted) {
+    return <div className="min-h-screen w-full overflow-x-auto bg-slate-50" />;
+  }
+
+  if (showAppShell) {
     activateSharedSidebarShell();
   }
 

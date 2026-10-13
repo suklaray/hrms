@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Client from "./Client";
 import { getUserFromToken } from "@/lib/getUserFromToken";
 import { checkPermission, getUserPermissions } from "@/lib/rbac";
+import { canManageInterviewSchedules as canManageSchedules } from "@/lib/interviewScheduleAccess";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +21,20 @@ export default async function JobApplicationsPage() {
     redirect("/login");
   }
 
-  const hasAccess = await checkPermission(user, PERMISSION_KEYS.JOB_APPLICATION_VIEW);
-  if (!hasAccess) {
+  const [hasAccess, canManageInterviewSchedules] = await Promise.all([
+    checkPermission(user, PERMISSION_KEYS.JOB_APPLICATION_VIEW),
+    canManageSchedules(user),
+  ]);
+  if (!hasAccess && !canManageInterviewSchedules) {
     redirect("/403");
   }
 
   const permissions = await getUserPermissions(user);
-  return <Client permissions={Array.from(permissions)} />;
+  return (
+    <Client
+      permissions={Array.from(permissions)}
+      currentUserEmpid={user.empid || ""}
+      canManageInterviewSchedules={canManageInterviewSchedules}
+    />
+  );
 }

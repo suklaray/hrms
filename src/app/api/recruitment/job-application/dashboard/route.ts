@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSIONS } from "@/rbac/permissions";
+import { canManageInterviewSchedules } from "@/lib/interviewScheduleAccess";
 
 export async function GET(req: NextRequest) {
-  const { error } = await checkAuth(req, [
-    PERMISSIONS.JOB_APPLICATION.VIEW,
-  ]);
+  const { error, user, permissions } = await checkAuth(req);
   if (error) return error;
+  if (
+    !permissions?.has(PERMISSIONS.JOB_APPLICATION.VIEW) &&
+    !(await canManageInterviewSchedules(user))
+  ) {
+    return NextResponse.json({ error: "Forbidden: insufficient permissions" }, { status: 403 });
+  }
   try {
     const [resumes, jobs] = await Promise.all([
       prisma.parsed_resumes.findMany({
@@ -15,6 +20,7 @@ export async function GET(req: NextRequest) {
         orderBy: { parsed_at: "desc" },
         include: {
           candidate: true,
+          job_description: { select: { hiring_manager_id: true } },
           candidate_job_matches: {
             orderBy: { evaluated_at: "desc" },
             take: 1,
@@ -40,7 +46,6 @@ export async function GET(req: NextRequest) {
         orderBy: { created_at: "desc" },
       }),
     ]);
-
     return NextResponse.json({
       success: true,
       resumes: resumes.map((resume) => {
@@ -86,6 +91,7 @@ export async function GET(req: NextRequest) {
         parserVersion: resume.parser_version,
         aiModel: resume.ai_model,
         jobDescriptionId: resume.job_description_id,
+        hiringManager: resume.job_description?.hiring_manager_id || null,
         matchUrlId: resume.uid,
         matchingScore: comparisonComplete
           ? Number(comparison.final_score ?? resume.matching_score ?? 0)
@@ -107,11 +113,15 @@ export async function GET(req: NextRequest) {
         applicationStatus: resume.application_status,
         rejectionReason: resume.rejection_reason ?? null,
 
-        // INTERVIEW DETAILS
+        // INTERVIEW DETAILS — only from candidates table (means approved & confirmed)
         interviewScheduled: !!resume.candidate?.interview_date,
+        interviewScheduleStatus: resume.interview_schedule_status || "NOT_REQUIRED",
         interviewDate: resume.candidate?.interview_date || null,
         interviewTimeFrom: resume.candidate?.interview_time_from || null,
         interviewTimeTo: resume.candidate?.interview_time_to || null,
+        pendingInterviewDate: resume.pending_interview_date,
+        pendingInterviewTimeFrom: resume.pending_interview_time_from,
+        pendingInterviewTimeTo: resume.pending_interview_time_to,
       });}),
       jobs: jobs.map((job) => ({
         id: job.id,

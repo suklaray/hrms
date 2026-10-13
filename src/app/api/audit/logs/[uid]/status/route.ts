@@ -49,16 +49,69 @@ export async function PATCH(
   const reviewer = auth.user!;
   const reviewerId = Number(reviewer.id);
 
-  await prisma.audit_logs.update({
-    where: { uid },
-    data: {
-      currentStatus: status as "APPROVED" | "REJECTED",
-      oldStatus: log.currentStatus,
-      newStatus: status,
-      reviewedBy: Number.isFinite(reviewerId) && reviewerId > 0 ? reviewerId : null,
-      reviewedAt: new Date(),
-    },
-  });
+  if (status === "APPROVED" && log.action === "jd.close") {
+    const jobId = Number(log.targetId);
+    if (!Number.isInteger(jobId) || jobId <= 0) {
+      return NextResponse.json({ error: "Close request has an invalid job description ID" }, { status: 400 });
+    }
 
-  return NextResponse.json({ message: `Audit log ${status.toLowerCase()} successfully` });
+    const approvalResult = await prisma.$transaction(async (transaction) => {
+      const job = await transaction.job_descriptions.findUnique({
+        where: { id: jobId },
+        select: { id: true },
+      });
+      if (!job) return "missing";
+
+      const auditUpdate = await transaction.audit_logs.updateMany({
+        where: { uid, currentStatus: "PENDING" },
+        data: {
+          currentStatus: "APPROVED",
+          oldStatus: log.currentStatus,
+          newStatus: status,
+          reviewedBy: Number.isFinite(reviewerId) && reviewerId > 0 ? reviewerId : null,
+          reviewedAt: new Date(),
+        },
+      });
+      if (auditUpdate.count !== 1) return "reviewed";
+
+      await transaction.job_descriptions.update({
+        where: { id: jobId },
+        data: { status: "Closed" },
+      });
+      return "approved";
+    });
+
+    if (approvalResult === "missing") {
+      return NextResponse.json({ error: "Job description for this close request was not found" }, { status: 404 });
+    }
+    if (approvalResult === "reviewed") {
+      return NextResponse.json(
+        { error: "This audit request has already been reviewed" },
+        { status: 409 }
+      );
+    }
+  } else {
+    const result = await prisma.audit_logs.updateMany({
+      where: { uid, currentStatus: "PENDING" },
+      data: {
+        currentStatus: status as "APPROVED" | "REJECTED",
+        oldStatus: log.currentStatus,
+        newStatus: status,
+        reviewedBy: Number.isFinite(reviewerId) && reviewerId > 0 ? reviewerId : null,
+        reviewedAt: new Date(),
+      },
+    });
+    if (result.count !== 1) {
+      return NextResponse.json(
+        { error: "This audit request has already been reviewed" },
+        { status: 409 }
+      );
+    }
+  }
+
+  return NextResponse.json({
+    message: status === "APPROVED" && log.action === "jd.close"
+      ? "Audit approved and job description closed"
+      : `Audit log ${status.toLowerCase()} successfully`,
+  });
 }

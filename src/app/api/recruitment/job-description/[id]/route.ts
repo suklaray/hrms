@@ -26,6 +26,7 @@ interface JobDescriptionBody {
   benefits?: string;
   deadline?: string;
   hiring_manager?: string;
+  hiring_manager_id?: string;
   interview_process?: string;
   keywords?: string;
   status?: string;
@@ -68,7 +69,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
   const {
     title, department, employment_type, work_mode, location, openings,
     experience, education, required_skills, preferred_skills, responsibilities,
-    summary, salary_min, salary_max, benefits, deadline, hiring_manager,
+    summary, salary_min, salary_max, benefits, deadline, hiring_manager_id,
     interview_process, keywords, status, auditUid,
   } = body;
 
@@ -84,6 +85,16 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
   const existingJob = await prisma.job_descriptions.findUnique({ where: { id: jdId } });
   if (!existingJob) return NextResponse.json({ message: "Not found" }, { status: 404 });
+
+  const hiringManagerUser = hiring_manager_id
+    ? await prisma.users.findUnique({
+        where: { empid: hiring_manager_id },
+        select: { empid: true, name: true },
+      })
+    : null;
+  if (!hiringManagerUser) {
+    return NextResponse.json({ message: "Select a valid hiring manager" }, { status: 400 });
+  }
 
   // Step 1 — create audit log and wait for approval
   if (!auditUid) {
@@ -134,7 +145,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         salary_max: salary_max || null,
         benefits: benefits || null,
         deadline: new Date(deadline!),
-        hiring_manager,
+        hiring_manager: hiringManagerUser.name,
+        hiring_manager_id: hiringManagerUser.empid,
         interview_process: interview_process || null,
         keywords: keywords || null,
         status,
