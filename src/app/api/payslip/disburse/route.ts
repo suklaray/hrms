@@ -5,6 +5,75 @@ import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { generatePayslipPdf } from "@/lib/payslipPdfGenerator";
 
+function isSameDateAsToday(dateInput: Date | string | null | undefined): boolean {
+    if (!dateInput) return false;
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return false;
+    const today = new Date();
+
+    if (
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
+    ) {
+        return true;
+    }
+
+    if (
+        d.getUTCFullYear() === today.getUTCFullYear() &&
+        d.getUTCMonth() === today.getUTCMonth() &&
+        d.getUTCDate() === today.getUTCDate()
+    ) {
+        return true;
+    }
+
+    const str = String(dateInput).split("T")[0];
+    const todayStrLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayStrUtc = today.toISOString().split("T")[0];
+    return str === todayStrLocal || str === todayStrUtc;
+}
+
+function getPeriodMonthYear(record: {
+    period_name?: string | null;
+    period?: { period_start?: Date | string | null; period_end?: Date | string | null } | null;
+}): { month: number; year: number } | null {
+    if (record.period?.period_start) {
+        const d = new Date(record.period.period_start);
+        if (!isNaN(d.getTime())) {
+            return { month: d.getUTCMonth(), year: d.getUTCFullYear() };
+        }
+    }
+
+    if (record.period_name) {
+        const cleanName = String(record.period_name).trim();
+        const monthNames = [
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december"
+        ];
+        const shortMonths = [
+            "jan", "feb", "mar", "apr", "may", "jun",
+            "jul", "aug", "sep", "oct", "nov", "dec"
+        ];
+
+        const yearMatch = cleanName.match(/\b(20\d{2})\b/);
+        const year = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+
+        const lower = cleanName.toLowerCase();
+        for (let i = 0; i < 12; i++) {
+            if (lower.includes(monthNames[i]) || lower.includes(shortMonths[i])) {
+                return { month: i, year };
+            }
+        }
+
+        const yyyyMm = cleanName.match(/\b(20\d{2})[-/](0?[1-9]|1[0-2])\b/);
+        if (yyyyMm) {
+            return { month: parseInt(yyyyMm[2], 10) - 1, year: parseInt(yyyyMm[1], 10) };
+        }
+    }
+
+    return null;
+}
+
 // ─── PUT (Disburse or Reject Payroll) ─────────────────────────────────
 export async function PUT(req: NextRequest) {
     const auth = await checkAuth(req, [PERMISSION_KEYS.PAYSLIP_DISBURSED]);
@@ -35,6 +104,7 @@ export async function PUT(req: NextRequest) {
             include: {
                 components: true,
                 company: true,
+                period: true,
                 users: {
                     include: {
                         employeeProfile: {
@@ -112,6 +182,41 @@ export async function PUT(req: NextRequest) {
         }
 
         // Handle DISBURSED status
+        // Disbursement timing rule:
+        // 1. If salary_payment_date from payroll table is equal to today -> allow disburse
+        // 2. If not, check if period month is current month:
+        //    If period month is current month:
+        //      - If today is NOT end of month -> reject with 400 "Salary can't be disbursed in the middle of month!"
+        const isPaymentDateToday = isSameDateAsToday(payrollRecord.salary_payment_date);
+
+        if (!isPaymentDateToday) {
+            const periodInfo = getPeriodMonthYear(payrollRecord);
+            const today = new Date();
+
+            if (periodInfo) {
+                const isCurrentMonth =
+                    (periodInfo.year === today.getFullYear() && periodInfo.month === today.getMonth()) ||
+                    (periodInfo.year === today.getUTCFullYear() && periodInfo.month === today.getUTCMonth());
+
+                if (isCurrentMonth) {
+                    const lastDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                    const isEndOfMonth =
+                        today.getDate() >= lastDayOfCurrentMonth ||
+                        today.getUTCDate() >= lastDayOfCurrentMonth ||
+                        (payrollRecord.period?.period_end && isSameDateAsToday(payrollRecord.period.period_end));
+
+                    if (!isEndOfMonth) {
+                        return NextResponse.json(
+                            {
+                                success: false,
+                                message: "Salary can't be disbursed in the middle of month!",
+                            },
+                            { status: 400 }
+                        );
+                    }
+                }
+            }
+        }
 
         // 2. Generate Payslip PDF matching official HRMS design and store at public/uploads/payslips/[empid]_[period_id].pdf
         const { relativeUrl, buffer } = await generatePayslipPdf({

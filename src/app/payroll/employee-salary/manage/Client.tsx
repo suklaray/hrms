@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, Fragment } from "react";
 import Link from "next/link";
 import Pageheader from "@/Components/PageHeader";
 import { toast } from "react-toastify";
+import { swalInfo } from "@/utils/confirmDialog";
 import { isSuperAdmin } from "@/lib/rbac";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { formatLongDate, formatDate } from "@/utils/dateTime";
@@ -125,6 +126,7 @@ interface PayrollRecord {
     callback_reviewed_at?: string | null;
     payslip_url?: string | null;
     components?: PayrollComponent[];
+    period?: PayrollPeriod;
     company?: {
         uid: string;
         name: string;
@@ -281,6 +283,151 @@ function StatusBadge({
             )}
         </div>
     );
+}
+
+function isSameDateAsToday(dateInput: Date | string | null | undefined): boolean {
+    if (!dateInput) return false;
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return false;
+    const today = new Date();
+
+    if (
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
+    ) {
+        return true;
+    }
+
+    if (
+        d.getUTCFullYear() === today.getUTCFullYear() &&
+        d.getUTCMonth() === today.getUTCMonth() &&
+        d.getUTCDate() === today.getUTCDate()
+    ) {
+        return true;
+    }
+
+    const str = String(dateInput).split("T")[0];
+    const todayStrLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayStrUtc = today.toISOString().split("T")[0];
+    return str === todayStrLocal || str === todayStrUtc;
+}
+
+function getPeriodMonthYear(
+    record: {
+        period_name?: string | null;
+        period_id?: string | null;
+        period?: { period_start?: Date | string | null; period_end?: Date | string | null } | null;
+    },
+    periodList?: PayrollPeriod[]
+): { month: number; year: number } | null {
+    if (record.period?.period_start) {
+        const d = new Date(record.period.period_start);
+        if (!isNaN(d.getTime())) {
+            return { month: d.getUTCMonth(), year: d.getUTCFullYear() };
+        }
+    }
+
+    if (record.period_id && periodList && periodList.length > 0) {
+        const matched = periodList.find((p) => p.uid === record.period_id);
+        if (matched?.period_start) {
+            const d = new Date(matched.period_start);
+            if (!isNaN(d.getTime())) {
+                return { month: d.getUTCMonth(), year: d.getUTCFullYear() };
+            }
+        }
+    }
+
+    if (record.period_name) {
+        const cleanName = String(record.period_name).trim();
+        const monthNames = [
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december"
+        ];
+        const shortMonths = [
+            "jan", "feb", "mar", "apr", "may", "jun",
+            "jul", "aug", "sep", "oct", "nov", "dec"
+        ];
+
+        const yearMatch = cleanName.match(/\b(20\d{2})\b/);
+        const year = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+
+        const lower = cleanName.toLowerCase();
+        for (let i = 0; i < 12; i++) {
+            if (lower.includes(monthNames[i]) || lower.includes(shortMonths[i])) {
+                return { month: i, year };
+            }
+        }
+
+        const yyyyMm = cleanName.match(/\b(20\d{2})[-/](0?[1-9]|1[0-2])\b/);
+        if (yyyyMm) {
+            return { month: parseInt(yyyyMm[2], 10) - 1, year: parseInt(yyyyMm[1], 10) };
+        }
+    }
+
+    return null;
+}
+
+interface DisbursementCheckResult {
+    allowed: boolean;
+    reason?: string;
+    isEndOfMonthConfirm?: boolean;
+    message?: string;
+}
+
+function checkDisbursementEligibility(
+    record: {
+        salary_payment_date?: string | Date | null;
+        period_name?: string | null;
+        period_id?: string | null;
+        period?: { period_start?: Date | string | null; period_end?: Date | string | null } | null;
+    },
+    periodList?: PayrollPeriod[]
+): DisbursementCheckResult {
+    // 1. If salary_payment_date from payroll table is equal to today -> allow disburse
+    if (isSameDateAsToday(record.salary_payment_date)) {
+        return { allowed: true };
+    }
+
+    // 2. If not equal to today: check if period month is current month
+    const periodInfo = getPeriodMonthYear(record, periodList);
+    const today = new Date();
+
+    if (periodInfo) {
+        const isCurrentMonth =
+            (periodInfo.year === today.getFullYear() && periodInfo.month === today.getMonth()) ||
+            (periodInfo.year === today.getUTCFullYear() && periodInfo.month === today.getUTCMonth());
+
+        if (isCurrentMonth) {
+            // Check if this is the end of the month
+            const lastDayOfCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            const matchedPeriodEnd =
+                record.period?.period_end ||
+                (record.period_id && periodList
+                    ? periodList.find((p) => p.uid === record.period_id)?.period_end
+                    : null);
+            const isEndOfMonth =
+                today.getDate() >= lastDayOfCurrentMonth ||
+                today.getUTCDate() >= lastDayOfCurrentMonth ||
+                (matchedPeriodEnd && isSameDateAsToday(matchedPeriodEnd));
+
+            if (!isEndOfMonth) {
+                return {
+                    allowed: false,
+                    reason: "Salary can't be disbursed in the middle of month!",
+                };
+            }
+
+            return {
+                allowed: true,
+                isEndOfMonthConfirm: true,
+                message: "This is the end of the same month of salary calendar, are you sure to confirm?",
+            };
+        }
+    }
+
+    // Period is not current month -> allowed
+    return { allowed: true };
 }
 
 export default function EmployeeSalaryManage({ user, permissions }: EmployeeSalaryManageProps) {
@@ -823,10 +970,18 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
     // Action Execution: Disburse or Reject (Single)
     const executeDisburseOrReject = async (uid: string, targetStatus: "DISBURSED" | "REJECTED", rejectionNote?: string) => {
-        const target = payrolls.find((p) => p.uid === uid);
+        const base = payrolls.find((p) => p.uid === uid);
+        const target = detailedRecords[uid] ? { ...base, ...detailedRecords[uid] } : base;
         if (target?.callback_status === "REQUESTED") {
             toast.error("Cannot process salary: A call back request is currently pending approval.");
             return;
+        }
+        if (targetStatus === "DISBURSED" && target) {
+            const check = checkDisbursementEligibility(target, periods);
+            if (!check.allowed) {
+                await swalInfo(check.reason || "Salary can't be disbursed in the middle of month!", "Disbursement Not Allowed");
+                return;
+            }
         }
         if (targetStatus === "REJECTED" && (!rejectionNote || !rejectionNote.trim())) {
             toast.error("Please provide a rejection note explaining why this payout is rejected.");
@@ -880,7 +1035,11 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                 setConfirmModal(null);
                 setDisburseRejectionNote("");
             } else {
-                toast.error(data.message || `Failed to mark salary as ${targetStatus}`);
+                if (data.message && data.message.includes("middle of month")) {
+                    await swalInfo(data.message, "Disbursement Not Allowed");
+                } else {
+                    toast.error(data.message || `Failed to mark salary as ${targetStatus}`);
+                }
             }
         } catch (err) {
             console.error(`Error marking as ${targetStatus}:`, err);
@@ -896,6 +1055,17 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
         action: "INITIATE" | "DISBURSED" | "REJECTED",
         rejectionNote?: string
     ) => {
+        if (action === "DISBURSED") {
+            const blocked = uids.map(uid => payrolls.find(p => p.uid === uid)).find(target => {
+                if (!target) return false;
+                const check = checkDisbursementEligibility(target, periods);
+                return !check.allowed;
+            });
+            if (blocked) {
+                await swalInfo("Salary can't be disbursed in the middle of month!", "Disbursement Not Allowed");
+                return;
+            }
+        }
         if (action === "REJECTED" && (!rejectionNote || !rejectionNote.trim())) {
             toast.error("Please provide a rejection note explaining why payout is rejected.");
             return;
@@ -1300,15 +1470,36 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
                                 <>
                                     <button
                                         type="button"
-                                        onClick={() =>
+                                        onClick={async () => {
+                                            const blocked = eligibleForDisburseOrReject.find((rec) => {
+                                                const check = checkDisbursementEligibility(rec, periods);
+                                                return !check.allowed;
+                                            });
+
+                                            if (blocked) {
+                                                await swalInfo("Salary can't be disbursed in the middle of month!", "Disbursement Not Allowed");
+                                                return;
+                                            }
+
+                                            const anyEndOfMonth = eligibleForDisburseOrReject.some((rec) => {
+                                                const check = checkDisbursementEligibility(rec, periods);
+                                                return check.allowed && check.isEndOfMonthConfirm;
+                                            });
+
+                                            const confirmDesc = anyEndOfMonth
+                                                ? "This is the end of the same month of salary calendar, are you sure to confirm?"
+                                                : `Are you sure you want to mark ${eligibleForDisburseOrReject.length} initiated salary record(s) as DISBURSED? Ensure bank transfers are complete.`;
+
                                             setConfirmModal({
                                                 isOpen: true,
                                                 action: "BATCH_DISBURSE",
-                                                title: `Batch Disburse Payouts (${eligibleForDisburseOrReject.length})`,
-                                                description: `Are you sure you want to mark ${eligibleForDisburseOrReject.length} initiated salary record(s) as DISBURSED? Ensure bank transfers are complete.`,
+                                                title: anyEndOfMonth
+                                                    ? `Confirm Batch Disbursement (End of Month - ${eligibleForDisburseOrReject.length})`
+                                                    : `Batch Disburse Payouts (${eligibleForDisburseOrReject.length})`,
+                                                description: confirmDesc,
                                                 targetUids: eligibleForDisburseOrReject.map((p) => p.uid),
-                                            })
-                                        }
+                                            });
+                                        }}
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
                                     >
                                         <CheckCircle2 className="w-3.5 h-3.5" />
@@ -2455,17 +2646,28 @@ export default function EmployeeSalaryManage({ user, permissions }: EmployeeSala
 
                                                                                 <button
                                                                                     type="button"
-                                                                                    onClick={() =>
+                                                                                    onClick={async () => {
+                                                                                        const check = checkDisbursementEligibility(detailRecord, periods);
+                                                                                        if (!check.allowed) {
+                                                                                            await swalInfo(check.reason || "Salary can't be disbursed in the middle of month!", "Disbursement Not Allowed");
+                                                                                            return;
+                                                                                        }
+                                                                                        const confirmDesc = check.isEndOfMonthConfirm
+                                                                                            ? (check.message || "This is the end of the same month of salary calendar, are you sure to confirm?")
+                                                                                            : `Confirm that salary payout of ${formatCurrency(
+                                                                                                detailRecord.total_payable_amount || detailRecord.net_salary
+                                                                                            )} has been disbursed.`;
+
                                                                                         setConfirmModal({
                                                                                             isOpen: true,
                                                                                             action: "DISBURSE",
-                                                                                            title: `Disburse Salary for ${detailRecord.users?.name || detailRecord.empid}`,
-                                                                                            description: `Confirm that salary payout of ${formatCurrency(
-                                                                                                detailRecord.total_payable_amount || detailRecord.net_salary
-                                                                                            )} has been disbursed.`,
+                                                                                            title: check.isEndOfMonthConfirm
+                                                                                                ? "Confirm Salary Disbursement (End of Month)"
+                                                                                                : `Disburse Salary for ${detailRecord.users?.name || detailRecord.empid}`,
+                                                                                            description: confirmDesc,
                                                                                             targetRecord: detailRecord,
-                                                                                        })
-                                                                                    }
+                                                                                        });
+                                                                                    }}
                                                                                     className="inline-flex items-center gap-1.5 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs shadow-xs transition-colors cursor-pointer"
                                                                                 >
                                                                                     <CheckCircle2 className="w-4 h-4" />

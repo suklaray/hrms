@@ -439,6 +439,16 @@ export async function GET(req: NextRequest) {
                             website: true,
                         },
                     },
+                    period: {
+                        select: {
+                            uid: true,
+                            period_name: true,
+                            period_start: true,
+                            period_end: true,
+                            salary_payment_date: true,
+                            status: true,
+                        },
+                    },
                     users: {
                         select: {
                             empid: true,
@@ -488,6 +498,16 @@ export async function GET(req: NextRequest) {
                     select: {
                         uid: true,
                         name: true,
+                    },
+                },
+                period: {
+                    select: {
+                        uid: true,
+                        period_name: true,
+                        period_start: true,
+                        period_end: true,
+                        salary_payment_date: true,
+                        status: true,
                     },
                 },
                 users: {
