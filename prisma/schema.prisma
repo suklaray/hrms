@@ -1100,7 +1100,8 @@ model parsed_resumes {
   pending_interview_date      DateTime?
   pending_interview_time_from String?
   pending_interview_time_to   String?
-  interview_schedule_status   String?  @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
+  interview_schedule_status        String?  @default("NOT_REQUIRED") // NOT_REQUIRED | PENDING | APPROVED | REJECTED
+  schedule_rejection_reason         String?  @db.VarChar(500)
   parsing_error      String?  @db.Text
   parsed_at          DateTime @default(now())
   updated_at         DateTime @updatedAt

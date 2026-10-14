@@ -1,4 +1,6 @@
 // src/proxy.ts
+//adds the API endpoint and HTTP method to request headers so the audit extension can identify where a request came from and what type of request it was.
+//audit logging
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify, JWTPayload } from "jose";

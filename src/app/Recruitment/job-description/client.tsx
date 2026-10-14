@@ -1142,9 +1142,9 @@ export default function JobDescriptions({
 
                               {canClose && (
                                 <button
-                                  onClick={() => !pendingCloseAudits[job.id] && job.status !== "Closed" && setDeleteJob(job)}
-                                  disabled={!!pendingCloseAudits[job.id] || job.status === "Closed"}
-                                  title={job.status === "Closed" ? "Job already closed" : pendingCloseAudits[job.id] ? "Waiting for auditor approval" : "Close job"}
+                                  onClick={() => !pendingCloseAudits[job.id] && job.status !== "Closed" && job.status !== "Draft" && !isPendingPublish && setDeleteJob(job)}
+                                  disabled={!!pendingCloseAudits[job.id] || job.status === "Closed" || job.status === "Draft" || isPendingPublish}
+                                  title={job.status === "Closed" ? "Job already closed" : isPendingPublish ? "Cannot close a job pending publication" : job.status === "Draft" ? "Cannot close draft jobs" : pendingCloseAudits[job.id] ? "Waiting for auditor approval" : "Close job"}
                                   className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
                                 >
                                   <Lock className="w-4 h-4" />

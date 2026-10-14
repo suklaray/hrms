@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, RefreshCw, Save, Sparkles } from "lucide-react";
@@ -198,6 +198,9 @@ export default function CandidateMatchClient() {
   const [selectedCriteria, setSelectedCriteria] = useState<ReviewCriterion[]>([]);
   const [error, setError] = useState("");
   const [reviewError, setReviewError] = useState("");
+  const matchingRequests = useRef(new Set<number>());
+  const matchingDone = useRef(new Set<number>());
+
 
   useEffect(() => {
     let active = true;

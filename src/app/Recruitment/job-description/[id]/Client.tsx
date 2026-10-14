@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import SideBar from "@/Components/SideBar";
@@ -138,6 +138,7 @@ export default function EditJobDescriptionClient({
   const [pendingAudit, setPendingAudit] = useState<{ uid: string } | null>(null);
   const [hrUsers, setHrUsers] = useState<HRUser[]>([]);
   const [userRole, setUserRole] = useState("");
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     document.title = "Edit Job Description - HRMS";
@@ -183,6 +184,9 @@ export default function EditJobDescriptionClient({
           )
         );
       });
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
   }, [id]);
 
   const set =
@@ -254,13 +258,16 @@ export default function EditJobDescriptionClient({
   };
 
   const pollApproval = (uid: string) => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     const interval = setInterval(async () => {
+      pollIntervalRef.current = interval;
       try {
         const res = await fetch(`/api/audit/logs/${uid}/status`);
         if (!res.ok) return;
         const data = await res.json();
         if (data.currentStatus === "APPROVED") {
           clearInterval(interval);
+          pollIntervalRef.current = null;
           try {
             const stored = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
             localStorage.setItem("pendingUpdateAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== uid)));
@@ -268,6 +275,7 @@ export default function EditJobDescriptionClient({
           handleUpdate(undefined, uid);
         } else if (data.currentStatus === "REJECTED") {
           clearInterval(interval);
+          pollIntervalRef.current = null;
           try {
             const stored = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
             localStorage.setItem("pendingUpdateAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== uid)));
@@ -351,31 +359,46 @@ export default function EditJobDescriptionClient({
         </header>
 
         <main className="flex-1 overflow-auto p-8">
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
-
-              <div>
-                <p className="text-sm font-semibold text-amber-800">
-                  You are editing a live job description
-                </p>
-
-                <p className="text-xs text-amber-600 mt-0.5">
-                  Changes will reflect immediately if status is Published.
-                </p>
+          {form.status?.toLowerCase() === "published" ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">You are editing a live job description</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Changes will reflect immediately.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                <Clock className="w-3.5 h-3.5" />
+                Last updated:{" "}
+                {new Date(form.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
               </div>
             </div>
-
-            <div className="flex items-center gap-1.5 text-xs text-amber-600">
-              <Clock className="w-3.5 h-3.5" />
-              Last updated:{" "}
-              {new Date(form.updated_at).toLocaleDateString("en-IN", {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
+          ) : form.status?.toLowerCase() === "rejected" ? (
+            <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <p className="text-sm font-semibold text-red-800">This job description has been rejected.</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-red-400">
+                <Clock className="w-3.5 h-3.5" />
+                Last updated:{" "}
+                {new Date(form.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                <p className="text-sm font-semibold text-amber-800">This job description is currently in draft and has not been published yet.</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                <Clock className="w-3.5 h-3.5" />
+                Last updated:{" "}
+                {new Date(form.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+              </div>
+            </div>
+          )}
 
           {pendingAudit && (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">

@@ -172,6 +172,11 @@ export default function JobApplicationsClient({
     closeRejectModal();
   };
   const [decidingScheduleId, setDecidingScheduleId] = useState<number | null>(null);
+  const [scheduleRejectOpen, setScheduleRejectOpen] = useState(false);
+  const [scheduleRejectResume, setScheduleRejectResume] = useState<Resume | null>(null);
+  const [scheduleRejectReason, setScheduleRejectReason] = useState("");
+  const [scheduleRejectReasonError, setScheduleRejectReasonError] = useState("");
+  const [scheduleRejecting, setScheduleRejecting] = useState(false);
 
   const loadResumes = async () => {
     try {
@@ -298,7 +303,7 @@ export default function JobApplicationsClient({
     }
   };
 
-  const decideInterviewSchedule = async (resumeId: number, action: "APPROVED" | "REJECTED") => {
+  const decideInterviewSchedule = async (resumeId: number, action: "APPROVED" | "REJECTED", reason?: string) => {
     if (!canReviewSchedules) {
       toast.error("Permission denied: You cannot review interview schedules");
       return;
@@ -309,7 +314,7 @@ export default function JobApplicationsClient({
       const response = await fetch("/api/recruitment/job-application/schedule/approve", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeId, action }),
+        body: JSON.stringify({ resumeId, action, scheduleRejectionReason: reason }),
       });
       const result = await response.json();
       if (!response.ok || !result.success) throw new Error(result.error || "Failed to review interview schedule");
@@ -690,7 +695,7 @@ export default function JobApplicationsClient({
                                         {decidingScheduleId === resume.id ? "Saving..." : "Approve"}
                                       </button>
                                       <button
-                                        onClick={() => decideInterviewSchedule(resume.id, "REJECTED")}
+                                        onClick={() => { setScheduleRejectResume(resume); setScheduleRejectReason(""); setScheduleRejectReasonError(""); setScheduleRejectOpen(true); }}
                                         disabled={decidingScheduleId === resume.id}
                                         className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg disabled:text-gray-400"
                                       >
@@ -906,6 +911,69 @@ export default function JobApplicationsClient({
                 className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scheduleRejectOpen && scheduleRejectResume && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-red-600">Reject schedule</p>
+                <h2 className="text-xl font-bold text-gray-900 mt-1">Reject Interview Schedule</h2>
+                <p className="text-sm text-gray-600 mt-2">{scheduleRejectResume.name}</p>
+                <p className="text-xs text-gray-400">{scheduleRejectResume.email}</p>
+              </div>
+              <button onClick={() => setScheduleRejectOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Reason for rejection <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={scheduleRejectReason}
+                onChange={(e) => { setScheduleRejectReason(e.target.value); if (scheduleRejectReasonError) setScheduleRejectReasonError(""); }}
+                rows={4}
+                maxLength={500}
+                placeholder="e.g. Candidate is unavailable on the proposed date."
+                className={`w-full px-4 py-2.5 bg-gray-50 border rounded-xl text-sm focus:outline-none focus:ring-2 resize-none ${
+                  scheduleRejectReasonError ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-red-200"
+                }`}
+              />
+              <div className="flex justify-between items-center mt-1">
+                {scheduleRejectReasonError
+                  ? <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{scheduleRejectReasonError}</p>
+                  : <span />}
+                <p className={`text-xs ml-auto ${
+                  scheduleRejectReason.length >= 500 ? "text-red-500 font-semibold" : scheduleRejectReason.length >= 450 ? "text-orange-500" : "text-gray-400"
+                }`}>{scheduleRejectReason.length}/500</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setScheduleRejectOpen(false)}
+                disabled={scheduleRejecting}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={scheduleRejecting || !scheduleRejectReason.trim()}
+                onClick={async () => {
+                  if (!scheduleRejectReason.trim()) { setScheduleRejectReasonError("Rejection reason is required."); return; }
+                  setScheduleRejecting(true);
+                  await decideInterviewSchedule(scheduleRejectResume.id, "REJECTED", scheduleRejectReason.trim());
+                  setScheduleRejecting(false);
+                  setScheduleRejectOpen(false);
+                }}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-gray-300"
+              >
+                {scheduleRejecting ? "Rejecting..." : "Confirm Rejection"}
               </button>
             </div>
           </div>

@@ -12,12 +12,19 @@ export async function PATCH(req: NextRequest) {
   if (error) return error;
 
   try {
-    const { resumeId, action } = await req.json();
+    const { resumeId, action, scheduleRejectionReason } = await req.json();
 
     const parsedResumeId = Number(resumeId);
     if (!Number.isInteger(parsedResumeId) || parsedResumeId <= 0 || !["APPROVED", "REJECTED"].includes(action)) {
       return NextResponse.json(
         { success: false, error: "resumeId and action (APPROVED|REJECTED) are required" },
+        { status: 400 }
+      );
+    }
+
+    if (action === "REJECTED" && !scheduleRejectionReason?.trim()) {
+      return NextResponse.json(
+        { success: false, error: "Rejection reason is required" },
         { status: 400 }
       );
     }
@@ -133,6 +140,7 @@ export async function PATCH(req: NextRequest) {
         where: { id: parsedResumeId, interview_schedule_status: "PENDING" },
         data: {
           interview_schedule_status: "REJECTED",
+          schedule_rejection_reason: scheduleRejectionReason.trim(),
           pending_interview_date: null,
           pending_interview_time_from: null,
           pending_interview_time_to: null,
