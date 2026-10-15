@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const filePath = path.join(process.cwd(), resume.resume_file_path);
+   const filePath = path.join(/*turbopackIgnore: true*/ process.cwd(), resume.resume_file_path);
 
     if (!fs.existsSync(filePath)) {
       return NextResponse.json(
