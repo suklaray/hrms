@@ -119,6 +119,7 @@ export async function GET(req: NextRequest) {
         interviewDate: resume.candidate?.interview_date || null,
         interviewTimeFrom: resume.candidate?.interview_time_from || null,
         interviewTimeTo: resume.candidate?.interview_time_to || null,
+        scheduleRejectionReason: resume.schedule_rejection_reason ?? null,
         pendingInterviewDate: resume.pending_interview_date,
         pendingInterviewTimeFrom: resume.pending_interview_time_from,
         pendingInterviewTimeTo: resume.pending_interview_time_to,

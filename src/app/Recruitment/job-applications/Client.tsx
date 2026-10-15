@@ -91,6 +91,7 @@ interface Resume {
   aiModel?: string;
   parsingStatus?: string;
   rejectionReason?: string | null;
+  scheduleRejectionReason?: string | null;
 }
 
 interface Data {
@@ -178,6 +179,7 @@ export default function JobApplicationsClient({
   const [scheduleRejectReason, setScheduleRejectReason] = useState("");
   const [scheduleRejectReasonError, setScheduleRejectReasonError] = useState("");
   const [scheduleRejecting, setScheduleRejecting] = useState(false);
+  const [showRejectionReason, setShowRejectionReason] = useState(false);
 
   const loadResumes = async () => {
     try {
@@ -706,16 +708,31 @@ export default function JobApplicationsClient({
                                   )}
                               </div>
                             ) : resume.interviewScheduleStatus === "REJECTED" ? (
-                              <>
-                                <span className="px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 rounded-lg">
-                                  Interview rejected by hiring manager
-                                </span>
-                                {resume.applicationStatus === "Shortlisted" && canSchedule && (
-                                  <button onClick={() => handleScheduleInterview(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg">
-                                    Reschedule Interview
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setViewReasonText(
+                                        resume.scheduleRejectionReason ||
+                                          "No rejection reason provided."
+                                      );
+                                      setViewReasonName(resume.name);
+                                      setViewReasonOpen(true);
+                                    }}
+                                    className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg"
+                                  >
+                                    Interview rejected by hiring manager
                                   </button>
-                                )}
-                              </>
+
+                                  {resume.applicationStatus === "Shortlisted" && canSchedule && (
+                                    <button
+                                      onClick={() => handleScheduleInterview(resume)}
+                                      className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                                    >
+                                      Reschedule Interview
+                                    </button>
+                                  )}
+                                </>
                             ) : resume.interviewScheduled ? (
                               <span className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 rounded-lg">
                                 Interview Scheduled · {resume.interviewDate?.slice(0, 10)} · {resume.interviewTimeFrom}–{resume.interviewTimeTo}

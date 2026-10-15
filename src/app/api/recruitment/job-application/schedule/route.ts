@@ -88,6 +88,7 @@ export async function PATCH(req: NextRequest) {
             pending_interview_time_from: interviewTimeFrom,
             pending_interview_time_to: interviewTimeTo,
             interview_schedule_status: "APPROVED",
+            schedule_rejection_reason: null,
           },
         });
 

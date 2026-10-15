@@ -89,6 +89,7 @@ export async function PATCH(req: NextRequest) {
           where: { id: parsedResumeId, interview_schedule_status: "PENDING" },
           data: {
             interview_schedule_status: "APPROVED",
+            schedule_rejection_reason: null,
           },
         });
         if (result.count !== 1) return false;
