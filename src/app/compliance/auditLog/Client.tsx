@@ -18,6 +18,7 @@ interface AuditLog {
   currentStatus: string;
   oldStatus: string | null;
   newStatus: string | null;
+  reviewComment: string | null;
   createdAt: string;
   reviewedBy: number | null;
   reviewedAt: string | null;
@@ -51,15 +52,23 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function DetailModal({ log, onClose, onStatusChange }: { log: AuditLog; onClose: () => void; onStatusChange: (uid: string, status: "APPROVED" | "REJECTED") => Promise<void> }) {
+function DetailModal({ log, onClose, onStatusChange }: { log: AuditLog; onClose: () => void; onStatusChange: (uid: string, status: "APPROVED" | "REJECTED", reviewComment: string) => Promise<void> }) {
   const [acting, setActing] = useState<"APPROVED" | "REJECTED" | null>(null);
   const [error, setError] = useState("");
+  const [reviewComment, setReviewComment] = useState("");
+  const [showRejectionReason, setShowRejectionReason] = useState(false);
+  const [confirmStatus, setConfirmStatus] = useState<"APPROVED" | "REJECTED" | null>(null);
 
   const handleAction = async (status: "APPROVED" | "REJECTED") => {
+    if (status === "REJECTED" && !reviewComment.trim()) {
+      setError("A rejection reason is required.");
+      return;
+    }
+
     setActing(status);
     setError("");
     try {
-      await onStatusChange(log.uid, status);
+      await onStatusChange(log.uid, status, reviewComment.trim());
       onClose();
     } catch (e: any) {
       setError(e.message ?? "Failed to update status");
@@ -88,6 +97,7 @@ function DetailModal({ log, onClose, onStatusChange }: { log: AuditLog; onClose:
             ["Status", log.currentStatus],
             ["Old Status", log.oldStatus ?? "—"],
             ["New Status", log.newStatus ?? "—"],
+            ["Review Comment", log.reviewComment ?? "—"],
             ["Timestamp", new Date(log.createdAt).toLocaleString()],
             ["Reviewed At", log.reviewedAt ? new Date(log.reviewedAt).toLocaleString() : "—"],
           ].map(([label, value]) => (
@@ -98,24 +108,83 @@ function DetailModal({ log, onClose, onStatusChange }: { log: AuditLog; onClose:
           ))}
         </div>
         {log.currentStatus === "PENDING" && (
-          <div className="mt-5 flex gap-3">
-            <button
-              onClick={() => handleAction("APPROVED")}
-              disabled={!!acting}
-              className="flex-1 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-60 rounded-xl cursor-pointer transition-colors"
-            >
-              {acting === "APPROVED" ? "Approving..." : "Approve"}
-            </button>
-            <button
-              onClick={() => handleAction("REJECTED")}
-              disabled={!!acting}
-              className="flex-1 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 rounded-xl cursor-pointer transition-colors"
-            >
-              {acting === "REJECTED" ? "Rejecting..." : "Reject"}
-            </button>
+          <div className="mt-5">
+            {showRejectionReason && (
+              <>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Reason for rejection
+                </label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(event) => setReviewComment(event.target.value)}
+                  maxLength={1000}
+                  rows={3}
+                  placeholder="Required when rejecting"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                />
+              </>
+            )}
+            <div className="flex gap-3 mt-3">
+              <button
+                onClick={() => setConfirmStatus("APPROVED")}
+                disabled={!!acting}
+                className="flex-1 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-60 rounded-xl cursor-pointer transition-colors"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => {
+                  if (!showRejectionReason) {
+                    setShowRejectionReason(true);
+                    return;
+                  }
+                  if (!reviewComment.trim()) {
+                    setError("A rejection reason is required.");
+                    return;
+                  }
+                  setConfirmStatus("REJECTED");
+                }}
+                disabled={!!acting}
+                className="flex-1 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 rounded-xl cursor-pointer transition-colors"
+              >
+                Reject
+              </button>
+            </div>
           </div>
         )}
         {error && <p className="mt-3 text-xs text-red-500">{error}</p>}
+        {confirmStatus && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+              <h4 className="text-base font-bold text-gray-900">
+                Confirm {confirmStatus === "REJECTED" ? "rejection" : "approval"}
+              </h4>
+              <p className="text-sm text-gray-600 mt-2">
+                Are you sure you want to {confirmStatus === "REJECTED" ? "reject" : "approve"} this candidate?
+              </p>
+              <div className="flex justify-end gap-3 mt-5">
+                <button
+                  onClick={() => setConfirmStatus(null)}
+                  disabled={!!acting}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-60"
+                >
+                  No
+                </button>
+                <button
+                  onClick={() => {
+                    const status = confirmStatus;
+                    setConfirmStatus(null);
+                    void handleAction(status);
+                  }}
+                  disabled={!!acting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-60"
+                >
+                  Yes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -373,11 +442,11 @@ function AuditLogs() {
         <DetailModal
           log={selectedLog}
           onClose={() => setSelectedLog(null)}
-          onStatusChange={async (uid, status) => {
+          onStatusChange={async (uid, status, reviewComment) => {
             const res = await fetch(`/api/audit/logs/${uid}/status`, {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status }),
+              body: JSON.stringify({ status, reviewComment }),
             });
             if (!res.ok) {
               const data = await res.json().catch(() => ({}));

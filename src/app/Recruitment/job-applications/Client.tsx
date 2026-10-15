@@ -20,6 +20,7 @@ const MAX_SIZE = 5 * 1024 * 1024;
 interface Job {
   id: number;
   title: string;
+  status: string;
 }
 
 interface Resume {
@@ -751,7 +752,7 @@ export default function JobApplicationsClient({
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               >
                 <option value="">Select job description</option>
-                {data.jobs.map((job) => (
+                {data.jobs.filter((job) => job.status === "Published").map((job) => (
                   <option key={job.id} value={job.id}>{job.title}</option>
                 ))}
               </select>

@@ -85,6 +85,55 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
   const existingJob = await prisma.job_descriptions.findUnique({ where: { id: jdId } });
   if (!existingJob) return NextResponse.json({ message: "Not found" }, { status: 404 });
+  if (existingJob.approval_status === "REJECTED" || existingJob.status === "Rejected") {
+    return NextResponse.json(
+      { message: "This job description was rejected and cannot be edited." },
+      { status: 409 }
+    );
+  }
+  const isPendingPublish =
+    existingJob.approval_status === "PENDING" || existingJob.status === "Pending Publish";
+  if (isPendingPublish) {
+    if (!auditUid) {
+      return NextResponse.json(
+        { message: "This job description is awaiting auditor approval and cannot be edited." },
+        { status: 409 }
+      );
+    }
+    const approvedAudit = await prisma.audit_logs.findFirst({
+      where: {
+        uid: auditUid,
+        action: "jd.update",
+        targetId: String(jdId),
+        currentStatus: "APPROVED",
+      },
+      select: { uid: true },
+    });
+    if (!approvedAudit) {
+      return NextResponse.json(
+        { message: "This job description is awaiting auditor approval and cannot be edited." },
+        { status: 409 }
+      );
+    }
+  }
+
+  const isNewPublishRequest =
+  existingJob.status.toLowerCase() === "draft" &&
+  status?.toLowerCase() === "published";
+
+  const isPublishRequest =
+    status?.toLowerCase() === "published" &&
+    ["draft", "pending publish"].includes(existingJob.status.toLowerCase());
+  if (
+    status?.toLowerCase() === "published" &&
+    existingJob.status.toLowerCase() !== "published" &&
+    !isPublishRequest
+  ) {
+    return NextResponse.json(
+      { message: "Only a draft job description can be submitted for publication." },
+      { status: 409 }
+    );
+  }
 
   const hiringManagerUser = hiring_manager_id
     ? await prisma.users.findUnique({
@@ -96,8 +145,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ message: "Select a valid hiring manager" }, { status: 400 });
   }
 
-  // Step 1 — create audit log and wait for approval
-  if (!auditUid) {
+  // Only a Draft -> Published transition requires auditor approval.
+  if (isNewPublishRequest && !auditUid) {
     const changes: string[] = [];
     if (title?.trim() && title.trim() !== existingJob.title) changes.push(`Title: "${existingJob.title}" → "${title.trim()}"`);
     if (status && status !== existingJob.status) changes.push(`Status: "${existingJob.status}" → "${status}"`);
@@ -108,9 +157,16 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       user,
       action: "jd.update",
       module: "Job Description",
-      description: `Request to update Job Description: "${existingJob.title}" (ID: ${jdId})${changes.length ? ` | Changes: ${changes.join(", ")}` : ""}`,
+      description: `Request to publish Job Description: "${existingJob.title}" (ID: ${jdId})${changes.length ? ` | Changes: ${changes.join(", ")}` : ""}`,
       targetId: String(jdId),
       requiresApproval: true,
+    });
+    if (!auditLog) {
+      return NextResponse.json({ message: "Could not create auditor approval request." }, { status: 500 });
+    }
+    await prisma.job_descriptions.update({
+      where: { id: jdId },
+      data: { status: "Pending Publish", approval_comment: null },
     });
 
     return NextResponse.json(
@@ -119,12 +175,28 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     );
   }
 
-  // Step 2 — check approval
-  const approved = await isAuditApproved(auditUid);
-  if (!approved)
-    return NextResponse.json({ message: "This action is pending audit approval. Please wait for an auditor to approve it.", requiresApproval: true }, { status: 403 });
-
-  if (status?.toLowerCase() === "published" && existingJob.status?.toLowerCase() !== "published") {
+  if (isPublishRequest) {
+    if (!auditUid || !isPendingPublish) {
+      return NextResponse.json(
+        { message: "A Draft job description must be submitted for auditor approval before publishing." },
+        { status: 403 }
+      );
+    }
+    const approvedAudit = await prisma.audit_logs.findFirst({
+      where: {
+        uid: auditUid,
+        action: "jd.update",
+        targetId: String(jdId),
+        currentStatus: "APPROVED",
+      },
+      select: { uid: true },
+    });
+    if (!approvedAudit || !(await isAuditApproved(auditUid))) {
+      return NextResponse.json(
+        { message: "This action is pending audit approval. Please wait for an auditor to approve it.", requiresApproval: true },
+        { status: 403 }
+      );
+    }
     const { error: publishError } = await checkAuth(request, [PERMISSION_KEYS.JD_PUBLISH]);
     if (publishError) return publishError;
   }
@@ -150,6 +222,9 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
         interview_process: interview_process || null,
         keywords: keywords || null,
         status,
+        ...(isPublishRequest
+          ? { approval_status: "APPROVED", approval_comment: null }
+          : {}),
       },
     });
 
@@ -173,6 +248,12 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
   const existingJob = await prisma.job_descriptions.findUnique({ where: { id: jdId } });
   if (!existingJob) return NextResponse.json({ message: "Not found" }, { status: 404 });
+  if (existingJob.status === "Rejected" || existingJob.approval_status === "REJECTED") {
+    return NextResponse.json(
+      { message: "Rejected job descriptions cannot be closed." },
+      { status: 409 }
+    );
+  }
 
   // Step 1 — create audit log
   if (!body.auditUid) {

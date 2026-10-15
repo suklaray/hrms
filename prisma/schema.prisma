@@ -258,6 +258,7 @@ model audit_logs {
   currentStatus AuditStatus @default(NOT_REQUIRED)
   oldStatus     String?
   newStatus     String?
+  reviewComment String?     @db.Text
   reviewedBy    Int?
   reviewedAt    DateTime?
 

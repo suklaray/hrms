@@ -211,11 +211,11 @@ export default function AddJobDescription({
 
       if (res.status === 202 && data.requiresApproval) {
         setPendingAudit({ uid: data.auditUid, status });
-        // Store pending publish audit + full form payload so the list page can re-submit after approval
+        // Keep the audit UID so the list can clear this browser's pending notice after review.
         const pending = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
-        pending.push({ auditUid: data.auditUid, title: form.title, form, status, ts: Date.now() });
+        pending.push({ auditUid: data.auditUid, title: form.title, jobId: data.jobId, ts: Date.now() });
         localStorage.setItem("pendingPublishAudits", JSON.stringify(pending));
-        pollApproval(data.auditUid, status);
+        pollApproval(data.auditUid);
         return;
       }
 
@@ -234,7 +234,7 @@ export default function AddJobDescription({
     }
   };
 
-  const pollApproval = (uid: string, status: string) => {
+  const pollApproval = (uid: string) => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/audit/logs/${uid}/status`);
@@ -242,11 +242,17 @@ export default function AddJobDescription({
         const data = await res.json();
         if (data.currentStatus === "APPROVED") {
           clearInterval(interval);
-          submit(status, uid);
+          const pending = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
+          localStorage.setItem("pendingPublishAudits", JSON.stringify(pending.filter((entry: { auditUid: string }) => entry.auditUid !== uid)));
+          router.push("/Recruitment/job-description");
         } else if (data.currentStatus === "REJECTED") {
           clearInterval(interval);
           setPendingAudit(null);
-          setError("Your request was rejected by the auditor.");
+          const pending = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
+          localStorage.setItem("pendingPublishAudits", JSON.stringify(pending.filter((entry: { auditUid: string }) => entry.auditUid !== uid)));
+          setError(data.reviewComment
+            ? `Your request was rejected by the auditor: ${data.reviewComment}`
+            : "Your request was rejected by the auditor.");
         }
       } catch {}
     }, 5000);

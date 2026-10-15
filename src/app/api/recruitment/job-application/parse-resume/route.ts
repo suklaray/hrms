@@ -119,14 +119,24 @@ export async function POST(req: NextRequest) {
   const emailMatch = resumeText.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/i);
   if (emailMatch) {
     const extractedEmail = emailMatch[0].toLowerCase();
-    const duplicate = await prisma.parsed_resumes.findFirst({
-      where: { email: extractedEmail },
-      select: { id: true },
-    });
-    if (duplicate) {
+    const [parsedResume, candidate, user] = await Promise.all([
+      prisma.parsed_resumes.findFirst({
+        where: { email: extractedEmail },
+        select: { id: true },
+      }),
+      prisma.candidates.findFirst({
+        where: { email: extractedEmail },
+        select: { id: true },
+      }),
+      prisma.users.findFirst({
+        where: { email: extractedEmail },
+        select: { id: true },
+      }),
+    ]);
+    if (parsedResume || candidate || user) {
       fs.unlink(file.filepath, () => {});
       return NextResponse.json(
-        { success: false, error: `A resume with email ${extractedEmail} already exists for job application.` },
+        { success: false, error: `An account or resume with email ${extractedEmail} already exists.` },
         { status: 409 }
       );
     }

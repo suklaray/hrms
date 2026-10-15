@@ -27,7 +27,7 @@ import Pagination from "@/Components/Pagination";
 import { toast } from "react-toastify";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 
-type Status = "Draft" | "Published" | "Closed" | "Pending Publish";
+type Status = "Draft" | "Published" | "Closed" | "Pending Publish" | "Rejected";
 
 interface Job {
   id: number;
@@ -51,6 +51,7 @@ interface Job {
   interview_process?: string | null;
   keywords?: string | null;
   status: Status;
+  approval_status?: string;
   [key: string]: unknown;
 }
 
@@ -84,6 +85,11 @@ const STATUS_CONFIG: Record<
     text: "text-amber-700",
     dot: "bg-amber-400",
   },
+  Rejected: {
+    bg: "bg-red-100",
+    text: "text-red-700",
+    dot: "bg-red-500",
+  },
 };
 
 const STATUSES = [
@@ -91,6 +97,8 @@ const STATUSES = [
   "Draft",
   "Published",
   "Closed",
+  "Pending Publish",
+  "Rejected",
 ] as const;
 
 const WORK_MODES = [
@@ -99,6 +107,12 @@ const WORK_MODES = [
   "On-site",
   "Hybrid",
 ] as const;
+
+function getJobDisplayStatus(job: Job): Status {
+  if (job.status === "Rejected" || job.approval_status?.toUpperCase() === "REJECTED") return "Rejected";
+  if (job.status === "Pending Publish" || job.approval_status?.toUpperCase() === "PENDING") return "Pending Publish";
+  return job.status;
+}
 
 type Analysis = {
   jobInformation?: {
@@ -380,7 +394,7 @@ export default function JobDescriptions({
       setPendingPublishTitles(titles);
 
       // Poll each pending audit
-      raw.forEach(({ auditUid, title, form, status }: { auditUid: string; title: string; form: Record<string, unknown>; status: string }) => {
+      raw.forEach(({ auditUid, title, form, status, jobId }: { auditUid: string; title: string; form?: Record<string, unknown>; status?: string; jobId?: number }) => {
         const interval = setInterval(async () => {
           try {
             const res = await fetch(`/api/audit/logs/${auditUid}/status`);
@@ -388,22 +402,23 @@ export default function JobDescriptions({
             const data = await res.json();
             if (data.currentStatus === "APPROVED") {
               clearInterval(interval);
-              const createRes = await fetch("/api/recruitment/job-description", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...form, status, auditUid }),
-              });
+              if (!jobId && form && status) {
+                await fetch("/api/recruitment/job-description", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ...form, status, auditUid }),
+                });
+              }
               const stored = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
               localStorage.setItem("pendingPublishAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== auditUid)));
               setPendingPublishTitles((prev) => { const next = new Set(prev); next.delete(title); return next; });
-              if (createRes.ok) {
-                fetch("/api/recruitment/job-description").then((r) => r.json()).then((d) => setJobs(Array.isArray(d) ? d : []));
-              }
+              fetch("/api/recruitment/job-description").then((r) => r.json()).then((d) => setJobs(Array.isArray(d) ? d : []));
             } else if (data.currentStatus === "REJECTED") {
               clearInterval(interval);
               const stored = JSON.parse(localStorage.getItem("pendingPublishAudits") || "[]");
               localStorage.setItem("pendingPublishAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== auditUid)));
               setPendingPublishTitles((prev) => { const next = new Set(prev); next.delete(title); return next; });
+              fetch("/api/recruitment/job-description").then((r) => r.json()).then((d) => setJobs(Array.isArray(d) ? d : []));
             }
           } catch {}
         }, 5000);
@@ -438,6 +453,9 @@ export default function JobDescriptions({
             } else if (data.currentStatus === "REJECTED") {
               clearInterval(interval);
               cleanup();
+              const response = await fetch("/api/recruitment/job-description");
+              const refreshedJobs = await response.json();
+              if (Array.isArray(refreshedJobs)) setJobs(refreshedJobs);
             }
           } catch {}
         }, 5000);
@@ -713,6 +731,7 @@ export default function JobDescriptions({
   };
 
   const filtered = jobs.filter((j) => {
+    const displayStatus = getJobDisplayStatus(j);
     const matchSearch = matchesSearch(
       j,
       search
@@ -720,7 +739,7 @@ export default function JobDescriptions({
 
     const matchStatus =
       status === "All Status" ||
-      j.status === status;
+      displayStatus === status;
 
     const matchMode =
       workMode === "All Work Modes" ||
@@ -995,8 +1014,16 @@ export default function JobDescriptions({
                     </tr>
                   ) : (
                     paginated.map((job) => {
-                      const isPendingPublish = (pendingPublishTitles.has(job.title) || pendingUpdateIds.has(String(job.id))) && job.status === "Draft";
-                      const effectiveStatus: Status = isPendingPublish ? "Pending Publish" : job.status;
+                      const isRejected = job.status === "Rejected" || job.approval_status?.toUpperCase() === "REJECTED";
+                      const isPendingApproval = job.status === "Pending Publish" || job.approval_status?.toUpperCase() === "PENDING";
+                      const isPendingPublish = !isRejected && !isPendingApproval && ( job.status === "Pending Publish" || ( 
+                        job.status === "Draft" && (pendingPublishTitles.has(job.title) || pendingUpdateIds.has(String(job.id))
+                      )));
+                      const effectiveStatus: Status = isRejected
+                        ? "Rejected"
+                        : isPendingPublish
+                          ? "Pending Publish"
+                          : getJobDisplayStatus(job);
                       const badge = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.Draft;
 
                       return (
@@ -1081,7 +1108,7 @@ export default function JobDescriptions({
                                 className={`w-1.5 h-1.5 rounded-full ${badge.dot}`}
                               />
 
-                              {isPendingPublish ? "Pending Publish" : job.status}
+                              {effectiveStatus}
                             </span>
                           </td>
 
@@ -1116,7 +1143,7 @@ export default function JobDescriptions({
                                 )}
                               </button>}
 
-                              {canView && <button
+                              {canView && <button  
                                 onClick={() => handleViewSavedAnalysis(job)}
                                 disabled={viewingAnalysisId === job.id}
                                 className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1129,22 +1156,26 @@ export default function JobDescriptions({
                                 )}
                               </button>}
 
-                              {canEdit && <Link
-                                href={`/Recruitment/job-description/${job.id}`}
-                              >
-                                <button
-                                  className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                                  title="Edit"
-                                >
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              </Link>}
-
+                              {canEdit && (
+                                <Link href={`/Recruitment/job-description/${job.id}`}>
+                                  <button
+                                    className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Edit"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                </Link>
+                              )}
                               {canClose && (
                                 <button
-                                  onClick={() => !pendingCloseAudits[job.id] && job.status !== "Closed" && job.status !== "Draft" && !isPendingPublish && setDeleteJob(job)}
-                                  disabled={!!pendingCloseAudits[job.id] || job.status === "Closed" || job.status === "Draft" || isPendingPublish}
-                                  title={job.status === "Closed" ? "Job already closed" : isPendingPublish ? "Cannot close a job pending publication" : job.status === "Draft" ? "Cannot close draft jobs" : pendingCloseAudits[job.id] ? "Waiting for auditor approval" : "Close job"}
+                                  onClick={() => !pendingCloseAudits[job.id] && !isRejected && job.status !== "Closed" && job.status !== "Draft" && !isPendingPublish && setDeleteJob(job)}
+                                  disabled={!!pendingCloseAudits[job.id] || isRejected || job.status === "Closed" || job.status === "Draft" || isPendingPublish || isPendingApproval}                                  
+                                  title={isPendingApproval ? "This job description is pending publication and awaiting auditor approval." :
+                                    isRejected ? "Rejected job descriptions cannot be closed" : 
+                                    job.status === "Closed" ? "Job already closed" : 
+                                    isPendingPublish ? "Cannot close a job pending publication" : 
+                                    job.status === "Draft" ? "Cannot close draft jobs" : 
+                                     "Close job description"}
                                   className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400"
                                 >
                                   <Lock className="w-4 h-4" />
@@ -1184,23 +1215,9 @@ export default function JobDescriptions({
               <div className="flex items-start justify-between">
                 <div>
                   <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      (
-                        STATUS_CONFIG[
-                          viewJob.status
-                        ] ||
-                        STATUS_CONFIG.Draft
-                      ).bg
-                    } ${
-                      (
-                        STATUS_CONFIG[
-                          viewJob.status
-                        ] ||
-                        STATUS_CONFIG.Draft
-                      ).text
-                    }`}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${(STATUS_CONFIG[getJobDisplayStatus(viewJob)] || STATUS_CONFIG.Draft).bg} ${(STATUS_CONFIG[getJobDisplayStatus(viewJob)] || STATUS_CONFIG.Draft).text}`}
                   >
-                    {viewJob.status}
+                    {getJobDisplayStatus(viewJob)}
                   </span>
 
                   <h2 className="text-2xl font-bold text-white mt-2">
@@ -1457,12 +1474,23 @@ export default function JobDescriptions({
                 Close
               </button>
 
-              {canEdit && <Link href={`/Recruitment/job-description/${viewJob.id}`}>
-                <button className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer">
+              {canEdit && (viewJob.approval_status?.toUpperCase() === "PENDING" || viewJob.status === "Pending Publish" ? (
+                <button
+                  disabled
+                  title="This job description is awaiting auditor approval."
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl opacity-50 cursor-not-allowed"
+                >
                   <Pencil className="w-4 h-4" />
-                  Edit Job
+                  Awaiting Approval
                 </button>
-              </Link>}
+              ) : (
+                <Link href={`/Recruitment/job-description/${viewJob.id}`}>
+                  <button className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer">
+                    <Pencil className="w-4 h-4" />
+                    Edit Job
+                  </button>
+                </Link>
+              ))}
             </div>
           </div>
         </>

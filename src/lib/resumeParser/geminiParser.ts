@@ -2,12 +2,12 @@
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const TRANSIENT_GEMINI_STATUSES = new Set([429, 500, 502, 503, 504]);
-const MAX_GEMINI_RETRIES = 2;
+// const TRANSIENT_GEMINI_STATUSES = new Set([429, 500, 502, 503, 504]);
+// const MAX_GEMINI_RETRIES = 1;
 
-interface GeminiError extends Error {
-  status?: number;
-}
+// interface GeminiError extends Error {
+//   status?: number;
+// }
 
 interface PersonalInformation {
   fullName: string | null;
@@ -222,60 +222,20 @@ function normalizeStructure(
 export async function parseResumeWithGemini(
   resumeText: string
 ): Promise<ParsedResume> {
+  const prompt = PROMPT_TEMPLATE(resumeText);
   const apiKey = process.env.GEMINI_API_KEY;
 
-  if (!apiKey) {
-    throw new Error(
-      "GEMINI_API_KEY is not configured."
-    );
-  }
+if (!apiKey) {
+  throw new Error("GEMINI_API_KEY is not configured.");
+}
 
-  const genAI = new GoogleGenerativeAI(apiKey);
+const genAI = new GoogleGenerativeAI(apiKey);
+const model = genAI.getGenerativeModel({
+  model: "gemini-3.6-flash",
+});
 
-  const model = genAI.getGenerativeModel({
-    model: "gemini-3.6-flash",
-  });
-
-  const prompt = PROMPT_TEMPLATE(resumeText);
-
-  let result:
-    | Awaited<ReturnType<typeof model.generateContent>>
-    | undefined;
-
-  for (
-    let attempt = 0;
-    attempt <= MAX_GEMINI_RETRIES;
-    attempt += 1
-  ) {
-    try {
-      result = await model.generateContent(prompt);
-      break;
-    } catch (error: unknown) {
-      const geminiError = error as GeminiError;
-      const status = Number(geminiError?.status);
-      const message = error instanceof Error ? error.message : String(error);
-      const quotaExceeded =
-        /quota exceeded|quota.*limit|free.?tier.*requestsperday/i.test(message);
-
-      if (
-        !TRANSIENT_GEMINI_STATUSES.has(status) ||
-        quotaExceeded ||
-        attempt === MAX_GEMINI_RETRIES
-      ) {
-        throw error;
-      }
-
-      await new Promise((resolve) =>
-        setTimeout(resolve, 1000 * (attempt + 1))
-      );
-    }
-  }
-
-  if (!result) {
-    throw new Error("Gemini did not return a result");
-  }
-
-  const raw = result.response.text().trim();
+const result = await model.generateContent(prompt);
+const raw = result.response.text().trim();
 
   // Strip markdown code fences if Gemini wraps the response
   const cleaned = raw

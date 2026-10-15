@@ -2,7 +2,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const TRANSIENT_GEMINI_STATUSES = new Set([429, 500, 502, 503, 504]);
-const MAX_GEMINI_RETRIES = 2;
+const MAX_GEMINI_RETRIES = 1;
 
 interface GeminiError extends Error {
   status?: number;

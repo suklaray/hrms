@@ -1,8 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MAX_RETRIES = 2;
-const TRANSIENT = new Set([429, 500, 502, 503, 504]);
-
 interface JobDescription {
   title?: string;
   department?: string;
@@ -384,29 +381,6 @@ export async function runDetailedMatch(
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
   const prompt = buildPrompt(job, analysis, candidate);
-
-  let result: Awaited<ReturnType<typeof model.generateContent>> | undefined;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      result = await model.generateContent(prompt);
-      break;
-    } catch (err: unknown) {
-      const status = Number((err as { status?: number })?.status);
-      const message = err instanceof Error ? err.message : String(err);
-      const quotaExceeded =
-        /quota exceeded|quota.*limit|free.?tier.*requestsperday/i.test(message);
-      if (
-        !TRANSIENT.has(status) ||
-        quotaExceeded ||
-        attempt === MAX_RETRIES
-      ) {
-        throw err;
-      }
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-    }
-  }
-
-  if (!result) throw new Error("Gemini returned no result");
+  const result = await model.generateContent(prompt);
   return normalize(parseJSON(result.response.text()));
 }

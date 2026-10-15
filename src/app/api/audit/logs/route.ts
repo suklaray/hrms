@@ -52,6 +52,7 @@ export async function GET(req: NextRequest) {
         user: { select: { empid: true } },
         action: true, module: true, description: true, targetId: true,
         currentStatus: true, oldStatus: true, newStatus: true,
+        reviewComment: true,
         reviewedBy: true, reviewedAt: true,
         createdAt: true,
       },

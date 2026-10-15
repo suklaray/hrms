@@ -13,6 +13,10 @@ interface HRUser {
   role?: string;
   rbacRole?: { name?: string | null } | null;
 }
+interface Department {
+  id: number | string;
+  name: string;
+}
 
 interface JobDescription {
   id?: number;
@@ -37,6 +41,8 @@ interface JobDescription {
   interview_process?: string;
   keywords?: string;
   status: string;
+  approval_status?: string;
+  approval_comment?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -139,7 +145,8 @@ export default function EditJobDescriptionClient({
   const [hrUsers, setHrUsers] = useState<HRUser[]>([]);
   const [userRole, setUserRole] = useState("");
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
+  const [departments, setDepartments] = useState<Department[]>([]);
+  
   useEffect(() => {
     document.title = "Edit Job Description - HRMS";
 
@@ -184,9 +191,24 @@ export default function EditJobDescriptionClient({
           )
         );
       });
+
+    fetch("/api/settings/departments")
+      .then(async (res) => {
+        const data = await res.json();
+        setDepartments(
+          Array.isArray(data)
+            ? data
+            : Array.isArray(data.departments)
+            ? data.departments
+            : []
+        );
+      })
+      .catch((err) => console.error("Department fetch failed:", err));
+
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
+     
   }, [id]);
 
   const set =
@@ -231,6 +253,7 @@ export default function EditJobDescriptionClient({
 
       if (response.status === 202 && data.requiresApproval) {
         setPendingAudit({ uid: data.auditUid });
+        //setForm((current) => current ? { ...current, approval_status: "PENDING" } : current);
         // Persist so the JD list can show "Pending Publish" badge
         try {
           const stored = JSON.parse(localStorage.getItem("pendingUpdateAudits") || "[]");
@@ -248,6 +271,12 @@ export default function EditJobDescriptionClient({
       }
 
       setPendingAudit(null);
+      setForm((current) => current ? {
+        ...current,
+        status: data.status || current.status,
+        approval_status: data.approval_status || "APPROVED",
+        approval_comment: null,
+      } : current);
       setSaved(true);
     } catch {
       setError("Something went wrong.");
@@ -281,7 +310,15 @@ export default function EditJobDescriptionClient({
             localStorage.setItem("pendingUpdateAudits", JSON.stringify(stored.filter((e: { auditUid: string }) => e.auditUid !== uid)));
           } catch {}
           setPendingAudit(null);
-          setError("Your update request was rejected by the auditor.");
+          setForm((current) => current ? {
+            ...current,
+            status: "Rejected",
+            approval_status: "REJECTED",
+            approval_comment: data.reviewComment || null,
+          } : current);
+          setError(data.reviewComment
+            ? `Your update request was rejected by the auditor: ${data.reviewComment}`
+            : "Your update request was rejected by the auditor.");
         }
       } catch {}
     }, 5000);
@@ -313,6 +350,13 @@ export default function EditJobDescriptionClient({
     );
   }
 
+  const isRejected = form.status === "Rejected" || form.approval_status?.toUpperCase() === "REJECTED";
+  const isPendingApproval = form.status === "Pending Publish" || form.approval_status?.toUpperCase() === "PENDING";
+  const isLocked = isRejected || isPendingApproval;
+  const isClosed = form.status?.toLowerCase() === "closed";
+  const isAwaitingPublishApproval =form?.status === "Pending Publish" && form?.approval_status?.toUpperCase() === "PENDING"; 
+  const isReadOnly = isLocked || isClosed;
+  
   return (
     <div className="flex min-h-screen bg-gray-50">
       <SideBar />
@@ -359,7 +403,25 @@ export default function EditJobDescriptionClient({
         </header>
 
         <main className="flex-1 overflow-auto p-8">
-          {form.status?.toLowerCase() === "published" ? (
+          {isRejected ? (
+            <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">This job description was rejected and cannot be edited.</p>
+                {form.approval_comment && (
+                  <p className="text-sm text-red-700 mt-1">Reason: {form.approval_comment}</p>
+                )}
+              </div>
+            </div>
+          ) : isPendingApproval ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">This job description is pending auditor approval.</p>
+                <p className="text-xs text-amber-700 mt-1">Editing is disabled until the request is reviewed.</p>
+              </div>
+            </div>
+          ) : form.status?.toLowerCase() === "published" ? (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
@@ -385,8 +447,26 @@ export default function EditJobDescriptionClient({
                 Last updated:{" "}
                 {new Date(form.updated_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
               </div>
+            </div> 
+          ) : isClosed ? (
+          <div className="bg-gray-100 border border-gray-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-gray-500 flex-shrink-0" />
+              <p className="text-sm font-semibold text-gray-700">
+                This job description is closed and cannot be edited.
+              </p>
             </div>
-          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-gray-500">
+              <Clock className="w-3.5 h-3.5" />
+              Last updated:{" "}
+              {new Date(form.updated_at).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            </div>
+          </div>
+        ) :  (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
@@ -441,6 +521,7 @@ export default function EditJobDescriptionClient({
           )}
 
           <form onSubmit={(e) => handleUpdate(e)}>
+            <fieldset disabled={isReadOnly} className="min-w-0">
             <SectionCard
               title="Basic Information"
               subtitle="General details about the job position"
@@ -457,11 +538,17 @@ export default function EditJobDescriptionClient({
 
                 <div>
                   <Label required>Department</Label>
-                  <Input
-                    placeholder="e.g. Engineering"
+                  <Select
                     value={form.department}
                     onChange={set("department")}
-                  />
+                  >
+                    <option value="">Select department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </Select>
                 </div>
 
                 <div>
@@ -744,16 +831,23 @@ export default function EditJobDescriptionClient({
                     value={form.status}
                     onChange={set("status")}
                   >
-                    {form.status.toLowerCase() !== "published" && (
-                      <option value="Draft">Draft</option>
-                    )}
+                    {form.status.toLowerCase() !== "published" &&
+                      form.status.toLowerCase() !== "closed" && (
+                        <option value="Draft">Draft</option>
+                      )}
+
                     {(canPublish || form.status.toLowerCase() === "published") && (
                       <option value="Published">Published</option>
+                    )}
+
+                    {form.status.toLowerCase() === "closed" && (
+                      <option value="Closed">Closed</option>
                     )}
                   </Select>
                 </div>
               </div>
             </SectionCard>
+            </fieldset>
 
             <div className="flex items-center justify-between pt-2 pb-6">
               <p className="text-xs text-gray-400">
@@ -781,10 +875,12 @@ export default function EditJobDescriptionClient({
 
                 <button
                   type="submit"
-                  disabled={loading || !!pendingAudit}
-                  className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50"
+                  disabled={loading || !!pendingAudit || isLocked || isAwaitingPublishApproval || isClosed}
+                  title={isRejected ? "This job description was rejected and cannot be edited." : isPendingApproval ? "This job description is awaiting auditor approval.": isClosed ? "This job description is closed and cannot be edited." : undefined}
+                  className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? "Saving..." : pendingAudit ? "Awaiting Approval..." : "Update Job"}
+                  {loading ? "Saving..." : pendingAudit || isAwaitingPublishApproval ? "Awaiting Approval..." : "Update Job"}
+                
                 </button>
               </div>
             </div>

@@ -93,25 +93,62 @@ export async function POST(request: NextRequest) {
   if (new Date(deadline) <= new Date())
     return NextResponse.json({ message: "Deadline must be a future date" }, { status: 400 });
 
+  const jobData = {
+    title: title.trim(),
+    department: department?.trim() || "",
+    employment_type,
+    work_mode,
+    location,
+    openings: parseInt(String(openings), 10),
+    experience,
+    education,
+    required_skills: JSON.stringify(required_skills),
+    preferred_skills: JSON.stringify(preferred_skills || []),
+    responsibilities,
+    summary,
+    salary_min: salary_min || null,
+    salary_max: salary_max || null,
+    benefits: benefits || null,
+    deadline: new Date(deadline),
+    hiring_manager: hiringManagerUser.name,
+    hiring_manager_id: hiringManagerUser.empid,
+    interview_process: interview_process || null,
+    keywords: keywords || null,
+    status: status || "Draft",
+    created_by: user.empid || String(user.id),
+  };
+
   if (status?.toLowerCase() === "published") {
     const { error: publishError } = await checkAuth(request, [PERMISSION_KEYS.JD_PUBLISH]);
     if (publishError) return publishError;
 
-    // Require audit approval only for publishing
     if (!auditUid) {
-      const auditLog = await logAudit({
-        req: request,
-        user,
-        action: "jd.create",
-        module: "Job Description",
-        description: `Request to create new Job Description: "${title.trim()}" | Department: ${department?.trim() || "N/A"} | Employment Type: ${employment_type || "N/A"} | Location: ${location || "N/A"} | Openings: ${openings || "N/A"}`,
-        requiresApproval: true,
-      });
+      try {
+        const job = await prisma.job_descriptions.create({
+          data: { ...jobData, status: "Pending Publish" },
+        });
+        const auditLog = await logAudit({
+          req: request,
+          user,
+          action: "jd.create",
+          module: "Job Description",
+          description: `Request to publish Job Description: "${title.trim()}" | Department: ${department?.trim() || "N/A"} | Employment Type: ${employment_type || "N/A"} | Location: ${location || "N/A"} | Openings: ${openings || "N/A"}`,
+          targetId: String(job.id),
+          requiresApproval: true,
+        });
+        if (!auditLog) {
+          await prisma.job_descriptions.delete({ where: { id: job.id } });
+          return NextResponse.json({ message: "Could not create auditor approval request." }, { status: 500 });
+        }
 
-      return NextResponse.json(
-        { message: "Approval required. Audit log created and is pending review.", auditUid: auditLog?.uid, requiresApproval: true },
-        { status: 202 }
-      );
+        return NextResponse.json(
+          { message: "Approval required. Audit log created and is pending review.", auditUid: auditLog.uid, jobId: job.id, requiresApproval: true },
+          { status: 202 }
+        );
+      } catch (error) {
+        console.error("Failed to save pending job description:", error);
+        return NextResponse.json({ message: "Server error" }, { status: 500 });
+      }
     }
 
     const approved = await isAuditApproved(auditUid);
@@ -121,29 +158,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const job = await prisma.job_descriptions.create({
-      data: {
-        title: title.trim(),
-        department: department?.trim() || "",
-        employment_type,
-        work_mode,
-        location,
-        openings: parseInt(String(openings), 10),
-        experience,
-        education,
-        required_skills: JSON.stringify(required_skills),
-        preferred_skills: JSON.stringify(preferred_skills || []),
-        responsibilities,
-        summary,
-        salary_min: salary_min || null,
-        salary_max: salary_max || null,
-        benefits: benefits || null,
-        deadline: new Date(deadline),
-        hiring_manager: hiringManagerUser.name,
-        hiring_manager_id: hiringManagerUser.empid,
-        interview_process: interview_process || null,
-        keywords: keywords || null,
-        status: status || "Draft",
-      },
+      data: jobData,
     });
 
     return NextResponse.json({ ...job, required_skills, preferred_skills }, { status: 201 });
