@@ -84,10 +84,10 @@ export async function PATCH(req: NextRequest) {
         await tx.parsed_resumes.update({
           where: { id: parsedResumeId },
           data: {
+            pending_interview_date: interviewDateTime,
+            pending_interview_time_from: interviewTimeFrom,
+            pending_interview_time_to: interviewTimeTo,
             interview_schedule_status: "APPROVED",
-            pending_interview_date: null,
-            pending_interview_time_from: null,
-            pending_interview_time_to: null,
           },
         });
 

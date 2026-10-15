@@ -89,9 +89,6 @@ export async function PATCH(req: NextRequest) {
           where: { id: parsedResumeId, interview_schedule_status: "PENDING" },
           data: {
             interview_schedule_status: "APPROVED",
-            pending_interview_date: null,
-            pending_interview_time_from: null,
-            pending_interview_time_to: null,
           },
         });
         if (result.count !== 1) return false;
@@ -141,9 +138,6 @@ export async function PATCH(req: NextRequest) {
         data: {
           interview_schedule_status: "REJECTED",
           schedule_rejection_reason: scheduleRejectionReason.trim(),
-          pending_interview_date: null,
-          pending_interview_time_from: null,
-          pending_interview_time_to: null,
         },
       });
       if (result.count !== 1) {
