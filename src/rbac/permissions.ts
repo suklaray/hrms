@@ -79,6 +79,7 @@ export const PERMISSIONS = {
     EDIT: "recruitment.edit",
     DELETE: "recruitment.delete",
     UPDATE_STATUS: "recruitment.update_status",
+    VERIFY_CANDIDATE: "recruitment.verify_candidate",
     SEND_MAIL: "recruitment.send_mail",
     CONVERT_EMPLOYEE: "recruitment.convert_employee",
     APPLICATIONS_VIEW: "recruitment.applications_view",
@@ -497,6 +498,13 @@ export const PERMISSION_DEFINITIONS: PermissionDefinition[] = [
     description: "Update recruitment status of candidates (e.g. Selected, Rejected)",
     module: "recruitment",
     action: "update_status",
+  },
+  {
+    key: PERMISSIONS.RECRUITMENT.VERIFY_CANDIDATE,
+    name: "Verify Candidate",
+    description: "Verify candidate details in the recruitment pipeline",
+    module: "recruitment",
+    action: "verify_candidate",
   },
   {
     key: PERMISSIONS.RECRUITMENT.SEND_MAIL,

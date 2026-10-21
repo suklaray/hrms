@@ -63,6 +63,7 @@ export default function CandidatesClient({
   const canEdit = can(PERMISSION_KEYS.RECRUITMENT_EDIT);
   const canDelete = can(PERMISSION_KEYS.RECRUITMENT_DELETE);
   const canUpdateStatus = can(PERMISSION_KEYS.RECRUITMENT_UPDATE_STATUS);
+  const canVerifyCandidate = can(PERMISSION_KEYS.RECRUITMENT_VERIFY_CANDIDATE);
   const canSendMail = can(PERMISSION_KEYS.RECRUITMENT_SEND_MAIL);
   const canConvertEmployee = can(PERMISSION_KEYS.RECRUITMENT_CONVERT_EMPLOYEE);
 
@@ -291,7 +292,7 @@ export default function CandidatesClient({
   };
 
   const handleVerification = async (candidate: any) => {
-    if (!canUpdateStatus) {
+    if (!canVerifyCandidate) {
       toast.error("Permission denied: You cannot verify candidates");
       return;
     }
@@ -731,7 +732,7 @@ export default function CandidatesClient({
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            {canUpdateStatus ? (
+                            {canVerifyCandidate ? (
                               <button
                                 onClick={() => handleVerification(candidate)}
                                 className={`text-xs font-medium px-3 py-1 rounded-full transition-colors cursor-pointer ${
