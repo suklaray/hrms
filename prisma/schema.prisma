@@ -309,7 +309,7 @@ model candidates {
   status                candidates_status? @default(Waiting)
   verification          Boolean?           @default(false)
   form_submitted        Boolean            @default(false)
-  device_info           String?
+  device_info           String?            @db.Text
   ip_address            String?
   token_expiry          DateTime?
   token_first_used_at   DateTime?

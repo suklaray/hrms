@@ -77,9 +77,43 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const candidateId = `CAND-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    //const candidateId = `CAND-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
 
     const result = await prisma.$transaction(async (tx) => {
+      // Generate date prefix: YYYYMMDD
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      const datePrefix = `${year}${month}${day}`;
+
+      // Find the latest candidate created with today's ID prefix
+      const lastCandidate = await tx.candidates.findFirst({
+        where: {
+          candidate_id: {
+            startsWith: datePrefix,
+          },
+        },
+        orderBy: {
+          candidate_id: "desc",
+        },
+      });
+
+      // Increment today's serial number
+      let nextSerial = 1;
+
+      if (lastCandidate) {
+        const lastSerial = parseInt(lastCandidate.candidate_id.slice(-6), 10);
+
+        if (!isNaN(lastSerial)) {
+          nextSerial = lastSerial + 1;
+        }
+      }
+
+      const serialStr = String(nextSerial).padStart(6, "0");
+      const candidateId = `${datePrefix}${serialStr}`;
+
       // Create candidate from parsed resume
       const candidate = await tx.candidates.create({
         data: {

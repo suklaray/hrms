@@ -292,7 +292,7 @@ export default function CandidatesClient({
   };
 
   const handleVerification = async (candidate: any) => {
-    if (!canVerifyCandidate) {
+    if (!candidate.canVerifyCandidate || !candidate.form_submitted) {
       toast.error("Permission denied: You cannot verify candidates");
       return;
     }
@@ -732,7 +732,7 @@ export default function CandidatesClient({
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            {canVerifyCandidate ? (
+                            {canVerifyCandidate && candidate.canVerifyCandidate && candidate.form_submitted ? (
                               <button
                                 onClick={() => handleVerification(candidate)}
                                 className={`text-xs font-medium px-3 py-1 rounded-full transition-colors cursor-pointer ${

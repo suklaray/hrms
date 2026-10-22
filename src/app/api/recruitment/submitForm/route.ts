@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
 import prisma from "@/lib/prisma";
+import { sendNotificationToUser } from "@/lib/notificationEmitter";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +18,15 @@ export async function POST(req: NextRequest) {
     // Verify candidate using token
     const existingCandidate = await prisma.candidates.findUnique({
       where: { form_token: token },
+      include: {
+        parsed_resume: {
+          select: {
+            job_description: {
+              select: { hiring_manager_id: true },
+            },
+          },
+        },
+      },
     });
 
     if (!existingCandidate) {
@@ -176,6 +186,19 @@ export async function POST(req: NextRequest) {
         pincode: body.pincode,
       },
     });
+
+    const hiringManagerEmpid = existingCandidate.parsed_resume?.job_description?.hiring_manager_id;
+    if (hiringManagerEmpid) {
+      sendNotificationToUser(hiringManagerEmpid, {
+        id: `candidate-verification-${candidateId}`,
+        type: "recruitment_verification_pending",
+        status: "pending",
+        title: "Candidate Verification Pending",
+        message: `${body.name} has submitted the recruitment form and is awaiting verification.`,
+        candidateId,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     return NextResponse.json({
       message: "Form submitted successfully",

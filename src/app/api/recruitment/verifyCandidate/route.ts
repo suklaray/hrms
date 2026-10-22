@@ -3,9 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSIONS } from "@/rbac/permissions";
+import { isSuperAdmin, resolveUserRole } from "@/rbac/service";
+import { canVerifyRecruitmentCandidate } from "@/lib/recruitmentVerificationAccess";
 
 export async function PUT(req: NextRequest, context?: { params?: Promise<any> }) {
-  const { error } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.VERIFY_CANDIDATE]);
+  const { error, user, permissions } = await checkAuth(req, [PERMISSIONS.RECRUITMENT.VERIFY_CANDIDATE]);
   if (error) return error;
 
   const body = (await getRequestBody(req)) || {};
@@ -32,8 +34,50 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
       }
     }
 
+    const candidate = await prisma.candidates.findUnique({
+      where: { id: Number(candidateId) },
+      include: {
+        parsed_resume: {
+          select: {
+            job_description: {
+              select: { hiring_manager_id: true },
+            },
+          },
+        },
+      },
+    });
+    if (!candidate) {
+      return NextResponse.json({ error: "Candidate not found" }, { status: 404 });
+    }
+
+    const hiringManagerEmpid = candidate.parsed_resume?.job_description?.hiring_manager_id;
+    const [hiringManager, roles, currentRole] = await Promise.all([
+      hiringManagerEmpid
+        ? prisma.users.findUnique({
+            where: { empid: hiringManagerEmpid },
+            select: { roleId: true },
+          })
+        : null,
+      prisma.role.findMany({ select: { id: true, parentId: true } }),
+      resolveUserRole(user),
+    ]);
+    if (
+      !canVerifyRecruitmentCandidate(
+        user?.empid,
+        currentRole?.roleId,
+        hiringManagerEmpid,
+        hiringManager?.roleId,
+        roles,
+        isSuperAdmin(user) ||
+          (permissions?.has(PERMISSIONS.RECRUITMENT.VERIFY_CANDIDATE) ?? false),
+        isSuperAdmin(user)
+      )
+    ) {
+      return NextResponse.json({ error: "You cannot verify this candidate" }, { status: 403 });
+    }
+
     const updatedCandidate = await prisma.candidates.update({
-      where: { id: Number(candidateId) }, 
+      where: { id: candidate.id },
       data: { verification: verificationStatus },
     });
 
@@ -62,5 +106,3 @@ export async function PUT(req: NextRequest, context?: { params?: Promise<any> })
     }
   }
 }
-
-
