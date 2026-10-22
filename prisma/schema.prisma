@@ -308,6 +308,8 @@ model candidates {
   form_status           String?            @default("Mail Not Sent")
   status                candidates_status? @default(Waiting)
   verification          Boolean?           @default(false)
+  verified_by           Int?
+  verified_at           DateTime?
   form_submitted        Boolean            @default(false)
   device_info           String?            @db.Text
   ip_address            String?
@@ -316,7 +318,10 @@ model candidates {
 
   parsed_resume_id  Int?               @unique
   parsed_resume     parsed_resumes?    @relation(fields: [parsed_resume_id], references: [id])
+  verified_by_user users?             @relation("CandidateVerifier", fields: [verified_by], references: [id], onDelete: SetNull, onUpdate: Cascade)
   candidate_details candidate_details?
+
+  @@index([verified_by])
 }
 
 model compliance_documents {
@@ -523,6 +528,7 @@ model users {
   employee_salary_structures employee_salary_structure[]
   createdTasks               tasks[]                          @relation("TaskCreator")
   assignedTasks              tasks[]                          @relation("TaskAssignee")
+  verifiedCandidates         candidates[]                     @relation("CandidateVerifier")
   positions                  positions[]
   daily_work_reports         daily_work_reports[]
   resubmissionRequests       document_resubmission_requests[] @relation("ResubmissionEmployee")

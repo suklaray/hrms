@@ -509,12 +509,23 @@ const Header = ({ user: propUser }: any = {}) => {
                       <span className="text-xs opacity-75">
                         {n.timestamp ? new Date(n.timestamp).toLocaleTimeString() : 'Now'}
                       </span>
-                      <button
-                        onClick={() => dismissNotification(n.id)}
-                        className="text-xs underline text-white/90 hover:text-white px-2 py-1 rounded"
-                      >
-                        Dismiss
-                      </button>
+                      <div className="flex items-center gap-3">
+                        {n.url && (
+                          <Link
+                            href={n.url}
+                            onClick={() => setShowModal(false)}
+                            className="text-xs underline text-white/90 hover:text-white"
+                          >
+                            View candidate
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => dismissNotification(n.id)}
+                          className="text-xs underline text-white/90 hover:text-white px-2 py-1 rounded"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

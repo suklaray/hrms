@@ -49,111 +49,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check whether candidate already exists
-    const existingCandidate = await prisma.candidates.findUnique({
-      where: {
-        parsed_resume_id: parsedResumeId,
-      },
-    });
-
-    if (existingCandidate) {
-      await prisma.parsed_resumes.update({
-        where: {
-          id: parsedResumeId,
-        },
-        data: {
-          application_status: "Shortlisted",
-        },
-      });
-
-      let mailSent = false;
-      try { await sendShortlistMail(resume.email || "", resume.full_name || "Applicant"); mailSent = true; } catch {}
-
-      return NextResponse.json({
-        success: true,
-        message: "Candidate is already shortlisted",
-        mailSent,
-        candidate: existingCandidate,
-      });
-    }
-
-    //const candidateId = `CAND-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-
-    const result = await prisma.$transaction(async (tx) => {
-      // Generate date prefix: YYYYMMDD
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      const day = String(today.getDate()).padStart(2, "0");
-      const datePrefix = `${year}${month}${day}`;
-
-      // Find the latest candidate created with today's ID prefix
-      const lastCandidate = await tx.candidates.findFirst({
-        where: {
-          candidate_id: {
-            startsWith: datePrefix,
-          },
-        },
-        orderBy: {
-          candidate_id: "desc",
-        },
-      });
-
-      // Increment today's serial number
-      let nextSerial = 1;
-
-      if (lastCandidate) {
-        const lastSerial = parseInt(lastCandidate.candidate_id.slice(-6), 10);
-
-        if (!isNaN(lastSerial)) {
-          nextSerial = lastSerial + 1;
-        }
-      }
-
-      const serialStr = String(nextSerial).padStart(6, "0");
-      const candidateId = `${datePrefix}${serialStr}`;
-
-      // Create candidate from parsed resume
-      const candidate = await tx.candidates.create({
-        data: {
-          candidate_id: candidateId,
-
-          // IMPORTANT
-          name: resume.full_name || "Unnamed candidate",
-          email: resume.email || "",
-          contact_number: resume.mobile_number || "",
-
-          // Store the same resume path
-          resume: resume.resume_file_path || "",
-
-          // Link candidate to parsed resume
-          parsed_resume_id: parsedResumeId,
-
-          status: "Waiting",
-
-          interview_mail_status: "Not Sent",
-          form_status: "Mail Not Sent",
-
-          verification: false,
-          form_submitted: false,
-        },
-      });
-
-      // Update application status
-      const updatedResume = await tx.parsed_resumes.update({
-        where: {
-          id: parsedResumeId,
-        },
-        data: {
-          application_status: "Shortlisted",
-        },
-      });
-
-      return {
-        candidate,
-        updatedResume,
-      };
+    const updatedResume = await prisma.parsed_resumes.update({
+      where: { id: parsedResumeId },
+      data: { application_status: "Shortlisted" },
     });
 
     let mailSent = false;
@@ -163,8 +61,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Candidate shortlisted successfully",
       mailSent,
-      candidate: result.candidate,
-      resume: result.updatedResume,
+      resume: updatedResume,
     });
   } catch (error) {
     console.error("SHORTLIST API ERROR:", error);

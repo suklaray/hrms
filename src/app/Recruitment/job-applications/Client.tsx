@@ -54,6 +54,7 @@ interface Resume {
   pendingInterviewTimeFrom?: string;
   pendingInterviewTimeTo?: string;
   jobDescriptionId?: number;
+  jobDescriptionTitle?: string | null;
   hiringManager?: string | null;
   mobileNumber?: string;
   alternatePhone?: string;
@@ -585,7 +586,7 @@ export default function JobApplicationsClient({
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Rank", "Name", "Email", "Resume file", "Parsed on", "Matching Score", "Action"].map((h) => (
+                    {["Rank", "Name", "Email", "Job Description", "Parsed on", "Matching Score", "Action"].map((h) => (
                       <th key={h} className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -601,7 +602,7 @@ export default function JobApplicationsClient({
                         <td className="px-5 py-4 text-sm font-bold text-gray-400">{index + 1}</td>
                         <td className="px-5 py-4 font-semibold text-gray-900">{resume.name}</td>
                         <td className="px-5 py-4 text-sm text-gray-600">{resume.email}</td>
-                        <td className="px-5 py-4 text-sm text-gray-600">{resume.fileName || "-"}</td>
+                        <td className="px-5 py-4 text-sm text-gray-600">{resume.jobDescriptionTitle || "-"}</td>
                         <td className="px-5 py-4 text-sm text-gray-500">
                           {resume.parsedAt ? new Date(resume.parsedAt).toLocaleDateString("en-IN") : "-"}
                         </td>
@@ -644,7 +645,7 @@ export default function JobApplicationsClient({
                                 className="inline-flex items-center gap-1 px-2 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
                               >
                                 <Eye className="w-4 h-4" />
-                                <span className="text-xs font-semibold">View</span>
+                                <span className="text-xs font-semibold">View Comparison</span>
                               </Link>
                             ) : resume.jobDescriptionId ? (
                               <span className="px-2 py-2 text-xs text-gray-400">Available when comparison is done</span>

@@ -296,22 +296,24 @@ export default function CandidatesClient({
       toast.error("Permission denied: You cannot verify candidates");
       return;
     }
-    try {
-      const updatedVerificationStatus = !candidate.verification;
+    if (!(await swalConfirm(`Verify ${candidate.name}? This action cannot be undone.`))) {
+      return;
+    }
 
-      await axios.put("/api/recruitment/verifyCandidate", {
+    try {
+      const response = await axios.put("/api/recruitment/verifyCandidate", {
         candidateId: candidate.id,
-        verificationStatus: updatedVerificationStatus,
+        verificationStatus: true,
       });
 
       setCandidates((prev) =>
         prev.map((c) =>
           c.id === candidate.id
-            ? { ...c, verification: updatedVerificationStatus }
+            ? { ...c, ...response.data.updatedCandidate }
             : c
         )
       );
-      toast.success("Verification status updated");
+      toast.success("Candidate verified");
     } catch (error: any) {
       console.error("Error updating verification status:", error);
       toast.error(error.response?.data?.error || "Error updating verification status");
@@ -731,27 +733,61 @@ export default function CandidatesClient({
                               </div>
                             </div>
                           </td>
+                          
                           <td className="px-6 py-4">
-                            {canVerifyCandidate && candidate.canVerifyCandidate && candidate.form_submitted ? (
+                            {candidate.verification ? (
+                              <div className="text-xs text-green-800">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    alert(
+                                      `Verified by: ${
+                                        candidate.verified_by_user?.name ??
+                                        candidate.verified_by ??
+                                        "Unknown"
+                                      }\nVerified at: ${
+                                        candidate.verified_at
+                                          ? new Date(candidate.verified_at).toLocaleString()
+                                          : "Not available"
+                                      }`
+                                    );
+                                  }}
+                                  className="text-xs font-medium px-3 py-1 rounded-full
+                                    bg-green-100 text-green-800 hover:bg-green-200
+                                    transition-colors cursor-pointer"
+                                >
+                                  Verified
+                                </button>
+
+                                <div className="mt-2">
+                                  Verified by:{" "}
+                                  {candidate.verified_by_user?.name ??
+                                    candidate.verified_by ??
+                                    "Unknown"}
+                                  {candidate.verified_at && (
+                                    <>
+                                      {" "}·{" "}
+                                      {new Date(candidate.verified_at).toLocaleString()}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            ) : canVerifyCandidate &&
+                              candidate.canVerifyCandidate &&
+                              candidate.form_submitted ? (
                               <button
+                                type="button"
                                 onClick={() => handleVerification(candidate)}
-                                className={`text-xs font-medium px-3 py-1 rounded-full transition-colors cursor-pointer ${
-                                  candidate.verification
-                                    ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                    : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                                }`}
+                                className="text-xs font-medium px-3 py-1 rounded-full
+                                  transition-colors cursor-pointer bg-yellow-100
+                                  text-yellow-800 hover:bg-yellow-200"
                               >
-                                {candidate.verification ? "Verified" : "Pending Verification"}
+                                Pending Verification
                               </button>
                             ) : (
-                              <span
-                                className={`text-xs font-medium px-3 py-1 rounded-full inline-block ${
-                                  candidate.verification
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-yellow-100 text-yellow-800"
-                                }`}
-                              >
-                                {candidate.verification ? "Verified" : "Pending Verification"}
+                              <span className="text-xs font-medium px-3 py-1 rounded-full
+                                inline-block bg-yellow-100 text-yellow-800">
+                                Pending Verification
                               </span>
                             )}
                           </td>

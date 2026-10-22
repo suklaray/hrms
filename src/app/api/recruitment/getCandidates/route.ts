@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
         id: "desc",
       },
       include: {
+        verified_by_user: {
+          select: { name: true },
+        },
         parsed_resume: {
           select: {
             job_description: {
@@ -51,15 +54,16 @@ export async function GET(req: NextRequest) {
           where: { email: candidate.email },
           select: { empid: true },
         });
+        const { parsed_resume, ...candidateData } = candidate;
 
         return {
-          ...candidate,
+          ...candidateData,
           isEmployee: !!existingEmployee,
           canVerifyCandidate: canVerifyRecruitmentCandidate(
             user?.empid,
             currentRole?.roleId,
-            candidate.parsed_resume?.job_description?.hiring_manager_id,
-            hiringManagerRoleIds.get(candidate.parsed_resume?.job_description?.hiring_manager_id || "") ?? null,
+            parsed_resume?.job_description?.hiring_manager_id,
+            hiringManagerRoleIds.get(parsed_resume?.job_description?.hiring_manager_id || "") ?? null,
             roles,
             isSuperAdmin(user) ||
               (permissions?.has(PERMISSIONS.RECRUITMENT.VERIFY_CANDIDATE) ?? false),

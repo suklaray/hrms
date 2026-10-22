@@ -4,6 +4,7 @@ import { checkAuth } from "@/lib/apiAuth";
 import { sendInterviewScheduleMail } from "@/lib/recruitmentMail";
 import { canManageInterviewSchedules } from "@/lib/interviewScheduleAccess";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
+import { ensureCandidateForApprovedInterview } from "@/lib/jobApplicationCandidate";
 
 // PATCH /api/recruitment/job-application/schedule/approve
 // Body: { resumeId: number, action: "APPROVED" | "REJECTED" }
@@ -33,7 +34,6 @@ export async function PATCH(req: NextRequest) {
       where: { id: parsedResumeId },
       include: {
         job_description: { select: { hiring_manager_id: true } },
-        candidate: true,
       },
     });
 
@@ -73,18 +73,10 @@ export async function PATCH(req: NextRequest) {
         );
       }
 
-      if (!resume.candidate) {
-        return NextResponse.json(
-          { success: false, error: "Candidate record not found" },
-          { status: 404 }
-        );
-      }
-
-      const candidateId = resume.candidate.id;
       const pendingDate = resume.pending_interview_date;
       const pendingTimeFrom = resume.pending_interview_time_from;
       const pendingTimeTo = resume.pending_interview_time_to;
-      const updated = await prisma.$transaction(async (transaction) => {
+      const candidate = await prisma.$transaction(async (transaction) => {
         const result = await transaction.parsed_resumes.updateMany({
           where: { id: parsedResumeId, interview_schedule_status: "PENDING" },
           data: {
@@ -94,18 +86,13 @@ export async function PATCH(req: NextRequest) {
         });
         if (result.count !== 1) return false;
 
-        await transaction.candidates.update({
-          where: { id: candidateId },
-          data: {
-            interview_date: pendingDate,
-            interview_time_from: pendingTimeFrom,
-            interview_time_to: pendingTimeTo,
-            status: "Pending",
-          },
+        return ensureCandidateForApprovedInterview(transaction, resume, {
+          date: pendingDate,
+          timeFrom: pendingTimeFrom,
+          timeTo: pendingTimeTo,
         });
-        return true;
       });
-      if (!updated) {
+      if (!candidate) {
         return NextResponse.json(
           { success: false, error: "This interview schedule has already been reviewed" },
           { status: 409 }
@@ -114,8 +101,8 @@ export async function PATCH(req: NextRequest) {
 
       try {
         await sendInterviewScheduleMail(
-          resume.candidate.email,
-          resume.candidate.name,
+          candidate.email,
+          candidate.name,
           pendingDate.toISOString(),
           pendingTimeFrom,
           pendingTimeTo

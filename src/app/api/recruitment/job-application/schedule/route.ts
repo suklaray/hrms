@@ -4,6 +4,7 @@ import { checkAuth } from "@/lib/apiAuth";
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { sendInterviewScheduleMail } from "@/lib/recruitmentMail";  
 import { isSuperAdmin } from "@/lib/rbac";                           
+import { ensureCandidateForApprovedInterview } from "@/lib/jobApplicationCandidate";
 
 export async function PATCH(req: NextRequest) {
   const { error, user } = await checkAuth(req, [PERMISSION_KEYS.JOB_APPLICATION_SCHEDULE]); 
@@ -28,7 +29,6 @@ export async function PATCH(req: NextRequest) {
       where: { id: parsedResumeId },
       include: {
         job_description: { select: { hiring_manager_id: true } },
-        candidate: true,
       },
     });
 
@@ -71,16 +71,7 @@ export async function PATCH(req: NextRequest) {
     const shouldAutoApprove = Boolean(isHiringManager || isAdmin);
 
     if (shouldAutoApprove) {
-      if (!resume.candidate) {
-        return NextResponse.json(
-          { success: false, error: "Candidate record not found for this resume" },
-          { status: 404 }
-        );
-      }
-
-      const candidateId = resume.candidate.id;
-
-      await prisma.$transaction(async (tx) => {
+      const candidate = await prisma.$transaction(async (tx) => {
         await tx.parsed_resumes.update({
           where: { id: parsedResumeId },
           data: {
@@ -92,22 +83,18 @@ export async function PATCH(req: NextRequest) {
           },
         });
 
-        await tx.candidates.update({
-          where: { id: candidateId },
-          data: {
-            interview_date: interviewDateTime,
-            interview_time_from: interviewTimeFrom,
-            interview_time_to: interviewTimeTo,
-            status: "Pending",
-          },
+        return ensureCandidateForApprovedInterview(tx, resume, {
+          date: interviewDateTime,
+          timeFrom: interviewTimeFrom,
+          timeTo: interviewTimeTo,
         });
       });
 
       // Send the interview mail
       try {
         await sendInterviewScheduleMail(
-          resume.candidate.email,
-          resume.candidate.name,
+          candidate.email,
+          candidate.name,
           interviewDateTime.toISOString(),
           interviewTimeFrom,
           interviewTimeTo

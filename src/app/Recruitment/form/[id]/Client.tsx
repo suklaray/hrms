@@ -740,7 +740,11 @@ function CandidateForm() {
 
     try {
       const response = await axios.post("/api/recruitment/submitForm", data);
-      toast.success("Form submitted successfully.");
+      if (response.data?.verificationNotificationSent === false) {
+        toast.warning("Form submitted, but the hiring manager could not be notified.");
+      } else {
+        toast.success("Form submitted successfully.");
+      }
       router.push("/Recruitment/form/docs_submitted");
     } catch (error) {
       console.error("Error submitting form:", error);

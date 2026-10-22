@@ -20,7 +20,13 @@ export async function GET(req: NextRequest) {
         orderBy: { parsed_at: "desc" },
         include: {
           candidate: true,
-          job_description: { select: { hiring_manager_id: true } },
+          job_description: {
+            select: {
+              id: true,
+              title: true,
+              hiring_manager_id: true,
+            },
+          },
           candidate_job_matches: {
             orderBy: { evaluated_at: "desc" },
             take: 1,
@@ -91,6 +97,7 @@ export async function GET(req: NextRequest) {
         parserVersion: resume.parser_version,
         aiModel: resume.ai_model,
         jobDescriptionId: resume.job_description_id,
+        jobDescriptionTitle: resume.job_description?.title || null,
         hiringManager: resume.job_description?.hiring_manager_id || null,
         matchUrlId: resume.uid,
         matchingScore: comparisonComplete

@@ -46,6 +46,41 @@ export async function GET(req: NextRequest, context?: { params?: Promise<any> })
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
+    const pendingRecruitmentVerifications = await prisma.notifications.findMany({
+      where: {
+        recipient_type: "user",
+        recipient_id: userId,
+        type: "recruitment_verification_pending",
+        is_read: false,
+      },
+      orderBy: { created_at: "desc" },
+    });
+
+    pendingRecruitmentVerifications.forEach((notification) => {
+      let metadata: { candidateId?: string; url?: string } = {};
+      try {
+        const parsedMetadata = notification.metadata ? JSON.parse(notification.metadata) : null;
+        if (parsedMetadata && typeof parsedMetadata === "object") {
+          metadata = parsedMetadata;
+        }
+      } catch (error) {
+        console.error(`Invalid metadata for notification ${notification.id}:`, error);
+      }
+      notifications.push({
+        id: notification.id,
+        type: notification.type,
+        status: "pending",
+        title: notification.title,
+        message: notification.message,
+        candidateId: metadata.candidateId,
+        url: metadata.url,
+        bgColor: "bg-gradient-to-br from-amber-400 via-orange-500 to-red-500",
+        borderColor: "border-amber-300/80",
+        autoDismiss: false,
+        timestamp: notification.created_at.toISOString(),
+      });
+    });
+
     // Check for recent tasks assigned to this user
     const recentTasks = await prisma.tasks.findMany({
       where: {

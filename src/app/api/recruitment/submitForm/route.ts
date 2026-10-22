@@ -188,20 +188,46 @@ export async function POST(req: NextRequest) {
     });
 
     const hiringManagerEmpid = existingCandidate.parsed_resume?.job_description?.hiring_manager_id;
+    let verificationNotificationSent = false;
     if (hiringManagerEmpid) {
-      sendNotificationToUser(hiringManagerEmpid, {
-        id: `candidate-verification-${candidateId}`,
-        type: "recruitment_verification_pending",
-        status: "pending",
-        title: "Candidate Verification Pending",
-        message: `${body.name} has submitted the recruitment form and is awaiting verification.`,
-        candidateId,
-        timestamp: new Date().toISOString(),
-      });
+      try {
+        const title = "Candidate Verification Pending";
+        const message = `${body.name} has submitted the recruitment form and is awaiting verification.`;
+        const timestamp = new Date();
+        const notification = await prisma.notifications.create({
+          data: {
+            recipient_type: "user",
+            recipient_id: hiringManagerEmpid,
+            title,
+            message,
+            type: "recruitment_verification_pending",
+            metadata: JSON.stringify({ candidateId, url: `/Recruitment/${candidateId}` }),
+            created_at: timestamp,
+          },
+        });
+        sendNotificationToUser(hiringManagerEmpid, {
+          id: notification.id,
+          type: notification.type,
+          status: "pending",
+          title: notification.title,
+          message: notification.message,
+          candidateId,
+          url: `/Recruitment/${candidateId}`,
+          timestamp: timestamp.toISOString(),
+          bgColor: "bg-gradient-to-br from-amber-400 via-orange-500 to-red-500",
+          borderColor: "border-amber-300/80",
+        });
+        verificationNotificationSent = true;
+      } catch (notificationError) {
+        console.error("Failed to create candidate verification notification:", notificationError);
+      }
+    } else {
+      console.warn(`No hiring manager assigned for submitted candidate ${candidateId}`);
     }
 
     return NextResponse.json({
       message: "Form submitted successfully",
+      verificationNotificationSent,
       password,
     }, { status: 200 });
   } catch (err: any) {
