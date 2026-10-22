@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Head from "@/lib/compatHead";
 import Link from "next/link";
+import Pagination from "@/Components/Pagination";
 import {
   Eye,
   Trash2,
@@ -49,7 +50,7 @@ export default function CandidatesClient({
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // RBAC Permission Checks
   const userPerms = new Set(Array.isArray(permissions) ? permissions : []);
@@ -201,13 +202,15 @@ export default function CandidatesClient({
     startIndex + itemsPerPage
   );
 
+  useEffect(() => {
+    if (currentPage > Math.max(totalPages, 1)) {
+      setCurrentPage(Math.max(totalPages, 1));
+    }
+  }, [currentPage, totalPages]);
+
   const handleFilterChange = (newFilter: string) => {
     setStatusFilter(newFilter);
     setCurrentPage(1);
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
   };
 
   const getStatusColor = (status: string) => {
@@ -467,7 +470,10 @@ export default function CandidatesClient({
                     type="text"
                     placeholder="Search candidates..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                   />
                 </div>
@@ -883,58 +889,19 @@ export default function CandidatesClient({
                     </tbody>
                   </table>
                 </div>
+                
               )}
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-6 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Showing page {currentPage} of {totalPages} (
-                  {filteredCandidates.length} total candidates)
-                </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === 1
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 cursor-pointer"
-                    }`}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                          page === currentPage
-                            ? "bg-blue-600 text-white"
-                            : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    )
-                  )}
-
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === totalPages
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 cursor-pointer"
-                    }`}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+            {filteredCandidates.length > 0 && (
+              <Pagination
+                total={filteredCandidates.length}
+                page={currentPage}
+                perPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onPerPageChange={setItemsPerPage}
+              />
             )}
           </div>
         </div>

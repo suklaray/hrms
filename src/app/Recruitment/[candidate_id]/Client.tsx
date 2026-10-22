@@ -7,6 +7,7 @@ import { useRouter } from "@/lib/compatRouter";
 import Head from "@/lib/compatHead";
 import Breadcrumb from "@/Components/Breadcrumb";
 import { format } from 'date-fns';
+import Pagination from "@/Components/Pagination";
 import { 
   FaUser, FaEnvelope, FaPhone, FaCalendarAlt, 
   FaCheckCircle, FaTimesCircle, FaFileAlt, FaEye,
@@ -16,6 +17,8 @@ import {
 } from 'react-icons/fa';
 import { PERMISSION_KEYS } from "@/lib/rbacPermissions";
 import { isSuperAdmin } from "@/lib/rbac";
+import { swalConfirm } from "@/utils/confirmDialog";
+import { toast } from "react-toastify";
 
 function CandidateDetails({
   user,
@@ -36,6 +39,7 @@ function CandidateDetails({
     return userPerms.has(permKey);
   };
   const canEdit = can(PERMISSION_KEYS.RECRUITMENT_EDIT);
+  const canVerifyCandidate = can(PERMISSION_KEYS.RECRUITMENT_VERIFY_CANDIDATE);
 
   const router = useRouter();
   const { candidate_id } = router.query;
@@ -68,6 +72,28 @@ function CandidateDetails({
       fetchCandidateDetails();
     }
   }, [candidate_id]);
+
+  const handleVerification = async () => {
+    if (!candidate?.canVerifyCandidate || !candidate.form_submitted || candidate.verification) {
+      return;
+    }
+    if (!(await swalConfirm(`Verify ${candidate.name}? This action cannot be undone.`))) {
+      return;
+    }
+
+    try {
+      const response = await axios.put("/api/recruitment/verifyCandidate", {
+        candidateId: candidate.id,
+        verificationStatus: true,
+      });
+      const updatedRes = await axios.get(`/api/recruitment/getCandidateById?id=${candidate.candidate_id}`);
+      setCandidate(updatedRes.data);
+      toast.success("Candidate verified");
+    } catch (verificationError: any) {
+      console.error("Error verifying candidate:", verificationError);
+      toast.error(verificationError.response?.data?.error || "Failed to verify candidate");
+    }
+  };
 
   if (loading) {
     return (
@@ -236,9 +262,38 @@ function CandidateDetails({
                     <p className="text-sm text-gray-600">Verification Status</p>
                     <div className="flex items-center mt-1">
                       {candidate.verification ? (
-                        <><FaCheckCircle className="text-green-500 mr-1" /><span className="text-green-600 font-semibold">Verified</span></>
+                        <div>
+                          <div className="flex items-center">
+                            <FaCheckCircle className="text-green-500 mr-1" />
+                            <span className="text-green-600 font-semibold">Verified</span>
+                          </div>
+                          {candidate.verified_by_user?.name && (
+                            <p className="mt-1 text-sm text-gray-600">
+                              Verified by {candidate.verified_by_user.name}
+                            </p>
+                          )}
+                          {candidate.verified_at && (
+                            <p className="text-sm text-gray-600">
+                              {format(new Date(candidate.verified_at), "dd MMM yyyy, hh:mm a")}
+                            </p>
+                          )}
+                        </div>
                       ) : (
-                        <><FaTimesCircle className="text-red-500 mr-1" /><span className="text-red-600 font-semibold">Not Verified</span></>
+                        <div>
+                          <div className="flex items-center">
+                            <FaTimesCircle className="text-red-500 mr-1" />
+                            <span className="text-red-600 font-semibold">Not Verified</span>
+                          </div>
+                          {canVerifyCandidate && candidate.canVerifyCandidate && candidate.form_submitted && (
+                            <button
+                              type="button"
+                              onClick={handleVerification}
+                              className="mt-2 rounded-md bg-indigo-600 px-3 py-1 text-sm font-medium text-white hover:bg-indigo-700"
+                            >
+                              Verify Candidate
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

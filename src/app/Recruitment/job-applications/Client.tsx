@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import SideBar from "@/Components/SideBar";
+import Pagination from "@/Components/Pagination";
 import Link from "next/link";
 import { AlertCircle, Eye, Loader2, RefreshCw, Search, Upload, X } from "lucide-react";
 import { toast } from "react-toastify";
@@ -123,6 +124,8 @@ export default function JobApplicationsClient({
   const [search, setSearch] = useState("");
   const [jobId, setJobId] = useState("all");
   const [sortBy, setSortBy] = useState("score");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [uploadJobId, setUploadJobId] = useState("");
   const [matches, setMatches] = useState<Map<number, unknown> | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -495,6 +498,15 @@ export default function JobApplicationsClient({
     if (second === null) return -1;
     return second - first;
   });
+  const paginatedResumes = ranked.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    const totalPages = Math.max(Math.ceil(ranked.length / itemsPerPage), 1);
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, itemsPerPage, ranked.length]);
 
   const parsedCount = data.resumes.length;
 
@@ -541,14 +553,20 @@ export default function JobApplicationsClient({
                 <Search className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search parsed resumes"
                   className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200"
                 />
               </div>
               <select
                 value={jobId}
-                onChange={(e) => setJobId(e.target.value)}
+                onChange={(e) => {
+                  setJobId(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600"
               >
                 <option value="all">All job descriptions</option>
@@ -559,7 +577,10 @@ export default function JobApplicationsClient({
               <select
                 aria-label="Sort candidates by"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600"
               >
                 <option value="score">Sort by Overall score</option>
@@ -597,9 +618,9 @@ export default function JobApplicationsClient({
                   ) : filtered.length === 0 ? (
                     <tr><td colSpan={7} className="p-12 text-center text-sm text-gray-400">No parsed resumes match the current filters.</td></tr>
                   ) : (
-                    ranked.map((resume, index) => (
+                    paginatedResumes.map((resume, index) => (
                       <tr key={resume.id} className="hover:bg-gray-50">
-                        <td className="px-5 py-4 text-sm font-bold text-gray-400">{index + 1}</td>
+                        <td className="px-5 py-4 text-sm font-bold text-gray-400">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                         <td className="px-5 py-4 font-semibold text-gray-900">{resume.name}</td>
                         <td className="px-5 py-4 text-sm text-gray-600">{resume.email}</td>
                         <td className="px-5 py-4 text-sm text-gray-600">{resume.jobDescriptionTitle || "-"}</td>
@@ -751,6 +772,15 @@ export default function JobApplicationsClient({
                 </tbody>
               </table>
             </div>
+            {ranked.length > 0 && (
+              <Pagination
+                total={ranked.length}
+                page={currentPage}
+                perPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onPerPageChange={setItemsPerPage}
+              />
+            )}
           </section>
         </main>
       </div>
