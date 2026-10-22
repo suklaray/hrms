@@ -30,7 +30,7 @@ export async function ensureCandidateForApprovedInterview(
         interview_date: schedule.date,
         interview_time_from: schedule.timeFrom,
         interview_time_to: schedule.timeTo,
-        status: "Pending",
+        status: "Waiting",
       },
     });
   }
@@ -53,7 +53,7 @@ export async function ensureCandidateForApprovedInterview(
       contact_number: resume.mobile_number || "",
       resume: resume.resume_file_path || "",
       parsed_resume_id: resume.id,
-      status: "Pending",
+      status: "Waiting",
       interview_date: schedule.date,
       interview_time_from: schedule.timeFrom,
       interview_time_to: schedule.timeTo,
