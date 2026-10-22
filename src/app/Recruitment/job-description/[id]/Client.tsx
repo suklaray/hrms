@@ -354,9 +354,8 @@ export default function EditJobDescriptionClient({
   const isPendingApproval = form.status === "Pending Publish" || form.approval_status?.toUpperCase() === "PENDING";
   const isLocked = isRejected || isPendingApproval;
   const isClosed = form.status?.toLowerCase() === "closed";
-  const isPublished = form.status?.toLowerCase() === "published";
   const isAwaitingPublishApproval =form?.status === "Pending Publish" && form?.approval_status?.toUpperCase() === "PENDING"; 
-  const isReadOnly = isLocked || isClosed || isPublished;
+  const isReadOnly = isLocked || isClosed;
   
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -422,12 +421,13 @@ export default function EditJobDescriptionClient({
                 <p className="text-xs text-amber-700 mt-1">Editing is disabled until the request is reviewed.</p>
               </div>
             </div>
-          ) : isPublished ? (
+          ) : form.status?.toLowerCase() === "published" ? (
             <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-amber-800">This job description is published and cannot be edited.</p>
+                  <p className="text-sm font-semibold text-amber-800">You are editing a live job description</p>
+                  <p className="text-xs text-amber-600 mt-0.5">Changes will reflect immediately.</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-amber-600">
@@ -875,8 +875,8 @@ export default function EditJobDescriptionClient({
 
                 <button
                   type="submit"
-                  disabled={loading || !!pendingAudit || isReadOnly || isAwaitingPublishApproval}
-                  title={isRejected ? "This job description was rejected and cannot be edited." : isPendingApproval ? "This job description is awaiting auditor approval." : isPublished ? "This job description is published and cannot be edited." : isClosed ? "This job description is closed and cannot be edited." : undefined}
+                  disabled={loading || !!pendingAudit || isLocked || isAwaitingPublishApproval || isClosed}
+                  title={isRejected ? "This job description was rejected and cannot be edited." : isPendingApproval ? "This job description is awaiting auditor approval.": isClosed ? "This job description is closed and cannot be edited." : undefined}
                   className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors cursor-pointer shadow-sm shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? "Saving..." : pendingAudit || isAwaitingPublishApproval ? "Awaiting Approval..." : "Update Job"}
