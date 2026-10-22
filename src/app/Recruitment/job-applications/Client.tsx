@@ -139,6 +139,8 @@ export default function JobApplicationsClient({
   const [interviewTimeFrom, setInterviewTimeFrom] = useState("");
   const [interviewTimeTo, setInterviewTimeTo] = useState("");
   const [scheduling, setScheduling] = useState(false);
+  const [shortlistResume, setShortlistResume] = useState<Resume | null>(null);
+  const [shortlisting, setShortlisting] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectResume, setRejectResume] = useState<Resume | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -242,6 +244,7 @@ export default function JobApplicationsClient({
       return;
     }
 
+    setShortlisting(true);
     try {
       const response = await fetch("/api/recruitment/job-application/shortlist", {
         method: "POST",
@@ -257,6 +260,8 @@ export default function JobApplicationsClient({
       toast.success(result.mailSent ? "Candidate shortlisted & notification email sent" : "Candidate shortlisted (email could not be sent)");
     } catch (error) {
       toast.error((error as Error).message || "Failed to shortlist candidate");
+    } finally {
+      setShortlisting(false);
     }
   };
 
@@ -689,7 +694,7 @@ export default function JobApplicationsClient({
                               </div>
                             ) : (
                               <>
-                                {canShortlist && <button onClick={() => shortlistCandidate(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg">Shortlist</button>}
+                                {canShortlist && <button onClick={() => setShortlistResume(resume)} className="cursor-pointer px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 rounded-lg">Shortlist</button>}
                                     {canReject && (
                                       <button
                                         onClick={() => openRejectModal(resume)}
@@ -883,6 +888,35 @@ export default function JobApplicationsClient({
           </div>
         </div>
       )}
+      {shortlistResume && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold text-gray-900">Confirm Shortlisting</h2>
+            <p className="text-sm text-gray-600 mt-3">
+              Are you sure you want to shortlist {shortlistResume.name}?
+            </p>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShortlistResume(null)}
+                disabled={shortlisting}
+                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+              >
+                No
+              </button>
+              <button
+                onClick={async () => {
+                  await shortlistCandidate(shortlistResume);
+                  setShortlistResume(null);
+                }}
+                disabled={shortlisting}
+                className="px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:bg-gray-300"
+              >
+                {shortlisting ? "Shortlisting..." : "Yes, shortlist"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {rejectOpen && rejectResume && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
@@ -892,6 +926,7 @@ export default function JobApplicationsClient({
                 <h2 className="text-xl font-bold text-gray-900 mt-1">Reject Candidate</h2>
                 <p className="text-sm text-gray-600 mt-2">{rejectResume.name}</p>
                 <p className="text-xs text-gray-400">{rejectResume.email}</p>
+                <p className="text-sm text-gray-700 mt-3">Are you sure you want to reject this application?</p>
               </div>
               <button onClick={closeRejectModal} className="p-1 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5 text-gray-400" />
@@ -926,14 +961,14 @@ export default function JobApplicationsClient({
                 disabled={rejecting}
                 className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
               >
-                Cancel
+                No
               </button>
               <button
                 onClick={confirmReject}
                 disabled={rejecting || !rejectReason.trim()}
                 className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:bg-gray-300"
               >
-                {rejecting ? "Rejecting..." : "Confirm Rejection"}
+                {rejecting ? "Rejecting..." : "Yes, reject"}
               </button>
             </div>
           </div>

@@ -85,6 +85,12 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
   const existingJob = await prisma.job_descriptions.findUnique({ where: { id: jdId } });
   if (!existingJob) return NextResponse.json({ message: "Not found" }, { status: 404 });
+  if (existingJob.status.toLowerCase() === "published") {
+    return NextResponse.json(
+      { message: "Published job descriptions cannot be edited." },
+      { status: 409 }
+    );
+  }
   if (existingJob.approval_status === "REJECTED" || existingJob.status === "Rejected") {
     return NextResponse.json(
       { message: "This job description was rejected and cannot be edited." },
